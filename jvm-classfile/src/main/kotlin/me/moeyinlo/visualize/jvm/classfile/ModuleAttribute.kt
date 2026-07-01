@@ -81,10 +81,18 @@ object ModuleAttributeParser : AttributeBodyParser {
     private fun parseExports(context: AttributeParseContext): List<ModuleExports> {
         val exports = List(context.reader.readU2()) { index ->
             val ownerPath = "${context.ownerPath}.exports[$index]"
+            val exportsIndex = readRequiredIndex<ConstantPackageEntry>(context, "$ownerPath.exports_index")
+            val exportsFlags = context.reader.readU2()
+            val exportsToIndexes = parseModuleIndexList(context, "$ownerPath.exports_to_index", context.reader.readU2())
+            requireUniqueConstantPoolIndexes(
+                indexes = exportsToIndexes,
+                role = "$ownerPath.exports_to",
+                fieldName = "exports_to_index",
+            )
             ModuleExports(
-                exportsIndex = readRequiredIndex<ConstantPackageEntry>(context, "$ownerPath.exports_index"),
-                exportsFlags = context.reader.readU2(),
-                exportsToIndexes = parseModuleIndexList(context, "$ownerPath.exports_to_index", context.reader.readU2()),
+                exportsIndex = exportsIndex,
+                exportsFlags = exportsFlags,
+                exportsToIndexes = exportsToIndexes,
             )
         }
         requireUniqueConstantPoolIndexes(
