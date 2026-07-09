@@ -81,7 +81,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.3 | `Code` nested attributes table | `jvm-classfile` | `CodeNestedAttributesParserTest` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` classfile structure and all frame variants | `jvm-classfile` | `StackMapTableAttributeParserTest` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` verifier semantics | `jvm-verifier` | TBD | PENDING |
-| 4.7.5 | `Exceptions` | `jvm-classfile` | TBD | PENDING |
+| 4.7.5 | `Exceptions` | `jvm-classfile` | `ExceptionsAttributeParserTest` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` | `jvm-classfile` | TBD | PENDING |
 | 4.7.7 | `EnclosingMethod` | `jvm-classfile` | TBD | PENDING |
 | 4.7.8 | `Synthetic` | `jvm-classfile` | TBD | PENDING |
