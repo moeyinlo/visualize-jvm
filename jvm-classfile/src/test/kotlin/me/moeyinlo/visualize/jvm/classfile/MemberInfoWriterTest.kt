@@ -106,6 +106,8 @@ class MemberInfoWriterTest {
             listOf(
                 ConstantUtf8Entry("ConstantValue", byteArrayOf()),
                 ConstantIntegerEntry(42),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
             ),
         )
         val bytes = ClassFileWriter.writeFields(
