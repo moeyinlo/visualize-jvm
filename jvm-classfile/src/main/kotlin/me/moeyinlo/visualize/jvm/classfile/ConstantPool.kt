@@ -47,6 +47,118 @@ class ConstantPool private constructor(
         return slots[index.value - 1]
     }
 
+    fun validateReferences() {
+        slots.forEachIndexed { slotIndex, slot ->
+            if (slot is ConstantPoolSlot.Entry) {
+                validateEntry(ConstantPoolIndex(slotIndex + 1), slot.value)
+            }
+        }
+    }
+
+    private fun validateEntry(owner: ConstantPoolIndex, entry: ConstantPoolEntry) {
+        when (entry) {
+            is ConstantUtf8Entry,
+            is ConstantIntegerEntry,
+            is ConstantFloatEntry,
+            is ConstantLongEntry,
+            is ConstantDoubleEntry,
+            -> Unit
+
+            is ConstantClassEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+            is ConstantStringEntry -> expect<ConstantUtf8Entry>(owner, "string_index", entry.stringIndex)
+            is ConstantNameAndTypeEntry -> {
+                expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+                expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
+            }
+
+            is ConstantFieldRefEntry -> validateMemberRef(owner, entry)
+            is ConstantMethodRefEntry -> validateMemberRef(owner, entry)
+            is ConstantInterfaceMethodRefEntry -> validateMemberRef(owner, entry)
+            is ConstantMethodTypeEntry -> expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
+            is ConstantMethodHandleEntry -> validateMethodHandle(owner, entry)
+            is ConstantDynamicEntry -> expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
+            is ConstantInvokeDynamicEntry -> expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
+            is ConstantModuleEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+            is ConstantPackageEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+        }
+    }
+
+    private fun validateMemberRef(owner: ConstantPoolIndex, entry: ConstantMemberRefEntry) {
+        expect<ConstantClassEntry>(owner, "class_index", entry.classIndex)
+        expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
+    }
+
+    private fun validateMethodHandle(owner: ConstantPoolIndex, entry: ConstantMethodHandleEntry) {
+        when (entry.referenceKind) {
+            MethodHandleReferenceKind.GetField,
+            MethodHandleReferenceKind.GetStatic,
+            MethodHandleReferenceKind.PutField,
+            MethodHandleReferenceKind.PutStatic,
+            -> expect<ConstantFieldRefEntry>(owner, "reference_index", entry.referenceIndex)
+
+            MethodHandleReferenceKind.InvokeVirtual,
+            MethodHandleReferenceKind.NewInvokeSpecial,
+            -> expect<ConstantMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
+
+            MethodHandleReferenceKind.InvokeStatic,
+            MethodHandleReferenceKind.InvokeSpecial,
+            -> expectOneOf(
+                owner = owner,
+                role = "reference_index",
+                index = entry.referenceIndex,
+                expected = "ConstantMethodRefEntry or ConstantInterfaceMethodRefEntry",
+            ) { referenced ->
+                referenced is ConstantMethodRefEntry || referenced is ConstantInterfaceMethodRefEntry
+            }
+
+            MethodHandleReferenceKind.InvokeInterface ->
+                expect<ConstantInterfaceMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
+        }
+    }
+
+    private inline fun <reified T : ConstantPoolEntry> expect(
+        owner: ConstantPoolIndex,
+        role: String,
+        index: ConstantPoolIndex,
+    ) {
+        expectOneOf(owner, role, index, T::class.java.simpleName) { referenced -> referenced is T }
+    }
+
+    private fun expectOneOf(
+        owner: ConstantPoolIndex,
+        role: String,
+        index: ConstantPoolIndex,
+        expected: String,
+        matches: (ConstantPoolEntry) -> Boolean,
+    ) {
+        when (val slot = referenceSlot(owner, role, index)) {
+            is ConstantPoolSlot.Entry -> {
+                if (!matches(slot.value)) {
+                    throw ClassFileFormatException(
+                        "Invalid constant pool reference from $owner $role to $index: " +
+                            "expected $expected but found ${slot.value.javaClass.simpleName}",
+                    )
+                }
+            }
+
+            ConstantPoolSlot.Unusable -> throw ClassFileFormatException(
+                "Invalid constant pool reference from $owner $role to $index: target is an unusable two-slot placeholder",
+            )
+        }
+    }
+
+    private fun referenceSlot(
+        owner: ConstantPoolIndex,
+        role: String,
+        index: ConstantPoolIndex,
+    ): ConstantPoolSlot = try {
+        slotAt(index)
+    } catch (exception: ConstantPoolFormatException) {
+        throw ClassFileFormatException(
+            "Invalid constant pool reference from $owner $role to $index: ${exception.message}",
+        )
+    }
+
     companion object {
         fun fromEntries(entries: List<ConstantPoolEntry>): ConstantPool {
             val slots = buildList {
