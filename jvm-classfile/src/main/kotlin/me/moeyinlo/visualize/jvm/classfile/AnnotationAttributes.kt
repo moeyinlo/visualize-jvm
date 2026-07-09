@@ -5,6 +5,11 @@ data class RuntimeVisibleAnnotationsAttribute(
     val annotations: List<AnnotationInfo>,
 ) : AttributeInfo
 
+data class RuntimeInvisibleAnnotationsAttribute(
+    override val nameIndex: ConstantPoolIndex,
+    val annotations: List<AnnotationInfo>,
+) : AttributeInfo
+
 data class AnnotationInfo(
     val typeIndex: ConstantPoolIndex,
     val elementValuePairs: List<ElementValuePair>,
@@ -52,6 +57,14 @@ sealed interface ElementValue {
 object RuntimeVisibleAnnotationsAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo =
         RuntimeVisibleAnnotationsAttribute(
+            nameIndex = context.nameIndex,
+            annotations = AnnotationParser.parseAnnotations(context, context.ownerPath),
+        )
+}
+
+object RuntimeInvisibleAnnotationsAttributeParser : AttributeBodyParser {
+    override fun parse(context: AttributeParseContext): AttributeInfo =
+        RuntimeInvisibleAnnotationsAttribute(
             nameIndex = context.nameIndex,
             annotations = AnnotationParser.parseAnnotations(context, context.ownerPath),
         )
