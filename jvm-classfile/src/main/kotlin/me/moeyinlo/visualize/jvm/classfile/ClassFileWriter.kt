@@ -292,6 +292,12 @@ object ClassFileWriter {
             is AnnotationDefaultAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeElementValue(attribute.defaultValue)
             }
+            is RuntimeVisibleTypeAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeTypeAnnotations(attribute.annotations)
+            }
+            is RuntimeInvisibleTypeAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeTypeAnnotations(attribute.annotations)
+            }
             is BootstrapMethodsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeU2(attribute.bootstrapMethods.size)
                 attribute.bootstrapMethods.forEach { bootstrapMethod ->
@@ -416,6 +422,52 @@ object ClassFileWriter {
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
+        }
+    }
+
+    private fun ClassFileByteWriter.writeTypeAnnotations(annotations: List<TypeAnnotationInfo>) {
+        writeU2(annotations.size)
+        annotations.forEach { annotation ->
+            writeU1(annotation.targetType)
+            writeTypeAnnotationTargetInfo(annotation.targetInfo)
+            writeTypePath(annotation.targetPath)
+            writeAnnotation(annotation.annotation)
+        }
+    }
+
+    private fun ClassFileByteWriter.writeTypeAnnotationTargetInfo(targetInfo: TypeAnnotationTargetInfo) {
+        when (targetInfo) {
+            is TypeAnnotationTargetInfo.TypeParameterTarget -> writeU1(targetInfo.typeParameterIndex)
+            is TypeAnnotationTargetInfo.SupertypeTarget -> writeU2(targetInfo.supertypeIndex)
+            is TypeAnnotationTargetInfo.TypeParameterBoundTarget -> {
+                writeU1(targetInfo.typeParameterIndex)
+                writeU1(targetInfo.boundIndex)
+            }
+            TypeAnnotationTargetInfo.EmptyTarget -> Unit
+            is TypeAnnotationTargetInfo.FormalParameterTarget -> writeU1(targetInfo.formalParameterIndex)
+            is TypeAnnotationTargetInfo.ThrowsTarget -> writeU2(targetInfo.throwsTypeIndex)
+            is TypeAnnotationTargetInfo.LocalVarTarget -> {
+                writeU2(targetInfo.table.size)
+                targetInfo.table.forEach { entry ->
+                    writeU2(entry.startPc)
+                    writeU2(entry.length)
+                    writeU2(entry.index)
+                }
+            }
+            is TypeAnnotationTargetInfo.CatchTarget -> writeU2(targetInfo.exceptionTableIndex)
+            is TypeAnnotationTargetInfo.OffsetTarget -> writeU2(targetInfo.offset)
+            is TypeAnnotationTargetInfo.TypeArgumentTarget -> {
+                writeU2(targetInfo.offset)
+                writeU1(targetInfo.typeArgumentIndex)
+            }
+        }
+    }
+
+    private fun ClassFileByteWriter.writeTypePath(typePath: TypePath) {
+        writeU1(typePath.entries.size)
+        typePath.entries.forEach { entry ->
+            writeU1(entry.typePathKind)
+            writeU1(entry.typeArgumentIndex)
         }
     }
 

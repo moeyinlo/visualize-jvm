@@ -1388,6 +1388,126 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes RuntimeVisibleTypeAnnotations attribute target variants`() {
+        val constantPool = typeAnnotationConstantPool("RuntimeVisibleTypeAnnotations")
+        val annotation = AnnotationInfo(typeIndex = ConstantPoolIndex(2), elementValuePairs = emptyList())
+        val emptyPath = TypePath(emptyList())
+        val attribute = RuntimeVisibleTypeAnnotationsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            annotations = listOf(
+                TypeAnnotationInfo(0x00, TypeAnnotationTargetInfo.TypeParameterTarget(1), emptyPath, annotation),
+                TypeAnnotationInfo(0x10, TypeAnnotationTargetInfo.SupertypeTarget(5), emptyPath, annotation),
+                TypeAnnotationInfo(0x11, TypeAnnotationTargetInfo.TypeParameterBoundTarget(1, 2), emptyPath, annotation),
+                TypeAnnotationInfo(0x13, TypeAnnotationTargetInfo.EmptyTarget, emptyPath, annotation),
+                TypeAnnotationInfo(0x16, TypeAnnotationTargetInfo.FormalParameterTarget(6), emptyPath, annotation),
+                TypeAnnotationInfo(0x17, TypeAnnotationTargetInfo.ThrowsTarget(7), emptyPath, annotation),
+                TypeAnnotationInfo(
+                    0x40,
+                    TypeAnnotationTargetInfo.LocalVarTarget(
+                        listOf(LocalVarTargetTableEntry(startPc = 2, length = 3, index = 4)),
+                    ),
+                    emptyPath,
+                    annotation,
+                ),
+                TypeAnnotationInfo(0x42, TypeAnnotationTargetInfo.CatchTarget(8), emptyPath, annotation),
+                TypeAnnotationInfo(0x43, TypeAnnotationTargetInfo.OffsetTarget(9), emptyPath, annotation),
+                TypeAnnotationInfo(0x47, TypeAnnotationTargetInfo.TypeArgumentTarget(offset = 10, typeArgumentIndex = 3), emptyPath, annotation),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 85,
+                0, 10,
+                *typeAnnotationBytes(0x00, 1),
+                *typeAnnotationBytes(0x10, 0, 5),
+                *typeAnnotationBytes(0x11, 1, 2),
+                *typeAnnotationBytes(0x13),
+                *typeAnnotationBytes(0x16, 6),
+                *typeAnnotationBytes(0x17, 0, 7),
+                *typeAnnotationBytes(0x40, 0, 1, 0, 2, 0, 3, 0, 4),
+                *typeAnnotationBytes(0x42, 0, 8),
+                *typeAnnotationBytes(0x43, 0, 9),
+                *typeAnnotationBytes(0x47, 0, 10, 3),
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "runtime-visible-type-annotations-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "RuntimeVisibleTypeAnnotations" to RuntimeVisibleTypeAnnotationsAttributeParser,
+            ),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
+    fun `writes RuntimeInvisibleTypeAnnotations attribute with type path`() {
+        val constantPool = typeAnnotationConstantPool("RuntimeInvisibleTypeAnnotations")
+        val attribute = RuntimeInvisibleTypeAnnotationsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            annotations = listOf(
+                TypeAnnotationInfo(
+                    targetType = 0x13,
+                    targetInfo = TypeAnnotationTargetInfo.EmptyTarget,
+                    targetPath = TypePath(
+                        listOf(
+                            TypePathEntry(typePathKind = 0, typeArgumentIndex = 0),
+                            TypePathEntry(typePathKind = 3, typeArgumentIndex = 2),
+                        ),
+                    ),
+                    annotation = AnnotationInfo(
+                        typeIndex = ConstantPoolIndex(2),
+                        elementValuePairs = listOf(
+                            ElementValuePair(ConstantPoolIndex(3), ElementValue.Const('I', ConstantPoolIndex(4))),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 17,
+                0, 1,
+                0x13,
+                2,
+                0, 0,
+                3, 2,
+                0, 2,
+                0, 1,
+                0, 3,
+                'I'.code,
+                0, 4,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "runtime-invisible-type-annotations-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "RuntimeInvisibleTypeAnnotations" to RuntimeInvisibleTypeAnnotationsAttributeParser,
+            ),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
@@ -1407,4 +1527,28 @@ class AttributeInfoWriterTest {
 
     private fun bytes(vararg values: Int): ByteArray =
         values.map { it.toByte() }.toByteArray()
+
+    private fun typeAnnotationConstantPool(attributeName: String): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry(attributeName, byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/TypeUse;", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantIntegerEntry(1),
+            ),
+        )
+
+    private fun typeAnnotationBytes(
+        targetType: Int,
+        vararg targetInfo: Int,
+    ): IntArray =
+        intArrayOf(
+            targetType,
+            *targetInfo,
+            0,
+            0,
+            2,
+            0,
+            0,
+        )
 }
