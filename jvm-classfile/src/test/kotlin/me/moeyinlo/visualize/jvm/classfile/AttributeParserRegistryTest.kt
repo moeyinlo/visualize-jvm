@@ -126,6 +126,35 @@ class AttributeParserRegistryTest {
         assertTrue(failure.message.orEmpty().contains("unconsumed"), failure.message)
     }
 
+    @Test
+    fun `preserves unregistered attributes as unknown attributes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("VendorSpecific", byteArrayOf()),
+            ),
+        )
+        val reader = ClassFileByteReader(
+            byteArrayOf(0, 1, 0, 1, 0, 0, 0, 4, 5, 6, 7, 8),
+            source = "unknown-attribute.class",
+        )
+
+        val attributes = AttributeInfoParser.parseAttributes(
+            reader = reader,
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.Empty,
+            ownerPath = "ClassFile",
+        )
+
+        val attribute = assertIs<UnknownAttributeInfo>(attributes.single())
+        assertEquals(ConstantPoolIndex(1), attribute.nameIndex)
+        assertEquals("VendorSpecific", attribute.name)
+        assertContentEquals(byteArrayOf(5, 6, 7, 8), attribute.info)
+
+        attribute.info[0] = 99
+
+        assertContentEquals(byteArrayOf(5, 6, 7, 8), attribute.info)
+    }
+
     private data class ParsedTestAttribute(
         override val nameIndex: ConstantPoolIndex,
         val name: String,

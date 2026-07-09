@@ -4,6 +4,17 @@ interface AttributeInfo {
     val nameIndex: ConstantPoolIndex
 }
 
+class UnknownAttributeInfo(
+    override val nameIndex: ConstantPoolIndex,
+    val name: String,
+    info: ByteArray,
+) : AttributeInfo {
+    private val infoBytes = info.copyOf()
+
+    val info: ByteArray
+        get() = infoBytes.copyOf()
+}
+
 fun interface AttributeBodyParser {
     fun parse(context: AttributeParseContext): AttributeInfo
 }
@@ -84,7 +95,11 @@ object AttributeInfoParser {
         )
         val info = reader.readSlice(attributeLength.toInt())
         val parser = registry.parserFor(name)
-            ?: throw ClassFileFormatException("No parser registered for attribute $name source=${reader.source} $ownerPath")
+            ?: return UnknownAttributeInfo(
+                nameIndex = nameIndex,
+                name = name,
+                info = info,
+            )
         val context = AttributeParseContext(
             nameIndex = nameIndex,
             name = name,
