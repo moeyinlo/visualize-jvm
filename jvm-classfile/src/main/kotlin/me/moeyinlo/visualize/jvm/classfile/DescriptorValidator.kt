@@ -6,37 +6,88 @@ object DescriptorValidator {
         role: String,
         descriptor: String,
     ) {
-        val parser = FieldDescriptorParser(owner, role, descriptor)
+        val parser = DescriptorParser(owner, role, descriptor, "field")
         parser.parseFieldType()
         if (!parser.isAtEnd()) {
             parser.fail("has trailing characters at offset ${parser.position}")
         }
     }
 
-    private class FieldDescriptorParser(
+    fun validateMethodDescriptor(
+        owner: ConstantPoolIndex,
+        role: String,
+        descriptor: String,
+    ) {
+        DescriptorParser(owner, role, descriptor, "method").parseMethodDescriptor()
+    }
+
+    private class DescriptorParser(
         private val owner: ConstantPoolIndex,
         private val role: String,
         private val descriptor: String,
+        private val descriptorKind: String,
     ) {
         var position: Int = 0
             private set
 
         fun isAtEnd(): Boolean = position == descriptor.length
 
-        fun parseFieldType() {
+        fun parseFieldType(): Int =
             when (peek()) {
-                'B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z' -> position++
-                'L' -> parseClassType()
-                '[' -> parseArrayType()
+                'B', 'C', 'F', 'I', 'S', 'Z' -> {
+                    position++
+                    1
+                }
+
+                'D', 'J' -> {
+                    position++
+                    2
+                }
+
+                'L' -> {
+                    parseClassType()
+                    1
+                }
+
+                '[' -> {
+                    parseArrayType()
+                    1
+                }
+
                 null -> fail("is empty")
                 else -> fail("expected field type at offset $position")
+            }
+
+        fun parseMethodDescriptor() {
+            if (peek() != '(') {
+                fail("must start with '('")
+            }
+            position++
+            var parameterUnits = 0
+            while (peek() != ')') {
+                if (peek() == null) {
+                    fail("missing ')' after parameter descriptors")
+                }
+                parameterUnits += parseFieldType()
+                if (parameterUnits > 255) {
+                    fail("parameter length is $parameterUnits; maximum is 255")
+                }
+            }
+            position++
+            if (peek() == 'V') {
+                position++
+            } else {
+                parseFieldType()
+            }
+            if (!isAtEnd()) {
+                fail("has trailing characters at offset $position")
             }
         }
 
         fun fail(reason: String): Nothing =
             throw ClassFileFormatException(
                 "Invalid constant pool reference from $owner $role: " +
-                    "'$descriptor' is not a valid field descriptor: $reason",
+                    "'$descriptor' is not a valid $descriptorKind descriptor: $reason",
             )
 
         private fun parseClassType() {

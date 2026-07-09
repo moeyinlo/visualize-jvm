@@ -15,13 +15,16 @@ class ConstantPoolReferenceValidationTest {
                 utf8("I"),
                 ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
                 ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
-                ConstantMethodTypeEntry(ConstantPoolIndex(4)),
+                utf8("()V"),
+                ConstantMethodTypeEntry(ConstantPoolIndex(7)),
                 ConstantMethodHandleEntry(MethodHandleReferenceKind.GetField, ConstantPoolIndex(6)),
                 ConstantStringEntry(ConstantPoolIndex(3)),
                 ConstantModuleEntry(ConstantPoolIndex(1)),
                 ConstantPackageEntry(ConstantPoolIndex(1)),
                 ConstantDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(5)),
-                ConstantInvokeDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(5)),
+                utf8("call"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(14), ConstantPoolIndex(7)),
+                ConstantInvokeDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(15)),
             ),
         )
 
@@ -177,6 +180,44 @@ class ConstantPoolReferenceValidationTest {
         }
 
         assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
+    fun `rejects invalid method descriptors on method references`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("Owner"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("method"),
+                utf8("I"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#6"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method descriptor"), failure.message)
+    }
+
+    @Test
+    fun `rejects invalid method descriptors on method type constants`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("(V)V"),
+                ConstantMethodTypeEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#2"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method descriptor"), failure.message)
     }
 
     private fun utf8(value: String): ConstantUtf8Entry =
