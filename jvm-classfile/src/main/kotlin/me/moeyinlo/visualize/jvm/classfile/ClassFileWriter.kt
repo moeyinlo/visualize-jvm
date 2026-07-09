@@ -274,6 +274,10 @@ object ClassFileWriter {
                 writeConstantPoolIndex(attribute.classIndex)
                 writeOptionalConstantPoolIndex(attribute.methodIndex)
             }
+            is SourceDebugExtensionAttribute -> writer.writeAttributeInfo(
+                attribute.nameIndex,
+                attribute.debugExtension,
+            )
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )

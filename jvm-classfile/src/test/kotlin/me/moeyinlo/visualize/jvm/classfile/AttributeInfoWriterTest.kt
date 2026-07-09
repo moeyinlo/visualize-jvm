@@ -375,6 +375,48 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes SourceDebugExtension attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("SourceDebugExtension", byteArrayOf()),
+            ),
+        )
+        val debugBytes = "SMAP\nMain.kt\nKotlin\n".encodeToByteArray()
+        val attribute = SourceDebugExtensionAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            debugExtension = debugBytes,
+            text = "SMAP\nMain.kt\nKotlin\n",
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                debugBytes.size.toByte(),
+            ) + debugBytes,
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "source-debug-extension-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("SourceDebugExtension" to SourceDebugExtensionAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        val parsedAttribute = assertIs<SourceDebugExtensionAttribute>(parsed.single())
+        assertContentEquals(debugBytes, parsedAttribute.debugExtension)
+        assertEquals("SMAP\nMain.kt\nKotlin\n", parsedAttribute.text)
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
