@@ -201,6 +201,21 @@ class ConstantPoolEntryParserTest {
         assertEquals(ConstantPoolIndex(13), entry.descriptorIndex)
     }
 
+    @Test
+    fun `parses dynamic and invokedynamic constants`() {
+        val dynamic = assertIs<ConstantDynamicEntry>(
+            parse(byteArrayOf(17, 0, 2, 0, 3)),
+        )
+        val invokeDynamic = assertIs<ConstantInvokeDynamicEntry>(
+            parse(byteArrayOf(18, 0, 4, 0, 5)),
+        )
+
+        assertEquals(BootstrapMethodIndex(2), dynamic.bootstrapMethodIndex)
+        assertEquals(ConstantPoolIndex(3), dynamic.nameAndTypeIndex)
+        assertEquals(BootstrapMethodIndex(4), invokeDynamic.bootstrapMethodIndex)
+        assertEquals(ConstantPoolIndex(5), invokeDynamic.nameAndTypeIndex)
+    }
+
     private fun parse(bytes: ByteArray): ConstantPoolEntry =
         ConstantPoolEntryParser.parseEntry(ClassFileByteReader(bytes, source = "numeric.class"))
 }

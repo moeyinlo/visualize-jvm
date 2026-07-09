@@ -76,6 +76,23 @@ data class ConstantMethodHandleEntry(
 
 data class ConstantMethodTypeEntry(val descriptorIndex: ConstantPoolIndex) : ConstantPoolEntry
 
+@JvmInline
+value class BootstrapMethodIndex(val value: Int) {
+    init {
+        require(value >= 0) { "Bootstrap method indexes are zero-based: $value" }
+    }
+}
+
+data class ConstantDynamicEntry(
+    val bootstrapMethodIndex: BootstrapMethodIndex,
+    val nameAndTypeIndex: ConstantPoolIndex,
+) : ConstantPoolEntry
+
+data class ConstantInvokeDynamicEntry(
+    val bootstrapMethodIndex: BootstrapMethodIndex,
+    val nameAndTypeIndex: ConstantPoolIndex,
+) : ConstantPoolEntry
+
 object ConstantPoolEntryParser {
     private const val ConstantUtf8Tag = 1
     private const val ConstantIntegerTag = 3
@@ -90,6 +107,8 @@ object ConstantPoolEntryParser {
     private const val ConstantNameAndTypeTag = 12
     private const val ConstantMethodHandleTag = 15
     private const val ConstantMethodTypeTag = 16
+    private const val ConstantDynamicTag = 17
+    private const val ConstantInvokeDynamicTag = 18
 
     fun parseEntry(reader: ClassFileByteReader): ConstantPoolEntry {
         val entryOffset = reader.position
@@ -111,6 +130,8 @@ object ConstantPoolEntryParser {
             )
             ConstantMethodHandleTag -> parseMethodHandle(reader)
             ConstantMethodTypeTag -> ConstantMethodTypeEntry(reader.readConstantPoolIndex())
+            ConstantDynamicTag -> parseDynamic(reader, ::ConstantDynamicEntry)
+            ConstantInvokeDynamicTag -> parseDynamic(reader, ::ConstantInvokeDynamicEntry)
             else -> throw ClassFileFormatException(
                 "Unsupported constant pool tag source=${reader.source} offset=$entryOffset tag=$tag",
             )
@@ -149,6 +170,14 @@ object ConstantPoolEntryParser {
             referenceIndex = reader.readConstantPoolIndex(),
         )
     }
+
+    private fun parseDynamic(
+        reader: ClassFileByteReader,
+        create: (bootstrapMethodIndex: BootstrapMethodIndex, nameAndTypeIndex: ConstantPoolIndex) -> ConstantPoolEntry,
+    ): ConstantPoolEntry = create(
+        BootstrapMethodIndex(reader.readU2()),
+        reader.readConstantPoolIndex(),
+    )
 
     private fun ClassFileByteReader.readU8Bits(): Long {
         val highBytes = readU4()
