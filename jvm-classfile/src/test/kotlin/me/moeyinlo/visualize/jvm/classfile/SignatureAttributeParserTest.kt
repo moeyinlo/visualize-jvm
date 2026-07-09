@@ -103,4 +103,96 @@ class SignatureAttributeParserTest {
 
         assertTrue(failure.message.orEmpty().contains("field signature"), failure.message)
     }
+
+    @Test
+    fun `parses method Signature grammar`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("<T:Ljava/lang/Object;>(Ljava/util/List<TT;>;)TT;^Ljava/lang/Exception;^TE;", byteArrayOf()),
+            ),
+        )
+
+        val attributes = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(
+                byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 2),
+                source = "method-signature.class",
+            ),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals("<T:Ljava/lang/Object;>(Ljava/util/List<TT;>;)TT;^Ljava/lang/Exception;^TE;", assertIs<SignatureAttribute>(attributes.single()).signature)
+    }
+
+    @Test
+    fun `rejects method Signature that is not a method signature`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/lang/String;", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 2),
+                    source = "bad-method-signature.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("method signature"), failure.message)
+    }
+
+    @Test
+    fun `parses class Signature grammar`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("<T:Ljava/lang/Object;>Ljava/lang/Object;Ljava/io/Serializable;", byteArrayOf()),
+            ),
+        )
+
+        val attributes = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(
+                byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 2),
+                source = "class-signature.class",
+            ),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals("<T:Ljava/lang/Object;>Ljava/lang/Object;Ljava/io/Serializable;", assertIs<SignatureAttribute>(attributes.single()).signature)
+    }
+
+    @Test
+    fun `rejects class Signature that is not a class signature`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 2),
+                    source = "bad-class-signature.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("class signature"), failure.message)
+    }
 }

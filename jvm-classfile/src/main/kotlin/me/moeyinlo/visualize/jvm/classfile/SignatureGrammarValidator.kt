@@ -7,6 +7,10 @@ object SignatureGrammarValidator {
     ) {
         if (ownerPath.startsWith("fields[") || ownerPath.contains(".components[")) {
             validateFieldSignature(ownerPath, signature)
+        } else if (ownerPath.startsWith("methods[")) {
+            validateMethodSignature(ownerPath, signature)
+        } else if (ownerPath.startsWith("ClassFile")) {
+            validateClassSignature(ownerPath, signature)
         }
     }
 
@@ -14,14 +18,33 @@ object SignatureGrammarValidator {
         ownerPath: String,
         signature: String,
     ) {
-        val parser = SignatureParser(ownerPath, signature)
+        val parser = SignatureParser(ownerPath, signature, "field signature")
         parser.parseReferenceTypeSignature()
-        parser.expectEnd("field signature")
+        parser.expectEnd()
+    }
+
+    fun validateClassSignature(
+        ownerPath: String,
+        signature: String,
+    ) {
+        val parser = SignatureParser(ownerPath, signature, "class signature")
+        parser.parseClassSignature()
+        parser.expectEnd()
+    }
+
+    fun validateMethodSignature(
+        ownerPath: String,
+        signature: String,
+    ) {
+        val parser = SignatureParser(ownerPath, signature, "method signature")
+        parser.parseMethodSignature()
+        parser.expectEnd()
     }
 
     private class SignatureParser(
         private val ownerPath: String,
         private val signature: String,
+        private val signatureKind: String,
     ) {
         var position: Int = 0
             private set
@@ -31,13 +54,50 @@ object SignatureGrammarValidator {
                 'L' -> parseClassTypeSignature()
                 'T' -> parseTypeVariableSignature()
                 '[' -> parseArrayTypeSignature()
-                else -> fail("field signature", "expected ReferenceTypeSignature at offset $position")
+                else -> fail("expected ReferenceTypeSignature at offset $position")
             }
         }
 
-        fun expectEnd(kind: String) {
+        fun parseClassSignature() {
+            if (peek() == '<') {
+                parseTypeParameters()
+            }
+            parseClassTypeSignature()
+            while (peek() != null) {
+                parseClassTypeSignature()
+            }
+        }
+
+        fun parseMethodSignature() {
+            if (peek() == '<') {
+                parseTypeParameters()
+            }
+            expect('(')
+            while (peek() != ')') {
+                if (peek() == null) {
+                    fail("missing ')' after method parameters")
+                }
+                parseJavaTypeSignature()
+            }
+            expect(')')
+            if (peek() == 'V') {
+                position++
+            } else {
+                parseJavaTypeSignature()
+            }
+            while (peek() == '^') {
+                position++
+                when (peek()) {
+                    'L' -> parseClassTypeSignature()
+                    'T' -> parseTypeVariableSignature()
+                    else -> fail("expected ThrowsSignature at offset $position")
+                }
+            }
+        }
+
+        fun expectEnd() {
             if (position != signature.length) {
-                fail(kind, "has trailing characters at offset $position")
+                fail("has trailing characters at offset $position")
             }
         }
 
@@ -49,47 +109,43 @@ object SignatureGrammarValidator {
         }
 
         private fun parseClassTypeSignature() {
-            expect('L', "field signature")
-            parseSimpleOrPackageClassSegment(allowTypeArguments = true)
+            expect('L')
+            parseIdentifier()
             while (peek() == '/') {
                 position++
-                parseSimpleOrPackageClassSegment(allowTypeArguments = true)
+                parseIdentifier()
+            }
+            if (peek() == '<') {
+                parseTypeArguments()
             }
             while (peek() == '.') {
                 position++
                 parseSimpleClassTypeSignature()
             }
-            expect(';', "field signature")
-        }
-
-        private fun parseSimpleOrPackageClassSegment(allowTypeArguments: Boolean) {
-            parseIdentifier("field signature")
-            if (allowTypeArguments && peek() == '<') {
-                parseTypeArguments()
-            }
+            expect(';')
         }
 
         private fun parseSimpleClassTypeSignature() {
-            parseIdentifier("field signature")
+            parseIdentifier()
             if (peek() == '<') {
                 parseTypeArguments()
             }
         }
 
         private fun parseTypeArguments() {
-            expect('<', "field signature")
+            expect('<')
             var count = 0
             while (peek() != '>') {
                 if (peek() == null) {
-                    fail("field signature", "missing '>' for type arguments")
+                    fail("missing '>' for type arguments")
                 }
                 parseTypeArgument()
                 count++
             }
             if (count == 0) {
-                fail("field signature", "type arguments must not be empty")
+                fail("type arguments must not be empty")
             }
-            expect('>', "field signature")
+            expect('>')
         }
 
         private fun parseTypeArgument() {
@@ -104,17 +160,53 @@ object SignatureGrammarValidator {
         }
 
         private fun parseTypeVariableSignature() {
-            expect('T', "field signature")
-            parseIdentifier("field signature")
-            expect(';', "field signature")
+            expect('T')
+            parseIdentifier()
+            expect(';')
         }
 
         private fun parseArrayTypeSignature() {
-            expect('[', "field signature")
+            expect('[')
             parseJavaTypeSignature()
         }
 
-        private fun parseIdentifier(kind: String): String {
+        private fun parseTypeParameters() {
+            expect('<')
+            var count = 0
+            while (peek() != '>') {
+                if (peek() == null) {
+                    fail("missing '>' for type parameters")
+                }
+                parseTypeParameter()
+                count++
+            }
+            if (count == 0) {
+                fail("type parameters must not be empty")
+            }
+            expect('>')
+        }
+
+        private fun parseTypeParameter() {
+            parseIdentifier()
+            parseClassBound()
+            while (peek() == ':') {
+                parseInterfaceBound()
+            }
+        }
+
+        private fun parseClassBound() {
+            expect(':')
+            if (peek() != ':' && peek() != '>') {
+                parseReferenceTypeSignature()
+            }
+        }
+
+        private fun parseInterfaceBound() {
+            expect(':')
+            parseReferenceTypeSignature()
+        }
+
+        private fun parseIdentifier(): String {
             val start = position
             while (true) {
                 val current = peek()
@@ -124,17 +216,14 @@ object SignatureGrammarValidator {
                 position++
             }
             if (position == start) {
-                fail(kind, "expected Identifier at offset $start")
+                fail("expected Identifier at offset $start")
             }
             return signature.substring(start, position)
         }
 
-        private fun expect(
-            expected: Char,
-            kind: String,
-        ) {
+        private fun expect(expected: Char) {
             if (peek() != expected) {
-                fail(kind, "expected '$expected' at offset $position")
+                fail("expected '$expected' at offset $position")
             }
             position++
         }
@@ -146,13 +235,10 @@ object SignatureGrammarValidator {
                 null
             }
 
-        private fun fail(
-            kind: String,
-            reason: String,
-        ): Nothing =
+        private fun fail(reason: String): Nothing =
             throw ClassFileFormatException(
                 "Invalid Signature attribute at $ownerPath: " +
-                    "'$signature' is not a valid $kind: $reason",
+                    "'$signature' is not a valid $signatureKind: $reason",
             )
     }
 }
