@@ -69,4 +69,56 @@ class RecordAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("components[0].name_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Utf8"), failure.message)
     }
+
+    @Test
+    fun `rejects component names that are not valid unqualified names`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Record", byteArrayOf()),
+                ConstantUtf8Entry("bad/name", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 8, 0, 1, 0, 2, 0, 3, 0, 0),
+                    source = "bad-record.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Record" to RecordAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("components[0].name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
+    fun `rejects component descriptors that are not field descriptors`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Record", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("()V", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 8, 0, 1, 0, 2, 0, 3, 0, 0),
+                    source = "bad-record.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Record" to RecordAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("components[0].descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
 }

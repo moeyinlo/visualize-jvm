@@ -27,8 +27,8 @@ object RecordAttributeParser : AttributeBodyParser {
         ownerPath: String,
     ): RecordComponentInfo =
         RecordComponentInfo(
-            nameIndex = readUtf8Index(context, "$ownerPath.name_index"),
-            descriptorIndex = readUtf8Index(context, "$ownerPath.descriptor_index"),
+            nameIndex = readNameIndex(context, "$ownerPath.name_index"),
+            descriptorIndex = readDescriptorIndex(context, "$ownerPath.descriptor_index"),
             attributes = AttributeInfoParser.parseAttributes(
                 reader = context.reader,
                 constantPool = context.constantPool,
@@ -37,10 +37,28 @@ object RecordAttributeParser : AttributeBodyParser {
             ),
         )
 
-    private fun readUtf8Index(
+    private fun readNameIndex(
         context: AttributeParseContext,
         role: String,
     ): ConstantPoolIndex {
+        val (index, entry) = readUtf8Reference(context, role)
+        ClassNameValidator.validateUnqualifiedName(index, role, entry.value)
+        return index
+    }
+
+    private fun readDescriptorIndex(
+        context: AttributeParseContext,
+        role: String,
+    ): ConstantPoolIndex {
+        val (index, entry) = readUtf8Reference(context, role)
+        DescriptorValidator.validateFieldDescriptor(index, role, entry.value)
+        return index
+    }
+
+    private fun readUtf8Reference(
+        context: AttributeParseContext,
+        role: String,
+    ): Pair<ConstantPoolIndex, ConstantUtf8Entry> {
         val index = RawAttributeInfoParser.readNonZeroConstantPoolIndex(context.reader, role)
         val entry = try {
             context.constantPool[index]
@@ -52,6 +70,6 @@ object RecordAttributeParser : AttributeBodyParser {
                 "Invalid $role=$index: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
             )
         }
-        return index
+        return index to entry
     }
 }
