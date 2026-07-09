@@ -49,6 +49,7 @@ object MethodParametersAttributeParser : AttributeBodyParser {
                 "Invalid $role=$index: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
             )
         }
+        ClassNameValidator.validateUnqualifiedName(index, role, entry.value)
         return index
     }
 }

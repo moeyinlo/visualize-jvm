@@ -58,4 +58,29 @@ class MethodParametersAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("parameters[0].name_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Utf8"), failure.message)
     }
+
+    @Test
+    fun `rejects parameter names that are not valid unqualified names`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("MethodParameters", byteArrayOf()),
+                ConstantUtf8Entry("bad/name", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 5, 1, 0, 2, 0, 0),
+                    source = "bad-method-parameters.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("MethodParameters" to MethodParametersAttributeParser),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("parameters[0].name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
 }
