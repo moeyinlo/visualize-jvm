@@ -67,6 +67,40 @@ class ConstantPoolReferenceValidationTest {
         assertTrue(failure.message.orEmpty().contains("unusable"), failure.message)
     }
 
+    @Test
+    fun `rejects class names that are not binary names in internal form`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("java.lang.Object"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#2"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
+    fun `rejects class names with empty internal name segments`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("java//Object"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("empty"), failure.message)
+    }
+
     private fun utf8(value: String): ConstantUtf8Entry =
         ConstantUtf8Entry(value, value.encodeToByteArray())
 }

@@ -64,7 +64,10 @@ class ConstantPool private constructor(
             is ConstantDoubleEntry,
             -> Unit
 
-            is ConstantClassEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+            is ConstantClassEntry -> {
+                val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+                ClassNameValidator.validateConstantClassName(owner, "name_index", name.value)
+            }
             is ConstantStringEntry -> expect<ConstantUtf8Entry>(owner, "string_index", entry.stringIndex)
             is ConstantNameAndTypeEntry -> {
                 expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
@@ -120,9 +123,7 @@ class ConstantPool private constructor(
         owner: ConstantPoolIndex,
         role: String,
         index: ConstantPoolIndex,
-    ) {
-        expectOneOf(owner, role, index, T::class.java.simpleName) { referenced -> referenced is T }
-    }
+    ): T = expectOneOf(owner, role, index, T::class.java.simpleName) { referenced -> referenced is T } as T
 
     private fun expectOneOf(
         owner: ConstantPoolIndex,
@@ -130,7 +131,7 @@ class ConstantPool private constructor(
         index: ConstantPoolIndex,
         expected: String,
         matches: (ConstantPoolEntry) -> Boolean,
-    ) {
+    ): ConstantPoolEntry =
         when (val slot = referenceSlot(owner, role, index)) {
             is ConstantPoolSlot.Entry -> {
                 if (!matches(slot.value)) {
@@ -139,13 +140,13 @@ class ConstantPool private constructor(
                             "expected $expected but found ${slot.value.javaClass.simpleName}",
                     )
                 }
+                slot.value
             }
 
             ConstantPoolSlot.Unusable -> throw ClassFileFormatException(
                 "Invalid constant pool reference from $owner $role to $index: target is an unusable two-slot placeholder",
             )
         }
-    }
 
     private fun referenceSlot(
         owner: ConstantPoolIndex,
