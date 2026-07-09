@@ -69,6 +69,18 @@ object ClassFileWriter {
         return writer.toByteArray()
     }
 
+    fun writeFields(fields: List<FieldInfo>): ByteArray {
+        val writer = ClassFileByteWriter()
+        writeFields(fields, writer)
+        return writer.toByteArray()
+    }
+
+    fun writeMethods(methods: List<MethodInfo>): ByteArray {
+        val writer = ClassFileByteWriter()
+        writeMethods(methods, writer)
+        return writer.toByteArray()
+    }
+
     internal fun writeHeader(
         version: ClassFileVersion,
         writer: ClassFileByteWriter,
@@ -97,6 +109,32 @@ object ClassFileWriter {
                     "Invalid constant pool slot #$index: unusable slot without preceding two-slot entry",
                 )
             }
+        }
+    }
+
+    internal fun writeFields(
+        fields: List<FieldInfo>,
+        writer: ClassFileByteWriter,
+    ) {
+        writer.writeU2(fields.size)
+        fields.forEachIndexed { index, field ->
+            writer.writeU2(field.accessFlags)
+                .writeConstantPoolIndex(field.nameIndex)
+                .writeConstantPoolIndex(field.descriptorIndex)
+            writePendingAttributes(field.attributes, "fields[$index].attributes", writer)
+        }
+    }
+
+    internal fun writeMethods(
+        methods: List<MethodInfo>,
+        writer: ClassFileByteWriter,
+    ) {
+        writer.writeU2(methods.size)
+        methods.forEachIndexed { index, method ->
+            writer.writeU2(method.accessFlags)
+                .writeConstantPoolIndex(method.nameIndex)
+                .writeConstantPoolIndex(method.descriptorIndex)
+            writePendingAttributes(method.attributes, "methods[$index].attributes", writer)
         }
     }
 
@@ -180,4 +218,17 @@ object ClassFileWriter {
 
     private fun ClassFileByteWriter.writeConstantPoolIndex(index: ConstantPoolIndex): ClassFileByteWriter =
         writeU2(index.value)
+
+    private fun writePendingAttributes(
+        attributes: List<AttributeInfo>,
+        ownerPath: String,
+        writer: ClassFileByteWriter,
+    ) {
+        if (attributes.isNotEmpty()) {
+            throw UnsupportedOperationException(
+                "Writing $ownerPath requires the attribute writer implementation step",
+            )
+        }
+        writer.writeU2(0)
+    }
 }

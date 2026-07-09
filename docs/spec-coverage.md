@@ -77,8 +77,10 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.4.12 | `CONSTANT_Package_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.5 | Fields full validation | `jvm-classfile` | TBD | PENDING |
 | 4.5 | `fields_count` and `field_info` raw structure | `jvm-classfile` | `FieldInfoParserTest` | IMPLEMENTED |
+| 4.5 | `fields_count` and empty-attribute `field_info` writer structure | `jvm-classfile` | `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.6 | Methods full validation | `jvm-classfile` | TBD | PENDING |
 | 4.6 | `methods_count` and `method_info` raw structure | `jvm-classfile` | `MethodInfoParserTest` | IMPLEMENTED |
+| 4.6 | `methods_count` and empty-attribute `method_info` writer structure | `jvm-classfile` | `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7 | `attribute_info` name/length structure and parser dispatch by `CONSTANT_Utf8_info` name | `jvm-classfile` | `AttributeParserRegistryTest` | IMPLEMENTED |
 | 4.7.1 | Unknown and user-defined attributes | `jvm-classfile` | `AttributeParserRegistryTest` | IMPLEMENTED |
 | 4.7.2 | `ConstantValue` | `jvm-classfile` | `ConstantValueAttributeParserTest` | IMPLEMENTED |
