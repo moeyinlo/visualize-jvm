@@ -1508,6 +1508,83 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes StackMapTable attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("StackMapTable", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("java/lang/Object", byteArrayOf()),
+            ),
+        )
+        val attribute = StackMapTableAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            entries = listOf(
+                SameStackMapFrame(frameType = 10),
+                SameLocalsOneStackItemFrame(frameType = 64, stack = VerificationTypeInfo.Integer),
+                SameLocalsOneStackItemFrameExtended(
+                    offsetDelta = 300,
+                    stack = VerificationTypeInfo.ObjectVariable(ConstantPoolIndex(2)),
+                ),
+                ChopStackMapFrame(frameType = 249, offsetDelta = 5),
+                SameStackMapFrameExtended(offsetDelta = 6),
+                AppendStackMapFrame(
+                    frameType = 253,
+                    offsetDelta = 7,
+                    locals = listOf(
+                        VerificationTypeInfo.Long,
+                        VerificationTypeInfo.UninitializedVariable(offset = 9),
+                    ),
+                ),
+                FullStackMapFrame(
+                    offsetDelta = 8,
+                    locals = listOf(
+                        VerificationTypeInfo.Top,
+                        VerificationTypeInfo.ObjectVariable(ConstantPoolIndex(2)),
+                    ),
+                    stack = listOf(
+                        VerificationTypeInfo.Double,
+                        VerificationTypeInfo.Null,
+                    ),
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 37,
+                0, 7,
+                10,
+                64, 1,
+                247, 0x01, 0x2C, 7, 0, 2,
+                249, 0, 5,
+                251, 0, 6,
+                253, 0, 7, 4, 8, 0, 9,
+                255, 0, 8,
+                0, 2,
+                0,
+                7, 0, 2,
+                0, 2,
+                3,
+                5,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "stack-map-table-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("StackMapTable" to StackMapTableAttributeParser),
+            ownerPath = "methods[0].attributes[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(

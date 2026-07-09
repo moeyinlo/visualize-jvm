@@ -92,6 +92,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.3 | `Code` exception table entries and `catch_type` class references | `jvm-classfile` | `CodeExceptionTableParserTest` | IMPLEMENTED |
 | 4.7.3 | `Code` nested attributes table | `jvm-classfile` | `CodeNestedAttributesParserTest` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` classfile structure and all frame variants | `jvm-classfile` | `StackMapTableAttributeParserTest` | IMPLEMENTED |
+| 4.7.4 | `StackMapTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` verifier semantics | `jvm-verifier` | TBD | PENDING |
 | 4.7.5 | `Exceptions` | `jvm-classfile` | `ExceptionsAttributeParserTest` | IMPLEMENTED |
 | 4.7.5 | `Exceptions` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |

@@ -255,6 +255,12 @@ object ClassFileWriter {
             is ConstantValueAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeConstantPoolIndex(attribute.constantValueIndex)
             }
+            is StackMapTableAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.entries.size)
+                attribute.entries.forEach { frame ->
+                    writeStackMapFrame(frame)
+                }
+            }
             is ExceptionsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeU2(attribute.exceptionIndexTable.size)
                 attribute.exceptionIndexTable.forEach { exceptionIndex ->
@@ -422,6 +428,53 @@ object ClassFileWriter {
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
+        }
+    }
+
+    private fun ClassFileByteWriter.writeStackMapFrame(frame: StackMapFrame) {
+        writeU1(frame.frameType)
+        when (frame) {
+            is SameStackMapFrame -> Unit
+            is SameLocalsOneStackItemFrame -> writeVerificationType(frame.stack)
+            is SameLocalsOneStackItemFrameExtended -> {
+                writeU2(frame.offsetDelta)
+                writeVerificationType(frame.stack)
+            }
+            is ChopStackMapFrame -> writeU2(frame.offsetDelta)
+            is SameStackMapFrameExtended -> writeU2(frame.offsetDelta)
+            is AppendStackMapFrame -> {
+                writeU2(frame.offsetDelta)
+                frame.locals.forEach { local ->
+                    writeVerificationType(local)
+                }
+            }
+            is FullStackMapFrame -> {
+                writeU2(frame.offsetDelta)
+                writeU2(frame.locals.size)
+                frame.locals.forEach { local ->
+                    writeVerificationType(local)
+                }
+                writeU2(frame.stack.size)
+                frame.stack.forEach { stack ->
+                    writeVerificationType(stack)
+                }
+            }
+        }
+    }
+
+    private fun ClassFileByteWriter.writeVerificationType(type: VerificationTypeInfo) {
+        writeU1(type.tag)
+        when (type) {
+            VerificationTypeInfo.Top,
+            VerificationTypeInfo.Integer,
+            VerificationTypeInfo.Float,
+            VerificationTypeInfo.Double,
+            VerificationTypeInfo.Long,
+            VerificationTypeInfo.Null,
+            VerificationTypeInfo.UninitializedThis,
+            -> Unit
+            is VerificationTypeInfo.ObjectVariable -> writeConstantPoolIndex(type.cpoolIndex)
+            is VerificationTypeInfo.UninitializedVariable -> writeU2(type.offset)
         }
     }
 
