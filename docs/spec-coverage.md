@@ -115,7 +115,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.29 | `NestMembers` mutual-exclusion and access-control semantics | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 4.7.30 | `Record` classfile structure | `jvm-classfile` | `RecordAttributeParserTest` | IMPLEMENTED |
 | 4.7.30 | `Record` component name and descriptor grammar | `jvm-classfile` | TBD | PENDING |
-| 4.7.31 | `PermittedSubclasses` | `jvm-classfile` | TBD | PENDING |
+| 4.7.31 | `PermittedSubclasses` classfile structure | `jvm-classfile` | `PermittedSubclassesAttributeParserTest` | IMPLEMENTED |
+| 4.7.31 | `PermittedSubclasses` final-class and loading constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 4.8 | Format checking | `jvm-classfile` | TBD | PENDING |
 | 4.8 | Constant pool reference type and index checks | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.9 | Static and structural constraints | `jvm-verifier` | TBD | PENDING |
