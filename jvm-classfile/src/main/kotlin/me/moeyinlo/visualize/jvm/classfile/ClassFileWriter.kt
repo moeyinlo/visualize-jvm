@@ -295,6 +295,16 @@ object ClassFileWriter {
                     writeU2(entry.index)
                 }
             }
+            is LocalVariableTypeTableAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.entries.size)
+                attribute.entries.forEach { entry ->
+                    writeU2(entry.startPc)
+                    writeU2(entry.length)
+                    writeConstantPoolIndex(entry.nameIndex)
+                    writeConstantPoolIndex(entry.signatureIndex)
+                    writeU2(entry.index)
+                }
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )

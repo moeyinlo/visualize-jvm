@@ -528,6 +528,66 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes LocalVariableTypeTable attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LocalVariableTypeTable", byteArrayOf()),
+                ConstantUtf8Entry("list", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/util/List<Ljava/lang/String;>;", byteArrayOf()),
+            ),
+        )
+        val attribute = LocalVariableTypeTableAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            entries = listOf(
+                LocalVariableTypeTableEntry(
+                    startPc = 0,
+                    length = 7,
+                    nameIndex = ConstantPoolIndex(2),
+                    signatureIndex = ConstantPoolIndex(3),
+                    index = 2,
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                12,
+                0,
+                1,
+                0,
+                0,
+                0,
+                7,
+                0,
+                2,
+                0,
+                3,
+                0,
+                2,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "local-variable-type-table-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("LocalVariableTypeTable" to LocalVariableTypeTableAttributeParser),
+            ownerPath = "methods[0].attributes[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
