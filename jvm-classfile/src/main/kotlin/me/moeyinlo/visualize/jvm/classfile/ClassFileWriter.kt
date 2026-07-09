@@ -325,6 +325,47 @@ object ClassFileWriter {
                     writeU2(parameter.accessFlags)
                 }
             }
+            is ModuleAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeConstantPoolIndex(attribute.moduleNameIndex)
+                writeU2(attribute.moduleFlags)
+                writeOptionalConstantPoolIndex(attribute.moduleVersionIndex)
+                writeU2(attribute.requires.size)
+                attribute.requires.forEach { requires ->
+                    writeConstantPoolIndex(requires.requiresIndex)
+                    writeU2(requires.requiresFlags)
+                    writeOptionalConstantPoolIndex(requires.requiresVersionIndex)
+                }
+                writeU2(attribute.exports.size)
+                attribute.exports.forEach { exports ->
+                    writeConstantPoolIndex(exports.exportsIndex)
+                    writeU2(exports.exportsFlags)
+                    writeU2(exports.exportsToIndexes.size)
+                    exports.exportsToIndexes.forEach { moduleIndex ->
+                        writeConstantPoolIndex(moduleIndex)
+                    }
+                }
+                writeU2(attribute.opens.size)
+                attribute.opens.forEach { opens ->
+                    writeConstantPoolIndex(opens.opensIndex)
+                    writeU2(opens.opensFlags)
+                    writeU2(opens.opensToIndexes.size)
+                    opens.opensToIndexes.forEach { moduleIndex ->
+                        writeConstantPoolIndex(moduleIndex)
+                    }
+                }
+                writeU2(attribute.uses.size)
+                attribute.uses.forEach { usesIndex ->
+                    writeConstantPoolIndex(usesIndex)
+                }
+                writeU2(attribute.provides.size)
+                attribute.provides.forEach { provides ->
+                    writeConstantPoolIndex(provides.providesIndex)
+                    writeU2(provides.providesWithIndexes.size)
+                    provides.providesWithIndexes.forEach { providesWithIndex ->
+                        writeConstantPoolIndex(providesWithIndex)
+                    }
+                }
+            }
             is ModulePackagesAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeU2(attribute.packageIndexes.size)
                 attribute.packageIndexes.forEach { packageIndex ->

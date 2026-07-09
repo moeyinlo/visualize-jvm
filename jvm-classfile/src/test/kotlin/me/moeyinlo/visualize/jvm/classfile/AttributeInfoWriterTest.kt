@@ -743,6 +743,81 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes Module attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Module", byteArrayOf()),
+                ConstantUtf8Entry("my.module", byteArrayOf()),
+                ConstantModuleEntry(ConstantPoolIndex(2)),
+                ConstantUtf8Entry("1.0", byteArrayOf()),
+                ConstantUtf8Entry("java.base", byteArrayOf()),
+                ConstantModuleEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("pkg", byteArrayOf()),
+                ConstantPackageEntry(ConstantPoolIndex(7)),
+                ConstantUtf8Entry("friend", byteArrayOf()),
+                ConstantModuleEntry(ConstantPoolIndex(9)),
+                ConstantUtf8Entry("service/Api", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(11)),
+                ConstantUtf8Entry("service/Impl", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(13)),
+            ),
+        )
+        val attribute = ModuleAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            moduleNameIndex = ConstantPoolIndex(3),
+            moduleFlags = 0x0020,
+            moduleVersionIndex = ConstantPoolIndex(4),
+            requires = listOf(ModuleRequires(ConstantPoolIndex(6), 0x8020, ConstantPoolIndex(4))),
+            exports = listOf(ModuleExports(ConstantPoolIndex(8), 0x1000, listOf(ConstantPoolIndex(10)))),
+            opens = listOf(ModuleOpens(ConstantPoolIndex(8), 0x8000, emptyList())),
+            uses = listOf(ConstantPoolIndex(12)),
+            provides = listOf(ModuleProvides(ConstantPoolIndex(12), listOf(ConstantPoolIndex(14)))),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0, 1,
+                0, 1,
+                0, 0, 0, 44,
+                0, 3,
+                0, 0x20,
+                0, 4,
+                0, 1,
+                0, 6,
+                0x80.toByte(), 0x20,
+                0, 4,
+                0, 1,
+                0, 8,
+                0x10, 0,
+                0, 1,
+                0, 10,
+                0, 1,
+                0, 8,
+                0x80.toByte(), 0,
+                0, 0,
+                0, 1,
+                0, 12,
+                0, 1,
+                0, 12,
+                0, 1,
+                0, 14,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "module-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `writes ModulePackages attribute`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
