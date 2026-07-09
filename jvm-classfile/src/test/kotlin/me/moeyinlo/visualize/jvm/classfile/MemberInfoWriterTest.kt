@@ -135,6 +135,44 @@ class MemberInfoWriterTest {
     }
 
     @Test
+    fun `method writer includes Exceptions attributes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Exceptions", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("java/io/IOException", byteArrayOf()),
+            ),
+        )
+        val bytes = ClassFileWriter.writeMethods(
+            listOf(
+                MethodInfo(
+                    accessFlags = 0x0001,
+                    nameIndex = ConstantPoolIndex(4),
+                    descriptorIndex = ConstantPoolIndex(5),
+                    attributes = listOf(
+                        ExceptionsAttribute(
+                            nameIndex = ConstantPoolIndex(1),
+                            exceptionIndexTable = listOf(ConstantPoolIndex(2)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val parsed = MethodInfoParser.parseMethods(
+            reader = ClassFileByteReader(bytes, source = "method-exceptions.class"),
+            constantPool = constantPool,
+            attributeParsers = AttributeParserRegistry.of("Exceptions" to ExceptionsAttributeParser),
+        )
+
+        val method = parsed.single()
+        assertEquals(0x0001, method.accessFlags)
+        val attribute = assertIs<ExceptionsAttribute>(method.attributes.single())
+        assertEquals(ConstantPoolIndex(1), attribute.nameIndex)
+        assertEquals(listOf(ConstantPoolIndex(2)), attribute.exceptionIndexTable)
+    }
+
+    @Test
     fun `rejects unsupported member attributes until their specific writer is available`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeMethods(

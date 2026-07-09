@@ -252,6 +252,12 @@ object ClassFileWriter {
             is ConstantValueAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeConstantPoolIndex(attribute.constantValueIndex)
             }
+            is ExceptionsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.exceptionIndexTable.size)
+                attribute.exceptionIndexTable.forEach { exceptionIndex ->
+                    writeConstantPoolIndex(exceptionIndex)
+                }
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )

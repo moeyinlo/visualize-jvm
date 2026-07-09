@@ -203,6 +203,57 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes Exceptions attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Exceptions", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("java/io/IOException", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("java/lang/ReflectiveOperationException", byteArrayOf()),
+            ),
+        )
+        val attribute = ExceptionsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            exceptionIndexTable = listOf(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                6,
+                0,
+                2,
+                0,
+                2,
+                0,
+                4,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "exceptions-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("Exceptions" to ExceptionsAttributeParser),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals(
+            listOf(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+            assertIs<ExceptionsAttribute>(parsed.single()).exceptionIndexTable,
+        )
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
