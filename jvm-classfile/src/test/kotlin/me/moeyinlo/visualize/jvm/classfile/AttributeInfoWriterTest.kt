@@ -375,6 +375,48 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes Signature attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/util/List<Ljava/lang/String;>;", byteArrayOf()),
+            ),
+        )
+        val attribute = SignatureAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            signatureIndex = ConstantPoolIndex(2),
+            signature = "Ljava/util/List<Ljava/lang/String;>;",
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                2,
+                0,
+                2,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "signature-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+            ownerPath = "fields[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `writes SourceDebugExtension attribute`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

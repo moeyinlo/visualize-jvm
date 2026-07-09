@@ -274,6 +274,9 @@ object ClassFileWriter {
                 writeConstantPoolIndex(attribute.classIndex)
                 writeOptionalConstantPoolIndex(attribute.methodIndex)
             }
+            is SignatureAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeConstantPoolIndex(attribute.signatureIndex)
+            }
             is SourceDebugExtensionAttribute -> writer.writeAttributeInfo(
                 attribute.nameIndex,
                 attribute.debugExtension,
