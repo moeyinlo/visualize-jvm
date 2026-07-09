@@ -55,8 +55,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.4.1 | `CONSTANT_Class_info` | `jvm-classfile` | TBD | PENDING |
 | 4.4.2 | Field, method, interface method refs | `jvm-classfile` | TBD | PENDING |
 | 4.4.3 | `CONSTANT_String_info` | `jvm-classfile` | TBD | PENDING |
-| 4.4.4 | Integer and float constants | `jvm-classfile` | TBD | PENDING |
-| 4.4.5 | Long and double constants | `jvm-classfile` | TBD | PENDING |
+| 4.4.4 | Integer and float constants | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
+| 4.4.5 | Long and double constants | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.6 | `CONSTANT_NameAndType_info` | `jvm-classfile` | TBD | PENDING |
 | 4.4.7 | `CONSTANT_Utf8_info` modified UTF-8 | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.8 | `CONSTANT_MethodHandle_info` | `jvm-classfile` | TBD | PENDING |

@@ -75,4 +75,59 @@ class ConstantPoolEntryParserTest {
         assertTrue(failure.message.orEmpty().contains("tag=99"), failure.message)
         assertTrue(failure.message.orEmpty().contains("offset=0"), failure.message)
     }
+
+    @Test
+    fun `parses integer and float constants from raw bits`() {
+        val integer = assertIs<ConstantIntegerEntry>(
+            parse(byteArrayOf(3, 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xD6.toByte())),
+        )
+        val float = assertIs<ConstantFloatEntry>(
+            parse(byteArrayOf(4, 0x40, 0x60, 0x00, 0x00)),
+        )
+
+        assertEquals(-42, integer.value)
+        assertEquals(3.5f, float.value)
+    }
+
+    @Test
+    fun `parses long and double constants as two slot entries`() {
+        val long = assertIs<ConstantLongEntry>(
+            parse(
+                byteArrayOf(
+                    5,
+                    0xFF.toByte(),
+                    0xFF.toByte(),
+                    0xFF.toByte(),
+                    0xFF.toByte(),
+                    0xFF.toByte(),
+                    0xFF.toByte(),
+                    0xFF.toByte(),
+                    0xD6.toByte(),
+                ),
+            ),
+        )
+        val double = assertIs<ConstantDoubleEntry>(
+            parse(
+                byteArrayOf(
+                    6,
+                    0x3F,
+                    0xF8.toByte(),
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                ),
+            ),
+        )
+
+        assertEquals(-42L, long.value)
+        assertTrue(long.occupiesTwoSlots)
+        assertEquals(1.5, double.value)
+        assertTrue(double.occupiesTwoSlots)
+    }
+
+    private fun parse(bytes: ByteArray): ConstantPoolEntry =
+        ConstantPoolEntryParser.parseEntry(ClassFileByteReader(bytes, source = "numeric.class"))
 }
