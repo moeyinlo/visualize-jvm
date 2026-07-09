@@ -48,7 +48,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 
 | JVMS | Requirement | Module | Tests | Status |
 | --- | --- | --- | --- | --- |
-| 4.1 | `ClassFile` structure, magic, versions | `jvm-classfile` | TBD | PENDING |
+| 4.1 | `ClassFile` full structure after header | `jvm-classfile` | TBD | PENDING |
+| 4.1 | `ClassFile` magic and Java SE 26 version range | `jvm-classfile` | `ClassFileHeaderParserTest` | IMPLEMENTED |
 | 4.2 | Binary, unqualified, module, package names | `jvm-classfile` | TBD | PENDING |
 | 4.3 | Field and method descriptors | `jvm-classfile` | TBD | PENDING |
 | 4.4.1 | `CONSTANT_Class_info` | `jvm-classfile` | TBD | PENDING |

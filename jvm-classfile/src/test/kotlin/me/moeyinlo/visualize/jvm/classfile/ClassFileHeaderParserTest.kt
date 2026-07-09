@@ -63,4 +63,53 @@ class ClassFileHeaderParserTest {
         assertEquals(70, version.major)
         assertEquals(8, reader.position)
     }
+
+    @Test
+    fun `accepts Java SE 26 supported classfile versions`() {
+        val supportedVersions = listOf(
+            ClassFileVersion(offset = 0, minor = 0, major = 45),
+            ClassFileVersion(offset = 0, minor = 65535, major = 45),
+            ClassFileVersion(offset = 0, minor = 123, major = 55),
+            ClassFileVersion(offset = 0, minor = 0, major = 56),
+            ClassFileVersion(offset = 0, minor = 0, major = 70),
+            ClassFileVersion(offset = 0, minor = 65535, major = 70),
+        )
+
+        supportedVersions.forEach { version ->
+            assertEquals(version, ClassFileHeaderParser.validateJava26Version(version))
+        }
+    }
+
+    @Test
+    fun `rejects major versions outside Java SE 26 range`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileHeaderParser.validateJava26Version(ClassFileVersion(offset = 4, minor = 0, major = 71))
+        }
+
+        assertTrue(failure.message.orEmpty().contains("offset=4"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major=71"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("supported=45..70"), failure.message)
+    }
+
+    @Test
+    fun `rejects non preview minor versions for major 56 and above`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileHeaderParser.validateJava26Version(ClassFileVersion(offset = 4, minor = 1, major = 56))
+        }
+
+        assertTrue(failure.message.orEmpty().contains("major=56"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("minor=1"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("minor must be 0 or 65535"), failure.message)
+    }
+
+    @Test
+    fun `rejects older preview versions for Java SE 26`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileHeaderParser.validateJava26Version(ClassFileVersion(offset = 4, minor = 65535, major = 69))
+        }
+
+        assertTrue(failure.message.orEmpty().contains("major=69"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("minor=65535"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("older preview"), failure.message)
+    }
 }
