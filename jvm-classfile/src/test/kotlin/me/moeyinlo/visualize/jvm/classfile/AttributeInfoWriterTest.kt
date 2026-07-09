@@ -77,11 +77,96 @@ class AttributeInfoWriterTest {
     }
 
     @Test
-    fun `rejects known attributes until their specific writer is implemented`() {
+    fun `writes simple fixed-length attributes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Synthetic", byteArrayOf()),
+                ConstantUtf8Entry("Deprecated", byteArrayOf()),
+                ConstantUtf8Entry("SourceFile", byteArrayOf()),
+                ConstantUtf8Entry("Main.java", byteArrayOf()),
+            ),
+        )
+        val attributes = listOf(
+            SyntheticAttribute(ConstantPoolIndex(1)),
+            DeprecatedAttribute(ConstantPoolIndex(2)),
+            SourceFileAttribute(
+                nameIndex = ConstantPoolIndex(3),
+                sourceFileIndex = ConstantPoolIndex(4),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(attributes)
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                3,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                0,
+                2,
+                0,
+                4,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "simple-attributes.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "Synthetic" to SyntheticAttributeParser,
+                "Deprecated" to DeprecatedAttributeParser,
+                "SourceFile" to SourceFileAttributeParser,
+            ),
+            ownerPath = "ClassFile",
+        )
+
+        assertIs<SyntheticAttribute>(parsed[0])
+        assertIs<DeprecatedAttribute>(parsed[1])
+        assertEquals(ConstantPoolIndex(4), assertIs<SourceFileAttribute>(parsed[2]).sourceFileIndex)
+    }
+
+    @Test
+    fun `member writers include simple attributes`() {
+        val methodBytes = ClassFileWriter.writeMethods(
+            listOf(
+                MethodInfo(
+                    accessFlags = 0x0001,
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                    attributes = listOf(SyntheticAttribute(ConstantPoolIndex(5))),
+                ),
+            ),
+        )
+
+        val parsed = MethodInfoParser.parseMethods(ClassFileByteReader(methodBytes, source = "method-simple.class"))
+
+        val attribute = assertIs<RawAttributeInfo>(parsed.single().attributes.single())
+        assertEquals(ConstantPoolIndex(5), attribute.nameIndex)
+        assertContentEquals(byteArrayOf(), attribute.info)
+    }
+
+    @Test
+    fun `rejects non-simple known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
-            ClassFileWriter.writeAttributes(listOf(SyntheticAttribute(ConstantPoolIndex(1))))
+            ClassFileWriter.writeAttributes(listOf(ConstantValueAttribute(ConstantPoolIndex(1), ConstantPoolIndex(2))))
         }
 
-        assertTrue(failure.message.orEmpty().contains("SyntheticAttribute"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ConstantValueAttribute"), failure.message)
     }
 }

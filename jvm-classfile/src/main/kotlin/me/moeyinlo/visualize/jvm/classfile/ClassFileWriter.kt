@@ -244,6 +244,11 @@ object ClassFileWriter {
         when (attribute) {
             is RawAttributeInfo -> writer.writeAttributeInfo(attribute.nameIndex, attribute.info)
             is UnknownAttributeInfo -> writer.writeAttributeInfo(attribute.nameIndex, attribute.info)
+            is SyntheticAttribute -> writer.writeAttributeInfo(attribute.nameIndex, byteArrayOf())
+            is DeprecatedAttribute -> writer.writeAttributeInfo(attribute.nameIndex, byteArrayOf())
+            is SourceFileAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeConstantPoolIndex(attribute.sourceFileIndex)
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
@@ -257,4 +262,13 @@ object ClassFileWriter {
         writeConstantPoolIndex(nameIndex)
             .writeU4(info.size.toLong())
             .writeBytes(info)
+
+    private fun ClassFileByteWriter.writeAttributeInfo(
+        nameIndex: ConstantPoolIndex,
+        writeInfo: ClassFileByteWriter.() -> Unit,
+    ): ClassFileByteWriter {
+        val infoWriter = ClassFileByteWriter()
+        infoWriter.writeInfo()
+        return writeAttributeInfo(nameIndex, infoWriter.toByteArray())
+    }
 }
