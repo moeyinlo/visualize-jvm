@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class ClassFileWriterTest {
@@ -85,4 +86,60 @@ class ClassFileWriterTest {
 
         assertContentEquals(byteArrayOf(1, 2, 3), writer.toByteArray())
     }
+
+    @Test
+    fun `writes complete ClassFile structure`() {
+        val originalBytes = minimalClassFileBytes()
+        val registry = AttributeParserRegistry.of("SourceFile" to SourceFileAttributeParser)
+        val classFile = ClassFileParser.parse(
+            bytes = originalBytes,
+            source = "Minimal.class",
+            attributeParsers = registry,
+        )
+
+        val writtenBytes = ClassFileWriter.writeClassFile(classFile)
+
+        assertContentEquals(originalBytes, writtenBytes)
+
+        val parsedAgain = ClassFileParser.parse(
+            bytes = writtenBytes,
+            source = "Minimal-written.class",
+            attributeParsers = registry,
+        )
+        assertEquals(ConstantPoolIndex(2), parsedAgain.identity.thisClassIndex)
+        assertEquals(ConstantPoolIndex(4), parsedAgain.identity.superClassIndex)
+        assertEquals(ConstantPoolIndex(6), assertIs<SourceFileAttribute>(parsedAgain.attributes.single()).sourceFileIndex)
+    }
+
+    private fun minimalClassFileBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 7,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 10,
+            'S'.code, 'o'.code, 'u'.code, 'r'.code, 'c'.code, 'e'.code, 'F'.code, 'i'.code, 'l'.code, 'e'.code,
+            1, 0, 9,
+            'T'.code, 'e'.code, 's'.code, 't'.code, '.'.code, 'j'.code, 'a'.code, 'v'.code, 'a'.code,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 5,
+            0, 0, 0, 2,
+            0, 6,
+        )
+
+    private fun bytes(vararg values: Int): ByteArray =
+        values.map { it.toByte() }.toByteArray()
 }

@@ -87,6 +87,23 @@ object ClassFileWriter {
         return writer.toByteArray()
     }
 
+    fun writeClassFile(classFile: ClassFile): ByteArray {
+        val writer = ClassFileByteWriter()
+        writeHeader(classFile.version, writer)
+        writeConstantPool(classFile.constantPool, writer)
+        writer.writeU2(classFile.accessFlags.raw)
+            .writeConstantPoolIndex(classFile.identity.thisClassIndex)
+            .writeOptionalConstantPoolIndex(classFile.identity.superClassIndex)
+            .writeU2(classFile.identity.interfaceIndexes.size)
+        classFile.identity.interfaceIndexes.forEach { interfaceIndex ->
+            writer.writeConstantPoolIndex(interfaceIndex)
+        }
+        writeFields(classFile.fields, writer)
+        writeMethods(classFile.methods, writer)
+        writeAttributes(classFile.attributes, writer, "ClassFile.attributes")
+        return writer.toByteArray()
+    }
+
     internal fun writeHeader(
         version: ClassFileVersion,
         writer: ClassFileByteWriter,
