@@ -39,9 +39,33 @@ class ClassFileByteWriter {
 }
 
 object ClassFileWriter {
+    private const val ConstantUtf8Tag = 1
+    private const val ConstantIntegerTag = 3
+    private const val ConstantFloatTag = 4
+    private const val ConstantLongTag = 5
+    private const val ConstantDoubleTag = 6
+    private const val ConstantClassTag = 7
+    private const val ConstantStringTag = 8
+    private const val ConstantFieldRefTag = 9
+    private const val ConstantMethodRefTag = 10
+    private const val ConstantInterfaceMethodRefTag = 11
+    private const val ConstantNameAndTypeTag = 12
+    private const val ConstantMethodHandleTag = 15
+    private const val ConstantMethodTypeTag = 16
+    private const val ConstantDynamicTag = 17
+    private const val ConstantInvokeDynamicTag = 18
+    private const val ConstantModuleTag = 19
+    private const val ConstantPackageTag = 20
+
     fun writeHeader(version: ClassFileVersion): ByteArray {
         val writer = ClassFileByteWriter()
         writeHeader(version, writer)
+        return writer.toByteArray()
+    }
+
+    fun writeConstantPool(constantPool: ConstantPool): ByteArray {
+        val writer = ClassFileByteWriter()
+        writeConstantPool(constantPool, writer)
         return writer.toByteArray()
     }
 
@@ -54,4 +78,106 @@ object ClassFileWriter {
             .writeU2(supportedVersion.minor)
             .writeU2(supportedVersion.major)
     }
+
+    internal fun writeConstantPool(
+        constantPool: ConstantPool,
+        writer: ClassFileByteWriter,
+    ) {
+        writer.writeU2(constantPool.constantPoolCount)
+
+        var index = 1
+        while (index < constantPool.constantPoolCount) {
+            when (val slot = constantPool.slotAt(ConstantPoolIndex(index))) {
+                is ConstantPoolSlot.Entry -> {
+                    writeConstantPoolEntry(slot.value, writer)
+                    index += if (slot.value.occupiesTwoSlots) 2 else 1
+                }
+
+                ConstantPoolSlot.Unusable -> throw ClassFileFormatException(
+                    "Invalid constant pool slot #$index: unusable slot without preceding two-slot entry",
+                )
+            }
+        }
+    }
+
+    private fun writeConstantPoolEntry(
+        entry: ConstantPoolEntry,
+        writer: ClassFileByteWriter,
+    ) {
+        when (entry) {
+            is ConstantUtf8Entry -> {
+                val encodedBytes = entry.encodedBytes
+                writer.writeU1(ConstantUtf8Tag)
+                    .writeU2(encodedBytes.size)
+                    .writeBytes(encodedBytes)
+            }
+
+            is ConstantIntegerEntry -> writer.writeU1(ConstantIntegerTag)
+                .writeU4(entry.value.toLong() and 0xFFFF_FFFFL)
+
+            is ConstantFloatEntry -> writer.writeU1(ConstantFloatTag)
+                .writeU4(java.lang.Float.floatToRawIntBits(entry.value).toLong() and 0xFFFF_FFFFL)
+
+            is ConstantLongEntry -> {
+                val bits = entry.value
+                writer.writeU1(ConstantLongTag)
+                    .writeU4((bits ushr 32) and 0xFFFF_FFFFL)
+                    .writeU4(bits and 0xFFFF_FFFFL)
+            }
+
+            is ConstantDoubleEntry -> {
+                val bits = java.lang.Double.doubleToRawLongBits(entry.value)
+                writer.writeU1(ConstantDoubleTag)
+                    .writeU4((bits ushr 32) and 0xFFFF_FFFFL)
+                    .writeU4(bits and 0xFFFF_FFFFL)
+            }
+
+            is ConstantClassEntry -> writer.writeU1(ConstantClassTag)
+                .writeConstantPoolIndex(entry.nameIndex)
+
+            is ConstantStringEntry -> writer.writeU1(ConstantStringTag)
+                .writeConstantPoolIndex(entry.stringIndex)
+
+            is ConstantNameAndTypeEntry -> writer.writeU1(ConstantNameAndTypeTag)
+                .writeConstantPoolIndex(entry.nameIndex)
+                .writeConstantPoolIndex(entry.descriptorIndex)
+
+            is ConstantFieldRefEntry -> writer.writeU1(ConstantFieldRefTag)
+                .writeMemberRef(entry)
+
+            is ConstantMethodRefEntry -> writer.writeU1(ConstantMethodRefTag)
+                .writeMemberRef(entry)
+
+            is ConstantInterfaceMethodRefEntry -> writer.writeU1(ConstantInterfaceMethodRefTag)
+                .writeMemberRef(entry)
+
+            is ConstantMethodHandleEntry -> writer.writeU1(ConstantMethodHandleTag)
+                .writeU1(entry.referenceKind.value)
+                .writeConstantPoolIndex(entry.referenceIndex)
+
+            is ConstantMethodTypeEntry -> writer.writeU1(ConstantMethodTypeTag)
+                .writeConstantPoolIndex(entry.descriptorIndex)
+
+            is ConstantDynamicEntry -> writer.writeU1(ConstantDynamicTag)
+                .writeU2(entry.bootstrapMethodIndex.value)
+                .writeConstantPoolIndex(entry.nameAndTypeIndex)
+
+            is ConstantInvokeDynamicEntry -> writer.writeU1(ConstantInvokeDynamicTag)
+                .writeU2(entry.bootstrapMethodIndex.value)
+                .writeConstantPoolIndex(entry.nameAndTypeIndex)
+
+            is ConstantModuleEntry -> writer.writeU1(ConstantModuleTag)
+                .writeConstantPoolIndex(entry.nameIndex)
+
+            is ConstantPackageEntry -> writer.writeU1(ConstantPackageTag)
+                .writeConstantPoolIndex(entry.nameIndex)
+        }
+    }
+
+    private fun ClassFileByteWriter.writeMemberRef(entry: ConstantMemberRefEntry): ClassFileByteWriter =
+        writeConstantPoolIndex(entry.classIndex)
+            .writeConstantPoolIndex(entry.nameAndTypeIndex)
+
+    private fun ClassFileByteWriter.writeConstantPoolIndex(index: ConstantPoolIndex): ClassFileByteWriter =
+        writeU2(index.value)
 }

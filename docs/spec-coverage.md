@@ -52,6 +52,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.1 | `ClassFile` magic and Java SE 26 version range | `jvm-classfile` | `ClassFileHeaderParserTest` | IMPLEMENTED |
 | 4.1 | `ClassFile` writer skeleton for magic and version header | `jvm-classfile` | `ClassFileWriterTest` | IMPLEMENTED |
 | 4.1 | `constant_pool_count` and constant pool slot table | `jvm-classfile` | `ConstantPoolParserTest` | IMPLEMENTED |
+| 4.1 | Constant pool writer preserves table order and two-slot gaps | `jvm-classfile` | `ConstantPoolWriterTest` | IMPLEMENTED |
 | 4.1 | Class access flags and legal class/interface/module combinations | `jvm-classfile` | `ClassAccessFlagsTest` | IMPLEMENTED |
 | 4.1 | `this_class`, `super_class`, and interfaces table | `jvm-classfile` | `ClassIdentityParserTest` | IMPLEMENTED |
 | 4.2.1 | Binary class and interface names in internal form | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
