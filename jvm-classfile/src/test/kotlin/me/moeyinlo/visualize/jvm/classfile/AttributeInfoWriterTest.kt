@@ -681,6 +681,96 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes NestHost attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("NestHost", byteArrayOf()),
+                ConstantUtf8Entry("pkg/Host", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(2)),
+            ),
+        )
+        val attribute = NestHostAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            hostClassIndex = ConstantPoolIndex(3),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                2,
+                0,
+                3,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "nest-host-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("NestHost" to NestHostAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
+    fun `writes NestMembers attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("NestMembers", byteArrayOf()),
+                ConstantUtf8Entry("pkg/MemberOne", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(2)),
+                ConstantUtf8Entry("pkg/MemberTwo", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(4)),
+            ),
+        )
+        val attribute = NestMembersAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            classes = listOf(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                6,
+                0,
+                2,
+                0,
+                3,
+                0,
+                5,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "nest-members-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("NestMembers" to NestMembersAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(

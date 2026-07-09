@@ -315,6 +315,15 @@ object ClassFileWriter {
                     writeU2(parameter.accessFlags)
                 }
             }
+            is NestHostAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeConstantPoolIndex(attribute.hostClassIndex)
+            }
+            is NestMembersAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.classes.size)
+                attribute.classes.forEach { classIndex ->
+                    writeConstantPoolIndex(classIndex)
+                }
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
