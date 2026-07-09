@@ -28,6 +28,26 @@ data class ConstantNameAndTypeEntry(
     val descriptorIndex: ConstantPoolIndex,
 ) : ConstantPoolEntry
 
+sealed interface ConstantMemberRefEntry : ConstantPoolEntry {
+    val classIndex: ConstantPoolIndex
+    val nameAndTypeIndex: ConstantPoolIndex
+}
+
+data class ConstantFieldRefEntry(
+    override val classIndex: ConstantPoolIndex,
+    override val nameAndTypeIndex: ConstantPoolIndex,
+) : ConstantMemberRefEntry
+
+data class ConstantMethodRefEntry(
+    override val classIndex: ConstantPoolIndex,
+    override val nameAndTypeIndex: ConstantPoolIndex,
+) : ConstantMemberRefEntry
+
+data class ConstantInterfaceMethodRefEntry(
+    override val classIndex: ConstantPoolIndex,
+    override val nameAndTypeIndex: ConstantPoolIndex,
+) : ConstantMemberRefEntry
+
 object ConstantPoolEntryParser {
     private const val ConstantUtf8Tag = 1
     private const val ConstantIntegerTag = 3
@@ -36,6 +56,9 @@ object ConstantPoolEntryParser {
     private const val ConstantDoubleTag = 6
     private const val ConstantClassTag = 7
     private const val ConstantStringTag = 8
+    private const val ConstantFieldRefTag = 9
+    private const val ConstantMethodRefTag = 10
+    private const val ConstantInterfaceMethodRefTag = 11
     private const val ConstantNameAndTypeTag = 12
 
     fun parseEntry(reader: ClassFileByteReader): ConstantPoolEntry {
@@ -49,6 +72,9 @@ object ConstantPoolEntryParser {
             ConstantDoubleTag -> ConstantDoubleEntry(java.lang.Double.longBitsToDouble(reader.readU8Bits()))
             ConstantClassTag -> ConstantClassEntry(reader.readConstantPoolIndex())
             ConstantStringTag -> ConstantStringEntry(reader.readConstantPoolIndex())
+            ConstantFieldRefTag -> parseMemberRef(reader, ::ConstantFieldRefEntry)
+            ConstantMethodRefTag -> parseMemberRef(reader, ::ConstantMethodRefEntry)
+            ConstantInterfaceMethodRefTag -> parseMemberRef(reader, ::ConstantInterfaceMethodRefEntry)
             ConstantNameAndTypeTag -> ConstantNameAndTypeEntry(
                 nameIndex = reader.readConstantPoolIndex(),
                 descriptorIndex = reader.readConstantPoolIndex(),
@@ -70,6 +96,14 @@ object ConstantPoolEntryParser {
         )
         return ConstantUtf8Entry(value = value, encodedBytes = encodedBytes)
     }
+
+    private fun parseMemberRef(
+        reader: ClassFileByteReader,
+        create: (classIndex: ConstantPoolIndex, nameAndTypeIndex: ConstantPoolIndex) -> ConstantMemberRefEntry,
+    ): ConstantMemberRefEntry = create(
+        reader.readConstantPoolIndex(),
+        reader.readConstantPoolIndex(),
+    )
 
     private fun ClassFileByteReader.readU8Bits(): Long {
         val highBytes = readU4()

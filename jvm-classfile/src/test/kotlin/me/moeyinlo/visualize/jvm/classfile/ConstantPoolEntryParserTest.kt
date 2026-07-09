@@ -151,6 +151,26 @@ class ConstantPoolEntryParserTest {
         assertEquals(ConstantPoolIndex(4), entry.descriptorIndex)
     }
 
+    @Test
+    fun `parses field method and interface method references`() {
+        val field = assertIs<ConstantFieldRefEntry>(
+            parse(byteArrayOf(9, 0, 2, 0, 3)),
+        )
+        val method = assertIs<ConstantMethodRefEntry>(
+            parse(byteArrayOf(10, 0, 4, 0, 5)),
+        )
+        val interfaceMethod = assertIs<ConstantInterfaceMethodRefEntry>(
+            parse(byteArrayOf(11, 0, 6, 0, 7)),
+        )
+
+        assertEquals(ConstantPoolIndex(2), field.classIndex)
+        assertEquals(ConstantPoolIndex(3), field.nameAndTypeIndex)
+        assertEquals(ConstantPoolIndex(4), method.classIndex)
+        assertEquals(ConstantPoolIndex(5), method.nameAndTypeIndex)
+        assertEquals(ConstantPoolIndex(6), interfaceMethod.classIndex)
+        assertEquals(ConstantPoolIndex(7), interfaceMethod.nameAndTypeIndex)
+    }
+
     private fun parse(bytes: ByteArray): ConstantPoolEntry =
         ConstantPoolEntryParser.parseEntry(ClassFileByteReader(bytes, source = "numeric.class"))
 }
