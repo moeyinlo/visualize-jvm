@@ -23,6 +23,11 @@ data class ConstantClassEntry(val nameIndex: ConstantPoolIndex) : ConstantPoolEn
 
 data class ConstantStringEntry(val stringIndex: ConstantPoolIndex) : ConstantPoolEntry
 
+data class ConstantNameAndTypeEntry(
+    val nameIndex: ConstantPoolIndex,
+    val descriptorIndex: ConstantPoolIndex,
+) : ConstantPoolEntry
+
 object ConstantPoolEntryParser {
     private const val ConstantUtf8Tag = 1
     private const val ConstantIntegerTag = 3
@@ -31,6 +36,7 @@ object ConstantPoolEntryParser {
     private const val ConstantDoubleTag = 6
     private const val ConstantClassTag = 7
     private const val ConstantStringTag = 8
+    private const val ConstantNameAndTypeTag = 12
 
     fun parseEntry(reader: ClassFileByteReader): ConstantPoolEntry {
         val entryOffset = reader.position
@@ -43,6 +49,10 @@ object ConstantPoolEntryParser {
             ConstantDoubleTag -> ConstantDoubleEntry(java.lang.Double.longBitsToDouble(reader.readU8Bits()))
             ConstantClassTag -> ConstantClassEntry(reader.readConstantPoolIndex())
             ConstantStringTag -> ConstantStringEntry(reader.readConstantPoolIndex())
+            ConstantNameAndTypeTag -> ConstantNameAndTypeEntry(
+                nameIndex = reader.readConstantPoolIndex(),
+                descriptorIndex = reader.readConstantPoolIndex(),
+            )
             else -> throw ClassFileFormatException(
                 "Unsupported constant pool tag source=${reader.source} offset=$entryOffset tag=$tag",
             )
