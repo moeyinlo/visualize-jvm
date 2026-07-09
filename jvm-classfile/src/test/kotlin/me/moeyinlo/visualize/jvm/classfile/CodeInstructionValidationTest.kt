@@ -392,6 +392,51 @@ class CodeInstructionValidationTest {
         assertTrue(dynamicFailure.message.orEmpty().contains("J or D"), dynamicFailure.message)
     }
 
+    @Test
+    fun `accepts field access instruction operands that point to field references`() {
+        val attribute = parseCodeAttribute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0,
+                2,
+                0xB3.toByte(),
+                0,
+                2,
+                0xB4.toByte(),
+                0,
+                2,
+                0xB5.toByte(),
+                0,
+                2,
+                0xB1.toByte(),
+            ),
+            constantPool = fieldReferencePool(),
+        )
+
+        assertIs<CodeAttribute>(attribute)
+    }
+
+    @Test
+    fun `rejects field access instruction operands that do not point to field references`() {
+        val opcodes = listOf(
+            0xB2 to "getstatic",
+            0xB3 to "putstatic",
+            0xB4 to "getfield",
+            0xB5 to "putfield",
+        )
+        opcodes.forEach { (opcode, mnemonic) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(opcode.toByte(), 0, 2, 0xB1.toByte()),
+                    constantPool = methodReferencePool(),
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains(mnemonic), failure.message)
+            assertTrue(failure.message.orEmpty().contains("CONSTANT_Fieldref"), failure.message)
+        }
+    }
+
     private fun parseCodeAttribute(
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
@@ -446,6 +491,25 @@ class CodeInstructionValidationTest {
                 ConstantUtf8Entry("dyn", byteArrayOf()),
                 ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
             ),
+        )
+
+    private fun fieldReferencePool(): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry))
+
+    private fun methodReferencePool(): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantMethodRefEntry))
+
+    private fun memberReferencePoolEntries(
+        createMemberRef: (ConstantPoolIndex, ConstantPoolIndex) -> ConstantPoolEntry,
+    ): List<ConstantPoolEntry> =
+        listOf(
+            ConstantUtf8Entry("Code", byteArrayOf()),
+            createMemberRef(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+            ConstantClassEntry(ConstantPoolIndex(5)),
+            ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+            ConstantUtf8Entry("Example", byteArrayOf()),
+            ConstantUtf8Entry("value", byteArrayOf()),
+            ConstantUtf8Entry("I", byteArrayOf()),
         )
 
     private fun codeAttributeBytes(code: ByteArray): ByteArray {

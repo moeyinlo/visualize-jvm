@@ -325,6 +325,11 @@ private object CodeInstructionValidator {
                 }
                 2
             }
+            in 0xB2..0xB5 -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                validateFieldReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
+                3
+            }
             0xC0, 0xC1 -> {
                 ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
                 validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
@@ -376,6 +381,29 @@ private object CodeInstructionValidator {
                 ensureAvailable(code, pc, length, ownerPath, mnemonic(opcode))
                 length
             }
+        }
+    }
+
+    private fun validateFieldReferenceOperand(
+        code: ByteArray,
+        pc: Int,
+        ownerPath: String,
+        constantPool: ConstantPool,
+        mnemonic: String,
+    ) {
+        val rawIndex = code.u2(pc + 1)
+        if (rawIndex == 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index #0: zero is not allowed",
+            )
+        }
+        val index = ConstantPoolIndex(rawIndex)
+        val entry = loadConstantPoolEntry(ownerPath, pc, mnemonic, constantPool, index)
+        if (entry !is ConstantFieldRefEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "expected CONSTANT_Fieldref but found ${entry.javaClass.simpleName}",
+            )
         }
     }
 
@@ -710,6 +738,10 @@ private object CodeInstructionValidator {
             0x13 -> "ldc_w"
             0x14 -> "ldc2_w"
             0x11 -> "sipush"
+            0xB2 -> "getstatic"
+            0xB3 -> "putstatic"
+            0xB4 -> "getfield"
+            0xB5 -> "putfield"
             0xAA -> "tableswitch"
             0xAB -> "lookupswitch"
             0xBB -> "new"
