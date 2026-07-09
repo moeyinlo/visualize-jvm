@@ -1119,6 +1119,144 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes RuntimeVisibleAnnotations attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleAnnotations", byteArrayOf()), // #1
+                ConstantUtf8Entry("Lpkg/Example;", byteArrayOf()), // #2
+                ConstantUtf8Entry("intValue", byteArrayOf()), // #3
+                ConstantIntegerEntry(7), // #4
+                ConstantUtf8Entry("stringValue", byteArrayOf()), // #5
+                ConstantUtf8Entry("hello", byteArrayOf()), // #6
+                ConstantUtf8Entry("enumValue", byteArrayOf()), // #7
+                ConstantUtf8Entry("Lpkg/Mode;", byteArrayOf()), // #8
+                ConstantUtf8Entry("FAST", byteArrayOf()), // #9
+                ConstantUtf8Entry("classValue", byteArrayOf()), // #10
+                ConstantUtf8Entry("Ljava/lang/String;", byteArrayOf()), // #11
+                ConstantUtf8Entry("nestedValue", byteArrayOf()), // #12
+                ConstantUtf8Entry("Lpkg/Nested;", byteArrayOf()), // #13
+                ConstantUtf8Entry("arrayValue", byteArrayOf()), // #14
+                ConstantLongEntry(9L), // #15
+                ConstantDoubleEntry(1.5), // #17
+                ConstantFloatEntry(2.5f), // #19
+                ConstantUtf8Entry("boolValue", byteArrayOf()), // #20
+            ),
+        )
+        val annotation = AnnotationInfo(
+            typeIndex = ConstantPoolIndex(2),
+            elementValuePairs = listOf(
+                ElementValuePair(ConstantPoolIndex(3), ElementValue.Const('I', ConstantPoolIndex(4))),
+                ElementValuePair(ConstantPoolIndex(5), ElementValue.Const('s', ConstantPoolIndex(6))),
+                ElementValuePair(ConstantPoolIndex(7), ElementValue.EnumConst(ConstantPoolIndex(8), ConstantPoolIndex(9))),
+                ElementValuePair(ConstantPoolIndex(10), ElementValue.ClassInfo(ConstantPoolIndex(11))),
+                ElementValuePair(
+                    ConstantPoolIndex(12),
+                    ElementValue.NestedAnnotation(AnnotationInfo(ConstantPoolIndex(13), emptyList())),
+                ),
+                ElementValuePair(
+                    ConstantPoolIndex(14),
+                    ElementValue.ArrayValue(
+                        listOf(
+                            ElementValue.Const('J', ConstantPoolIndex(15)),
+                            ElementValue.Const('D', ConstantPoolIndex(17)),
+                            ElementValue.Const('F', ConstantPoolIndex(19)),
+                        ),
+                    ),
+                ),
+                ElementValuePair(ConstantPoolIndex(20), ElementValue.Const('Z', ConstantPoolIndex(4))),
+            ),
+        )
+        val attribute = RuntimeVisibleAnnotationsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            annotations = listOf(annotation),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 54,
+                0, 1,
+                0, 2,
+                0, 7,
+                0, 3, 'I'.code, 0, 4,
+                0, 5, 's'.code, 0, 6,
+                0, 7, 'e'.code, 0, 8, 0, 9,
+                0, 10, 'c'.code, 0, 11,
+                0, 12, '@'.code, 0, 13, 0, 0,
+                0, 14, '['.code, 0, 3,
+                'J'.code, 0, 15,
+                'D'.code, 0, 17,
+                'F'.code, 0, 19,
+                0, 20, 'Z'.code, 0, 4,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "runtime-visible-annotations-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("RuntimeVisibleAnnotations" to RuntimeVisibleAnnotationsAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
+    fun `writes RuntimeInvisibleAnnotations attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeInvisibleAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/Invisible;", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("hidden", byteArrayOf()),
+            ),
+        )
+        val attribute = RuntimeInvisibleAnnotationsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            annotations = listOf(
+                AnnotationInfo(
+                    typeIndex = ConstantPoolIndex(2),
+                    elementValuePairs = listOf(
+                        ElementValuePair(ConstantPoolIndex(3), ElementValue.Const('s', ConstantPoolIndex(4))),
+                    ),
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 11,
+                0, 1,
+                0, 2,
+                0, 1,
+                0, 3,
+                's'.code,
+                0, 4,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "runtime-invisible-annotations-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "RuntimeInvisibleAnnotations" to RuntimeInvisibleAnnotationsAttributeParser,
+            ),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
@@ -1135,4 +1273,7 @@ class AttributeInfoWriterTest {
 
         assertTrue(failure.message.orEmpty().contains("CodeAttribute"), failure.message)
     }
+
+    private fun bytes(vararg values: Int): ByteArray =
+        values.map { it.toByte() }.toByteArray()
 }

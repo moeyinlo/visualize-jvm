@@ -277,6 +277,12 @@ object ClassFileWriter {
             is SignatureAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeConstantPoolIndex(attribute.signatureIndex)
             }
+            is RuntimeVisibleAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeAnnotations(attribute.annotations)
+            }
+            is RuntimeInvisibleAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeAnnotations(attribute.annotations)
+            }
             is BootstrapMethodsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeU2(attribute.bootstrapMethods.size)
                 attribute.bootstrapMethods.forEach { bootstrapMethod ->
@@ -401,6 +407,41 @@ object ClassFileWriter {
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
+        }
+    }
+
+    private fun ClassFileByteWriter.writeAnnotations(annotations: List<AnnotationInfo>) {
+        writeU2(annotations.size)
+        annotations.forEach { annotation ->
+            writeAnnotation(annotation)
+        }
+    }
+
+    private fun ClassFileByteWriter.writeAnnotation(annotation: AnnotationInfo) {
+        writeConstantPoolIndex(annotation.typeIndex)
+        writeU2(annotation.elementValuePairs.size)
+        annotation.elementValuePairs.forEach { pair ->
+            writeConstantPoolIndex(pair.elementNameIndex)
+            writeElementValue(pair.value)
+        }
+    }
+
+    private fun ClassFileByteWriter.writeElementValue(value: ElementValue) {
+        writeU1(value.tag.code)
+        when (value) {
+            is ElementValue.Const -> writeConstantPoolIndex(value.constValueIndex)
+            is ElementValue.EnumConst -> {
+                writeConstantPoolIndex(value.typeNameIndex)
+                writeConstantPoolIndex(value.constNameIndex)
+            }
+            is ElementValue.ClassInfo -> writeConstantPoolIndex(value.classInfoIndex)
+            is ElementValue.NestedAnnotation -> writeAnnotation(value.annotation)
+            is ElementValue.ArrayValue -> {
+                writeU2(value.values.size)
+                value.values.forEach { nestedValue ->
+                    writeElementValue(nestedValue)
+                }
+            }
         }
     }
 
