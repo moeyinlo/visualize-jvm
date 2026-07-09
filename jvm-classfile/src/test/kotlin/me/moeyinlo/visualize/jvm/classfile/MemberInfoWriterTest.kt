@@ -102,7 +102,7 @@ class MemberInfoWriterTest {
     }
 
     @Test
-    fun `rejects non-empty member attributes until attribute writer is available`() {
+    fun `rejects known member attributes until their specific writer is available`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeFields(
                 listOf(
@@ -110,12 +110,13 @@ class MemberInfoWriterTest {
                         accessFlags = 0x0001,
                         nameIndex = ConstantPoolIndex(3),
                         descriptorIndex = ConstantPoolIndex(4),
-                        attributes = listOf(RawAttributeInfo(ConstantPoolIndex(5), byteArrayOf(1))),
+                        attributes = listOf(SyntheticAttribute(ConstantPoolIndex(5))),
                     ),
                 ),
             )
         }
 
-        assertTrue(failure.message.orEmpty().contains("fields[0].attributes"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("SyntheticAttribute"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("fields[0].attributes[0]"), failure.message)
     }
 }

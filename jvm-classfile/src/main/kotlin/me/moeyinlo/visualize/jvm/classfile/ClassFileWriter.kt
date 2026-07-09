@@ -81,6 +81,12 @@ object ClassFileWriter {
         return writer.toByteArray()
     }
 
+    fun writeAttributes(attributes: List<AttributeInfo>): ByteArray {
+        val writer = ClassFileByteWriter()
+        writeAttributes(attributes, writer)
+        return writer.toByteArray()
+    }
+
     internal fun writeHeader(
         version: ClassFileVersion,
         writer: ClassFileByteWriter,
@@ -121,7 +127,7 @@ object ClassFileWriter {
             writer.writeU2(field.accessFlags)
                 .writeConstantPoolIndex(field.nameIndex)
                 .writeConstantPoolIndex(field.descriptorIndex)
-            writePendingAttributes(field.attributes, "fields[$index].attributes", writer)
+            writeAttributes(field.attributes, writer, "fields[$index].attributes")
         }
     }
 
@@ -134,7 +140,18 @@ object ClassFileWriter {
             writer.writeU2(method.accessFlags)
                 .writeConstantPoolIndex(method.nameIndex)
                 .writeConstantPoolIndex(method.descriptorIndex)
-            writePendingAttributes(method.attributes, "methods[$index].attributes", writer)
+            writeAttributes(method.attributes, writer, "methods[$index].attributes")
+        }
+    }
+
+    internal fun writeAttributes(
+        attributes: List<AttributeInfo>,
+        writer: ClassFileByteWriter,
+        ownerPath: String = "attributes",
+    ) {
+        writer.writeU2(attributes.size)
+        attributes.forEachIndexed { index, attribute ->
+            writeAttribute(attribute, writer, "$ownerPath[$index]")
         }
     }
 
@@ -219,16 +236,25 @@ object ClassFileWriter {
     private fun ClassFileByteWriter.writeConstantPoolIndex(index: ConstantPoolIndex): ClassFileByteWriter =
         writeU2(index.value)
 
-    private fun writePendingAttributes(
-        attributes: List<AttributeInfo>,
-        ownerPath: String,
+    private fun writeAttribute(
+        attribute: AttributeInfo,
         writer: ClassFileByteWriter,
+        ownerPath: String,
     ) {
-        if (attributes.isNotEmpty()) {
-            throw UnsupportedOperationException(
-                "Writing $ownerPath requires the attribute writer implementation step",
+        when (attribute) {
+            is RawAttributeInfo -> writer.writeAttributeInfo(attribute.nameIndex, attribute.info)
+            is UnknownAttributeInfo -> writer.writeAttributeInfo(attribute.nameIndex, attribute.info)
+            else -> throw UnsupportedOperationException(
+                "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
         }
-        writer.writeU2(0)
     }
+
+    private fun ClassFileByteWriter.writeAttributeInfo(
+        nameIndex: ConstantPoolIndex,
+        info: ByteArray,
+    ): ClassFileByteWriter =
+        writeConstantPoolIndex(nameIndex)
+            .writeU4(info.size.toLong())
+            .writeBytes(info)
 }
