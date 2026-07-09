@@ -277,6 +277,16 @@ object ClassFileWriter {
             is SignatureAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeConstantPoolIndex(attribute.signatureIndex)
             }
+            is BootstrapMethodsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.bootstrapMethods.size)
+                attribute.bootstrapMethods.forEach { bootstrapMethod ->
+                    writeConstantPoolIndex(bootstrapMethod.bootstrapMethodRef)
+                    writeU2(bootstrapMethod.bootstrapArguments.size)
+                    bootstrapMethod.bootstrapArguments.forEach { argumentIndex ->
+                        writeConstantPoolIndex(argumentIndex)
+                    }
+                }
+            }
             is SourceDebugExtensionAttribute -> writer.writeAttributeInfo(
                 attribute.nameIndex,
                 attribute.debugExtension,

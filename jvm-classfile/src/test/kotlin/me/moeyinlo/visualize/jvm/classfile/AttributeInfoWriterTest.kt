@@ -417,6 +417,68 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes BootstrapMethods attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("BootstrapMethods", byteArrayOf()),
+                ConstantUtf8Entry("java/lang/Object", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(2)),
+                ConstantUtf8Entry("()V", byteArrayOf()),
+                ConstantMethodTypeEntry(ConstantPoolIndex(4)),
+                ConstantMethodHandleEntry(MethodHandleReferenceKind.InvokeStatic, ConstantPoolIndex(3)),
+                ConstantUtf8Entry("arg", byteArrayOf()),
+                ConstantStringEntry(ConstantPoolIndex(7)),
+            ),
+        )
+        val attribute = BootstrapMethodsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            bootstrapMethods = listOf(
+                BootstrapMethodSpecifier(
+                    bootstrapMethodRef = ConstantPoolIndex(6),
+                    bootstrapArguments = listOf(ConstantPoolIndex(3), ConstantPoolIndex(5), ConstantPoolIndex(8)),
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                12,
+                0,
+                1,
+                0,
+                6,
+                0,
+                3,
+                0,
+                3,
+                0,
+                5,
+                0,
+                8,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "bootstrap-methods-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("BootstrapMethods" to BootstrapMethodsAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `writes SourceDebugExtension attribute`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
