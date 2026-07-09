@@ -140,7 +140,7 @@ internal object AnnotationParser {
         }
     }
 
-    private fun parseAnnotation(
+    fun parseAnnotation(
         context: AttributeParseContext,
         ownerPath: String,
     ): AnnotationInfo {
