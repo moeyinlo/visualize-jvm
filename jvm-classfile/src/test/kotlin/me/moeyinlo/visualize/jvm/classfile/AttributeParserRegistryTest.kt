@@ -127,6 +127,39 @@ class AttributeParserRegistryTest {
     }
 
     @Test
+    fun `reports source path and byte offset for parser format failures inside attribute info`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RejectingAttribute", byteArrayOf()),
+            ),
+        )
+        val registry = AttributeParserRegistry.of(
+            "RejectingAttribute" to AttributeBodyParser { context ->
+                context.reader.readU1()
+                throw ClassFileFormatException("parser rejected payload")
+            },
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 10, 11),
+                    source = "rejecting-attribute.class",
+                ),
+                constantPool = constantPool,
+                registry = registry,
+                ownerPath = "ClassFile",
+            )
+        }
+
+        val message = failure.message.orEmpty()
+        assertTrue(message.contains("source=rejecting-attribute.class"), message)
+        assertTrue(message.contains("path=ClassFile.attributes[0]"), message)
+        assertTrue(message.contains("offset=9"), message)
+        assertTrue(message.contains("parser rejected payload"), message)
+    }
+
+    @Test
     fun `preserves unregistered attributes as unknown attributes`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

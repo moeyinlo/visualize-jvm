@@ -60,4 +60,18 @@ class ClassFileByteReaderTest {
         assertTrue(failure.message.orEmpty().contains("need=2"), failure.message)
         assertTrue(failure.message.orEmpty().contains("remaining=1"), failure.message)
     }
+
+    @Test
+    fun `reports EOF diagnostics with absolute base offset`() {
+        val reader = ClassFileByteReader(byteArrayOf(1), source = "nested.class", baseOffset = 27)
+
+        val failure = assertFailsWith<ClassFileReadException> {
+            reader.readU2()
+        }
+
+        assertEquals(0, reader.position)
+        assertEquals(27, reader.currentOffset)
+        assertTrue(failure.message.orEmpty().contains("nested.class"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("offset=27"), failure.message)
+    }
 }

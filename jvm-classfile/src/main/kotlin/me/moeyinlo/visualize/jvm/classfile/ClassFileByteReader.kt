@@ -10,11 +10,19 @@ class ClassFileReadException(
 class ClassFileByteReader(
     bytes: ByteArray,
     val source: String = "<memory>",
+    private val baseOffset: Int = 0,
 ) {
     private val data = bytes.copyOf()
 
+    init {
+        require(baseOffset >= 0) { "Base offset must be non-negative: $baseOffset" }
+    }
+
     var position: Int = 0
         private set
+
+    val currentOffset: Int
+        get() = baseOffset + position
 
     val size: Int
         get() = data.size
@@ -60,7 +68,7 @@ class ClassFileByteReader(
         if (remaining < length) {
             throw ClassFileReadException(
                 source = source,
-                offset = position,
+                offset = currentOffset,
                 need = length,
                 remaining = remaining,
             )

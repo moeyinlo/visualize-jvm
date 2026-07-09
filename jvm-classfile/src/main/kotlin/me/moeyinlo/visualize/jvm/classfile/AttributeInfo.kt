@@ -23,6 +23,8 @@ class AttributeParseContext(
     val nameIndex: ConstantPoolIndex,
     val name: String,
     val ownerPath: String,
+    val source: String,
+    val infoStartOffset: Int,
     val constantPool: ConstantPool,
     val registry: AttributeParserRegistry,
     info: ByteArray,
@@ -37,7 +39,8 @@ class AttributeParseContext(
 
     val reader: ClassFileByteReader = ClassFileByteReader(
         bytes = infoBytes,
-        source = "$ownerPath.$name.info",
+        source = source,
+        baseOffset = infoStartOffset,
     )
 }
 
@@ -97,7 +100,16 @@ object AttributeInfoParser {
             source = reader.source,
             ownerPath = ownerPath,
         )
-        val info = reader.readSlice(attributeLength.toInt())
+        val infoStartOffset = reader.currentOffset
+        val info = try {
+            reader.readSlice(attributeLength.toInt())
+        } catch (exception: ClassFileReadException) {
+            throw ClassFileFormatException(
+                "Invalid attribute info source=${exception.source} path=$ownerPath " +
+                    "offset=${exception.offset}: ${exception.message}",
+                exception,
+            )
+        }
         val parser = registry.parserFor(name)
             ?: return UnknownAttributeInfo(
                 nameIndex = nameIndex,
@@ -108,19 +120,44 @@ object AttributeInfoParser {
             nameIndex = nameIndex,
             name = name,
             ownerPath = ownerPath,
+            source = reader.source,
+            infoStartOffset = infoStartOffset,
             constantPool = constantPool,
             registry = registry,
             info = info,
         )
-        val attribute = parser.parse(context)
+        val attribute = parseAttributeBody(parser, context)
         if (context.reader.remaining != 0) {
             throw ClassFileFormatException(
                 "Attribute parser for $name left ${context.reader.remaining} unconsumed byte(s) " +
-                    "source=${reader.source} $ownerPath",
+                    "source=${reader.source} path=$ownerPath offset=${context.reader.currentOffset}",
             )
         }
         return attribute
     }
+
+    private fun parseAttributeBody(
+        parser: AttributeBodyParser,
+        context: AttributeParseContext,
+    ): AttributeInfo =
+        try {
+            parser.parse(context)
+        } catch (exception: ClassFileReadException) {
+            throw ClassFileFormatException(
+                "Invalid attribute body source=${exception.source} path=${context.ownerPath} " +
+                    "offset=${exception.offset}: ${exception.message}",
+                exception,
+            )
+        } catch (exception: ClassFileFormatException) {
+            if (exception.hasSourcePathOffset()) {
+                throw exception
+            }
+            throw ClassFileFormatException(
+                "Invalid attribute body source=${context.source} path=${context.ownerPath} " +
+                    "offset=${context.reader.currentOffset}: ${exception.message}",
+                exception,
+            )
+        }
 
     private fun resolveAttributeName(
         constantPool: ConstantPool,
@@ -142,5 +179,10 @@ object AttributeInfoParser {
             )
         }
         return entry.value
+    }
+
+    private fun ClassFileFormatException.hasSourcePathOffset(): Boolean {
+        val text = message.orEmpty()
+        return text.contains("source=") && text.contains("path=") && text.contains("offset=")
     }
 }

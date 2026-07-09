@@ -1,6 +1,9 @@
 package me.moeyinlo.visualize.jvm.classfile
 
-class ClassFileFormatException(message: String) : RuntimeException(message)
+class ClassFileFormatException(
+    message: String,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
 
 data class ClassFileMagic(
     val offset: Int,
