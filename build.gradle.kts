@@ -1,22 +1,35 @@
+import org.gradle.api.tasks.testing.Test
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
+
 plugins {
-    kotlin("jvm") version "2.3.20"
+    base
+    kotlin("jvm") version "2.3.20" apply false
 }
 
 group = "me.moeyinlo"
 version = "1.0-SNAPSHOT"
 
-repositories {
-    mavenCentral()
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
+
+    repositories {
+        mavenCentral()
+    }
 }
 
-dependencies {
-    testImplementation(kotlin("test"))
-}
+subprojects {
+    apply(plugin = "org.jetbrains.kotlin.jvm")
 
-kotlin {
-    jvmToolchain(25)
-}
+    extensions.configure<KotlinJvmProjectExtension> {
+        jvmToolchain(25)
+    }
 
-tasks.test {
-    useJUnitPlatform()
+    dependencies {
+        add("testImplementation", kotlin("test"))
+    }
+
+    tasks.withType<Test>().configureEach {
+        useJUnitPlatform()
+    }
 }
