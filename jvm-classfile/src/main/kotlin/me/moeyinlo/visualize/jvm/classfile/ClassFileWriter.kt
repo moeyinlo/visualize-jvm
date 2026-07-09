@@ -324,6 +324,12 @@ object ClassFileWriter {
                     writeConstantPoolIndex(classIndex)
                 }
             }
+            is PermittedSubclassesAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.classes.size)
+                attribute.classes.forEach { classIndex ->
+                    writeConstantPoolIndex(classIndex)
+                }
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )

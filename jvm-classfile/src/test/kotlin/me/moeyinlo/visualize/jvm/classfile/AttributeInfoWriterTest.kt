@@ -771,6 +771,54 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes PermittedSubclasses attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("PermittedSubclasses", byteArrayOf()),
+                ConstantUtf8Entry("pkg/AllowedOne", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(2)),
+                ConstantUtf8Entry("pkg/AllowedTwo", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(4)),
+            ),
+        )
+        val attribute = PermittedSubclassesAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            classes = listOf(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                6,
+                0,
+                2,
+                0,
+                3,
+                0,
+                5,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "permitted-subclasses-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("PermittedSubclasses" to PermittedSubclassesAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
