@@ -105,6 +105,37 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `accepts array class names in constant class entries`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("[[I"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("[Ljava/lang/String;"),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+            ),
+        )
+
+        pool.validateReferences()
+    }
+
+    @Test
+    fun `rejects invalid array class names in constant class entries`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("[V"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#2"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
+
+    @Test
     fun `rejects empty unqualified names`() {
         val pool = ConstantPool.fromEntries(
             listOf(

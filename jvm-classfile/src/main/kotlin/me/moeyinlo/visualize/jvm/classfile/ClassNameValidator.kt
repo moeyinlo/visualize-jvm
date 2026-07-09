@@ -7,6 +7,7 @@ object ClassNameValidator {
         value: String,
     ) {
         if (value.startsWith("[")) {
+            DescriptorValidator.validateFieldDescriptor(owner, role, value)
             return
         }
         validateInternalBinaryName(owner, role, value)
