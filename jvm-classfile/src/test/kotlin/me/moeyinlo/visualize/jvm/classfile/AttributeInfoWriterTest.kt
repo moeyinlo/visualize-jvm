@@ -468,6 +468,66 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes LocalVariableTable attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LocalVariableTable", byteArrayOf()),
+                ConstantUtf8Entry("arg", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+            ),
+        )
+        val attribute = LocalVariableTableAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            entries = listOf(
+                LocalVariableTableEntry(
+                    startPc = 0,
+                    length = 5,
+                    nameIndex = ConstantPoolIndex(2),
+                    descriptorIndex = ConstantPoolIndex(3),
+                    index = 1,
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                12,
+                0,
+                1,
+                0,
+                0,
+                0,
+                5,
+                0,
+                2,
+                0,
+                3,
+                0,
+                1,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "local-variable-table-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("LocalVariableTable" to LocalVariableTableAttributeParser),
+            ownerPath = "methods[0].attributes[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
