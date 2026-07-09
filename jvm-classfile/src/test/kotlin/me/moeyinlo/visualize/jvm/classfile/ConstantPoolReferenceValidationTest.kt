@@ -251,6 +251,52 @@ class ConstantPoolReferenceValidationTest {
         assertTrue(failure.message.orEmpty().contains("method descriptor"), failure.message)
     }
 
+    @Test
+    fun `rejects invalid module names`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("bad@module"),
+                ConstantModuleEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#2"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("module name"), failure.message)
+    }
+
+    @Test
+    fun `accepts escaped module name reserved characters`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("good\\@module"),
+                ConstantModuleEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        pool.validateReferences()
+    }
+
+    @Test
+    fun `rejects package names that are not in internal form`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("bad.package"),
+                ConstantPackageEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#2"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
     private fun utf8(value: String): ConstantUtf8Entry =
         ConstantUtf8Entry(value, value.encodeToByteArray())
 }

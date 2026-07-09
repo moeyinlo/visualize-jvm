@@ -100,8 +100,15 @@ class ConstantPool private constructor(
                 expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
                 validateMethodDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex)
             }
-            is ConstantModuleEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
-            is ConstantPackageEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+            is ConstantModuleEntry -> {
+                val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+                ModulePackageNameValidator.validateModuleName(owner, "name_index", name.value)
+            }
+
+            is ConstantPackageEntry -> {
+                val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+                ModulePackageNameValidator.validatePackageName(owner, "name_index", name.value)
+            }
         }
     }
 
