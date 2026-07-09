@@ -52,9 +52,9 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.1 | `ClassFile` magic and Java SE 26 version range | `jvm-classfile` | `ClassFileHeaderParserTest` | IMPLEMENTED |
 | 4.2 | Binary, unqualified, module, package names | `jvm-classfile` | TBD | PENDING |
 | 4.3 | Field and method descriptors | `jvm-classfile` | TBD | PENDING |
-| 4.4.1 | `CONSTANT_Class_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.1 | `CONSTANT_Class_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.2 | Field, method, interface method refs | `jvm-classfile` | TBD | PENDING |
-| 4.4.3 | `CONSTANT_String_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.3 | `CONSTANT_String_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.4 | Integer and float constants | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.5 | Long and double constants | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.6 | `CONSTANT_NameAndType_info` | `jvm-classfile` | TBD | PENDING |

@@ -19,12 +19,18 @@ data class ConstantDoubleEntry(val value: Double) : ConstantPoolEntry {
     override val occupiesTwoSlots: Boolean = true
 }
 
+data class ConstantClassEntry(val nameIndex: ConstantPoolIndex) : ConstantPoolEntry
+
+data class ConstantStringEntry(val stringIndex: ConstantPoolIndex) : ConstantPoolEntry
+
 object ConstantPoolEntryParser {
     private const val ConstantUtf8Tag = 1
     private const val ConstantIntegerTag = 3
     private const val ConstantFloatTag = 4
     private const val ConstantLongTag = 5
     private const val ConstantDoubleTag = 6
+    private const val ConstantClassTag = 7
+    private const val ConstantStringTag = 8
 
     fun parseEntry(reader: ClassFileByteReader): ConstantPoolEntry {
         val entryOffset = reader.position
@@ -35,6 +41,8 @@ object ConstantPoolEntryParser {
             ConstantFloatTag -> ConstantFloatEntry(java.lang.Float.intBitsToFloat(reader.readU4().toInt()))
             ConstantLongTag -> ConstantLongEntry(reader.readU8Bits())
             ConstantDoubleTag -> ConstantDoubleEntry(java.lang.Double.longBitsToDouble(reader.readU8Bits()))
+            ConstantClassTag -> ConstantClassEntry(reader.readConstantPoolIndex())
+            ConstantStringTag -> ConstantStringEntry(reader.readConstantPoolIndex())
             else -> throw ClassFileFormatException(
                 "Unsupported constant pool tag source=${reader.source} offset=$entryOffset tag=$tag",
             )
@@ -58,6 +66,9 @@ object ConstantPoolEntryParser {
         val lowBytes = readU4()
         return (highBytes shl 32) or lowBytes
     }
+
+    private fun ClassFileByteReader.readConstantPoolIndex(): ConstantPoolIndex =
+        ConstantPoolIndex(readU2())
 }
 
 private object ModifiedUtf8 {

@@ -128,6 +128,19 @@ class ConstantPoolEntryParserTest {
         assertTrue(double.occupiesTwoSlots)
     }
 
+    @Test
+    fun `parses class and string constants as constant pool indexes`() {
+        val classEntry = assertIs<ConstantClassEntry>(
+            parse(byteArrayOf(7, 0, 9)),
+        )
+        val stringEntry = assertIs<ConstantStringEntry>(
+            parse(byteArrayOf(8, 0, 10)),
+        )
+
+        assertEquals(ConstantPoolIndex(9), classEntry.nameIndex)
+        assertEquals(ConstantPoolIndex(10), stringEntry.stringIndex)
+    }
+
     private fun parse(bytes: ByteArray): ConstantPoolEntry =
         ConstantPoolEntryParser.parseEntry(ClassFileByteReader(bytes, source = "numeric.class"))
 }
