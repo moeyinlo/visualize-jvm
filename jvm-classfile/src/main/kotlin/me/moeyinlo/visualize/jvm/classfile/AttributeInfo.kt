@@ -24,6 +24,7 @@ class AttributeParseContext(
     val name: String,
     val ownerPath: String,
     val constantPool: ConstantPool,
+    val registry: AttributeParserRegistry,
     info: ByteArray,
 ) {
     private val infoBytes = info.copyOf()
@@ -108,6 +109,7 @@ object AttributeInfoParser {
             name = name,
             ownerPath = ownerPath,
             constantPool = constantPool,
+            registry = registry,
             info = info,
         )
         val attribute = parser.parse(context)

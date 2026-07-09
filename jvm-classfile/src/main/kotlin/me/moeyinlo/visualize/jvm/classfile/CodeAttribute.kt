@@ -6,6 +6,7 @@ class CodeAttribute(
     val maxLocals: Int,
     code: ByteArray,
     val exceptionTable: List<CodeExceptionHandler> = emptyList(),
+    val attributes: List<AttributeInfo> = emptyList(),
 ) : AttributeInfo {
     private val codeBytes = code.copyOf()
 
@@ -38,12 +39,12 @@ object CodeAttributeParser : AttributeBodyParser {
 
         val code = context.reader.readSlice(codeLength.toInt())
         val exceptionTable = parseExceptionTable(context, code.size)
-        val attributesCount = context.reader.readU2()
-        if (attributesCount != 0) {
-            throw ClassFileFormatException(
-                "Unsupported Code attributes_count=$attributesCount at ${context.ownerPath}",
-            )
-        }
+        val attributes = AttributeInfoParser.parseAttributes(
+            reader = context.reader,
+            constantPool = context.constantPool,
+            registry = context.registry,
+            ownerPath = context.ownerPath,
+        )
 
         return CodeAttribute(
             nameIndex = context.nameIndex,
@@ -51,6 +52,7 @@ object CodeAttributeParser : AttributeBodyParser {
             maxLocals = maxLocals,
             code = code,
             exceptionTable = exceptionTable,
+            attributes = attributes,
         )
     }
 
