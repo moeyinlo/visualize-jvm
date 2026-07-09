@@ -28,6 +28,9 @@ class AttributeParseContext(
 ) {
     private val infoBytes = info.copyOf()
 
+    val length: Int
+        get() = infoBytes.size
+
     val info: ByteArray
         get() = infoBytes.copyOf()
 
