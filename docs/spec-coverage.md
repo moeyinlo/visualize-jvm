@@ -1,0 +1,176 @@
+# JVMS 26 Coverage Ledger
+
+This ledger is the required source of truth for implementing Java SE 26 JVM Specification coverage in visualize-jvm.
+
+Status values:
+- `PENDING`: not implemented yet.
+- `IMPLEMENTED`: code exists and focused tests pass.
+- `DIFFERENTIAL`: implementation also has HotSpot, `javap`, or ASM-oracle comparison where applicable.
+- `N/A`: explicitly not a JVMS requirement for this project.
+
+Every commit that implements a JVMS item must update the matching row with implementation and test references.
+
+## Chapter 2 - JVM Structure
+
+| JVMS | Requirement | Module | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 2.1 | Class file format connection to runtime | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+| 2.2 | Data types | `jvm-runtime` | TBD | PENDING |
+| 2.3 | Primitive types and values | `jvm-runtime` | TBD | PENDING |
+| 2.3.1 | Integral types and values | `jvm-runtime` | TBD | PENDING |
+| 2.3.2 | Floating-point types and values | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.3.3 | `returnAddress` type and values | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| 2.3.4 | `boolean` type and values | `jvm-runtime` | TBD | PENDING |
+| 2.4 | Reference types and values | `jvm-runtime` | TBD | PENDING |
+| 2.5.1 | pc register | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.5.2 | JVM stacks | `jvm-runtime` | TBD | PENDING |
+| 2.5.3 | Heap | `jvm-runtime` | TBD | PENDING |
+| 2.5.4 | Method area | `jvm-runtime` | TBD | PENDING |
+| 2.5.5 | Run-time constant pool | `jvm-runtime` | TBD | PENDING |
+| 2.5.6 | Native method stacks | `jvm-native`, `jvm-jni` | TBD | PENDING |
+| 2.6 | Frames | `jvm-runtime` | TBD | PENDING |
+| 2.6.1 | Local variables | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.6.2 | Operand stacks | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.6.3 | Dynamic linking | `jvm-runtime` | TBD | PENDING |
+| 2.6.4 | Normal method invocation completion | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.6.5 | Abrupt method invocation completion | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.7 | Representation of objects | `jvm-runtime` | TBD | PENDING |
+| 2.8 | Floating-point arithmetic | `jvm-interpreter` | TBD | PENDING |
+| 2.9.1 | Instance initialization methods | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| 2.9.2 | Class initialization methods | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.9.3 | Signature polymorphic methods | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.10 | Exceptions | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.11 | Instruction set summary | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| 2.12 | Class libraries interface assumptions | `jvm-host`, `jvm-native`, `jvm-jni` | TBD | PENDING |
+| 2.13 | Public design private implementation boundary | all modules | TBD | PENDING |
+
+## Chapter 4 - Class File Format
+
+| JVMS | Requirement | Module | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 4.1 | `ClassFile` structure, magic, versions | `jvm-classfile` | TBD | PENDING |
+| 4.2 | Binary, unqualified, module, package names | `jvm-classfile` | TBD | PENDING |
+| 4.3 | Field and method descriptors | `jvm-classfile` | TBD | PENDING |
+| 4.4.1 | `CONSTANT_Class_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.2 | Field, method, interface method refs | `jvm-classfile` | TBD | PENDING |
+| 4.4.3 | `CONSTANT_String_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.4 | Integer and float constants | `jvm-classfile` | TBD | PENDING |
+| 4.4.5 | Long and double constants | `jvm-classfile` | TBD | PENDING |
+| 4.4.6 | `CONSTANT_NameAndType_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.7 | `CONSTANT_Utf8_info` modified UTF-8 | `jvm-classfile` | TBD | PENDING |
+| 4.4.8 | `CONSTANT_MethodHandle_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.9 | `CONSTANT_MethodType_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.10 | `CONSTANT_Dynamic_info`, `CONSTANT_InvokeDynamic_info` | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+| 4.4.11 | `CONSTANT_Module_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.12 | `CONSTANT_Package_info` | `jvm-classfile` | TBD | PENDING |
+| 4.5 | Fields | `jvm-classfile` | TBD | PENDING |
+| 4.6 | Methods | `jvm-classfile` | TBD | PENDING |
+| 4.7.1 | Unknown and user-defined attributes | `jvm-classfile` | TBD | PENDING |
+| 4.7.2 | `ConstantValue` | `jvm-classfile` | TBD | PENDING |
+| 4.7.3 | `Code` | `jvm-classfile` | TBD | PENDING |
+| 4.7.4 | `StackMapTable` | `jvm-classfile`, `jvm-verifier` | TBD | PENDING |
+| 4.7.5 | `Exceptions` | `jvm-classfile` | TBD | PENDING |
+| 4.7.6 | `InnerClasses` | `jvm-classfile` | TBD | PENDING |
+| 4.7.7 | `EnclosingMethod` | `jvm-classfile` | TBD | PENDING |
+| 4.7.8 | `Synthetic` | `jvm-classfile` | TBD | PENDING |
+| 4.7.9 | `Signature` and signature grammar | `jvm-classfile` | TBD | PENDING |
+| 4.7.10 | `SourceFile` | `jvm-classfile` | TBD | PENDING |
+| 4.7.11 | `SourceDebugExtension` | `jvm-classfile` | TBD | PENDING |
+| 4.7.12 | `LineNumberTable` | `jvm-classfile` | TBD | PENDING |
+| 4.7.13 | `LocalVariableTable` | `jvm-classfile` | TBD | PENDING |
+| 4.7.14 | `LocalVariableTypeTable` | `jvm-classfile` | TBD | PENDING |
+| 4.7.15 | `Deprecated` | `jvm-classfile` | TBD | PENDING |
+| 4.7.16 | `RuntimeVisibleAnnotations` | `jvm-classfile` | TBD | PENDING |
+| 4.7.17 | `RuntimeInvisibleAnnotations` | `jvm-classfile` | TBD | PENDING |
+| 4.7.18 | `RuntimeVisibleParameterAnnotations` | `jvm-classfile` | TBD | PENDING |
+| 4.7.19 | `RuntimeInvisibleParameterAnnotations` | `jvm-classfile` | TBD | PENDING |
+| 4.7.20 | `RuntimeVisibleTypeAnnotations` | `jvm-classfile` | TBD | PENDING |
+| 4.7.21 | `RuntimeInvisibleTypeAnnotations` | `jvm-classfile` | TBD | PENDING |
+| 4.7.22 | `AnnotationDefault` | `jvm-classfile` | TBD | PENDING |
+| 4.7.23 | `BootstrapMethods` | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+| 4.7.24 | `MethodParameters` | `jvm-classfile` | TBD | PENDING |
+| 4.7.25 | `Module` | `jvm-classfile` | TBD | PENDING |
+| 4.7.26 | `ModulePackages` | `jvm-classfile` | TBD | PENDING |
+| 4.7.27 | `ModuleMainClass` | `jvm-classfile` | TBD | PENDING |
+| 4.7.28 | `NestHost` | `jvm-classfile` | TBD | PENDING |
+| 4.7.29 | `NestMembers` | `jvm-classfile` | TBD | PENDING |
+| 4.7.30 | `Record` | `jvm-classfile` | TBD | PENDING |
+| 4.7.31 | `PermittedSubclasses` | `jvm-classfile` | TBD | PENDING |
+| 4.8 | Format checking | `jvm-classfile` | TBD | PENDING |
+| 4.9 | Static and structural constraints | `jvm-verifier` | TBD | PENDING |
+| 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
+| 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
+| 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+
+## Chapter 5 - Loading, Linking, and Initializing
+
+| JVMS | Requirement | Module | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 5.1 | Run-time constant pool | `jvm-runtime` | TBD | PENDING |
+| 5.2 | JVM startup | `jvm-runtime` | TBD | PENDING |
+| 5.3.1 | Bootstrap class loader loading | `jvm-runtime` | TBD | PENDING |
+| 5.3.2 | User-defined class loader loading | `jvm-runtime` | TBD | PENDING |
+| 5.3.3 | Array class creation | `jvm-runtime` | TBD | PENDING |
+| 5.3.4 | Loading constraints | `jvm-runtime` | TBD | PENDING |
+| 5.3.5 | Deriving class from class file bytes | `jvm-runtime`, `jvm-classfile` | TBD | PENDING |
+| 5.3.6 | Modules and layers | `jvm-runtime` | TBD | PENDING |
+| 5.4.1 | Verification during linking | `jvm-verifier`, `jvm-runtime` | TBD | PENDING |
+| 5.4.2 | Preparation | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.1 | Class and interface resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.2 | Field resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.3 | Method resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.4 | Interface method resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.5 | Method type and method handle resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.6 | Dynamic constant and call site resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.4 | Access control | `jvm-runtime` | TBD | PENDING |
+| 5.4.5 | Method overriding | `jvm-runtime` | TBD | PENDING |
+| 5.4.6 | Method selection | `jvm-runtime` | TBD | PENDING |
+| 5.5 | Initialization | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 5.6 | Binding native method implementations | `jvm-native`, `jvm-jni`, `jvm-host` | TBD | PENDING |
+| 5.7 | VM termination | `jvm-runtime` | TBD | PENDING |
+
+## Chapters 6 and 7 - Instruction Set and Opcode Mnemonics
+
+Each opcode requires decoder coverage, verifier coverage when applicable, interpreter behavior or specified reserved-opcode error, and at least one focused test.
+
+| Group | Opcodes | Module | Tests | Status |
+| --- | --- | --- | --- | --- |
+| Constants | `nop`, `aconst_null`, `iconst_m1`, `iconst_0..5`, `lconst_0..1`, `fconst_0..2`, `dconst_0..1`, `bipush`, `sipush`, `ldc`, `ldc_w`, `ldc2_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Loads | `iload`, `lload`, `fload`, `dload`, `aload`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Array loads | `iaload`, `laload`, `faload`, `daload`, `aaload`, `baload`, `caload`, `saload` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Stores | `istore`, `lstore`, `fstore`, `dstore`, `astore`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Array stores | `iastore`, `lastore`, `fastore`, `dastore`, `aastore`, `bastore`, `castore`, `sastore` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Stack | `pop`, `pop2`, `dup`, `dup_x1`, `dup_x2`, `dup2`, `dup2_x1`, `dup2_x2`, `swap` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Integer and long math | `iadd`, `ladd`, `isub`, `lsub`, `imul`, `lmul`, `idiv`, `ldiv`, `irem`, `lrem`, `ineg`, `lneg`, shifts, bitwise ops | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Float and double math | `fadd`, `dadd`, `fsub`, `dsub`, `fmul`, `dmul`, `fdiv`, `ddiv`, `frem`, `drem`, `fneg`, `dneg` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Increment | `iinc` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Conversions | `i2l`, `i2f`, `i2d`, `l2i`, `l2f`, `l2d`, `f2i`, `f2l`, `f2d`, `d2i`, `d2l`, `d2f`, `i2b`, `i2c`, `i2s` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Comparisons | `lcmp`, `fcmpl`, `fcmpg`, `dcmpl`, `dcmpg` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Branches | `ifeq`, `ifne`, `iflt`, `ifge`, `ifgt`, `ifle`, `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Legacy subroutines | `jsr`, `jsr_w`, `ret`, `returnAddress` handling | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Returns | `ireturn`, `lreturn`, `freturn`, `dreturn`, `areturn`, `return` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Field access | `getstatic`, `putstatic`, `getfield`, `putfield` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
+| Invocation | `invokevirtual`, `invokespecial`, `invokestatic`, `invokeinterface`, `invokedynamic` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
+| Object and arrays | `new`, `newarray`, `anewarray`, `arraylength`, `multianewarray` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
+| Type checks | `checkcast`, `instanceof` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
+| Exceptions | `athrow` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
+| Synchronization | `monitorenter`, `monitorexit` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
+| Extended | `wide` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Reserved | `breakpoint`, `impdep1`, `impdep2` | `jvm-interpreter` | TBD | PENDING |
+
+## Project-Specific Native and Host Coverage
+
+| Area | Requirement | Module | Tests | Status |
+| --- | --- | --- | --- | --- |
+| Host delegation | JDK and configured whitelist classes may execute as opaque host boundaries | `jvm-host`, `jvm-runtime`, `jvm-gui` | TBD | PENDING |
+| Native resolver | Interpreted class native calls resolve intrinsic first when whitelist allows | `jvm-native` | TBD | PENDING |
+| Native resolver | Intrinsic miss falls back to simulated JNI | `jvm-native`, `jvm-jni` | TBD | PENDING |
+| Simulated JNI | Custom `JNIEnv` function table routes upcalls to guest interpreter | `jvm-jni`, `jvm-interpreter` | TBD | PENDING |
+| Simulated JNI | JNI handles represent guest objects, classes, methods, and fields | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
+| Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
+| Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
+
+## Final Gate
+
+The project is not complete until every non-`N/A` row is at least `IMPLEMENTED`, and every row with an external comparison surface is `DIFFERENTIAL`.
