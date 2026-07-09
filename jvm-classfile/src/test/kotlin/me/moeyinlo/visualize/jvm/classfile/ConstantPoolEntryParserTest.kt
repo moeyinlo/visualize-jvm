@@ -216,6 +216,19 @@ class ConstantPoolEntryParserTest {
         assertEquals(ConstantPoolIndex(5), invokeDynamic.nameAndTypeIndex)
     }
 
+    @Test
+    fun `parses module and package constants as name indexes`() {
+        val module = assertIs<ConstantModuleEntry>(
+            parse(byteArrayOf(19, 0, 8)),
+        )
+        val packageEntry = assertIs<ConstantPackageEntry>(
+            parse(byteArrayOf(20, 0, 9)),
+        )
+
+        assertEquals(ConstantPoolIndex(8), module.nameIndex)
+        assertEquals(ConstantPoolIndex(9), packageEntry.nameIndex)
+    }
+
     private fun parse(bytes: ByteArray): ConstantPoolEntry =
         ConstantPoolEntryParser.parseEntry(ClassFileByteReader(bytes, source = "numeric.class"))
 }

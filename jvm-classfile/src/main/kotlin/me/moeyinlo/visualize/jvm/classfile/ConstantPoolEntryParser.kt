@@ -93,6 +93,10 @@ data class ConstantInvokeDynamicEntry(
     val nameAndTypeIndex: ConstantPoolIndex,
 ) : ConstantPoolEntry
 
+data class ConstantModuleEntry(val nameIndex: ConstantPoolIndex) : ConstantPoolEntry
+
+data class ConstantPackageEntry(val nameIndex: ConstantPoolIndex) : ConstantPoolEntry
+
 object ConstantPoolEntryParser {
     private const val ConstantUtf8Tag = 1
     private const val ConstantIntegerTag = 3
@@ -109,6 +113,8 @@ object ConstantPoolEntryParser {
     private const val ConstantMethodTypeTag = 16
     private const val ConstantDynamicTag = 17
     private const val ConstantInvokeDynamicTag = 18
+    private const val ConstantModuleTag = 19
+    private const val ConstantPackageTag = 20
 
     fun parseEntry(reader: ClassFileByteReader): ConstantPoolEntry {
         val entryOffset = reader.position
@@ -132,6 +138,8 @@ object ConstantPoolEntryParser {
             ConstantMethodTypeTag -> ConstantMethodTypeEntry(reader.readConstantPoolIndex())
             ConstantDynamicTag -> parseDynamic(reader, ::ConstantDynamicEntry)
             ConstantInvokeDynamicTag -> parseDynamic(reader, ::ConstantInvokeDynamicEntry)
+            ConstantModuleTag -> ConstantModuleEntry(reader.readConstantPoolIndex())
+            ConstantPackageTag -> ConstantPackageEntry(reader.readConstantPoolIndex())
             else -> throw ClassFileFormatException(
                 "Unsupported constant pool tag source=${reader.source} offset=$entryOffset tag=$tag",
             )

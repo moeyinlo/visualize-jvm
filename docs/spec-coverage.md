@@ -63,8 +63,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.4.9 | `CONSTANT_MethodType_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.10 | `CONSTANT_Dynamic_info`, `CONSTANT_InvokeDynamic_info` classfile structures | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.10 | Dynamic constant and invokedynamic runtime resolution | `jvm-runtime` | TBD | PENDING |
-| 4.4.11 | `CONSTANT_Module_info` | `jvm-classfile` | TBD | PENDING |
-| 4.4.12 | `CONSTANT_Package_info` | `jvm-classfile` | TBD | PENDING |
+| 4.4.11 | `CONSTANT_Module_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
+| 4.4.12 | `CONSTANT_Package_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.5 | Fields | `jvm-classfile` | TBD | PENDING |
 | 4.6 | Methods | `jvm-classfile` | TBD | PENDING |
 | 4.7.1 | Unknown and user-defined attributes | `jvm-classfile` | TBD | PENDING |
