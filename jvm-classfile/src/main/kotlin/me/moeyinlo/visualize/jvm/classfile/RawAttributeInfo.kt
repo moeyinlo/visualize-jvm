@@ -1,9 +1,9 @@
 package me.moeyinlo.visualize.jvm.classfile
 
 class RawAttributeInfo(
-    val nameIndex: ConstantPoolIndex,
+    override val nameIndex: ConstantPoolIndex,
     info: ByteArray,
-) {
+) : AttributeInfo {
     private val infoBytes: ByteArray = info.copyOf()
 
     val info: ByteArray

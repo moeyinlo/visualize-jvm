@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class MethodInfoParserTest {
@@ -52,8 +53,9 @@ class MethodInfoParserTest {
         assertEquals(0x0009, methods[1].accessFlags)
         assertEquals(ConstantPoolIndex(5), methods[1].nameIndex)
         assertEquals(ConstantPoolIndex(6), methods[1].descriptorIndex)
-        assertEquals(ConstantPoolIndex(7), methods[1].attributes.single().nameIndex)
-        assertContentEquals(byteArrayOf(20, 21), methods[1].attributes.single().info)
+        val attribute = assertIs<RawAttributeInfo>(methods[1].attributes.single())
+        assertEquals(ConstantPoolIndex(7), attribute.nameIndex)
+        assertContentEquals(byteArrayOf(20, 21), attribute.info)
         assertEquals(26, reader.position)
     }
 
