@@ -681,6 +681,96 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes ModulePackages attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("ModulePackages", byteArrayOf()),
+                ConstantUtf8Entry("pkg/one", byteArrayOf()),
+                ConstantPackageEntry(ConstantPoolIndex(2)),
+                ConstantUtf8Entry("pkg/two", byteArrayOf()),
+                ConstantPackageEntry(ConstantPoolIndex(4)),
+            ),
+        )
+        val attribute = ModulePackagesAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            packageIndexes = listOf(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                6,
+                0,
+                2,
+                0,
+                3,
+                0,
+                5,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "module-packages-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("ModulePackages" to ModulePackagesAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
+    fun `writes ModuleMainClass attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("ModuleMainClass", byteArrayOf()),
+                ConstantUtf8Entry("app/Main", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(2)),
+            ),
+        )
+        val attribute = ModuleMainClassAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            mainClassIndex = ConstantPoolIndex(3),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                2,
+                0,
+                3,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "module-main-class-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("ModuleMainClass" to ModuleMainClassAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `writes NestHost attribute`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

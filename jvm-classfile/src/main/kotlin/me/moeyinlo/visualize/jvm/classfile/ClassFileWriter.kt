@@ -315,6 +315,15 @@ object ClassFileWriter {
                     writeU2(parameter.accessFlags)
                 }
             }
+            is ModulePackagesAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.packageIndexes.size)
+                attribute.packageIndexes.forEach { packageIndex ->
+                    writeConstantPoolIndex(packageIndex)
+                }
+            }
+            is ModuleMainClassAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeConstantPoolIndex(attribute.mainClassIndex)
+            }
             is NestHostAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeConstantPoolIndex(attribute.hostClassIndex)
             }
