@@ -53,6 +53,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.1 | `ClassFile` writer skeleton for magic and version header | `jvm-classfile` | `ClassFileWriterTest` | IMPLEMENTED |
 | 4.1 | `ClassFile` full writer structure | `jvm-classfile` | `ClassFileWriterTest` | IMPLEMENTED |
 | 4.1 | `ClassFile` javac fixture byte-for-byte round trip | `jvm-classfile`, `jvm-asm-oracle` | `ClassFileRoundTripTest` | IMPLEMENTED |
+| 4.1 | `ClassFile` core structure agrees with `javap -v` | `jvm-classfile`, `jvm-asm-oracle` | `ClassFileJavapDifferentialTest` | DIFFERENTIAL |
 | 4.1 | `constant_pool_count` and constant pool slot table | `jvm-classfile` | `ConstantPoolParserTest` | IMPLEMENTED |
 | 4.1 | Constant pool writer preserves table order and two-slot gaps | `jvm-classfile` | `ConstantPoolWriterTest` | IMPLEMENTED |
 | 4.1 | Class access flags and legal class/interface/module combinations | `jvm-classfile` | `ClassAccessFlagsTest` | IMPLEMENTED |
