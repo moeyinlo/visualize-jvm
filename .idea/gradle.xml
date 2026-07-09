@@ -7,6 +7,15 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/jvm-asm-oracle" />
+            <option value="$PROJECT_DIR$/jvm-classfile" />
+            <option value="$PROJECT_DIR$/jvm-gui" />
+            <option value="$PROJECT_DIR$/jvm-host" />
+            <option value="$PROJECT_DIR$/jvm-interpreter" />
+            <option value="$PROJECT_DIR$/jvm-jni" />
+            <option value="$PROJECT_DIR$/jvm-native" />
+            <option value="$PROJECT_DIR$/jvm-runtime" />
+            <option value="$PROJECT_DIR$/jvm-verifier" />
           </set>
         </option>
         <option name="myGradleHome" value="" />
