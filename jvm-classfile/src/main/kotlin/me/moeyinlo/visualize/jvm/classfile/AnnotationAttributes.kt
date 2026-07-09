@@ -10,6 +10,20 @@ data class RuntimeInvisibleAnnotationsAttribute(
     val annotations: List<AnnotationInfo>,
 ) : AttributeInfo
 
+data class RuntimeVisibleParameterAnnotationsAttribute(
+    override val nameIndex: ConstantPoolIndex,
+    val parameterAnnotations: List<ParameterAnnotations>,
+) : AttributeInfo
+
+data class RuntimeInvisibleParameterAnnotationsAttribute(
+    override val nameIndex: ConstantPoolIndex,
+    val parameterAnnotations: List<ParameterAnnotations>,
+) : AttributeInfo
+
+data class ParameterAnnotations(
+    val annotations: List<AnnotationInfo>,
+)
+
 data class AnnotationInfo(
     val typeIndex: ConstantPoolIndex,
     val elementValuePairs: List<ElementValuePair>,
@@ -70,6 +84,22 @@ object RuntimeInvisibleAnnotationsAttributeParser : AttributeBodyParser {
         )
 }
 
+object RuntimeVisibleParameterAnnotationsAttributeParser : AttributeBodyParser {
+    override fun parse(context: AttributeParseContext): AttributeInfo =
+        RuntimeVisibleParameterAnnotationsAttribute(
+            nameIndex = context.nameIndex,
+            parameterAnnotations = AnnotationParser.parseParameterAnnotations(context, context.ownerPath),
+        )
+}
+
+object RuntimeInvisibleParameterAnnotationsAttributeParser : AttributeBodyParser {
+    override fun parse(context: AttributeParseContext): AttributeInfo =
+        RuntimeInvisibleParameterAnnotationsAttribute(
+            nameIndex = context.nameIndex,
+            parameterAnnotations = AnnotationParser.parseParameterAnnotations(context, context.ownerPath),
+        )
+}
+
 internal object AnnotationParser {
     fun parseAnnotations(
         context: AttributeParseContext,
@@ -78,6 +108,22 @@ internal object AnnotationParser {
         val numAnnotations = context.reader.readU2()
         return List(numAnnotations) { index ->
             parseAnnotation(context, "$ownerPath.annotations[$index]")
+        }
+    }
+
+    fun parseParameterAnnotations(
+        context: AttributeParseContext,
+        ownerPath: String,
+    ): List<ParameterAnnotations> {
+        val numParameters = context.reader.readU1()
+        return List(numParameters) { parameterIndex ->
+            val parameterPath = "$ownerPath.parameter_annotations[$parameterIndex]"
+            val numAnnotations = context.reader.readU2()
+            ParameterAnnotations(
+                annotations = List(numAnnotations) { annotationIndex ->
+                    parseAnnotation(context, "$parameterPath.annotations[$annotationIndex]")
+                },
+            )
         }
     }
 
