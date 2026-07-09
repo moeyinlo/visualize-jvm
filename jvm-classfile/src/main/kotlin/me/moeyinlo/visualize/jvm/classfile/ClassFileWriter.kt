@@ -249,6 +249,9 @@ object ClassFileWriter {
             is SourceFileAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeConstantPoolIndex(attribute.sourceFileIndex)
             }
+            is ConstantValueAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeConstantPoolIndex(attribute.constantValueIndex)
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )

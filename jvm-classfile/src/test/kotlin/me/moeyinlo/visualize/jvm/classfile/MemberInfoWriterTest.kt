@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class MemberInfoWriterTest {
@@ -102,21 +103,60 @@ class MemberInfoWriterTest {
     }
 
     @Test
-    fun `rejects non-simple member attributes until their specific writer is available`() {
+    fun `field writer includes ConstantValue attributes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("ConstantValue", byteArrayOf()),
+                ConstantIntegerEntry(42),
+            ),
+        )
+        val bytes = ClassFileWriter.writeFields(
+            listOf(
+                FieldInfo(
+                    accessFlags = 0x0019,
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                    attributes = listOf(ConstantValueAttribute(ConstantPoolIndex(1), ConstantPoolIndex(2))),
+                ),
+            ),
+        )
+
+        val parsed = FieldInfoParser.parseFields(
+            reader = ClassFileByteReader(bytes, source = "field-constant-value.class"),
+            constantPool = constantPool,
+            attributeParsers = AttributeParserRegistry.of("ConstantValue" to ConstantValueAttributeParser),
+        )
+
+        val field = parsed.single()
+        assertEquals(0x0019, field.accessFlags)
+        val attribute = assertIs<ConstantValueAttribute>(field.attributes.single())
+        assertEquals(ConstantPoolIndex(1), attribute.nameIndex)
+        assertEquals(ConstantPoolIndex(2), attribute.constantValueIndex)
+    }
+
+    @Test
+    fun `rejects unsupported member attributes until their specific writer is available`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
-            ClassFileWriter.writeFields(
+            ClassFileWriter.writeMethods(
                 listOf(
-                    FieldInfo(
+                    MethodInfo(
                         accessFlags = 0x0001,
                         nameIndex = ConstantPoolIndex(3),
                         descriptorIndex = ConstantPoolIndex(4),
-                        attributes = listOf(ConstantValueAttribute(ConstantPoolIndex(5), ConstantPoolIndex(6))),
+                        attributes = listOf(
+                            CodeAttribute(
+                                nameIndex = ConstantPoolIndex(5),
+                                maxStack = 1,
+                                maxLocals = 1,
+                                code = byteArrayOf(0xB1.toByte()),
+                            ),
+                        ),
                     ),
                 ),
             )
         }
 
-        assertTrue(failure.message.orEmpty().contains("ConstantValueAttribute"), failure.message)
-        assertTrue(failure.message.orEmpty().contains("fields[0].attributes[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CodeAttribute"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0].attributes[0]"), failure.message)
     }
 }

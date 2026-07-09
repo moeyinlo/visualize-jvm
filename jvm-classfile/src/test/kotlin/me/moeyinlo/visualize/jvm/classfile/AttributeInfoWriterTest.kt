@@ -162,11 +162,61 @@ class AttributeInfoWriterTest {
     }
 
     @Test
-    fun `rejects non-simple known attributes until their specific writer is implemented`() {
+    fun `writes ConstantValue attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("ConstantValue", byteArrayOf()),
+                ConstantIntegerEntry(42),
+            ),
+        )
+        val attribute = ConstantValueAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            constantValueIndex = ConstantPoolIndex(2),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                2,
+                0,
+                2,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "constant-value-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("ConstantValue" to ConstantValueAttributeParser),
+            ownerPath = "fields[0]",
+        )
+
+        assertEquals(ConstantPoolIndex(2), assertIs<ConstantValueAttribute>(parsed.single()).constantValueIndex)
+    }
+
+    @Test
+    fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
-            ClassFileWriter.writeAttributes(listOf(ConstantValueAttribute(ConstantPoolIndex(1), ConstantPoolIndex(2))))
+            ClassFileWriter.writeAttributes(
+                listOf(
+                    CodeAttribute(
+                        nameIndex = ConstantPoolIndex(1),
+                        maxStack = 1,
+                        maxLocals = 1,
+                        code = byteArrayOf(0xB1.toByte()),
+                    ),
+                ),
+            )
         }
 
-        assertTrue(failure.message.orEmpty().contains("ConstantValueAttribute"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CodeAttribute"), failure.message)
     }
 }
