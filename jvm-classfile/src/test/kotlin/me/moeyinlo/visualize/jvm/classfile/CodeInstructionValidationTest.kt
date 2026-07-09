@@ -437,6 +437,29 @@ class CodeInstructionValidationTest {
         }
     }
 
+    @Test
+    fun `accepts invokevirtual operands that point to method references`() {
+        val attribute = parseCodeAttribute(
+            code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
+            constantPool = methodReferencePool(),
+        )
+
+        assertIs<CodeAttribute>(attribute)
+    }
+
+    @Test
+    fun `rejects invokevirtual operands that do not point to method references`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = fieldReferencePool(),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokevirtual"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Methodref"), failure.message)
+    }
+
     private fun parseCodeAttribute(
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),

@@ -97,6 +97,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.3, 4.9.1 | `Code` `newarray` primitive array `atype` static constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `ldc`, `ldc_w`, and `ldc2_w` loadable constant-pool operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` field access instruction `CONSTANT_Fieldref` operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
+| 4.7.3, 4.9.1 | `Code` `invokevirtual` `CONSTANT_Methodref` operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3 | `Code` `max_stack`, `max_locals`, `code_length`, and `code[]` header | `jvm-classfile` | `CodeAttributeHeaderParserTest` | IMPLEMENTED |
 | 4.7.3 | `Code` exception table entries and `catch_type` class references | `jvm-classfile` | `CodeExceptionTableParserTest` | IMPLEMENTED |
 | 4.7.3 | `Code` exception table `start_pc`, `end_pc`, and `handler_pc` instruction-boundary constraints | `jvm-classfile` | `CodeExceptionTableParserTest` | IMPLEMENTED |
