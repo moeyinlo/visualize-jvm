@@ -255,6 +255,21 @@ object ClassFileWriter {
             is ConstantValueAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeConstantPoolIndex(attribute.constantValueIndex)
             }
+            is CodeAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.maxStack)
+                writeU2(attribute.maxLocals)
+                val code = attribute.code
+                writeU4(code.size.toLong())
+                writeBytes(code)
+                writeU2(attribute.exceptionTable.size)
+                attribute.exceptionTable.forEach { handler ->
+                    writeU2(handler.startPc)
+                    writeU2(handler.endPc)
+                    writeU2(handler.handlerPc)
+                    writeOptionalConstantPoolIndex(handler.catchType)
+                }
+                writeAttributes(attribute.attributes, this, "$ownerPath.attributes")
+            }
             is StackMapTableAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeU2(attribute.entries.size)
                 attribute.entries.forEach { frame ->

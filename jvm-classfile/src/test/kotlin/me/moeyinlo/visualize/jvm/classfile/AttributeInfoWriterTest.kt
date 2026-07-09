@@ -1585,21 +1585,88 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes Code attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("java/lang/Throwable", byteArrayOf()),
+                ConstantUtf8Entry("VendorCodeMetadata", byteArrayOf()),
+            ),
+        )
+        val attribute = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(0x00, 0xBF.toByte()),
+            exceptionTable = listOf(
+                CodeExceptionHandler(
+                    startPc = 0,
+                    endPc = 1,
+                    handlerPc = 1,
+                    catchType = ConstantPoolIndex(2),
+                ),
+            ),
+            attributes = listOf(RawAttributeInfo(ConstantPoolIndex(4), byteArrayOf(9, 10))),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 30,
+                0, 1,
+                0, 1,
+                0, 0, 0, 2,
+                0x00, 0xBF,
+                0, 1,
+                0, 0,
+                0, 1,
+                0, 1,
+                0, 2,
+                0, 1,
+                0, 4,
+                0, 0, 0, 2,
+                9, 10,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "code-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("Code" to CodeAttributeParser),
+            ownerPath = "methods[0]",
+        )
+
+        val code = assertIs<CodeAttribute>(parsed.single())
+        assertEquals(1, code.maxStack)
+        assertEquals(1, code.maxLocals)
+        assertContentEquals(byteArrayOf(0x00, 0xBF.toByte()), code.code)
+        assertEquals(attribute.exceptionTable, code.exceptionTable)
+        val nested = assertIs<UnknownAttributeInfo>(code.attributes.single())
+        assertEquals(ConstantPoolIndex(4), nested.nameIndex)
+        assertEquals("VendorCodeMetadata", nested.name)
+        assertContentEquals(byteArrayOf(9, 10), nested.info)
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
+        class UnsupportedTestAttribute(
+            override val nameIndex: ConstantPoolIndex,
+        ) : AttributeInfo
+
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
                 listOf(
-                    CodeAttribute(
-                        nameIndex = ConstantPoolIndex(1),
-                        maxStack = 1,
-                        maxLocals = 1,
-                        code = byteArrayOf(0xB1.toByte()),
-                    ),
+                    UnsupportedTestAttribute(nameIndex = ConstantPoolIndex(1)),
                 ),
             )
         }
 
-        assertTrue(failure.message.orEmpty().contains("CodeAttribute"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("UnsupportedTestAttribute"), failure.message)
     }
 
     private fun bytes(vararg values: Int): ByteArray =

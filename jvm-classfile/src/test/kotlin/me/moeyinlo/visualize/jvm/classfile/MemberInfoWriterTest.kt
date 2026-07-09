@@ -3,9 +3,7 @@ package me.moeyinlo.visualize.jvm.classfile
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 class MemberInfoWriterTest {
     @Test
@@ -173,28 +171,43 @@ class MemberInfoWriterTest {
     }
 
     @Test
-    fun `rejects unsupported member attributes until their specific writer is available`() {
-        val failure = assertFailsWith<UnsupportedOperationException> {
-            ClassFileWriter.writeMethods(
-                listOf(
-                    MethodInfo(
-                        accessFlags = 0x0001,
-                        nameIndex = ConstantPoolIndex(3),
-                        descriptorIndex = ConstantPoolIndex(4),
-                        attributes = listOf(
-                            CodeAttribute(
-                                nameIndex = ConstantPoolIndex(5),
-                                maxStack = 1,
-                                maxLocals = 1,
-                                code = byteArrayOf(0xB1.toByte()),
-                            ),
+    fun `method writer includes Code attributes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+            ),
+        )
+        val bytes = ClassFileWriter.writeMethods(
+            listOf(
+                MethodInfo(
+                    accessFlags = 0x0001,
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                    attributes = listOf(
+                        CodeAttribute(
+                            nameIndex = ConstantPoolIndex(1),
+                            maxStack = 0,
+                            maxLocals = 1,
+                            code = byteArrayOf(0xB1.toByte()),
                         ),
                     ),
                 ),
-            )
-        }
+            ),
+        )
 
-        assertTrue(failure.message.orEmpty().contains("CodeAttribute"), failure.message)
-        assertTrue(failure.message.orEmpty().contains("methods[0].attributes[0]"), failure.message)
+        val parsed = MethodInfoParser.parseMethods(
+            reader = ClassFileByteReader(bytes, source = "method-code.class"),
+            constantPool = constantPool,
+            attributeParsers = AttributeParserRegistry.of("Code" to CodeAttributeParser),
+        )
+
+        val method = parsed.single()
+        assertEquals(0x0001, method.accessFlags)
+        val attribute = assertIs<CodeAttribute>(method.attributes.single())
+        assertEquals(0, attribute.maxStack)
+        assertEquals(1, attribute.maxLocals)
+        assertContentEquals(byteArrayOf(0xB1.toByte()), attribute.code)
+        assertEquals(emptyList(), attribute.exceptionTable)
+        assertEquals(emptyList(), attribute.attributes)
     }
 }
