@@ -75,12 +75,18 @@ class ConstantPool private constructor(
                 expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
             }
 
-            is ConstantFieldRefEntry -> validateMemberRef(owner, entry)
+            is ConstantFieldRefEntry -> {
+                validateMemberRef(owner, entry)
+                validateFieldDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex)
+            }
             is ConstantMethodRefEntry -> validateMemberRef(owner, entry)
             is ConstantInterfaceMethodRefEntry -> validateMemberRef(owner, entry)
             is ConstantMethodTypeEntry -> expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
             is ConstantMethodHandleEntry -> validateMethodHandle(owner, entry)
-            is ConstantDynamicEntry -> expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
+            is ConstantDynamicEntry -> {
+                expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
+                validateFieldDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex)
+            }
             is ConstantInvokeDynamicEntry -> expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
             is ConstantModuleEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
             is ConstantPackageEntry -> expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
@@ -90,6 +96,16 @@ class ConstantPool private constructor(
     private fun validateMemberRef(owner: ConstantPoolIndex, entry: ConstantMemberRefEntry) {
         expect<ConstantClassEntry>(owner, "class_index", entry.classIndex)
         expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
+    }
+
+    private fun validateFieldDescriptor(
+        owner: ConstantPoolIndex,
+        role: String,
+        nameAndTypeIndex: ConstantPoolIndex,
+    ) {
+        val nameAndType = expect<ConstantNameAndTypeEntry>(owner, role, nameAndTypeIndex)
+        val descriptor = expect<ConstantUtf8Entry>(nameAndTypeIndex, "descriptor_index", nameAndType.descriptorIndex)
+        DescriptorValidator.validateFieldDescriptor(owner, "descriptor_index", descriptor.value)
     }
 
     private fun validateMethodHandle(owner: ConstantPoolIndex, entry: ConstantMethodHandleEntry) {
