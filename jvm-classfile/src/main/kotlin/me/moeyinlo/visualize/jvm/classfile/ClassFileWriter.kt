@@ -308,6 +308,13 @@ object ClassFileWriter {
                     writeU2(entry.index)
                 }
             }
+            is MethodParametersAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU1(attribute.parameters.size)
+                attribute.parameters.forEach { parameter ->
+                    writeOptionalConstantPoolIndex(parameter.nameIndex)
+                    writeU2(parameter.accessFlags)
+                }
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )

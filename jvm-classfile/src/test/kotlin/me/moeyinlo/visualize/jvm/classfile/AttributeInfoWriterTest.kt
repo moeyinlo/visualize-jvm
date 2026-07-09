@@ -630,6 +630,57 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes MethodParameters attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("MethodParameters", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+            ),
+        )
+        val attribute = MethodParametersAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            parameters = listOf(
+                MethodParameter(nameIndex = ConstantPoolIndex(2), accessFlags = 0x9010),
+                MethodParameter(nameIndex = null, accessFlags = 0),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                9,
+                2,
+                0,
+                2,
+                0x90.toByte(),
+                0x10,
+                0,
+                0,
+                0,
+                0,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "method-parameters-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("MethodParameters" to MethodParametersAttributeParser),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
