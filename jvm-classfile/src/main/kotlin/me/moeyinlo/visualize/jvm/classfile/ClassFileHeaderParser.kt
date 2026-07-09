@@ -7,6 +7,12 @@ data class ClassFileMagic(
     val value: Long,
 )
 
+data class ClassFileVersion(
+    val offset: Int,
+    val minor: Int,
+    val major: Int,
+)
+
 object ClassFileHeaderParser {
     const val ExpectedMagic: Long = 0xCAFEBABEL
 
@@ -20,6 +26,13 @@ object ClassFileHeaderParser {
             )
         }
         return ClassFileMagic(offset = offset, value = actual)
+    }
+
+    fun parseVersion(reader: ClassFileByteReader): ClassFileVersion {
+        val offset = reader.position
+        val minor = reader.readU2()
+        val major = reader.readU2()
+        return ClassFileVersion(offset = offset, minor = minor, major = major)
     }
 
     private fun Long.toHexU4(): String = "0x" + toString(16).uppercase().padStart(8, '0')

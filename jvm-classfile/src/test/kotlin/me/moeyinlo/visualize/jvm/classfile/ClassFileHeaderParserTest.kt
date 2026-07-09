@@ -38,4 +38,29 @@ class ClassFileHeaderParserTest {
         assertTrue(failure.message.orEmpty().contains("expected=0xCAFEBABE"), failure.message)
         assertTrue(failure.message.orEmpty().contains("actual=0xCAFEBABF"), failure.message)
     }
+
+    @Test
+    fun `parses minor and major version after magic`() {
+        val reader = ClassFileByteReader(
+            byteArrayOf(
+                0xCA.toByte(),
+                0xFE.toByte(),
+                0xBA.toByte(),
+                0xBE.toByte(),
+                0,
+                1,
+                0,
+                70,
+            ),
+            source = "version.class",
+        )
+
+        ClassFileHeaderParser.parseMagic(reader)
+        val version = ClassFileHeaderParser.parseVersion(reader)
+
+        assertEquals(4, version.offset)
+        assertEquals(1, version.minor)
+        assertEquals(70, version.major)
+        assertEquals(8, reader.position)
+    }
 }
