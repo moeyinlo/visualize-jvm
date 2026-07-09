@@ -48,6 +48,32 @@ data class ConstantInterfaceMethodRefEntry(
     override val nameAndTypeIndex: ConstantPoolIndex,
 ) : ConstantMemberRefEntry
 
+enum class MethodHandleReferenceKind(val value: Int) {
+    GetField(1),
+    GetStatic(2),
+    PutField(3),
+    PutStatic(4),
+    InvokeVirtual(5),
+    InvokeStatic(6),
+    InvokeSpecial(7),
+    NewInvokeSpecial(8),
+    InvokeInterface(9),
+    ;
+
+    companion object {
+        fun fromValue(value: Int, source: String, offset: Int): MethodHandleReferenceKind =
+            entries.firstOrNull { it.value == value }
+                ?: throw ClassFileFormatException(
+                    "Invalid CONSTANT_MethodHandle reference_kind=$value source=$source offset=$offset expected=1..9",
+                )
+    }
+}
+
+data class ConstantMethodHandleEntry(
+    val referenceKind: MethodHandleReferenceKind,
+    val referenceIndex: ConstantPoolIndex,
+) : ConstantPoolEntry
+
 object ConstantPoolEntryParser {
     private const val ConstantUtf8Tag = 1
     private const val ConstantIntegerTag = 3
@@ -60,6 +86,7 @@ object ConstantPoolEntryParser {
     private const val ConstantMethodRefTag = 10
     private const val ConstantInterfaceMethodRefTag = 11
     private const val ConstantNameAndTypeTag = 12
+    private const val ConstantMethodHandleTag = 15
 
     fun parseEntry(reader: ClassFileByteReader): ConstantPoolEntry {
         val entryOffset = reader.position
@@ -79,6 +106,7 @@ object ConstantPoolEntryParser {
                 nameIndex = reader.readConstantPoolIndex(),
                 descriptorIndex = reader.readConstantPoolIndex(),
             )
+            ConstantMethodHandleTag -> parseMethodHandle(reader)
             else -> throw ClassFileFormatException(
                 "Unsupported constant pool tag source=${reader.source} offset=$entryOffset tag=$tag",
             )
@@ -104,6 +132,19 @@ object ConstantPoolEntryParser {
         reader.readConstantPoolIndex(),
         reader.readConstantPoolIndex(),
     )
+
+    private fun parseMethodHandle(reader: ClassFileByteReader): ConstantMethodHandleEntry {
+        val referenceKindOffset = reader.position
+        val referenceKind = MethodHandleReferenceKind.fromValue(
+            value = reader.readU1(),
+            source = reader.source,
+            offset = referenceKindOffset,
+        )
+        return ConstantMethodHandleEntry(
+            referenceKind = referenceKind,
+            referenceIndex = reader.readConstantPoolIndex(),
+        )
+    }
 
     private fun ClassFileByteReader.readU8Bits(): Long {
         val highBytes = readU4()

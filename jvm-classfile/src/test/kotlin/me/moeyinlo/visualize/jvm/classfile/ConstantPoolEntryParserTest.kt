@@ -171,6 +171,27 @@ class ConstantPoolEntryParserTest {
         assertEquals(ConstantPoolIndex(7), interfaceMethod.nameAndTypeIndex)
     }
 
+    @Test
+    fun `parses method handle constants with valid reference kinds`() {
+        val entry = assertIs<ConstantMethodHandleEntry>(
+            parse(byteArrayOf(15, 6, 0, 12)),
+        )
+
+        assertEquals(MethodHandleReferenceKind.InvokeStatic, entry.referenceKind)
+        assertEquals(ConstantPoolIndex(12), entry.referenceIndex)
+    }
+
+    @Test
+    fun `rejects method handle constants with invalid reference kinds`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parse(byteArrayOf(15, 10, 0, 12))
+        }
+
+        assertTrue(failure.message.orEmpty().contains("reference_kind=10"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("offset=1"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("1..9"), failure.message)
+    }
+
     private fun parse(bytes: ByteArray): ConstantPoolEntry =
         ConstantPoolEntryParser.parseEntry(ClassFileByteReader(bytes, source = "numeric.class"))
 }
