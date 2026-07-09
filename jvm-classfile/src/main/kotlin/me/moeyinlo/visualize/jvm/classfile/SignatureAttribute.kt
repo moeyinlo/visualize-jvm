@@ -30,6 +30,7 @@ object SignatureAttributeParser : AttributeBodyParser {
                     "expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
             )
         }
+        SignatureGrammarValidator.validateForOwner(context.ownerPath, entry.value)
         return SignatureAttribute(
             nameIndex = context.nameIndex,
             signatureIndex = signatureIndex,

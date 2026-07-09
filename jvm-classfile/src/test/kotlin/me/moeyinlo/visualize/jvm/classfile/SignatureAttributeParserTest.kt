@@ -55,4 +55,52 @@ class SignatureAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("signature_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Utf8"), failure.message)
     }
+
+    @Test
+    fun `rejects field Signature that is not a field signature`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 2),
+                    source = "bad-field-signature.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+                ownerPath = "fields[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("field signature"), failure.message)
+    }
+
+    @Test
+    fun `rejects primitive type argument in field Signature`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/util/List<I>;", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 2),
+                    source = "bad-field-signature-type-arg.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+                ownerPath = "fields[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("field signature"), failure.message)
+    }
 }
