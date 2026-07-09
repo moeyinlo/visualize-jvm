@@ -1,0 +1,63 @@
+package me.moeyinlo.visualize.jvm.classfile
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+class LocalVariableTypeTableAttributeParserTest {
+    @Test
+    fun `parses LocalVariableTypeTable entries`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LocalVariableTypeTable", byteArrayOf()),
+                ConstantUtf8Entry("list", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/util/List<Ljava/lang/String;>;", byteArrayOf()),
+            ),
+        )
+
+        val attributes = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(
+                byteArrayOf(0, 1, 0, 1, 0, 0, 0, 12, 0, 1, 0, 0, 0, 7, 0, 2, 0, 3, 0, 2),
+                source = "local-variable-type-table.class",
+            ),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("LocalVariableTypeTable" to LocalVariableTypeTableAttributeParser),
+            ownerPath = "methods[0].attributes[0]",
+        )
+
+        val entry = assertIs<LocalVariableTypeTableAttribute>(attributes.single()).entries.single()
+        assertEquals(0, entry.startPc)
+        assertEquals(7, entry.length)
+        assertEquals(ConstantPoolIndex(2), entry.nameIndex)
+        assertEquals(ConstantPoolIndex(3), entry.signatureIndex)
+        assertEquals(2, entry.index)
+    }
+
+    @Test
+    fun `rejects LocalVariableTypeTable signature index that is not UTF-8`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LocalVariableTypeTable", byteArrayOf()),
+                ConstantUtf8Entry("list", byteArrayOf()),
+                ConstantIntegerEntry(1),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 12, 0, 1, 0, 0, 0, 7, 0, 2, 0, 3, 0, 2),
+                    source = "bad-local-variable-type-table.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("LocalVariableTypeTable" to LocalVariableTypeTableAttributeParser),
+                ownerPath = "methods[0].attributes[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("signature_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Utf8"), failure.message)
+    }
+}
