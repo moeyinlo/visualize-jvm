@@ -279,6 +279,16 @@ private object CodeInstructionValidator {
                 }
                 3
             }
+            0xBC -> {
+                ensureAvailable(code, pc, 2, ownerPath, mnemonic(opcode))
+                val atype = code.u1(pc + 1)
+                if (atype !in 4..11) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] newarray atype=$atype: expected one of 4..11",
+                    )
+                }
+                2
+            }
             0xC0, 0xC1 -> {
                 ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
                 validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
@@ -526,6 +536,7 @@ private object CodeInstructionValidator {
             0xAA -> "tableswitch"
             0xAB -> "lookupswitch"
             0xBB -> "new"
+            0xBC -> "newarray"
             0xBD -> "anewarray"
             0xC4 -> "wide"
             0xC5 -> "multianewarray"

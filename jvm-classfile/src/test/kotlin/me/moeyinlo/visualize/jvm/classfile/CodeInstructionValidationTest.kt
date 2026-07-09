@@ -240,6 +240,25 @@ class CodeInstructionValidationTest {
         assertTrue(failure.message.orEmpty().contains("array dimensions"), failure.message)
     }
 
+    @Test
+    fun `accepts newarray instructions with primitive array type codes`() {
+        val code = (4..11).fold(byteArrayOf()) { bytes, atype ->
+            bytes + byteArrayOf(0xBC.toByte(), atype.toByte())
+        } + byteArrayOf(0xB1.toByte())
+
+        assertIs<CodeAttribute>(parseCodeAttribute(code))
+    }
+
+    @Test
+    fun `rejects newarray instructions with unsupported array type codes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(byteArrayOf(0xBC.toByte(), 3, 0xB1.toByte()))
+        }
+
+        assertTrue(failure.message.orEmpty().contains("newarray"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("atype"), failure.message)
+    }
+
     private fun parseCodeAttribute(
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
