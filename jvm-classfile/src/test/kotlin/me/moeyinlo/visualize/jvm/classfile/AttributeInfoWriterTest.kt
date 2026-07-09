@@ -254,6 +254,127 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes InnerClasses attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("InnerClasses", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Outer\$Inner", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("pkg/Outer", byteArrayOf()),
+                ConstantUtf8Entry("Inner", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(8)),
+                ConstantUtf8Entry("pkg/Outer\$1", byteArrayOf()),
+            ),
+        )
+        val attribute = InnerClassesAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            classes = listOf(
+                InnerClassEntry(
+                    innerClassInfoIndex = ConstantPoolIndex(2),
+                    outerClassInfoIndex = ConstantPoolIndex(4),
+                    innerNameIndex = ConstantPoolIndex(6),
+                    innerClassAccessFlags = 0x0009,
+                ),
+                InnerClassEntry(
+                    innerClassInfoIndex = ConstantPoolIndex(7),
+                    outerClassInfoIndex = null,
+                    innerNameIndex = null,
+                    innerClassAccessFlags = 0,
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                18,
+                0,
+                2,
+                0,
+                2,
+                0,
+                4,
+                0,
+                6,
+                0,
+                9,
+                0,
+                7,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "inner-classes-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("InnerClasses" to InnerClassesAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
+    fun `writes EnclosingMethod attribute with absent method index`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("EnclosingMethod", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Outer", byteArrayOf()),
+            ),
+        )
+        val attribute = EnclosingMethodAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            classIndex = ConstantPoolIndex(2),
+            methodIndex = null,
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                4,
+                0,
+                2,
+                0,
+                0,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "enclosing-method-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("EnclosingMethod" to EnclosingMethodAttributeParser),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(

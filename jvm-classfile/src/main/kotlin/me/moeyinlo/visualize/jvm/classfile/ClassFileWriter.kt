@@ -236,6 +236,9 @@ object ClassFileWriter {
     private fun ClassFileByteWriter.writeConstantPoolIndex(index: ConstantPoolIndex): ClassFileByteWriter =
         writeU2(index.value)
 
+    private fun ClassFileByteWriter.writeOptionalConstantPoolIndex(index: ConstantPoolIndex?): ClassFileByteWriter =
+        writeU2(index?.value ?: 0)
+
     private fun writeAttribute(
         attribute: AttributeInfo,
         writer: ClassFileByteWriter,
@@ -257,6 +260,19 @@ object ClassFileWriter {
                 attribute.exceptionIndexTable.forEach { exceptionIndex ->
                     writeConstantPoolIndex(exceptionIndex)
                 }
+            }
+            is InnerClassesAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.classes.size)
+                attribute.classes.forEach { entry ->
+                    writeConstantPoolIndex(entry.innerClassInfoIndex)
+                    writeOptionalConstantPoolIndex(entry.outerClassInfoIndex)
+                    writeOptionalConstantPoolIndex(entry.innerNameIndex)
+                    writeU2(entry.innerClassAccessFlags)
+                }
+            }
+            is EnclosingMethodAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeConstantPoolIndex(attribute.classIndex)
+                writeOptionalConstantPoolIndex(attribute.methodIndex)
             }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
