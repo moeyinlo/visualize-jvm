@@ -102,7 +102,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.22 | `AnnotationDefault` | `jvm-classfile` | `AnnotationDefaultAttributeParserTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` classfile structure | `jvm-classfile`, `jvm-runtime` | `BootstrapMethodsAttributeParserTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` bootstrap argument resolution semantics | `jvm-runtime` | TBD | PENDING |
-| 4.7.24 | `MethodParameters` | `jvm-classfile` | TBD | PENDING |
+| 4.7.24 | `MethodParameters` classfile structure | `jvm-classfile` | `MethodParametersAttributeParserTest` | IMPLEMENTED |
+| 4.7.24 | `MethodParameters` formal parameter name grammar | `jvm-classfile` | TBD | PENDING |
 | 4.7.25 | `Module` | `jvm-classfile` | TBD | PENDING |
 | 4.7.26 | `ModulePackages` | `jvm-classfile` | TBD | PENDING |
 | 4.7.27 | `ModuleMainClass` | `jvm-classfile` | TBD | PENDING |
