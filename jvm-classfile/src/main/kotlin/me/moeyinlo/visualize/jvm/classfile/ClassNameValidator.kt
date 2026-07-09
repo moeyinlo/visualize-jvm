@@ -52,6 +52,30 @@ object ClassNameValidator {
         }
     }
 
+    fun validateMethodName(
+        owner: ConstantPoolIndex,
+        role: String,
+        value: String,
+        allowInit: Boolean,
+    ) {
+        validateUnqualifiedName(owner, role, value)
+        when (value) {
+            "<init>" -> {
+                if (!allowInit) {
+                    failMethodName(owner, role, value, "special name <init> is not permitted here")
+                }
+                return
+            }
+
+            "<clinit>" -> failMethodName(owner, role, value, "special name <clinit> is not permitted here")
+        }
+
+        val forbidden = value.firstOrNull { it == '<' || it == '>' }
+        if (forbidden != null) {
+            failMethodName(owner, role, value, "contains forbidden character '$forbidden'")
+        }
+    }
+
     private fun fail(
         owner: ConstantPoolIndex,
         role: String,
@@ -72,5 +96,16 @@ object ClassNameValidator {
         throw ClassFileFormatException(
             "Invalid constant pool reference from $owner $role: " +
                 "'$value' is not a valid unqualified name: $reason",
+        )
+
+    private fun failMethodName(
+        owner: ConstantPoolIndex,
+        role: String,
+        value: String,
+        reason: String,
+    ): Nothing =
+        throw ClassFileFormatException(
+            "Invalid constant pool reference from $owner $role: " +
+                "'$value' is not a valid method name: $reason",
         )
 }

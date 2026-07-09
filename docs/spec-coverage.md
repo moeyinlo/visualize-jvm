@@ -61,7 +61,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.2.1 | Binary class and interface names in internal form | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.1 | Array class names in `CONSTANT_Class_info` | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.2 | Generic unqualified name syntax | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
-| 4.2.2 | Method-specific `<init>` and `<clinit>` name constraints | `jvm-classfile`, `jvm-verifier` | TBD | PENDING |
+| 4.2.2 | Method-specific `<init>` and `<clinit>` name constraints | `jvm-classfile`, `jvm-verifier` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.3 | Module and package names | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.3.2 | Field descriptors | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.3.3 | Method descriptors | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |

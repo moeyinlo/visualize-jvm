@@ -81,11 +81,11 @@ class ConstantPool private constructor(
             }
             is ConstantMethodRefEntry -> {
                 validateMemberRef(owner, entry)
-                validateMethodDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex)
+                validateMethodDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex, allowInit = true)
             }
             is ConstantInterfaceMethodRefEntry -> {
                 validateMemberRef(owner, entry)
-                validateMethodDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex)
+                validateMethodDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex, allowInit = false)
             }
             is ConstantMethodTypeEntry -> {
                 val descriptor = expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
@@ -98,7 +98,7 @@ class ConstantPool private constructor(
             }
             is ConstantInvokeDynamicEntry -> {
                 expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
-                validateMethodDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex)
+                validateMethodDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex, allowInit = false)
             }
             is ConstantModuleEntry -> {
                 val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
@@ -131,10 +131,23 @@ class ConstantPool private constructor(
         owner: ConstantPoolIndex,
         role: String,
         nameAndTypeIndex: ConstantPoolIndex,
+        allowInit: Boolean,
     ) {
         val nameAndType = expect<ConstantNameAndTypeEntry>(owner, role, nameAndTypeIndex)
+        val name = expect<ConstantUtf8Entry>(nameAndTypeIndex, "name_index", nameAndType.nameIndex)
         val descriptor = expect<ConstantUtf8Entry>(nameAndTypeIndex, "descriptor_index", nameAndType.descriptorIndex)
-        DescriptorValidator.validateMethodDescriptor(owner, "descriptor_index", descriptor.value)
+        ClassNameValidator.validateMethodName(owner, "name_index", name.value, allowInit)
+        if (name.value == "<init>") {
+            DescriptorValidator.validateMethodDescriptor(owner, "descriptor_index", descriptor.value)
+            if (!descriptor.value.endsWith("V")) {
+                throw ClassFileFormatException(
+                    "Invalid constant pool reference from $owner descriptor_index: " +
+                        "method name <init> must have a void method descriptor",
+                )
+            }
+        } else {
+            DescriptorValidator.validateMethodDescriptor(owner, "descriptor_index", descriptor.value)
+        }
     }
 
     private fun validateMethodHandle(owner: ConstantPoolIndex, entry: ConstantMethodHandleEntry) {

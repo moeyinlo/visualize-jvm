@@ -235,6 +235,105 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `accepts instance initialization method references returning void`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("Owner"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("<init>"),
+                utf8("()V"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        pool.validateReferences()
+    }
+
+    @Test
+    fun `rejects instance initialization method references returning a value`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("Owner"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("<init>"),
+                utf8("()I"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("<init>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("void"), failure.message)
+    }
+
+    @Test
+    fun `rejects class initialization method references`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("Owner"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("<clinit>"),
+                utf8("()V"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("<clinit>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method name"), failure.message)
+    }
+
+    @Test
+    fun `rejects non special method references containing angle brackets`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("Owner"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("bad<name>"),
+                utf8("()V"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("forbidden character '<'"), failure.message)
+    }
+
+    @Test
+    fun `rejects interface method references to instance initialization methods`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("Owner"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("<init>"),
+                utf8("()V"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("<init>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("not permitted"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid method descriptors on method type constants`() {
         val pool = ConstantPool.fromEntries(
             listOf(
