@@ -87,6 +87,89 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects concrete methods without exactly one Code attribute`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseValidatedMethods(
+                methodName = "run",
+                descriptor = "()V",
+                accessFlags = 0x0001,
+                attributes = emptyList(),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("exactly one Code attribute"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 0"), failure.message)
+    }
+
+    @Test
+    fun `rejects concrete methods with duplicate Code attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseValidatedMethods(
+                methodName = "run",
+                descriptor = "()V",
+                accessFlags = 0x0001,
+                attributes = listOf(codeAttribute(), codeAttribute()),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("exactly one Code attribute"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
+
+    @Test
+    fun `rejects native methods with Code attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseValidatedMethods(
+                methodName = "run",
+                descriptor = "()V",
+                accessFlags = 0x0101,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ACC_NATIVE"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("must not have a Code attribute"), failure.message)
+    }
+
+    @Test
+    fun `accepts native methods without Code attributes`() {
+        val methods = parseValidatedMethods(
+            methodName = "run",
+            descriptor = "()V",
+            accessFlags = 0x0101,
+            attributes = emptyList(),
+        )
+
+        assertEquals(0x0101, methods.single().accessFlags)
+    }
+
+    @Test
+    fun `accepts abstract methods without Code attributes`() {
+        val methods = parseValidatedMethods(
+            methodName = "run",
+            descriptor = "()V",
+            accessFlags = 0x0401,
+            attributes = emptyList(),
+        )
+
+        assertEquals(0x0401, methods.single().accessFlags)
+    }
+
+    @Test
+    fun `requires Code attributes for class initialization methods`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseValidatedMethods(
+                methodName = "<clinit>",
+                descriptor = "()V",
+                accessFlags = 0x0108,
+                attributes = emptyList(),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("<clinit>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("exactly one Code attribute"), failure.message)
+    }
+
+    @Test
     fun `rejects non special method names containing angle brackets`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseValidatedMethods(methodName = "bad<name>", descriptor = "()V")
@@ -102,8 +185,8 @@ class MethodInfoParserTest {
             MethodInfoParser.parseMethods(
                 reader = ClassFileByteReader(
                     methodTable(
-                        methodEntry(accessFlags = 0x0001),
-                        methodEntry(accessFlags = 0x0002),
+                        methodEntry(accessFlags = 0x0001, attributes = listOf(codeAttribute())),
+                        methodEntry(accessFlags = 0x0002, attributes = listOf(codeAttribute())),
                     ),
                     source = "bad-method.class",
                 ),
@@ -225,10 +308,11 @@ class MethodInfoParserTest {
         accessFlags: Int = 0x0001,
         classKind: ClassFileKind = ClassFileKind.Class,
         majorVersion: Int = 70,
+        attributes: List<ByteArray> = listOf(codeAttribute()),
     ): List<MethodInfo> =
         MethodInfoParser.parseMethods(
             reader = ClassFileByteReader(
-                methodTable(methodEntry(accessFlags = accessFlags)),
+                methodTable(methodEntry(accessFlags = accessFlags, attributes = attributes)),
                 source = "validated-methods.class",
             ),
             constantPool = methodValidationPool(methodName, descriptor),
@@ -245,6 +329,7 @@ class MethodInfoParserTest {
             listOf(
                 ConstantUtf8Entry(name, name.encodeToByteArray()),
                 ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
+                ConstantUtf8Entry("Code", "Code".encodeToByteArray()),
             ),
         )
 
@@ -255,6 +340,7 @@ class MethodInfoParserTest {
         accessFlags: Int,
         nameIndex: Int = 1,
         descriptorIndex: Int = 2,
+        attributes: List<ByteArray> = emptyList(),
     ): ByteArray =
         byteArrayOf(
             (accessFlags ushr 8).toByte(),
@@ -264,6 +350,34 @@ class MethodInfoParserTest {
             (descriptorIndex ushr 8).toByte(),
             descriptorIndex.toByte(),
             0,
+            attributes.size.toByte(),
+        ) + attributes.fold(byteArrayOf()) { bytes, attribute -> bytes + attribute }
+
+    private fun codeAttribute(): ByteArray {
+        val body = byteArrayOf(
             0,
+            0,
+            0,
+            1,
+        ) + intBytes(1) +
+            byteArrayOf(
+                0xB1.toByte(),
+                0,
+                0,
+                0,
+                0,
+            )
+        return byteArrayOf(
+            0,
+            3,
+        ) + intBytes(body.size) + body
+    }
+
+    private fun intBytes(value: Int): ByteArray =
+        byteArrayOf(
+            (value ushr 24).toByte(),
+            (value ushr 16).toByte(),
+            (value ushr 8).toByte(),
+            value.toByte(),
         )
 }

@@ -78,6 +78,7 @@ object MethodInfoParser {
             DescriptorValidator.validateMethodDescriptor(method.descriptorIndex, "$ownerPath.descriptor_index", descriptor.value)
             validateSpecialMethodDescriptor(name.value, descriptor.value, method.descriptorIndex, ownerPath, majorVersion)
             validateAccessFlags(method.accessFlags, name.value, classKind, ownerPath, majorVersion)
+            validateCodeAttributeCardinality(method, constantPool, name.value, ownerPath)
 
             val duplicateOf = seenMethods.putIfAbsent(name.value to descriptor.value, index)
             if (duplicateOf != null) {
@@ -86,6 +87,45 @@ object MethodInfoParser {
                         "name='${name.value}' descriptor='${descriptor.value}' already used by methods[$duplicateOf]",
                 )
             }
+        }
+    }
+
+    private fun validateCodeAttributeCardinality(
+        method: MethodInfo,
+        constantPool: ConstantPool,
+        methodName: String,
+        ownerPath: String,
+    ) {
+        val codeAttributeCount = method.attributes.countIndexed { attributeIndex, attribute ->
+            val name = expectUtf8(
+                constantPool = constantPool,
+                index = attribute.nameIndex,
+                role = "$ownerPath.attributes[$attributeIndex].attribute_name_index",
+            )
+            name.value == "Code"
+        }
+        val isClassOrInterfaceInitializationMethod = methodName == "<clinit>"
+        val mayNotHaveCode = !isClassOrInterfaceInitializationMethod &&
+            (has(method.accessFlags, MethodAccessFlag.Native) || has(method.accessFlags, MethodAccessFlag.Abstract))
+
+        if (mayNotHaveCode) {
+            if (codeAttributeCount != 0) {
+                val reason = when {
+                    has(method.accessFlags, MethodAccessFlag.Native) -> "ACC_NATIVE"
+                    else -> "ACC_ABSTRACT"
+                }
+                throw ClassFileFormatException(
+                    "Invalid $ownerPath.attributes: $reason method '$methodName' must not have a Code attribute",
+                )
+            }
+            return
+        }
+
+        if (codeAttributeCount != 1) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.attributes: method '$methodName' must have exactly one Code attribute " +
+                    "but found $codeAttributeCount",
+            )
         }
     }
 
@@ -220,6 +260,16 @@ object MethodInfoParser {
             )
         }
         return entry
+    }
+
+    private inline fun <T> Iterable<T>.countIndexed(predicate: (Int, T) -> Boolean): Int {
+        var count = 0
+        forEachIndexed { index, value ->
+            if (predicate(index, value)) {
+                count += 1
+            }
+        }
+        return count
     }
 
     private fun has(accessFlags: Int, flag: MethodAccessFlag): Boolean =

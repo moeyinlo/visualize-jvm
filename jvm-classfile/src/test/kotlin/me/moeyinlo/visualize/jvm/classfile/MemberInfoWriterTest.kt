@@ -148,7 +148,7 @@ class MemberInfoWriterTest {
         val bytes = ClassFileWriter.writeMethods(
             listOf(
                 MethodInfo(
-                    accessFlags = 0x0001,
+                    accessFlags = 0x0101,
                     nameIndex = ConstantPoolIndex(4),
                     descriptorIndex = ConstantPoolIndex(5),
                     attributes = listOf(
@@ -168,7 +168,7 @@ class MemberInfoWriterTest {
         )
 
         val method = parsed.single()
-        assertEquals(0x0001, method.accessFlags)
+        assertEquals(0x0101, method.accessFlags)
         val attribute = assertIs<ExceptionsAttribute>(method.attributes.single())
         assertEquals(ConstantPoolIndex(1), attribute.nameIndex)
         assertEquals(listOf(ConstantPoolIndex(2)), attribute.exceptionIndexTable)
