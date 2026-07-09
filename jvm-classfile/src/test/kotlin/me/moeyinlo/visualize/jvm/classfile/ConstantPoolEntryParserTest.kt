@@ -192,6 +192,15 @@ class ConstantPoolEntryParserTest {
         assertTrue(failure.message.orEmpty().contains("1..9"), failure.message)
     }
 
+    @Test
+    fun `parses method type constants as descriptor indexes`() {
+        val entry = assertIs<ConstantMethodTypeEntry>(
+            parse(byteArrayOf(16, 0, 13)),
+        )
+
+        assertEquals(ConstantPoolIndex(13), entry.descriptorIndex)
+    }
+
     private fun parse(bytes: ByteArray): ConstantPoolEntry =
         ConstantPoolEntryParser.parseEntry(ClassFileByteReader(bytes, source = "numeric.class"))
 }

@@ -74,6 +74,8 @@ data class ConstantMethodHandleEntry(
     val referenceIndex: ConstantPoolIndex,
 ) : ConstantPoolEntry
 
+data class ConstantMethodTypeEntry(val descriptorIndex: ConstantPoolIndex) : ConstantPoolEntry
+
 object ConstantPoolEntryParser {
     private const val ConstantUtf8Tag = 1
     private const val ConstantIntegerTag = 3
@@ -87,6 +89,7 @@ object ConstantPoolEntryParser {
     private const val ConstantInterfaceMethodRefTag = 11
     private const val ConstantNameAndTypeTag = 12
     private const val ConstantMethodHandleTag = 15
+    private const val ConstantMethodTypeTag = 16
 
     fun parseEntry(reader: ClassFileByteReader): ConstantPoolEntry {
         val entryOffset = reader.position
@@ -107,6 +110,7 @@ object ConstantPoolEntryParser {
                 descriptorIndex = reader.readConstantPoolIndex(),
             )
             ConstantMethodHandleTag -> parseMethodHandle(reader)
+            ConstantMethodTypeTag -> ConstantMethodTypeEntry(reader.readConstantPoolIndex())
             else -> throw ClassFileFormatException(
                 "Unsupported constant pool tag source=${reader.source} offset=$entryOffset tag=$tag",
             )
