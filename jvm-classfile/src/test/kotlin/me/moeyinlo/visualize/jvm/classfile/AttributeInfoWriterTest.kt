@@ -1257,6 +1257,101 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes RuntimeVisibleParameterAnnotations attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleParameterAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/Param;", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantIntegerEntry(1),
+            ),
+        )
+        val attribute = RuntimeVisibleParameterAnnotationsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            parameterAnnotations = listOf(
+                ParameterAnnotations(
+                    annotations = listOf(
+                        AnnotationInfo(
+                            typeIndex = ConstantPoolIndex(2),
+                            elementValuePairs = listOf(
+                                ElementValuePair(ConstantPoolIndex(3), ElementValue.Const('Z', ConstantPoolIndex(4))),
+                            ),
+                        ),
+                    ),
+                ),
+                ParameterAnnotations(annotations = emptyList()),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 14,
+                2,
+                0, 1,
+                0, 2,
+                0, 1,
+                0, 3,
+                'Z'.code,
+                0, 4,
+                0, 0,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "runtime-visible-parameter-annotations-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "RuntimeVisibleParameterAnnotations" to RuntimeVisibleParameterAnnotationsAttributeParser,
+            ),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
+    fun `writes RuntimeInvisibleParameterAnnotations attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeInvisibleParameterAnnotations", byteArrayOf()),
+            ),
+        )
+        val attribute = RuntimeInvisibleParameterAnnotationsAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            parameterAnnotations = listOf(ParameterAnnotations(annotations = emptyList())),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 3,
+                1,
+                0, 0,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "runtime-invisible-parameter-annotations-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "RuntimeInvisibleParameterAnnotations" to RuntimeInvisibleParameterAnnotationsAttributeParser,
+            ),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(

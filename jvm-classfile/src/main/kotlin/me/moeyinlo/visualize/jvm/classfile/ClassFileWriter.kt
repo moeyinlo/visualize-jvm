@@ -283,6 +283,12 @@ object ClassFileWriter {
             is RuntimeInvisibleAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeAnnotations(attribute.annotations)
             }
+            is RuntimeVisibleParameterAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeParameterAnnotations(attribute.parameterAnnotations)
+            }
+            is RuntimeInvisibleParameterAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeParameterAnnotations(attribute.parameterAnnotations)
+            }
             is BootstrapMethodsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeU2(attribute.bootstrapMethods.size)
                 attribute.bootstrapMethods.forEach { bootstrapMethod ->
@@ -407,6 +413,16 @@ object ClassFileWriter {
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
+        }
+    }
+
+    private fun ClassFileByteWriter.writeParameterAnnotations(parameterAnnotations: List<ParameterAnnotations>) {
+        writeU1(parameterAnnotations.size)
+        parameterAnnotations.forEach { parameter ->
+            writeU2(parameter.annotations.size)
+            parameter.annotations.forEach { annotation ->
+                writeAnnotation(annotation)
+            }
         }
     }
 
