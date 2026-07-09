@@ -84,14 +84,14 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.5 | `Exceptions` | `jvm-classfile` | `ExceptionsAttributeParserTest` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
-| 4.7.8 | `Synthetic` | `jvm-classfile` | TBD | PENDING |
+| 4.7.8 | `Synthetic` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
 | 4.7.9 | `Signature` and signature grammar | `jvm-classfile` | TBD | PENDING |
-| 4.7.10 | `SourceFile` | `jvm-classfile` | TBD | PENDING |
+| 4.7.10 | `SourceFile` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` | `jvm-classfile` | TBD | PENDING |
 | 4.7.12 | `LineNumberTable` | `jvm-classfile` | TBD | PENDING |
 | 4.7.13 | `LocalVariableTable` | `jvm-classfile` | TBD | PENDING |
 | 4.7.14 | `LocalVariableTypeTable` | `jvm-classfile` | TBD | PENDING |
-| 4.7.15 | `Deprecated` | `jvm-classfile` | TBD | PENDING |
+| 4.7.15 | `Deprecated` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
 | 4.7.16 | `RuntimeVisibleAnnotations` | `jvm-classfile` | TBD | PENDING |
 | 4.7.17 | `RuntimeInvisibleAnnotations` | `jvm-classfile` | TBD | PENDING |
 | 4.7.18 | `RuntimeVisibleParameterAnnotations` | `jvm-classfile` | TBD | PENDING |
