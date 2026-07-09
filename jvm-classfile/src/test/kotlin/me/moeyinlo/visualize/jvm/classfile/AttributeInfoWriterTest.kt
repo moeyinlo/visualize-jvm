@@ -417,6 +417,57 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes LineNumberTable attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LineNumberTable", byteArrayOf()),
+            ),
+        )
+        val attribute = LineNumberTableAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            entries = listOf(
+                LineNumberTableEntry(startPc = 0, lineNumber = 10),
+                LineNumberTableEntry(startPc = 5, lineNumber = 20),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                10,
+                0,
+                2,
+                0,
+                0,
+                0,
+                10,
+                0,
+                5,
+                0,
+                20,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "line-number-table-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("LineNumberTable" to LineNumberTableAttributeParser),
+            ownerPath = "methods[0].attributes[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(

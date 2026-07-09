@@ -278,6 +278,13 @@ object ClassFileWriter {
                 attribute.nameIndex,
                 attribute.debugExtension,
             )
+            is LineNumberTableAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.entries.size)
+                attribute.entries.forEach { entry ->
+                    writeU2(entry.startPc)
+                    writeU2(entry.lineNumber)
+                }
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )
