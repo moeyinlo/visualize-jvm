@@ -134,12 +134,116 @@ class CodeInstructionValidationTest {
         assertTrue(failure.message.orEmpty().contains("unsupported"), failure.message)
     }
 
-    private fun parseCodeAttribute(code: ByteArray): AttributeInfo {
-        val constantPool = ConstantPool.fromEntries(
-            listOf(
-                ConstantUtf8Entry("Code", byteArrayOf()),
+    @Test
+    fun `accepts class reference instruction operands that point to class constants`() {
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(
+                    0xBB.toByte(),
+                    0,
+                    2,
+                    0xBD.toByte(),
+                    0,
+                    2,
+                    0xC0.toByte(),
+                    0,
+                    2,
+                    0xC1.toByte(),
+                    0,
+                    2,
+                    0xB1.toByte(),
+                ),
+                constantPool = constantPoolWithClass("java/lang/String"),
             ),
         )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(
+                    0xC5.toByte(),
+                    0,
+                    2,
+                    2,
+                    0xB1.toByte(),
+                ),
+                constantPool = constantPoolWithClass("[[I"),
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects class reference instruction operands that do not point to class constants`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBB.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantIntegerEntry(1),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("new"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class"), failure.message)
+    }
+
+    @Test
+    fun `rejects new instructions that reference array classes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBB.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = constantPoolWithClass("[Ljava/lang/String;"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("new"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("array type"), failure.message)
+    }
+
+    @Test
+    fun `rejects anewarray instructions that would create more than 255 dimensions`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBD.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = constantPoolWithClass("[".repeat(255) + "Ljava/lang/String;"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("anewarray"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("255"), failure.message)
+    }
+
+    @Test
+    fun `rejects multianewarray instructions whose dimensions operand is zero`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xC5.toByte(), 0, 2, 0, 0xB1.toByte()),
+                constantPool = constantPoolWithClass("[I"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("multianewarray"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("dimensions"), failure.message)
+    }
+
+    @Test
+    fun `rejects multianewarray instructions that create more dimensions than the array class has`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xC5.toByte(), 0, 2, 2, 0xB1.toByte()),
+                constantPool = constantPoolWithClass("[I"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("multianewarray"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("array dimensions"), failure.message)
+    }
+
+    private fun parseCodeAttribute(
+        code: ByteArray,
+        constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
+    ): AttributeInfo {
         return AttributeInfoParser.parseAttributes(
             reader = ClassFileByteReader(
                 codeAttributeBytes(code),
@@ -150,6 +254,15 @@ class CodeInstructionValidationTest {
             ownerPath = "methods[0]",
         ).single()
     }
+
+    private fun constantPoolWithClass(name: String): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry(name, name.encodeToByteArray()),
+            ),
+        )
 
     private fun codeAttributeBytes(code: ByteArray): ByteArray {
         val attributeLength = 12 + code.size

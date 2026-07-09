@@ -38,7 +38,7 @@ object CodeAttributeParser : AttributeBodyParser {
         }
 
         val code = context.reader.readSlice(codeLength.toInt())
-        val instructionLayout = CodeInstructionValidator.validate(code, context.ownerPath)
+        val instructionLayout = CodeInstructionValidator.validate(code, context.ownerPath, context.constantPool)
         val exceptionTable = parseExceptionTable(context, code.size, instructionLayout)
         val attributes = AttributeInfoParser.parseAttributes(
             reader = context.reader,
@@ -206,6 +206,7 @@ private object CodeInstructionValidator {
     fun validate(
         code: ByteArray,
         ownerPath: String,
+        constantPool: ConstantPool,
     ): CodeInstructionLayout {
         val instructionOffsets = mutableSetOf<Int>()
         val modifiedOpcodeOffsets = mutableSetOf<Int>()
@@ -215,7 +216,7 @@ private object CodeInstructionValidator {
         while (pc < code.size) {
             instructionOffsets += pc
             val opcode = code.u1(pc)
-            val length = instructionLength(code, pc, ownerPath, branchTargets, modifiedOpcodeOffsets)
+            val length = instructionLength(code, pc, ownerPath, constantPool, branchTargets, modifiedOpcodeOffsets)
             if (pc + length > code.size) {
                 throw ClassFileFormatException(
                     "Invalid $ownerPath.code[$pc] ${mnemonic(opcode)}: " +
@@ -244,6 +245,7 @@ private object CodeInstructionValidator {
         code: ByteArray,
         pc: Int,
         ownerPath: String,
+        constantPool: ConstantPool,
         branchTargets: MutableList<BranchTarget>,
         modifiedOpcodeOffsets: MutableSet<Int>,
     ): Int {
@@ -257,6 +259,49 @@ private object CodeInstructionValidator {
             0xAA -> parseTableSwitch(code, pc, ownerPath, branchTargets)
             0xAB -> parseLookupSwitch(code, pc, ownerPath, branchTargets)
             0xC4 -> parseWide(code, pc, ownerPath, modifiedOpcodeOffsets)
+            0xBB -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                val className = validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
+                if (className.startsWith("[")) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] new: must not reference an array type '$className'",
+                    )
+                }
+                3
+            }
+            0xBD -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                val className = validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
+                if (arrayDimensions(className) >= 255) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] anewarray: must not create an array of more than 255 dimensions",
+                    )
+                }
+                3
+            }
+            0xC0, 0xC1 -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
+                3
+            }
+            0xC5 -> {
+                ensureAvailable(code, pc, 4, ownerPath, mnemonic(opcode))
+                val className = validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
+                val dimensions = code.u1(pc + 3)
+                if (dimensions == 0) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] multianewarray: dimensions operand must not be zero",
+                    )
+                }
+                val arrayDimensions = arrayDimensions(className)
+                if (dimensions > arrayDimensions) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] multianewarray: dimensions operand $dimensions " +
+                            "must not exceed array dimensions $arrayDimensions of '$className'",
+                    )
+                }
+                4
+            }
             in 0x99..0xA8, 0xC6, 0xC7 -> {
                 ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
                 branchTargets += BranchTarget(
@@ -287,6 +332,53 @@ private object CodeInstructionValidator {
             }
         }
     }
+
+    private fun validateClassReferenceOperand(
+        code: ByteArray,
+        pc: Int,
+        ownerPath: String,
+        constantPool: ConstantPool,
+        mnemonic: String,
+    ): String {
+        val rawIndex = code.u2(pc + 1)
+        if (rawIndex == 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index #0: zero is not allowed",
+            )
+        }
+        val index = ConstantPoolIndex(rawIndex)
+        val entry = try {
+            constantPool[index]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: ${exception.message}",
+            )
+        }
+        if (entry !is ConstantClassEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "expected CONSTANT_Class but found ${entry.javaClass.simpleName}",
+            )
+        }
+        val name = try {
+            constantPool[entry.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic CONSTANT_Class.name_index=${entry.nameIndex}: " +
+                    exception.message,
+            )
+        }
+        if (name !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic CONSTANT_Class.name_index=${entry.nameIndex}: " +
+                    "expected CONSTANT_Utf8_info but found ${name.javaClass.simpleName}",
+            )
+        }
+        return name.value
+    }
+
+    private fun arrayDimensions(className: String): Int =
+        className.takeWhile { it == '[' }.length
 
     private fun parseTableSwitch(
         code: ByteArray,
@@ -433,7 +525,12 @@ private object CodeInstructionValidator {
             0x11 -> "sipush"
             0xAA -> "tableswitch"
             0xAB -> "lookupswitch"
+            0xBB -> "new"
+            0xBD -> "anewarray"
             0xC4 -> "wide"
+            0xC5 -> "multianewarray"
+            0xC0 -> "checkcast"
+            0xC1 -> "instanceof"
             else -> "opcode 0x${opcode.toHex()}"
         }
 
@@ -442,6 +539,9 @@ private object CodeInstructionValidator {
 
     private fun ByteArray.s2(offset: Int): Int =
         (u1(offset).toShortish() shl 8) or u1(offset + 1)
+
+    private fun ByteArray.u2(offset: Int): Int =
+        (u1(offset) shl 8) or u1(offset + 1)
 
     private fun ByteArray.s4(offset: Int): Int =
         (u1(offset) shl 24) or (u1(offset + 1) shl 16) or (u1(offset + 2) shl 8) or u1(offset + 3)
