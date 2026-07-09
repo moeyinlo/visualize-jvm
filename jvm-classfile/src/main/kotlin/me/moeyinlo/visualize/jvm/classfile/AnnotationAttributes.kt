@@ -24,6 +24,11 @@ data class ParameterAnnotations(
     val annotations: List<AnnotationInfo>,
 )
 
+data class AnnotationDefaultAttribute(
+    override val nameIndex: ConstantPoolIndex,
+    val defaultValue: ElementValue,
+) : AttributeInfo
+
 data class AnnotationInfo(
     val typeIndex: ConstantPoolIndex,
     val elementValuePairs: List<ElementValuePair>,
@@ -97,6 +102,14 @@ object RuntimeInvisibleParameterAnnotationsAttributeParser : AttributeBodyParser
         RuntimeInvisibleParameterAnnotationsAttribute(
             nameIndex = context.nameIndex,
             parameterAnnotations = AnnotationParser.parseParameterAnnotations(context, context.ownerPath),
+        )
+}
+
+object AnnotationDefaultAttributeParser : AttributeBodyParser {
+    override fun parse(context: AttributeParseContext): AttributeInfo =
+        AnnotationDefaultAttribute(
+            nameIndex = context.nameIndex,
+            defaultValue = AnnotationParser.parseElementValue(context, "${context.ownerPath}.default_value"),
         )
 }
 

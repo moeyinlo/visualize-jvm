@@ -99,7 +99,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.19 | `RuntimeInvisibleParameterAnnotations` | `jvm-classfile` | `ParameterAnnotationsAttributeParserTest` | IMPLEMENTED |
 | 4.7.20 | `RuntimeVisibleTypeAnnotations` | `jvm-classfile` | TBD | PENDING |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` | `jvm-classfile` | TBD | PENDING |
-| 4.7.22 | `AnnotationDefault` | `jvm-classfile` | TBD | PENDING |
+| 4.7.22 | `AnnotationDefault` | `jvm-classfile` | `AnnotationDefaultAttributeParserTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 4.7.24 | `MethodParameters` | `jvm-classfile` | TBD | PENDING |
 | 4.7.25 | `Module` | `jvm-classfile` | TBD | PENDING |
