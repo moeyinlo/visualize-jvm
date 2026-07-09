@@ -259,6 +259,139 @@ class CodeInstructionValidationTest {
         assertTrue(failure.message.orEmpty().contains("atype"), failure.message)
     }
 
+    @Test
+    fun `accepts ldc and ldc_w operands that point to category one loadable constants`() {
+        val attribute = parseCodeAttribute(
+            code = byteArrayOf(
+                0x12,
+                2,
+                0x12,
+                3,
+                0x12,
+                4,
+                0x12,
+                5,
+                0x12,
+                6,
+                0x12,
+                7,
+                0x12,
+                8,
+                0x13,
+                0,
+                8,
+                0xB1.toByte(),
+            ),
+            constantPool = ldcCategoryOnePool(),
+        )
+
+        assertIs<CodeAttribute>(attribute)
+    }
+
+    @Test
+    fun `rejects ldc operands that do not point to loadable constants`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                        ConstantUtf8Entry("notLoadable", byteArrayOf()),
+                        ConstantUtf8Entry("I", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("loadable"), failure.message)
+    }
+
+    @Test
+    fun `rejects ldc operands that point to category two constants`() {
+        val longFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantLongEntry(1L),
+                    ),
+                ),
+            )
+        }
+        assertTrue(longFailure.message.orEmpty().contains("ldc"), longFailure.message)
+        assertTrue(longFailure.message.orEmpty().contains("long or double"), longFailure.message)
+
+        val dynamicFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = constantDynamicPool("J"),
+            )
+        }
+        assertTrue(dynamicFailure.message.orEmpty().contains("CONSTANT_Dynamic"), dynamicFailure.message)
+        assertTrue(dynamicFailure.message.orEmpty().contains("J"), dynamicFailure.message)
+    }
+
+    @Test
+    fun `accepts ldc2_w operands that point to category two constants`() {
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0x14, 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantLongEntry(1L),
+                    ),
+                ),
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0x14, 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantDoubleEntry(1.0),
+                    ),
+                ),
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0x14, 0, 2, 0xB1.toByte()),
+                constantPool = constantDynamicPool("D"),
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects ldc2_w operands that point to category one constants`() {
+        val integerFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x14, 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantIntegerEntry(1),
+                    ),
+                ),
+            )
+        }
+        assertTrue(integerFailure.message.orEmpty().contains("ldc2_w"), integerFailure.message)
+        assertTrue(integerFailure.message.orEmpty().contains("long or double"), integerFailure.message)
+
+        val dynamicFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x14, 0, 2, 0xB1.toByte()),
+                constantPool = constantDynamicPool("I"),
+            )
+        }
+        assertTrue(dynamicFailure.message.orEmpty().contains("CONSTANT_Dynamic"), dynamicFailure.message)
+        assertTrue(dynamicFailure.message.orEmpty().contains("J or D"), dynamicFailure.message)
+    }
+
     private fun parseCodeAttribute(
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
@@ -280,6 +413,38 @@ class CodeInstructionValidationTest {
                 ConstantUtf8Entry("Code", byteArrayOf()),
                 ConstantClassEntry(ConstantPoolIndex(3)),
                 ConstantUtf8Entry(name, name.encodeToByteArray()),
+            ),
+        )
+
+    private fun ldcCategoryOnePool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantIntegerEntry(1),
+                ConstantFloatEntry(1.0f),
+                ConstantStringEntry(ConstantPoolIndex(13)),
+                ConstantClassEntry(ConstantPoolIndex(14)),
+                ConstantMethodTypeEntry(ConstantPoolIndex(15)),
+                ConstantMethodHandleEntry(MethodHandleReferenceKind.GetStatic, ConstantPoolIndex(2)),
+                ConstantDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(10)),
+                ConstantUtf8Entry("unused", byteArrayOf()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(11), ConstantPoolIndex(12)),
+                ConstantUtf8Entry("dyn", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+                ConstantUtf8Entry("hello", byteArrayOf()),
+                ConstantUtf8Entry("java/lang/String", byteArrayOf()),
+                ConstantUtf8Entry("()V", byteArrayOf()),
+            ),
+        )
+
+    private fun constantDynamicPool(descriptor: String): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(3)),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(4), ConstantPoolIndex(5)),
+                ConstantUtf8Entry("dyn", byteArrayOf()),
+                ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
             ),
         )
 

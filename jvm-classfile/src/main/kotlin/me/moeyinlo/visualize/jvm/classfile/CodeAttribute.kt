@@ -259,6 +259,42 @@ private object CodeInstructionValidator {
             0xAA -> parseTableSwitch(code, pc, ownerPath, branchTargets)
             0xAB -> parseLookupSwitch(code, pc, ownerPath, branchTargets)
             0xC4 -> parseWide(code, pc, ownerPath, modifiedOpcodeOffsets)
+            0x12 -> {
+                ensureAvailable(code, pc, 2, ownerPath, mnemonic(opcode))
+                validateLdcOperand(
+                    rawIndex = code.u1(pc + 1),
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    constantPool = constantPool,
+                    mnemonic = mnemonic(opcode),
+                    requiresCategoryTwo = false,
+                )
+                2
+            }
+            0x13 -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                validateLdcOperand(
+                    rawIndex = code.u2(pc + 1),
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    constantPool = constantPool,
+                    mnemonic = mnemonic(opcode),
+                    requiresCategoryTwo = false,
+                )
+                3
+            }
+            0x14 -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                validateLdcOperand(
+                    rawIndex = code.u2(pc + 1),
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    constantPool = constantPool,
+                    mnemonic = mnemonic(opcode),
+                    requiresCategoryTwo = true,
+                )
+                3
+            }
             0xBB -> {
                 ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
                 val className = validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
@@ -342,6 +378,144 @@ private object CodeInstructionValidator {
             }
         }
     }
+
+    private fun validateLdcOperand(
+        rawIndex: Int,
+        pc: Int,
+        ownerPath: String,
+        constantPool: ConstantPool,
+        mnemonic: String,
+        requiresCategoryTwo: Boolean,
+    ) {
+        if (rawIndex == 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index #0: zero is not allowed",
+            )
+        }
+        val index = ConstantPoolIndex(rawIndex)
+        val entry = loadConstantPoolEntry(ownerPath, pc, mnemonic, constantPool, index)
+        val category = ldcCategory(entry, ownerPath, pc, mnemonic, constantPool, index)
+        if (requiresCategoryTwo && category != LdcCategory.CategoryTwo) {
+            if (entry is ConstantDynamicEntry) {
+                val descriptor = dynamicConstantDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
+                throw ClassFileFormatException(
+                    "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                        "CONSTANT_Dynamic descriptor $descriptor must be J or D",
+                )
+            }
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "expected long or double loadable constant but found ${entry.javaClass.simpleName}",
+            )
+        }
+        if (!requiresCategoryTwo && category == LdcCategory.CategoryTwo) {
+            if (entry is ConstantDynamicEntry) {
+                val descriptor = dynamicConstantDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
+                throw ClassFileFormatException(
+                    "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                        "CONSTANT_Dynamic descriptor $descriptor must not be J or D",
+                )
+            }
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "must not reference a long or double constant",
+            )
+        }
+    }
+
+    private fun ldcCategory(
+        entry: ConstantPoolEntry,
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+    ): LdcCategory =
+        when (entry) {
+            is ConstantIntegerEntry,
+            is ConstantFloatEntry,
+            is ConstantStringEntry,
+            is ConstantClassEntry,
+            is ConstantMethodTypeEntry,
+            is ConstantMethodHandleEntry,
+            -> LdcCategory.CategoryOne
+
+            is ConstantLongEntry,
+            is ConstantDoubleEntry,
+            -> LdcCategory.CategoryTwo
+
+            is ConstantDynamicEntry -> {
+                val descriptor = dynamicConstantDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
+                if (descriptor == "J" || descriptor == "D") {
+                    LdcCategory.CategoryTwo
+                } else {
+                    LdcCategory.CategoryOne
+                }
+            }
+
+            else -> throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "expected loadable constant but found ${entry.javaClass.simpleName}",
+            )
+        }
+
+    private fun dynamicConstantDescriptor(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantDynamicEntry,
+    ): String {
+        val nameAndType = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.nameAndTypeIndex,
+            role = "CONSTANT_Dynamic.name_and_type_index",
+        )
+        if (nameAndType !is ConstantNameAndTypeEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Dynamic.name_and_type_index=${entry.nameAndTypeIndex} expected CONSTANT_NameAndType " +
+                    "but found ${nameAndType.javaClass.simpleName}",
+            )
+        }
+        val descriptor = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.descriptorIndex,
+            role = "CONSTANT_Dynamic.descriptor_index",
+        )
+        if (descriptor !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Dynamic.descriptor_index=${nameAndType.descriptorIndex} expected CONSTANT_Utf8_info " +
+                    "but found ${descriptor.javaClass.simpleName}",
+            )
+        }
+        DescriptorValidator.validateFieldDescriptor(nameAndType.descriptorIndex, "descriptor_index", descriptor.value)
+        return descriptor.value
+    }
+
+    private fun loadConstantPoolEntry(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        role: String = "constant_pool index",
+    ): ConstantPoolEntry =
+        try {
+            constantPool[index]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic $role $index: ${exception.message}",
+            )
+        }
 
     private fun validateClassReferenceOperand(
         code: ByteArray,
@@ -532,6 +706,9 @@ private object CodeInstructionValidator {
 
     private fun mnemonic(opcode: Int): String =
         when (opcode) {
+            0x12 -> "ldc"
+            0x13 -> "ldc_w"
+            0x14 -> "ldc2_w"
             0x11 -> "sipush"
             0xAA -> "tableswitch"
             0xAB -> "lookupswitch"
@@ -568,6 +745,11 @@ private object CodeInstructionValidator {
         val offset: Int,
         val kind: String,
     )
+
+    private enum class LdcCategory {
+        CategoryOne,
+        CategoryTwo,
+    }
 }
 
 private data class CodeInstructionLayout(
