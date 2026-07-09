@@ -349,6 +349,14 @@ object ClassFileWriter {
                     writeConstantPoolIndex(classIndex)
                 }
             }
+            is RecordAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeU2(attribute.components.size)
+                attribute.components.forEachIndexed { componentIndex, component ->
+                    writeConstantPoolIndex(component.nameIndex)
+                    writeConstantPoolIndex(component.descriptorIndex)
+                    writeAttributes(component.attributes, this, "$ownerPath.components[$componentIndex].attributes")
+                }
+            }
             else -> throw UnsupportedOperationException(
                 "Writing ${attribute::class.simpleName} at $ownerPath requires a specific attribute writer",
             )

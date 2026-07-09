@@ -971,6 +971,79 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes Record attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Record", byteArrayOf()),
+                ConstantUtf8Entry("names", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/util/List;", byteArrayOf()),
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/util/List<Ljava/lang/String;>;", byteArrayOf()),
+            ),
+        )
+        val attribute = RecordAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            components = listOf(
+                RecordComponentInfo(
+                    nameIndex = ConstantPoolIndex(2),
+                    descriptorIndex = ConstantPoolIndex(3),
+                    attributes = listOf(
+                        SignatureAttribute(
+                            nameIndex = ConstantPoolIndex(4),
+                            signatureIndex = ConstantPoolIndex(5),
+                            signature = "Ljava/util/List<Ljava/lang/String;>;",
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                0,
+                16,
+                0,
+                1,
+                0,
+                2,
+                0,
+                3,
+                0,
+                1,
+                0,
+                4,
+                0,
+                0,
+                0,
+                2,
+                0,
+                5,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "record-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "Record" to RecordAttributeParser,
+                "Signature" to SignatureAttributeParser,
+            ),
+            ownerPath = "ClassFile",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(
