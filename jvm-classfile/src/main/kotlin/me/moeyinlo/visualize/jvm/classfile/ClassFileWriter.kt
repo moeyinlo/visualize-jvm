@@ -289,6 +289,9 @@ object ClassFileWriter {
             is RuntimeInvisibleParameterAnnotationsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeParameterAnnotations(attribute.parameterAnnotations)
             }
+            is AnnotationDefaultAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
+                writeElementValue(attribute.defaultValue)
+            }
             is BootstrapMethodsAttribute -> writer.writeAttributeInfo(attribute.nameIndex) {
                 writeU2(attribute.bootstrapMethods.size)
                 attribute.bootstrapMethods.forEach { bootstrapMethod ->

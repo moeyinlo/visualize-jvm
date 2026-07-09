@@ -1352,6 +1352,42 @@ class AttributeInfoWriterTest {
     }
 
     @Test
+    fun `writes AnnotationDefault attribute`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("AnnotationDefault", byteArrayOf()),
+                ConstantUtf8Entry("default-value", byteArrayOf()),
+            ),
+        )
+        val attribute = AnnotationDefaultAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            defaultValue = ElementValue.Const('s', ConstantPoolIndex(2)),
+        )
+
+        val bytes = ClassFileWriter.writeAttributes(listOf(attribute))
+
+        assertContentEquals(
+            bytes(
+                0, 1,
+                0, 1,
+                0, 0, 0, 3,
+                's'.code,
+                0, 2,
+            ),
+            bytes,
+        )
+
+        val parsed = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(bytes, source = "annotation-default-attribute.class"),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("AnnotationDefault" to AnnotationDefaultAttributeParser),
+            ownerPath = "methods[0]",
+        )
+
+        assertEquals(attribute, parsed.single())
+    }
+
+    @Test
     fun `rejects unsupported known attributes until their specific writer is implemented`() {
         val failure = assertFailsWith<UnsupportedOperationException> {
             ClassFileWriter.writeAttributes(

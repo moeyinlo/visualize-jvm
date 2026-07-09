@@ -128,6 +128,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.20 | `RuntimeVisibleTypeAnnotations` | `jvm-classfile` | `TypeAnnotationsAttributeParserTest` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` | `jvm-classfile` | `TypeAnnotationsAttributeParserTest` | IMPLEMENTED |
 | 4.7.22 | `AnnotationDefault` | `jvm-classfile` | `AnnotationDefaultAttributeParserTest` | IMPLEMENTED |
+| 4.7.22 | `AnnotationDefault` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` classfile structure | `jvm-classfile`, `jvm-runtime` | `BootstrapMethodsAttributeParserTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` bootstrap argument resolution semantics | `jvm-runtime` | TBD | PENDING |
