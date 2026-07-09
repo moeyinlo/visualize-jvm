@@ -106,8 +106,9 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.24 | `MethodParameters` formal parameter name grammar | `jvm-classfile` | TBD | PENDING |
 | 4.7.25 | `Module` classfile structure | `jvm-classfile` | `ModuleAttributeParserTest` | IMPLEMENTED |
 | 4.7.25 | `Module` uniqueness and module relationship constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
-| 4.7.26 | `ModulePackages` | `jvm-classfile` | TBD | PENDING |
-| 4.7.27 | `ModuleMainClass` | `jvm-classfile` | TBD | PENDING |
+| 4.7.26 | `ModulePackages` classfile structure | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
+| 4.7.26 | `ModulePackages` uniqueness constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+| 4.7.27 | `ModuleMainClass` | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
 | 4.7.28 | `NestHost` | `jvm-classfile` | TBD | PENDING |
 | 4.7.29 | `NestMembers` | `jvm-classfile` | TBD | PENDING |
 | 4.7.30 | `Record` | `jvm-classfile` | TBD | PENDING |
