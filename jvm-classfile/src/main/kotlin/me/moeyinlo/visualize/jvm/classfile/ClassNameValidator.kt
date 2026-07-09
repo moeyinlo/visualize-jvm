@@ -57,6 +57,7 @@ object ClassNameValidator {
         role: String,
         value: String,
         allowInit: Boolean,
+        allowClinit: Boolean = false,
     ) {
         validateUnqualifiedName(owner, role, value)
         when (value) {
@@ -67,7 +68,12 @@ object ClassNameValidator {
                 return
             }
 
-            "<clinit>" -> failMethodName(owner, role, value, "special name <clinit> is not permitted here")
+            "<clinit>" -> {
+                if (!allowClinit) {
+                    failMethodName(owner, role, value, "special name <clinit> is not permitted here")
+                }
+                return
+            }
         }
 
         val forbidden = value.firstOrNull { it == '<' || it == '>' }

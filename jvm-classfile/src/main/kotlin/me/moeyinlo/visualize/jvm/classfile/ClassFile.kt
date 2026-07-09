@@ -32,7 +32,7 @@ object ClassFileParser {
         val accessFlags = ClassAccessFlagsParser.parse(reader)
         val identity = ClassIdentityParser.parse(reader)
         val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind)
-        val methods = MethodInfoParser.parseMethods(reader, constantPool, attributeParsers)
+        val methods = MethodInfoParser.parseMethods(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val attributes = AttributeInfoParser.parseAttributes(
             reader = reader,
             constantPool = constantPool,

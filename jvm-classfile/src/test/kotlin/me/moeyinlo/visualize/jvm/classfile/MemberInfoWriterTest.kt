@@ -141,6 +141,8 @@ class MemberInfoWriterTest {
                 ConstantUtf8Entry("Exceptions", byteArrayOf()),
                 ConstantClassEntry(ConstantPoolIndex(3)),
                 ConstantUtf8Entry("java/io/IOException", byteArrayOf()),
+                ConstantUtf8Entry("run", byteArrayOf()),
+                ConstantUtf8Entry("()V", byteArrayOf()),
             ),
         )
         val bytes = ClassFileWriter.writeMethods(
@@ -177,14 +179,16 @@ class MemberInfoWriterTest {
         val constantPool = ConstantPool.fromEntries(
             listOf(
                 ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("run", byteArrayOf()),
+                ConstantUtf8Entry("()V", byteArrayOf()),
             ),
         )
         val bytes = ClassFileWriter.writeMethods(
             listOf(
                 MethodInfo(
                     accessFlags = 0x0001,
-                    nameIndex = ConstantPoolIndex(3),
-                    descriptorIndex = ConstantPoolIndex(4),
+                    nameIndex = ConstantPoolIndex(2),
+                    descriptorIndex = ConstantPoolIndex(3),
                     attributes = listOf(
                         CodeAttribute(
                             nameIndex = ConstantPoolIndex(1),
