@@ -171,4 +171,113 @@ class CodeExceptionTableParserTest {
         assertTrue(failure.message.orEmpty().contains("catch_type"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Class"), failure.message)
     }
+
+    @Test
+    fun `rejects exception table start pc that does not point to an instruction opcode`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xA7.toByte(), 0, 3, 0xB1.toByte()),
+                exceptionTable = listOf(ExceptionHandlerBytes(startPc = 1, endPc = 3, handlerPc = 3)),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("start_pc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("opcode"), failure.message)
+    }
+
+    @Test
+    fun `rejects exception table end pc that is neither code length nor an instruction opcode`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xA7.toByte(), 0, 3, 0xB1.toByte()),
+                exceptionTable = listOf(ExceptionHandlerBytes(startPc = 0, endPc = 2, handlerPc = 3)),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("end_pc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("opcode"), failure.message)
+    }
+
+    @Test
+    fun `rejects exception table handler pc that does not point to an instruction opcode`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xA7.toByte(), 0, 3, 0xB1.toByte()),
+                exceptionTable = listOf(ExceptionHandlerBytes(startPc = 0, endPc = 3, handlerPc = 2)),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("handler_pc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("opcode"), failure.message)
+    }
+
+    private fun parseCodeAttribute(
+        code: ByteArray,
+        exceptionTable: List<ExceptionHandlerBytes>,
+    ): AttributeInfo {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+            ),
+        )
+        return AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(
+                codeAttributeBytes(code, exceptionTable),
+                source = "code-exception-table-boundary.class",
+            ),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of("Code" to CodeAttributeParser),
+            ownerPath = "methods[0]",
+        ).single()
+    }
+
+    private fun codeAttributeBytes(
+        code: ByteArray,
+        exceptionTable: List<ExceptionHandlerBytes>,
+    ): ByteArray {
+        val attributeLength = 12 + code.size + exceptionTable.size * 8
+        return byteArrayOf(
+            0,
+            1,
+            0,
+            1,
+        ) + intBytes(attributeLength) +
+            byteArrayOf(
+                0,
+                1,
+                0,
+                1,
+            ) + intBytes(code.size) +
+            code +
+            byteArrayOf(0, exceptionTable.size.toByte()) +
+            exceptionTable.fold(byteArrayOf()) { bytes, handler -> bytes + exceptionHandlerBytes(handler) } +
+            byteArrayOf(0, 0)
+    }
+
+    private fun intBytes(value: Int): ByteArray =
+        byteArrayOf(
+            (value ushr 24).toByte(),
+            (value ushr 16).toByte(),
+            (value ushr 8).toByte(),
+            value.toByte(),
+        )
+
+    private fun shortBytes(value: Int): ByteArray =
+        byteArrayOf(
+            (value ushr 8).toByte(),
+            value.toByte(),
+        )
+
+    private data class ExceptionHandlerBytes(
+        val startPc: Int,
+        val endPc: Int,
+        val handlerPc: Int,
+        val catchType: Int = 0,
+    )
+
+    private fun exceptionHandlerBytes(handler: ExceptionHandlerBytes): ByteArray =
+        shortBytes(handler.startPc) +
+            shortBytes(handler.endPc) +
+            shortBytes(handler.handlerPc) +
+            shortBytes(handler.catchType)
 }

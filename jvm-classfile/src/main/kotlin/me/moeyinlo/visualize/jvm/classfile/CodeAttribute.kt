@@ -38,8 +38,8 @@ object CodeAttributeParser : AttributeBodyParser {
         }
 
         val code = context.reader.readSlice(codeLength.toInt())
-        CodeInstructionValidator.validate(code, context.ownerPath)
-        val exceptionTable = parseExceptionTable(context, code.size)
+        val instructionLayout = CodeInstructionValidator.validate(code, context.ownerPath)
+        val exceptionTable = parseExceptionTable(context, code.size, instructionLayout)
         val attributes = AttributeInfoParser.parseAttributes(
             reader = context.reader,
             constantPool = context.constantPool,
@@ -60,16 +60,18 @@ object CodeAttributeParser : AttributeBodyParser {
     private fun parseExceptionTable(
         context: AttributeParseContext,
         codeLength: Int,
+        instructionLayout: CodeInstructionLayout,
     ): List<CodeExceptionHandler> {
         val exceptionTableLength = context.reader.readU2()
         return List(exceptionTableLength) { index ->
-            parseExceptionHandler(context, codeLength, index)
+            parseExceptionHandler(context, codeLength, instructionLayout, index)
         }
     }
 
     private fun parseExceptionHandler(
         context: AttributeParseContext,
         codeLength: Int,
+        instructionLayout: CodeInstructionLayout,
         index: Int,
     ): CodeExceptionHandler {
         val ownerPath = "${context.ownerPath}.exception_table[$index]"
@@ -77,7 +79,7 @@ object CodeAttributeParser : AttributeBodyParser {
         val endPc = context.reader.readU2()
         val handlerPc = context.reader.readU2()
         val catchTypeIndex = context.reader.readU2()
-        validateHandlerRange(ownerPath, codeLength, startPc, endPc, handlerPc)
+        validateHandlerRange(ownerPath, codeLength, instructionLayout, startPc, endPc, handlerPc)
         val catchType = validateCatchType(context, ownerPath, catchTypeIndex)
         return CodeExceptionHandler(
             startPc = startPc,
@@ -90,6 +92,7 @@ object CodeAttributeParser : AttributeBodyParser {
     private fun validateHandlerRange(
         ownerPath: String,
         codeLength: Int,
+        instructionLayout: CodeInstructionLayout,
         startPc: Int,
         endPc: Int,
         handlerPc: Int,
@@ -109,9 +112,25 @@ object CodeAttributeParser : AttributeBodyParser {
                 "Invalid $ownerPath range: start_pc=$startPc must be less than end_pc=$endPc",
             )
         }
+        if (startPc !in instructionLayout.instructionOffsets) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.start_pc=$startPc: must point to the opcode of an instruction",
+            )
+        }
+        if (endPc != codeLength && endPc !in instructionLayout.instructionOffsets) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.end_pc=$endPc: must be code_length=$codeLength " +
+                    "or point to the opcode of an instruction",
+            )
+        }
         if (handlerPc >= codeLength) {
             throw ClassFileFormatException(
                 "Invalid $ownerPath.handler_pc=$handlerPc: must be less than code_length=$codeLength",
+            )
+        }
+        if (handlerPc !in instructionLayout.instructionOffsets) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.handler_pc=$handlerPc: must point to the opcode of an instruction",
             )
         }
     }
@@ -187,7 +206,7 @@ private object CodeInstructionValidator {
     fun validate(
         code: ByteArray,
         ownerPath: String,
-    ) {
+    ): CodeInstructionLayout {
         val instructionOffsets = mutableSetOf<Int>()
         val modifiedOpcodeOffsets = mutableSetOf<Int>()
         val branchTargets = mutableListOf<BranchTarget>()
@@ -218,6 +237,7 @@ private object CodeInstructionValidator {
                 )
             }
         }
+        return CodeInstructionLayout(instructionOffsets.toSet())
     }
 
     private fun instructionLength(
@@ -438,3 +458,7 @@ private object CodeInstructionValidator {
         val kind: String,
     )
 }
+
+private data class CodeInstructionLayout(
+    val instructionOffsets: Set<Int>,
+)
