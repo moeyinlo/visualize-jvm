@@ -85,7 +85,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.6 | `InnerClasses` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
 | 4.7.8 | `Synthetic` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
-| 4.7.9 | `Signature` and signature grammar | `jvm-classfile` | TBD | PENDING |
+| 4.7.9 | `Signature` attribute structure | `jvm-classfile` | `SignatureAttributeParserTest` | IMPLEMENTED |
+| 4.7.9.1 | Signature grammar | `jvm-classfile` | TBD | PENDING |
 | 4.7.10 | `SourceFile` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` | `jvm-classfile` | `SourceDebugExtensionAttributeParserTest` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` | `jvm-classfile` | `LineNumberTableAttributeParserTest` | IMPLEMENTED |
