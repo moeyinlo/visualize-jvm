@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 plugins {
     base
     kotlin("jvm") version "2.3.20" apply false
+    id("org.openjfx.javafxplugin") version "0.1.0" apply false
 }
 
 group = "me.moeyinlo"
