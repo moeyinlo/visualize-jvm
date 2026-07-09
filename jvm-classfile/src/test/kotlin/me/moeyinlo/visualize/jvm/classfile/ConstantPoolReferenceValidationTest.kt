@@ -101,6 +101,42 @@ class ConstantPoolReferenceValidationTest {
         assertTrue(failure.message.orEmpty().contains("empty"), failure.message)
     }
 
+    @Test
+    fun `rejects empty unqualified names`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8(""),
+                utf8("I"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(1), ConstantPoolIndex(2)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#3"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
+    fun `rejects unqualified names with forbidden characters`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("bad/name"),
+                utf8("I"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(1), ConstantPoolIndex(2)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("forbidden character '/'"), failure.message)
+    }
+
     private fun utf8(value: String): ConstantUtf8Entry =
         ConstantUtf8Entry(value, value.encodeToByteArray())
 }

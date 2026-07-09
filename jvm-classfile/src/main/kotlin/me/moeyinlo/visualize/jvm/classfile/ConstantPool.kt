@@ -70,7 +70,8 @@ class ConstantPool private constructor(
             }
             is ConstantStringEntry -> expect<ConstantUtf8Entry>(owner, "string_index", entry.stringIndex)
             is ConstantNameAndTypeEntry -> {
-                expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+                val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+                ClassNameValidator.validateUnqualifiedName(owner, "name_index", name.value)
                 expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
             }
 

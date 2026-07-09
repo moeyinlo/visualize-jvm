@@ -37,6 +37,20 @@ object ClassNameValidator {
         }
     }
 
+    fun validateUnqualifiedName(
+        owner: ConstantPoolIndex,
+        role: String,
+        value: String,
+    ) {
+        if (value.isEmpty()) {
+            failUnqualified(owner, role, value, "must not be empty")
+        }
+        val forbidden = value.firstOrNull { it == '.' || it == ';' || it == '[' || it == '/' }
+        if (forbidden != null) {
+            failUnqualified(owner, role, value, "contains forbidden character '$forbidden'")
+        }
+    }
+
     private fun fail(
         owner: ConstantPoolIndex,
         role: String,
@@ -46,5 +60,16 @@ object ClassNameValidator {
         throw ClassFileFormatException(
             "Invalid constant pool reference from $owner $role: " +
                 "'$value' is not a binary name in internal form: $reason",
+        )
+
+    private fun failUnqualified(
+        owner: ConstantPoolIndex,
+        role: String,
+        value: String,
+        reason: String,
+    ): Nothing =
+        throw ClassFileFormatException(
+            "Invalid constant pool reference from $owner $role: " +
+                "'$value' is not a valid unqualified name: $reason",
         )
 }
