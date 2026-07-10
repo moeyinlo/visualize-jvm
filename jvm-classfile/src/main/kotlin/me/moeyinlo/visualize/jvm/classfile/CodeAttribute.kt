@@ -363,6 +363,11 @@ private object CodeInstructionValidator {
                 )
                 3
             }
+            0xB9 -> {
+                ensureAvailable(code, pc, 5, ownerPath, mnemonic(opcode))
+                validateInterfaceMethodReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
+                5
+            }
             0xC0, 0xC1 -> {
                 ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
                 validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
@@ -414,6 +419,41 @@ private object CodeInstructionValidator {
                 ensureAvailable(code, pc, length, ownerPath, mnemonic(opcode))
                 length
             }
+        }
+    }
+
+    private fun validateInterfaceMethodReferenceOperand(
+        code: ByteArray,
+        pc: Int,
+        ownerPath: String,
+        constantPool: ConstantPool,
+        mnemonic: String,
+    ) {
+        val rawIndex = code.u2(pc + 1)
+        if (rawIndex == 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index #0: zero is not allowed",
+            )
+        }
+        val index = ConstantPoolIndex(rawIndex)
+        val entry = loadConstantPoolEntry(ownerPath, pc, mnemonic, constantPool, index)
+        if (entry !is ConstantInterfaceMethodRefEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "expected CONSTANT_InterfaceMethodref but found ${entry.javaClass.simpleName}",
+            )
+        }
+        val count = code.u1(pc + 3)
+        if (count == 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic count operand must not be zero",
+            )
+        }
+        val fourthByte = code.u1(pc + 4)
+        if (fourthByte != 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic fourth operand byte must be zero",
+            )
         }
     }
 
@@ -842,6 +882,7 @@ private object CodeInstructionValidator {
             0xB6 -> "invokevirtual"
             0xB7 -> "invokespecial"
             0xB8 -> "invokestatic"
+            0xB9 -> "invokeinterface"
             0xAA -> "tableswitch"
             0xAB -> "lookupswitch"
             0xBB -> "new"

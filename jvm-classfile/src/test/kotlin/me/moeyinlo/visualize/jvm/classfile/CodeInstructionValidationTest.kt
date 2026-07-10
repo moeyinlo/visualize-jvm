@@ -531,6 +531,52 @@ class CodeInstructionValidationTest {
         }
     }
 
+    @Test
+    fun `accepts invokeinterface operands that point to interface method references`() {
+        val attribute = parseCodeAttribute(
+            code = byteArrayOf(0xB9.toByte(), 0, 2, 1, 0, 0xB1.toByte()),
+            constantPool = interfaceMethodReferencePool(),
+        )
+
+        assertIs<CodeAttribute>(attribute)
+    }
+
+    @Test
+    fun `rejects invokeinterface operands that do not point to interface method references`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 1, 0, 0xB1.toByte()),
+                constantPool = methodReferencePool(),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokeinterface"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_InterfaceMethodref"), failure.message)
+    }
+
+    @Test
+    fun `rejects invokeinterface operands with zero count or nonzero fourth byte`() {
+        val zeroCountFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 0, 0, 0xB1.toByte()),
+                constantPool = interfaceMethodReferencePool(),
+            )
+        }
+        assertTrue(zeroCountFailure.message.orEmpty().contains("invokeinterface"), zeroCountFailure.message)
+        assertTrue(zeroCountFailure.message.orEmpty().contains("count"), zeroCountFailure.message)
+        assertTrue(zeroCountFailure.message.orEmpty().contains("zero"), zeroCountFailure.message)
+
+        val nonzeroFourthByteFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 1, 1, 0xB1.toByte()),
+                constantPool = interfaceMethodReferencePool(),
+            )
+        }
+        assertTrue(nonzeroFourthByteFailure.message.orEmpty().contains("invokeinterface"), nonzeroFourthByteFailure.message)
+        assertTrue(nonzeroFourthByteFailure.message.orEmpty().contains("fourth"), nonzeroFourthByteFailure.message)
+        assertTrue(nonzeroFourthByteFailure.message.orEmpty().contains("zero"), nonzeroFourthByteFailure.message)
+    }
+
     private fun parseCodeAttribute(
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
