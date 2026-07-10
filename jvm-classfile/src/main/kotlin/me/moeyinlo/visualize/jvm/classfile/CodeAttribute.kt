@@ -210,6 +210,7 @@ private object CodeInstructionValidator {
 
     private val wideTwoByteIndexOpcodes = setOf(0x15, 0x16, 0x17, 0x18, 0x19, 0x36, 0x37, 0x38, 0x39, 0x3A, 0xA9)
     private val categoryOneLocalIndexOpcodes = setOf(0x15, 0x17, 0x19, 0x36, 0x38, 0x3A, 0xA9)
+    private val categoryTwoLocalIndexOpcodes = setOf(0x16, 0x18, 0x37, 0x39)
     private val discontinuedSubroutineOpcodes = setOf(0xA8, 0xA9, 0xC9)
 
     fun validate(
@@ -298,6 +299,18 @@ private object CodeInstructionValidator {
                 )
                 2
             }
+            in categoryTwoLocalIndexOpcodes -> {
+                ensureAvailable(code, pc, 2, ownerPath, mnemonic(opcode))
+                validateLocalVariableIndex(
+                    index = code.u1(pc + 1),
+                    maxLocals = maxLocals,
+                    requiredSlots = 2,
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    mnemonic = mnemonic(opcode),
+                )
+                2
+            }
             0x84 -> {
                 ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
                 validateLocalVariableIndex(
@@ -310,10 +323,14 @@ private object CodeInstructionValidator {
                 3
             }
             in 0x1A..0x1D -> localVariableIndexInstructionLength(opcode, 0x1A, pc, ownerPath, maxLocals)
+            in 0x1E..0x21 -> localVariableIndexInstructionLength(opcode, 0x1E, pc, ownerPath, maxLocals, 2)
             in 0x22..0x25 -> localVariableIndexInstructionLength(opcode, 0x22, pc, ownerPath, maxLocals)
+            in 0x26..0x29 -> localVariableIndexInstructionLength(opcode, 0x26, pc, ownerPath, maxLocals, 2)
             in 0x2A..0x2D -> localVariableIndexInstructionLength(opcode, 0x2A, pc, ownerPath, maxLocals)
             in 0x3B..0x3E -> localVariableIndexInstructionLength(opcode, 0x3B, pc, ownerPath, maxLocals)
+            in 0x3F..0x42 -> localVariableIndexInstructionLength(opcode, 0x3F, pc, ownerPath, maxLocals, 2)
             in 0x43..0x46 -> localVariableIndexInstructionLength(opcode, 0x43, pc, ownerPath, maxLocals)
+            in 0x47..0x4A -> localVariableIndexInstructionLength(opcode, 0x47, pc, ownerPath, maxLocals, 2)
             in 0x4B..0x4E -> localVariableIndexInstructionLength(opcode, 0x4B, pc, ownerPath, maxLocals)
             0x12 -> {
                 ensureAvailable(code, pc, 2, ownerPath, mnemonic(opcode))
@@ -473,10 +490,12 @@ private object CodeInstructionValidator {
         pc: Int,
         ownerPath: String,
         maxLocals: Int,
+        requiredSlots: Int = 1,
     ): Int {
         validateLocalVariableIndex(
             index = opcode - baseOpcode,
             maxLocals = maxLocals,
+            requiredSlots = requiredSlots,
             pc = pc,
             ownerPath = ownerPath,
             mnemonic = mnemonic(opcode),
@@ -487,14 +506,15 @@ private object CodeInstructionValidator {
     private fun validateLocalVariableIndex(
         index: Int,
         maxLocals: Int,
+        requiredSlots: Int = 1,
         pc: Int,
         ownerPath: String,
         mnemonic: String,
     ) {
-        if (index >= maxLocals) {
+        if (index > maxLocals - requiredSlots) {
             throw ClassFileFormatException(
                 "Invalid $ownerPath.code[$pc] $mnemonic local variable index $index: " +
-                    "must be no greater than max_locals=$maxLocals - 1",
+                    "must be no greater than max_locals=$maxLocals - $requiredSlots",
             )
         }
     }
@@ -953,6 +973,15 @@ private object CodeInstructionValidator {
                         ownerPath = ownerPath,
                         mnemonic = "wide ${mnemonic(modifiedOpcode)}",
                     )
+                } else if (modifiedOpcode in categoryTwoLocalIndexOpcodes) {
+                    validateLocalVariableIndex(
+                        index = code.u2(pc + 2),
+                        maxLocals = maxLocals,
+                        requiredSlots = 2,
+                        pc = pc,
+                        ownerPath = ownerPath,
+                        mnemonic = "wide ${mnemonic(modifiedOpcode)}",
+                    )
                 }
                 4
             }
@@ -1012,16 +1041,24 @@ private object CodeInstructionValidator {
             0x14 -> "ldc2_w"
             0x11 -> "sipush"
             0x15 -> "iload"
+            0x16 -> "lload"
             0x17 -> "fload"
+            0x18 -> "dload"
             0x19 -> "aload"
             in 0x1A..0x1D -> "iload_${opcode - 0x1A}"
+            in 0x1E..0x21 -> "lload_${opcode - 0x1E}"
             in 0x22..0x25 -> "fload_${opcode - 0x22}"
+            in 0x26..0x29 -> "dload_${opcode - 0x26}"
             in 0x2A..0x2D -> "aload_${opcode - 0x2A}"
             0x36 -> "istore"
+            0x37 -> "lstore"
             0x38 -> "fstore"
+            0x39 -> "dstore"
             0x3A -> "astore"
             in 0x3B..0x3E -> "istore_${opcode - 0x3B}"
+            in 0x3F..0x42 -> "lstore_${opcode - 0x3F}"
             in 0x43..0x46 -> "fstore_${opcode - 0x43}"
+            in 0x47..0x4A -> "dstore_${opcode - 0x47}"
             in 0x4B..0x4E -> "astore_${opcode - 0x4B}"
             0x84 -> "iinc"
             0xA8 -> "jsr"

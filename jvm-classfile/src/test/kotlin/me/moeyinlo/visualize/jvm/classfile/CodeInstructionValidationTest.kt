@@ -283,6 +283,75 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `accepts category two local variable indexes within max locals`() {
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(
+                    0x16,
+                    1,
+                    0x18,
+                    1,
+                    0x37,
+                    1,
+                    0x39,
+                    1,
+                    0xC4.toByte(),
+                    0x16,
+                    0,
+                    1,
+                    0xB1.toByte(),
+                ),
+                maxLocals = 3,
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(
+                    0x1F,
+                    0x27,
+                    0x40,
+                    0x48,
+                    0xB1.toByte(),
+                ),
+                maxLocals = 3,
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects category two local variable indexes outside max locals`() {
+        val indexedInstructions = listOf(
+            "lload" to byteArrayOf(0x16, 1, 0xB1.toByte()),
+            "dload" to byteArrayOf(0x18, 1, 0xB1.toByte()),
+            "lstore" to byteArrayOf(0x37, 1, 0xB1.toByte()),
+            "dstore" to byteArrayOf(0x39, 1, 0xB1.toByte()),
+        )
+        indexedInstructions.forEach { (mnemonic, code) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(code = code, maxLocals = 2)
+            }
+
+            assertTrue(failure.message.orEmpty().contains(mnemonic), failure.message)
+            assertTrue(failure.message.orEmpty().contains("max_locals=2"), failure.message)
+        }
+
+        val implicitFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(code = byteArrayOf(0x1F, 0xB1.toByte()), maxLocals = 2)
+        }
+        assertTrue(implicitFailure.message.orEmpty().contains("lload_1"), implicitFailure.message)
+        assertTrue(implicitFailure.message.orEmpty().contains("max_locals=2"), implicitFailure.message)
+
+        val wideFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xC4.toByte(), 0x16, 0, 1, 0xB1.toByte()),
+                maxLocals = 2,
+            )
+        }
+        assertTrue(wideFailure.message.orEmpty().contains("wide lload"), wideFailure.message)
+        assertTrue(wideFailure.message.orEmpty().contains("max_locals=2"), wideFailure.message)
+    }
+
+    @Test
     fun `accepts class reference instruction operands that point to class constants`() {
         assertIs<CodeAttribute>(
             parseCodeAttribute(
