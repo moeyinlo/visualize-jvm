@@ -135,6 +135,61 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `accepts jsr jsr_w and ret instructions in legacy classfile versions`() {
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0xA8.toByte(), 0, 3, 0xB1.toByte()),
+                majorVersion = 50,
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0xC9.toByte(), 0, 0, 0, 5, 0xB1.toByte()),
+                majorVersion = 50,
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0xA9.toByte(), 0, 0xB1.toByte()),
+                majorVersion = 50,
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0xC4.toByte(), 0xA9.toByte(), 0, 1, 0xB1.toByte()),
+                majorVersion = 50,
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects jsr jsr_w and ret instructions in classfile version 51 or newer`() {
+        val discontinuedInstructions = listOf(
+            "jsr" to byteArrayOf(0xA8.toByte(), 0, 3, 0xB1.toByte()),
+            "jsr_w" to byteArrayOf(0xC9.toByte(), 0, 0, 0, 5, 0xB1.toByte()),
+            "ret" to byteArrayOf(0xA9.toByte(), 0, 0xB1.toByte()),
+        )
+        discontinuedInstructions.forEach { (mnemonic, code) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(code = code, majorVersion = 51)
+            }
+
+            assertTrue(failure.message.orEmpty().contains(mnemonic), failure.message)
+            assertTrue(failure.message.orEmpty().contains("major version 51"), failure.message)
+        }
+
+        val wideRetFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xC4.toByte(), 0xA9.toByte(), 0, 1, 0xB1.toByte()),
+                majorVersion = 51,
+            )
+        }
+        assertTrue(wideRetFailure.message.orEmpty().contains("wide"), wideRetFailure.message)
+        assertTrue(wideRetFailure.message.orEmpty().contains("ret"), wideRetFailure.message)
+        assertTrue(wideRetFailure.message.orEmpty().contains("major version 51"), wideRetFailure.message)
+    }
+
+    @Test
     fun `accepts class reference instruction operands that point to class constants`() {
         assertIs<CodeAttribute>(
             parseCodeAttribute(

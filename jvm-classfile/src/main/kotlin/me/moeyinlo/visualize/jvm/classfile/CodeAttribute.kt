@@ -208,6 +208,7 @@ private object CodeInstructionValidator {
     }
 
     private val wideTwoByteIndexOpcodes = setOf(0x15, 0x16, 0x17, 0x18, 0x19, 0x36, 0x37, 0x38, 0x39, 0x3A, 0xA9)
+    private val discontinuedSubroutineOpcodes = setOf(0xA8, 0xA9, 0xC9)
 
     fun validate(
         code: ByteArray,
@@ -271,10 +272,16 @@ private object CodeInstructionValidator {
                 "Invalid $ownerPath.code[$pc]: reserved opcode 0x${opcode.toHex()} must not appear in code arrays",
             )
         }
+        if (majorVersion >= 51 && opcode in discontinuedSubroutineOpcodes) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] ${mnemonic(opcode)}: " +
+                    "must not appear in class file major version $majorVersion or newer",
+            )
+        }
         return when (opcode) {
             0xAA -> parseTableSwitch(code, pc, ownerPath, branchTargets)
             0xAB -> parseLookupSwitch(code, pc, ownerPath, branchTargets)
-            0xC4 -> parseWide(code, pc, ownerPath, modifiedOpcodeOffsets)
+            0xC4 -> parseWide(code, pc, ownerPath, majorVersion, modifiedOpcodeOffsets)
             0x12 -> {
                 ensureAvailable(code, pc, 2, ownerPath, mnemonic(opcode))
                 validateLdcOperand(
@@ -857,10 +864,17 @@ private object CodeInstructionValidator {
         code: ByteArray,
         pc: Int,
         ownerPath: String,
+        majorVersion: Int,
         modifiedOpcodeOffsets: MutableSet<Int>,
     ): Int {
         ensureAvailable(code, pc, 2, ownerPath, "wide")
         val modifiedOpcode = code.u1(pc + 1)
+        if (majorVersion >= 51 && modifiedOpcode == 0xA9) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] wide ret: " +
+                    "ret must not appear in class file major version $majorVersion or newer",
+            )
+        }
         modifiedOpcodeOffsets += pc + 1
         return when (modifiedOpcode) {
             in wideTwoByteIndexOpcodes -> {
@@ -915,6 +929,8 @@ private object CodeInstructionValidator {
             0x13 -> "ldc_w"
             0x14 -> "ldc2_w"
             0x11 -> "sipush"
+            0xA8 -> "jsr"
+            0xA9 -> "ret"
             0xB2 -> "getstatic"
             0xB3 -> "putstatic"
             0xB4 -> "getfield"
@@ -933,6 +949,7 @@ private object CodeInstructionValidator {
             0xC5 -> "multianewarray"
             0xC0 -> "checkcast"
             0xC1 -> "instanceof"
+            0xC9 -> "jsr_w"
             else -> "opcode 0x${opcode.toHex()}"
         }
 
