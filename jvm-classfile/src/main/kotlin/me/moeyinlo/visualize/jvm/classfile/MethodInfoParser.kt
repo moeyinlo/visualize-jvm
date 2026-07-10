@@ -26,6 +26,7 @@ object MethodInfoParser {
                 constantPool = constantPool,
                 registry = attributeParsers,
                 ownerPath = ownerPath,
+                majorVersion = majorVersion,
             )
         }
         validateMethods(methods, constantPool, classKind, majorVersion)

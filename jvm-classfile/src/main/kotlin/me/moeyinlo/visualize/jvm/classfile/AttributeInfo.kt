@@ -27,6 +27,7 @@ class AttributeParseContext(
     val infoStartOffset: Int,
     val constantPool: ConstantPool,
     val registry: AttributeParserRegistry,
+    val majorVersion: Int,
     info: ByteArray,
 ) {
     private val infoBytes = info.copyOf()
@@ -68,6 +69,7 @@ object AttributeInfoParser {
         constantPool: ConstantPool,
         registry: AttributeParserRegistry,
         ownerPath: String,
+        majorVersion: Int = 70,
     ): List<AttributeInfo> {
         val attributesCount = reader.readU2()
         return List(attributesCount) { index ->
@@ -76,6 +78,7 @@ object AttributeInfoParser {
                 constantPool = constantPool,
                 registry = registry,
                 ownerPath = "$ownerPath.attributes[$index]",
+                majorVersion = majorVersion,
             )
         }
     }
@@ -85,6 +88,7 @@ object AttributeInfoParser {
         constantPool: ConstantPool,
         registry: AttributeParserRegistry,
         ownerPath: String,
+        majorVersion: Int,
     ): AttributeInfo {
         val nameIndex = RawAttributeInfoParser.readNonZeroConstantPoolIndex(reader, "$ownerPath.attribute_name_index")
         val attributeLength = reader.readU4()
@@ -124,6 +128,7 @@ object AttributeInfoParser {
             infoStartOffset = infoStartOffset,
             constantPool = constantPool,
             registry = registry,
+            majorVersion = majorVersion,
             info = info,
         )
         val attribute = parseAttributeBody(parser, context)

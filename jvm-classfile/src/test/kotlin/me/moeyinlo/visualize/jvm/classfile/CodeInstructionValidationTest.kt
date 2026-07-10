@@ -460,9 +460,81 @@ class CodeInstructionValidationTest {
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Methodref"), failure.message)
     }
 
+    @Test
+    fun `accepts invokespecial and invokestatic method references in all supported classfile versions`() {
+        val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
+        opcodes.forEach { (opcode, _) ->
+            assertIs<CodeAttribute>(
+                parseCodeAttribute(
+                    code = byteArrayOf(opcode.toByte(), 0, 2, 0xB1.toByte()),
+                    constantPool = methodReferencePool(),
+                    majorVersion = 51,
+                ),
+            )
+            assertIs<CodeAttribute>(
+                parseCodeAttribute(
+                    code = byteArrayOf(opcode.toByte(), 0, 2, 0xB1.toByte()),
+                    constantPool = methodReferencePool(),
+                    majorVersion = 52,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `accepts invokespecial and invokestatic interface method references in modern classfile versions`() {
+        val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
+        opcodes.forEach { (opcode, _) ->
+            assertIs<CodeAttribute>(
+                parseCodeAttribute(
+                    code = byteArrayOf(opcode.toByte(), 0, 2, 0xB1.toByte()),
+                    constantPool = interfaceMethodReferencePool(),
+                    majorVersion = 52,
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `rejects invokespecial and invokestatic interface method references in legacy classfile versions`() {
+        val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
+        opcodes.forEach { (opcode, mnemonic) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(opcode.toByte(), 0, 2, 0xB1.toByte()),
+                    constantPool = interfaceMethodReferencePool(),
+                    majorVersion = 51,
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains(mnemonic), failure.message)
+            assertTrue(failure.message.orEmpty().contains("major version 51"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("CONSTANT_Methodref"), failure.message)
+        }
+    }
+
+    @Test
+    fun `rejects invokespecial and invokestatic operands that are not method references`() {
+        val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
+        opcodes.forEach { (opcode, mnemonic) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(opcode.toByte(), 0, 2, 0xB1.toByte()),
+                    constantPool = fieldReferencePool(),
+                    majorVersion = 52,
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains(mnemonic), failure.message)
+            assertTrue(failure.message.orEmpty().contains("CONSTANT_Methodref"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("CONSTANT_InterfaceMethodref"), failure.message)
+        }
+    }
+
     private fun parseCodeAttribute(
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
+        majorVersion: Int = 70,
     ): AttributeInfo {
         return AttributeInfoParser.parseAttributes(
             reader = ClassFileByteReader(
@@ -472,6 +544,7 @@ class CodeInstructionValidationTest {
             constantPool = constantPool,
             registry = AttributeParserRegistry.of("Code" to CodeAttributeParser),
             ownerPath = "methods[0]",
+            majorVersion = majorVersion,
         ).single()
     }
 
@@ -517,13 +590,18 @@ class CodeInstructionValidationTest {
         )
 
     private fun fieldReferencePool(): ConstantPool =
-        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry))
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry, "value", "I"))
 
     private fun methodReferencePool(): ConstantPool =
-        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantMethodRefEntry))
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantMethodRefEntry, "run", "()V"))
+
+    private fun interfaceMethodReferencePool(): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantInterfaceMethodRefEntry, "run", "()V"))
 
     private fun memberReferencePoolEntries(
         createMemberRef: (ConstantPoolIndex, ConstantPoolIndex) -> ConstantPoolEntry,
+        memberName: String,
+        descriptor: String,
     ): List<ConstantPoolEntry> =
         listOf(
             ConstantUtf8Entry("Code", byteArrayOf()),
@@ -531,8 +609,8 @@ class CodeInstructionValidationTest {
             ConstantClassEntry(ConstantPoolIndex(5)),
             ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
             ConstantUtf8Entry("Example", byteArrayOf()),
-            ConstantUtf8Entry("value", byteArrayOf()),
-            ConstantUtf8Entry("I", byteArrayOf()),
+            ConstantUtf8Entry(memberName, byteArrayOf()),
+            ConstantUtf8Entry(descriptor, byteArrayOf()),
         )
 
     private fun codeAttributeBytes(code: ByteArray): ByteArray {

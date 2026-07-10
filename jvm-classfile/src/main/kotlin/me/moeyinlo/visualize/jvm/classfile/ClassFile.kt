@@ -31,13 +31,14 @@ object ClassFileParser {
         val constantPool = ConstantPoolParser.parse(reader)
         val accessFlags = ClassAccessFlagsParser.parse(reader)
         val identity = ClassIdentityParser.parse(reader)
-        val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind)
+        val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val methods = MethodInfoParser.parseMethods(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val attributes = AttributeInfoParser.parseAttributes(
             reader = reader,
             constantPool = constantPool,
             registry = attributeParsers,
             ownerPath = "ClassFile",
+            majorVersion = version.major,
         )
         if (reader.remaining != 0) {
             throw ClassFileFormatException(

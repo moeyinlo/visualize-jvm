@@ -18,6 +18,7 @@ object FieldInfoParser {
         constantPool: ConstantPool,
         attributeParsers: AttributeParserRegistry,
         classKind: ClassFileKind = ClassFileKind.Class,
+        majorVersion: Int = 70,
     ): List<FieldInfo> {
         val fields = parseFields(reader) { attributeReader, ownerPath ->
             AttributeInfoParser.parseAttributes(
@@ -25,6 +26,7 @@ object FieldInfoParser {
                 constantPool = constantPool,
                 registry = attributeParsers,
                 ownerPath = ownerPath,
+                majorVersion = majorVersion,
             )
         }
         validateFields(fields, constantPool, classKind)

@@ -38,13 +38,19 @@ object CodeAttributeParser : AttributeBodyParser {
         }
 
         val code = context.reader.readSlice(codeLength.toInt())
-        val instructionLayout = CodeInstructionValidator.validate(code, context.ownerPath, context.constantPool)
+        val instructionLayout = CodeInstructionValidator.validate(
+            code = code,
+            ownerPath = context.ownerPath,
+            constantPool = context.constantPool,
+            majorVersion = context.majorVersion,
+        )
         val exceptionTable = parseExceptionTable(context, code.size, instructionLayout)
         val attributes = AttributeInfoParser.parseAttributes(
             reader = context.reader,
             constantPool = context.constantPool,
             registry = context.registry,
             ownerPath = context.ownerPath,
+            majorVersion = context.majorVersion,
         )
 
         return CodeAttribute(
@@ -207,6 +213,7 @@ private object CodeInstructionValidator {
         code: ByteArray,
         ownerPath: String,
         constantPool: ConstantPool,
+        majorVersion: Int,
     ): CodeInstructionLayout {
         val instructionOffsets = mutableSetOf<Int>()
         val modifiedOpcodeOffsets = mutableSetOf<Int>()
@@ -216,7 +223,15 @@ private object CodeInstructionValidator {
         while (pc < code.size) {
             instructionOffsets += pc
             val opcode = code.u1(pc)
-            val length = instructionLength(code, pc, ownerPath, constantPool, branchTargets, modifiedOpcodeOffsets)
+            val length = instructionLength(
+                code = code,
+                pc = pc,
+                ownerPath = ownerPath,
+                constantPool = constantPool,
+                majorVersion = majorVersion,
+                branchTargets = branchTargets,
+                modifiedOpcodeOffsets = modifiedOpcodeOffsets,
+            )
             if (pc + length > code.size) {
                 throw ClassFileFormatException(
                     "Invalid $ownerPath.code[$pc] ${mnemonic(opcode)}: " +
@@ -246,6 +261,7 @@ private object CodeInstructionValidator {
         pc: Int,
         ownerPath: String,
         constantPool: ConstantPool,
+        majorVersion: Int,
         branchTargets: MutableList<BranchTarget>,
         modifiedOpcodeOffsets: MutableSet<Int>,
     ): Int {
@@ -335,6 +351,18 @@ private object CodeInstructionValidator {
                 validateMethodReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
                 3
             }
+            0xB7, 0xB8 -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                validateSpecialOrStaticMethodReferenceOperand(
+                    code = code,
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    constantPool = constantPool,
+                    mnemonic = mnemonic(opcode),
+                    majorVersion = majorVersion,
+                )
+                3
+            }
             0xC0, 0xC1 -> {
                 ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
                 validateClassReferenceOperand(code, pc, ownerPath, constantPool, mnemonic(opcode))
@@ -386,6 +414,47 @@ private object CodeInstructionValidator {
                 ensureAvailable(code, pc, length, ownerPath, mnemonic(opcode))
                 length
             }
+        }
+    }
+
+    private fun validateSpecialOrStaticMethodReferenceOperand(
+        code: ByteArray,
+        pc: Int,
+        ownerPath: String,
+        constantPool: ConstantPool,
+        mnemonic: String,
+        majorVersion: Int,
+    ) {
+        val rawIndex = code.u2(pc + 1)
+        if (rawIndex == 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index #0: zero is not allowed",
+            )
+        }
+        val index = ConstantPoolIndex(rawIndex)
+        val entry = loadConstantPoolEntry(ownerPath, pc, mnemonic, constantPool, index)
+        val valid = if (majorVersion < 52) {
+            entry is ConstantMethodRefEntry
+        } else {
+            entry is ConstantMethodRefEntry || entry is ConstantInterfaceMethodRefEntry
+        }
+        if (!valid) {
+            val expected = if (majorVersion < 52) {
+                "CONSTANT_Methodref for class file major version $majorVersion"
+            } else {
+                "CONSTANT_Methodref or CONSTANT_InterfaceMethodref"
+            }
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "expected $expected but found ${entry.javaClass.simpleName}",
+            )
+        }
+        if (majorVersion < 52 && entry is ConstantInterfaceMethodRefEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_InterfaceMethodref is not permitted before class file major version 52; " +
+                    "current major version $majorVersion expects CONSTANT_Methodref",
+            )
         }
     }
 
@@ -771,6 +840,8 @@ private object CodeInstructionValidator {
             0xB4 -> "getfield"
             0xB5 -> "putfield"
             0xB6 -> "invokevirtual"
+            0xB7 -> "invokespecial"
+            0xB8 -> "invokestatic"
             0xAA -> "tableswitch"
             0xAB -> "lookupswitch"
             0xBB -> "new"
