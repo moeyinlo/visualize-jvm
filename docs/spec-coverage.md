@@ -100,6 +100,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.3, 4.9.1 | `Code` `invokevirtual` `CONSTANT_Methodref` operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `invokespecial` and `invokestatic` version-specific method reference operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `invokeinterface` interface method reference, count, and zero-byte operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
+| 4.7.3, 4.9.1 | `Code` `invokeinterface` descriptor-derived `count` operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `invokedynamic` dynamic call site and zero-byte operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `jsr`, `jsr_w`, and `ret` class file version 51.0+ exclusion constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` category-1 local variable instruction index constraints against `max_locals` | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |

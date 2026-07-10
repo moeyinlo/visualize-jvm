@@ -795,6 +795,45 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `accepts invokeinterface count that matches descriptor argument slots`() {
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 1, 0, 0xB1.toByte()),
+                constantPool = interfaceMethodReferencePool("()V"),
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 8, 0, 0xB1.toByte()),
+                constantPool = interfaceMethodReferencePool("(IJDLjava/lang/String;[I)V"),
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects invokeinterface count that does not match descriptor argument slots`() {
+        val tooSmallFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 7, 0, 0xB1.toByte()),
+                constantPool = interfaceMethodReferencePool("(IJDLjava/lang/String;[I)V"),
+            )
+        }
+        assertTrue(tooSmallFailure.message.orEmpty().contains("invokeinterface"), tooSmallFailure.message)
+        assertTrue(tooSmallFailure.message.orEmpty().contains("count"), tooSmallFailure.message)
+        assertTrue(tooSmallFailure.message.orEmpty().contains("8"), tooSmallFailure.message)
+
+        val tooLargeFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 9, 0, 0xB1.toByte()),
+                constantPool = interfaceMethodReferencePool("(IJDLjava/lang/String;[I)V"),
+            )
+        }
+        assertTrue(tooLargeFailure.message.orEmpty().contains("invokeinterface"), tooLargeFailure.message)
+        assertTrue(tooLargeFailure.message.orEmpty().contains("count"), tooLargeFailure.message)
+        assertTrue(tooLargeFailure.message.orEmpty().contains("8"), tooLargeFailure.message)
+    }
+
+    @Test
     fun `accepts invokedynamic operands that point to dynamic call site specifiers`() {
         val attribute = parseCodeAttribute(
             code = byteArrayOf(0xBA.toByte(), 0, 2, 0, 0, 0xB1.toByte()),
@@ -916,8 +955,8 @@ class CodeInstructionValidationTest {
     private fun methodReferencePool(): ConstantPool =
         ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantMethodRefEntry, "run", "()V"))
 
-    private fun interfaceMethodReferencePool(): ConstantPool =
-        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantInterfaceMethodRefEntry, "run", "()V"))
+    private fun interfaceMethodReferencePool(descriptor: String = "()V"): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantInterfaceMethodRefEntry, "run", descriptor))
 
     private fun memberReferencePoolEntries(
         createMemberRef: (ConstantPoolIndex, ConstantPoolIndex) -> ConstantPoolEntry,

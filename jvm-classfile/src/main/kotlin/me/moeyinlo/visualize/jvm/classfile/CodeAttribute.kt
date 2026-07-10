@@ -581,12 +581,64 @@ private object CodeInstructionValidator {
                 "Invalid $ownerPath.code[$pc] $mnemonic count operand must not be zero",
             )
         }
+        val expectedCount = 1 + interfaceMethodParameterUnits(ownerPath, pc, mnemonic, constantPool, index, entry)
+        if (count != expectedCount) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic count operand $count: " +
+                    "expected descriptor argument slot count $expectedCount",
+            )
+        }
         val fourthByte = code.u1(pc + 4)
         if (fourthByte != 0) {
             throw ClassFileFormatException(
                 "Invalid $ownerPath.code[$pc] $mnemonic fourth operand byte must be zero",
             )
         }
+    }
+
+    private fun interfaceMethodParameterUnits(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantInterfaceMethodRefEntry,
+    ): Int {
+        val nameAndType = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.nameAndTypeIndex,
+            role = "CONSTANT_InterfaceMethodref.name_and_type_index",
+        )
+        if (nameAndType !is ConstantNameAndTypeEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_InterfaceMethodref.name_and_type_index=${entry.nameAndTypeIndex} " +
+                    "expected CONSTANT_NameAndType but found ${nameAndType.javaClass.simpleName}",
+            )
+        }
+        val descriptor = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.descriptorIndex,
+            role = "CONSTANT_InterfaceMethodref.descriptor_index",
+        )
+        if (descriptor !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_InterfaceMethodref.descriptor_index=${nameAndType.descriptorIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${descriptor.javaClass.simpleName}",
+            )
+        }
+        return DescriptorValidator.methodParameterUnits(
+            owner = nameAndType.descriptorIndex,
+            role = "descriptor_index",
+            descriptor = descriptor.value,
+        )
     }
 
     private fun validateSpecialOrStaticMethodReferenceOperand(

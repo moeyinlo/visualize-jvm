@@ -21,6 +21,14 @@ object DescriptorValidator {
         DescriptorParser(owner, role, descriptor, "method").parseMethodDescriptor()
     }
 
+    fun methodParameterUnits(
+        owner: ConstantPoolIndex,
+        role: String,
+        descriptor: String,
+    ): Int {
+        return DescriptorParser(owner, role, descriptor, "method").parseMethodDescriptor()
+    }
+
     private class DescriptorParser(
         private val owner: ConstantPoolIndex,
         private val role: String,
@@ -58,7 +66,7 @@ object DescriptorValidator {
                 else -> fail("expected field type at offset $position")
             }
 
-        fun parseMethodDescriptor() {
+        fun parseMethodDescriptor(): Int {
             if (peek() != '(') {
                 fail("must start with '('")
             }
@@ -82,6 +90,7 @@ object DescriptorValidator {
             if (!isAtEnd()) {
                 fail("has trailing characters at offset $position")
             }
+            return parameterUnits
         }
 
         fun fail(reason: String): Nothing =
