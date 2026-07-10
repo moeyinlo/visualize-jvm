@@ -71,6 +71,7 @@ class CodeInstructionValidationTest {
                     1,
                     0xB1.toByte(),
                 ),
+                maxLocals = 2,
             )
         }
 
@@ -157,6 +158,7 @@ class CodeInstructionValidationTest {
         assertIs<CodeAttribute>(
             parseCodeAttribute(
                 code = byteArrayOf(0xC4.toByte(), 0xA9.toByte(), 0, 1, 0xB1.toByte()),
+                maxLocals = 2,
                 majorVersion = 50,
             ),
         )
@@ -187,6 +189,97 @@ class CodeInstructionValidationTest {
         assertTrue(wideRetFailure.message.orEmpty().contains("wide"), wideRetFailure.message)
         assertTrue(wideRetFailure.message.orEmpty().contains("ret"), wideRetFailure.message)
         assertTrue(wideRetFailure.message.orEmpty().contains("major version 51"), wideRetFailure.message)
+    }
+
+    @Test
+    fun `accepts category one local variable indexes within max locals`() {
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(
+                    0x15,
+                    1,
+                    0x17,
+                    1,
+                    0x19,
+                    1,
+                    0x36,
+                    1,
+                    0x38,
+                    1,
+                    0x3A,
+                    1,
+                    0x84.toByte(),
+                    1,
+                    1,
+                    0xA9.toByte(),
+                    1,
+                    0xC4.toByte(),
+                    0x15,
+                    0,
+                    1,
+                    0xC4.toByte(),
+                    0x84.toByte(),
+                    0,
+                    1,
+                    0,
+                    1,
+                    0xB1.toByte(),
+                ),
+                maxLocals = 2,
+                majorVersion = 50,
+            ),
+        )
+        assertIs<CodeAttribute>(
+            parseCodeAttribute(
+                code = byteArrayOf(
+                    0x1D,
+                    0x25,
+                    0x2D,
+                    0x3E,
+                    0x46,
+                    0x4E,
+                    0xB1.toByte(),
+                ),
+                maxLocals = 4,
+            ),
+        )
+    }
+
+    @Test
+    fun `rejects category one local variable indexes outside max locals`() {
+        val indexedInstructions = listOf(
+            "iload" to byteArrayOf(0x15, 2, 0xB1.toByte()),
+            "fload" to byteArrayOf(0x17, 2, 0xB1.toByte()),
+            "aload" to byteArrayOf(0x19, 2, 0xB1.toByte()),
+            "istore" to byteArrayOf(0x36, 2, 0xB1.toByte()),
+            "fstore" to byteArrayOf(0x38, 2, 0xB1.toByte()),
+            "astore" to byteArrayOf(0x3A, 2, 0xB1.toByte()),
+            "iinc" to byteArrayOf(0x84.toByte(), 2, 1, 0xB1.toByte()),
+            "ret" to byteArrayOf(0xA9.toByte(), 2, 0xB1.toByte()),
+        )
+        indexedInstructions.forEach { (mnemonic, code) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(code = code, maxLocals = 2, majorVersion = 50)
+            }
+
+            assertTrue(failure.message.orEmpty().contains(mnemonic), failure.message)
+            assertTrue(failure.message.orEmpty().contains("max_locals=2"), failure.message)
+        }
+
+        val implicitFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(code = byteArrayOf(0x1D, 0xB1.toByte()), maxLocals = 3)
+        }
+        assertTrue(implicitFailure.message.orEmpty().contains("iload_3"), implicitFailure.message)
+        assertTrue(implicitFailure.message.orEmpty().contains("max_locals=3"), implicitFailure.message)
+
+        val wideFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xC4.toByte(), 0x15, 0, 2, 0xB1.toByte()),
+                maxLocals = 2,
+            )
+        }
+        assertTrue(wideFailure.message.orEmpty().contains("wide iload"), wideFailure.message)
+        assertTrue(wideFailure.message.orEmpty().contains("max_locals=2"), wideFailure.message)
     }
 
     @Test
@@ -682,10 +775,11 @@ class CodeInstructionValidationTest {
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
         majorVersion: Int = 70,
+        maxLocals: Int = 1,
     ): AttributeInfo {
         return AttributeInfoParser.parseAttributes(
             reader = ClassFileByteReader(
-                codeAttributeBytes(code),
+                codeAttributeBytes(code, maxLocals),
                 source = "code-instruction-validation.class",
             ),
             constantPool = constantPool,
@@ -771,7 +865,7 @@ class CodeInstructionValidationTest {
             ConstantUtf8Entry(descriptor, byteArrayOf()),
         )
 
-    private fun codeAttributeBytes(code: ByteArray): ByteArray {
+    private fun codeAttributeBytes(code: ByteArray, maxLocals: Int): ByteArray {
         val attributeLength = 12 + code.size
         return byteArrayOf(
             0,
@@ -782,8 +876,8 @@ class CodeInstructionValidationTest {
             byteArrayOf(
                 0,
                 1,
-                0,
-                1,
+                (maxLocals ushr 8).toByte(),
+                maxLocals.toByte(),
             ) + intBytes(code.size) +
             code +
             byteArrayOf(

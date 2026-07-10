@@ -43,6 +43,7 @@ object CodeAttributeParser : AttributeBodyParser {
             ownerPath = context.ownerPath,
             constantPool = context.constantPool,
             majorVersion = context.majorVersion,
+            maxLocals = maxLocals,
         )
         val exceptionTable = parseExceptionTable(context, code.size, instructionLayout)
         val attributes = AttributeInfoParser.parseAttributes(
@@ -208,6 +209,7 @@ private object CodeInstructionValidator {
     }
 
     private val wideTwoByteIndexOpcodes = setOf(0x15, 0x16, 0x17, 0x18, 0x19, 0x36, 0x37, 0x38, 0x39, 0x3A, 0xA9)
+    private val categoryOneLocalIndexOpcodes = setOf(0x15, 0x17, 0x19, 0x36, 0x38, 0x3A, 0xA9)
     private val discontinuedSubroutineOpcodes = setOf(0xA8, 0xA9, 0xC9)
 
     fun validate(
@@ -215,6 +217,7 @@ private object CodeInstructionValidator {
         ownerPath: String,
         constantPool: ConstantPool,
         majorVersion: Int,
+        maxLocals: Int,
     ): CodeInstructionLayout {
         val instructionOffsets = mutableSetOf<Int>()
         val modifiedOpcodeOffsets = mutableSetOf<Int>()
@@ -230,6 +233,7 @@ private object CodeInstructionValidator {
                 ownerPath = ownerPath,
                 constantPool = constantPool,
                 majorVersion = majorVersion,
+                maxLocals = maxLocals,
                 branchTargets = branchTargets,
                 modifiedOpcodeOffsets = modifiedOpcodeOffsets,
             )
@@ -263,6 +267,7 @@ private object CodeInstructionValidator {
         ownerPath: String,
         constantPool: ConstantPool,
         majorVersion: Int,
+        maxLocals: Int,
         branchTargets: MutableList<BranchTarget>,
         modifiedOpcodeOffsets: MutableSet<Int>,
     ): Int {
@@ -281,7 +286,35 @@ private object CodeInstructionValidator {
         return when (opcode) {
             0xAA -> parseTableSwitch(code, pc, ownerPath, branchTargets)
             0xAB -> parseLookupSwitch(code, pc, ownerPath, branchTargets)
-            0xC4 -> parseWide(code, pc, ownerPath, majorVersion, modifiedOpcodeOffsets)
+            0xC4 -> parseWide(code, pc, ownerPath, majorVersion, maxLocals, modifiedOpcodeOffsets)
+            in categoryOneLocalIndexOpcodes -> {
+                ensureAvailable(code, pc, 2, ownerPath, mnemonic(opcode))
+                validateLocalVariableIndex(
+                    index = code.u1(pc + 1),
+                    maxLocals = maxLocals,
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    mnemonic = mnemonic(opcode),
+                )
+                2
+            }
+            0x84 -> {
+                ensureAvailable(code, pc, 3, ownerPath, mnemonic(opcode))
+                validateLocalVariableIndex(
+                    index = code.u1(pc + 1),
+                    maxLocals = maxLocals,
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    mnemonic = mnemonic(opcode),
+                )
+                3
+            }
+            in 0x1A..0x1D -> localVariableIndexInstructionLength(opcode, 0x1A, pc, ownerPath, maxLocals)
+            in 0x22..0x25 -> localVariableIndexInstructionLength(opcode, 0x22, pc, ownerPath, maxLocals)
+            in 0x2A..0x2D -> localVariableIndexInstructionLength(opcode, 0x2A, pc, ownerPath, maxLocals)
+            in 0x3B..0x3E -> localVariableIndexInstructionLength(opcode, 0x3B, pc, ownerPath, maxLocals)
+            in 0x43..0x46 -> localVariableIndexInstructionLength(opcode, 0x43, pc, ownerPath, maxLocals)
+            in 0x4B..0x4E -> localVariableIndexInstructionLength(opcode, 0x4B, pc, ownerPath, maxLocals)
             0x12 -> {
                 ensureAvailable(code, pc, 2, ownerPath, mnemonic(opcode))
                 validateLdcOperand(
@@ -431,6 +464,38 @@ private object CodeInstructionValidator {
                 ensureAvailable(code, pc, length, ownerPath, mnemonic(opcode))
                 length
             }
+        }
+    }
+
+    private fun localVariableIndexInstructionLength(
+        opcode: Int,
+        baseOpcode: Int,
+        pc: Int,
+        ownerPath: String,
+        maxLocals: Int,
+    ): Int {
+        validateLocalVariableIndex(
+            index = opcode - baseOpcode,
+            maxLocals = maxLocals,
+            pc = pc,
+            ownerPath = ownerPath,
+            mnemonic = mnemonic(opcode),
+        )
+        return 1
+    }
+
+    private fun validateLocalVariableIndex(
+        index: Int,
+        maxLocals: Int,
+        pc: Int,
+        ownerPath: String,
+        mnemonic: String,
+    ) {
+        if (index >= maxLocals) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic local variable index $index: " +
+                    "must be no greater than max_locals=$maxLocals - 1",
+            )
         }
     }
 
@@ -865,6 +930,7 @@ private object CodeInstructionValidator {
         pc: Int,
         ownerPath: String,
         majorVersion: Int,
+        maxLocals: Int,
         modifiedOpcodeOffsets: MutableSet<Int>,
     ): Int {
         ensureAvailable(code, pc, 2, ownerPath, "wide")
@@ -879,10 +945,26 @@ private object CodeInstructionValidator {
         return when (modifiedOpcode) {
             in wideTwoByteIndexOpcodes -> {
                 ensureAvailable(code, pc, 4, ownerPath, "wide")
+                if (modifiedOpcode in categoryOneLocalIndexOpcodes) {
+                    validateLocalVariableIndex(
+                        index = code.u2(pc + 2),
+                        maxLocals = maxLocals,
+                        pc = pc,
+                        ownerPath = ownerPath,
+                        mnemonic = "wide ${mnemonic(modifiedOpcode)}",
+                    )
+                }
                 4
             }
             0x84 -> {
                 ensureAvailable(code, pc, 6, ownerPath, "wide")
+                validateLocalVariableIndex(
+                    index = code.u2(pc + 2),
+                    maxLocals = maxLocals,
+                    pc = pc,
+                    ownerPath = ownerPath,
+                    mnemonic = "wide ${mnemonic(modifiedOpcode)}",
+                )
                 6
             }
             else -> throw ClassFileFormatException(
@@ -929,6 +1011,19 @@ private object CodeInstructionValidator {
             0x13 -> "ldc_w"
             0x14 -> "ldc2_w"
             0x11 -> "sipush"
+            0x15 -> "iload"
+            0x17 -> "fload"
+            0x19 -> "aload"
+            in 0x1A..0x1D -> "iload_${opcode - 0x1A}"
+            in 0x22..0x25 -> "fload_${opcode - 0x22}"
+            in 0x2A..0x2D -> "aload_${opcode - 0x2A}"
+            0x36 -> "istore"
+            0x38 -> "fstore"
+            0x3A -> "astore"
+            in 0x3B..0x3E -> "istore_${opcode - 0x3B}"
+            in 0x43..0x46 -> "fstore_${opcode - 0x43}"
+            in 0x4B..0x4E -> "astore_${opcode - 0x4B}"
+            0x84 -> "iinc"
             0xA8 -> "jsr"
             0xA9 -> "ret"
             0xB2 -> "getstatic"
