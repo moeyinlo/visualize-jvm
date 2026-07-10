@@ -834,6 +834,62 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `accepts invokespecial operands that point to instance initialization methods`() {
+        val attribute = parseCodeAttribute(
+            code = byteArrayOf(0xB7.toByte(), 0, 2, 0xB1.toByte()),
+            constantPool = methodReferencePool(memberName = "<init>"),
+        )
+
+        assertIs<CodeAttribute>(attribute)
+    }
+
+    @Test
+    fun `rejects explicit method invocation instructions with disallowed special method names`() {
+        val cases = listOf(
+            SpecialMethodInvocationCase(
+                mnemonic = "invokevirtual",
+                methodName = "<init>",
+                code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = methodReferencePool(memberName = "<init>"),
+            ),
+            SpecialMethodInvocationCase(
+                mnemonic = "invokestatic",
+                methodName = "<init>",
+                code = byteArrayOf(0xB8.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = methodReferencePool(memberName = "<init>"),
+            ),
+            SpecialMethodInvocationCase(
+                mnemonic = "invokeinterface",
+                methodName = "<init>",
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 1, 0, 0xB1.toByte()),
+                constantPool = interfaceMethodReferencePool(memberName = "<init>"),
+            ),
+            SpecialMethodInvocationCase(
+                mnemonic = "invokespecial",
+                methodName = "<clinit>",
+                code = byteArrayOf(0xB7.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = methodReferencePool(memberName = "<clinit>"),
+            ),
+            SpecialMethodInvocationCase(
+                mnemonic = "invokespecial",
+                methodName = "<custom>",
+                code = byteArrayOf(0xB7.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = methodReferencePool(memberName = "<custom>"),
+            ),
+        )
+
+        cases.forEach { case ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(code = case.code, constantPool = case.constantPool)
+            }
+
+            assertTrue(failure.message.orEmpty().contains(case.mnemonic), failure.message)
+            assertTrue(failure.message.orEmpty().contains(case.methodName), failure.message)
+            assertTrue(failure.message.orEmpty().contains("method name"), failure.message)
+        }
+    }
+
+    @Test
     fun `accepts invokedynamic operands that point to dynamic call site specifiers`() {
         val attribute = parseCodeAttribute(
             code = byteArrayOf(0xBA.toByte(), 0, 2, 0, 0, 0xB1.toByte()),
@@ -952,11 +1008,18 @@ class CodeInstructionValidationTest {
     private fun fieldReferencePool(): ConstantPool =
         ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry, "value", "I"))
 
-    private fun methodReferencePool(): ConstantPool =
-        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantMethodRefEntry, "run", "()V"))
+    private data class SpecialMethodInvocationCase(
+        val mnemonic: String,
+        val methodName: String,
+        val code: ByteArray,
+        val constantPool: ConstantPool,
+    )
 
-    private fun interfaceMethodReferencePool(descriptor: String = "()V"): ConstantPool =
-        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantInterfaceMethodRefEntry, "run", descriptor))
+    private fun methodReferencePool(memberName: String = "run", descriptor: String = "()V"): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantMethodRefEntry, memberName, descriptor))
+
+    private fun interfaceMethodReferencePool(descriptor: String = "()V", memberName: String = "run"): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantInterfaceMethodRefEntry, memberName, descriptor))
 
     private fun memberReferencePoolEntries(
         createMemberRef: (ConstantPoolIndex, ConstantPoolIndex) -> ConstantPoolEntry,

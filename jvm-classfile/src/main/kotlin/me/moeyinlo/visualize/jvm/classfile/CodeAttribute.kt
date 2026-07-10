@@ -575,6 +575,7 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_InterfaceMethodref but found ${entry.javaClass.simpleName}",
             )
         }
+        validateMethodInvocationName(ownerPath, pc, mnemonic, constantPool, index, entry, allowsInstanceInitialization = false)
         val count = code.u1(pc + 3)
         if (count == 0) {
             throw ClassFileFormatException(
@@ -680,6 +681,17 @@ private object CodeInstructionValidator {
                     "current major version $majorVersion expects CONSTANT_Methodref",
             )
         }
+        if (entry is ConstantMemberRefEntry) {
+            validateMethodInvocationName(
+                ownerPath = ownerPath,
+                pc = pc,
+                mnemonic = mnemonic,
+                constantPool = constantPool,
+                index = index,
+                entry = entry,
+                allowsInstanceInitialization = mnemonic == "invokespecial",
+            )
+        }
     }
 
     private fun validateMethodReferenceOperand(
@@ -703,6 +715,80 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_Methodref but found ${entry.javaClass.simpleName}",
             )
         }
+        validateMethodInvocationName(ownerPath, pc, mnemonic, constantPool, index, entry, allowsInstanceInitialization = false)
+    }
+
+    private fun validateMethodInvocationName(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantMemberRefEntry,
+        allowsInstanceInitialization: Boolean,
+    ) {
+        val methodName = methodReferenceName(ownerPath, pc, mnemonic, constantPool, index, entry)
+        if (methodName == "<init>") {
+            if (!allowsInstanceInitialization) {
+                throw ClassFileFormatException(
+                    "Invalid $ownerPath.code[$pc] $mnemonic method name <init>: " +
+                        "instance initialization methods may only be invoked by invokespecial",
+                )
+            }
+            return
+        }
+        if (methodName.startsWith("<")) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic method name $methodName: " +
+                    "methods whose names begin with '<' must not be called explicitly",
+            )
+        }
+    }
+
+    private fun methodReferenceName(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantMemberRefEntry,
+    ): String {
+        val constantKind = when (entry) {
+            is ConstantMethodRefEntry -> "CONSTANT_Methodref"
+            is ConstantInterfaceMethodRefEntry -> "CONSTANT_InterfaceMethodref"
+            is ConstantFieldRefEntry -> "CONSTANT_Fieldref"
+        }
+        val nameAndType = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.nameAndTypeIndex,
+            role = "$constantKind.name_and_type_index",
+        )
+        if (nameAndType !is ConstantNameAndTypeEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.name_and_type_index=${entry.nameAndTypeIndex} " +
+                    "expected CONSTANT_NameAndType but found ${nameAndType.javaClass.simpleName}",
+            )
+        }
+        val name = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.nameIndex,
+            role = "$constantKind.name_index",
+        )
+        if (name !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.name_index=${nameAndType.nameIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${name.javaClass.simpleName}",
+            )
+        }
+        return name.value
     }
 
     private fun validateFieldReferenceOperand(
