@@ -577,6 +577,52 @@ class CodeInstructionValidationTest {
         assertTrue(nonzeroFourthByteFailure.message.orEmpty().contains("zero"), nonzeroFourthByteFailure.message)
     }
 
+    @Test
+    fun `accepts invokedynamic operands that point to dynamic call site specifiers`() {
+        val attribute = parseCodeAttribute(
+            code = byteArrayOf(0xBA.toByte(), 0, 2, 0, 0, 0xB1.toByte()),
+            constantPool = invokeDynamicPool(),
+        )
+
+        assertIs<CodeAttribute>(attribute)
+    }
+
+    @Test
+    fun `rejects invokedynamic operands that do not point to dynamic call site specifiers`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBA.toByte(), 0, 2, 0, 0, 0xB1.toByte()),
+                constantPool = methodReferencePool(),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokedynamic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_InvokeDynamic"), failure.message)
+    }
+
+    @Test
+    fun `rejects invokedynamic operands with nonzero trailing bytes`() {
+        val thirdByteFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBA.toByte(), 0, 2, 1, 0, 0xB1.toByte()),
+                constantPool = invokeDynamicPool(),
+            )
+        }
+        assertTrue(thirdByteFailure.message.orEmpty().contains("invokedynamic"), thirdByteFailure.message)
+        assertTrue(thirdByteFailure.message.orEmpty().contains("third"), thirdByteFailure.message)
+        assertTrue(thirdByteFailure.message.orEmpty().contains("zero"), thirdByteFailure.message)
+
+        val fourthByteFailure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBA.toByte(), 0, 2, 0, 1, 0xB1.toByte()),
+                constantPool = invokeDynamicPool(),
+            )
+        }
+        assertTrue(fourthByteFailure.message.orEmpty().contains("invokedynamic"), fourthByteFailure.message)
+        assertTrue(fourthByteFailure.message.orEmpty().contains("fourth"), fourthByteFailure.message)
+        assertTrue(fourthByteFailure.message.orEmpty().contains("zero"), fourthByteFailure.message)
+    }
+
     private fun parseCodeAttribute(
         code: ByteArray,
         constantPool: ConstantPool = ConstantPool.fromEntries(listOf(ConstantUtf8Entry("Code", byteArrayOf()))),
@@ -632,6 +678,17 @@ class CodeInstructionValidationTest {
                 ConstantNameAndTypeEntry(ConstantPoolIndex(4), ConstantPoolIndex(5)),
                 ConstantUtf8Entry("dyn", byteArrayOf()),
                 ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
+            ),
+        )
+
+    private fun invokeDynamicPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantInvokeDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(3)),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(4), ConstantPoolIndex(5)),
+                ConstantUtf8Entry("run", byteArrayOf()),
+                ConstantUtf8Entry("()V", byteArrayOf()),
             ),
         )
 
