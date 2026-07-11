@@ -155,6 +155,56 @@ class MethodControlFlowGraphTest {
     }
 
     @Test
+    fun `builds branch edges for jsr subroutine targets`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(
+                0xA8.toByte(), 0x00, 0x04,
+                0xB1.toByte(),
+                0xA9.toByte(), 0x00,
+            ),
+        )
+
+        val graph = MethodControlFlowGraphBuilder.build(code)
+
+        assertEquals(setOf(0, 3, 4), graph.instructionOffsets)
+        assertEquals(
+            setOf(
+                ControlFlowEdge(0, 4, ControlFlowEdgeKind.Branch),
+                ControlFlowEdge(0, 3, ControlFlowEdgeKind.FallThrough),
+            ),
+            graph.edges,
+        )
+    }
+
+    @Test
+    fun `builds branch edges for jsr_w subroutine targets`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(
+                0xC9.toByte(), 0x00, 0x00, 0x00, 0x06,
+                0xB1.toByte(),
+                0xA9.toByte(), 0x00,
+            ),
+        )
+
+        val graph = MethodControlFlowGraphBuilder.build(code)
+
+        assertEquals(setOf(0, 5, 6), graph.instructionOffsets)
+        assertEquals(
+            setOf(
+                ControlFlowEdge(0, 6, ControlFlowEdgeKind.Branch),
+                ControlFlowEdge(0, 5, ControlFlowEdgeKind.FallThrough),
+            ),
+            graph.edges,
+        )
+    }
+
+    @Test
     fun `builds fallthrough edges for wide local variable instructions`() {
         val code = CodeAttribute(
             nameIndex = ConstantPoolIndex(1),

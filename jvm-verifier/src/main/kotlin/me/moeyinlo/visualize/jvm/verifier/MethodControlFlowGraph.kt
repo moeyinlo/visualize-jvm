@@ -109,8 +109,11 @@ object MethodControlFlowGraphBuilder {
         val branchTargets = when (opcode) {
             in conditionalBranches,
             0xA7,
+            0xA8,
             -> setOf(offset + s2(offset + 1))
-            0xC8 -> setOf(offset + s4(offset + 1))
+            0xC8,
+            0xC9,
+            -> setOf(offset + s4(offset + 1))
             else -> emptySet()
         }
         return DecodedInstruction(
