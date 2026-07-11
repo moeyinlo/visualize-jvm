@@ -214,4 +214,41 @@ class VerificationTypeLatticeTest {
             ),
         )
     }
+
+    @Test
+    fun `array verification type widens to bootstrap defined Serializable`() {
+        val hierarchy = VerificationTypeHierarchy(
+            classes = listOf(
+                VerificationTypeClass(
+                    internalName = "java/io/Serializable",
+                    loader = "app",
+                    definition = VerificationTypeClassKey("java/io/Serializable", loader = "bootstrap"),
+                ),
+                VerificationTypeClass(
+                    internalName = "java/io/Serializable",
+                    loader = "custom",
+                    definition = VerificationTypeClassKey("java/io/Serializable", loader = "custom"),
+                ),
+            ),
+        )
+
+        assertTrue(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/io/Serializable", loader = "app"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/io/Serializable", loader = "missing"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/io/Serializable", loader = "custom"),
+                hierarchy = hierarchy,
+            ),
+        )
+    }
 }

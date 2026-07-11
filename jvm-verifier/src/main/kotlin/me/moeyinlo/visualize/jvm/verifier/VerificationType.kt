@@ -172,6 +172,7 @@ class VerificationTypeHierarchy(
         private val arrayBootstrapSupertypeNames = setOf(
             "java/lang/Object",
             "java/lang/Cloneable",
+            "java/io/Serializable",
         )
 
         val Empty: VerificationTypeHierarchy = VerificationTypeHierarchy()
