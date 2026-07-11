@@ -259,6 +259,10 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0x2F -> LongArrayLoadInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
                 0x36 -> LocalStoreInstructionVerifier.verify(
                     frame = frame,
                     index = code.code.u1(offset + 1),
