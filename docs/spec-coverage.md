@@ -239,6 +239,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Athrow instruction Throwable operand stack check | `jvm-verifier` | `AthrowInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Pop instruction category-1 operand stack transition | `jvm-verifier` | `PopInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Pop2 instruction category-1/category-2 operand stack transition | `jvm-verifier` | `Pop2InstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Dup instruction category-1 operand stack transition | `jvm-verifier` | `DupInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
