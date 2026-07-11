@@ -248,6 +248,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | `wide` local-store widened index equivalent type rule | `jvm-verifier` | `WideLocalStoreInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `wide iinc` widened index equivalent type rule | `jvm-verifier` | `WideIncrementInstructionVerifierTest` | IMPLEMENTED |
 | 2.3.3, 4.10.2.5, 6.5 | `ret` returnAddress local type check with unchanged type state | `jvm-verifier` | `RetInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | `wide ret` widened index equivalent returnAddress local type rule | `jvm-verifier` | `WideRetInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-long conversion instruction type transition | `jvm-verifier` | `IntToLongConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-float conversion instruction type transition | `jvm-verifier` | `IntToFloatConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-double conversion instruction type transition | `jvm-verifier` | `IntToDoubleConversionInstructionVerifierTest` | IMPLEMENTED |
