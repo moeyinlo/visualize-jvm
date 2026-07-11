@@ -6,7 +6,7 @@ import me.moeyinlo.visualize.jvm.classfile.VerificationTypeInfo as ClassfileVeri
 sealed interface VerificationType {
     val locationCount: Int
 
-    fun isAssignableTo(target: VerificationType): Boolean =
+    fun isAssignableTo(target: VerificationType): kotlin.Boolean =
         VerificationTypeLattice.isAssignable(source = this, target = target)
 
     data object Top : VerificationType {
@@ -26,6 +26,14 @@ sealed interface VerificationType {
     }
 
     data object UninitializedReference : VerificationType {
+        override val locationCount: Int = 1
+    }
+
+    data object Byte : VerificationType {
+        override val locationCount: Int = 1
+    }
+
+    data object Boolean : VerificationType {
         override val locationCount: Int = 1
     }
 
@@ -82,7 +90,7 @@ sealed interface VerificationType {
 }
 
 private object VerificationTypeLattice {
-    fun isAssignable(source: VerificationType, target: VerificationType): Boolean {
+    fun isAssignable(source: VerificationType, target: VerificationType): kotlin.Boolean {
         if (source == target) {
             return true
         }
@@ -99,6 +107,9 @@ private object VerificationTypeLattice {
             VerificationType.Top -> emptyList()
             VerificationType.OneWord -> listOf(VerificationType.Top)
             VerificationType.TwoWord -> listOf(VerificationType.Top)
+            VerificationType.Byte,
+            VerificationType.Boolean,
+            -> emptyList()
             VerificationType.Integer,
             VerificationType.Float,
             VerificationType.Reference,

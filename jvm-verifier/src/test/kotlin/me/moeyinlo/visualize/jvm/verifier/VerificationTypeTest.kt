@@ -40,6 +40,8 @@ class VerificationTypeTest {
             VerificationType.OneWord,
             VerificationType.Reference,
             VerificationType.UninitializedReference,
+            VerificationType.Byte,
+            VerificationType.Boolean,
             VerificationType.Integer,
             VerificationType.Float,
             VerificationType.Null,
@@ -65,6 +67,8 @@ class VerificationTypeTest {
             VerificationType.TwoWord,
             VerificationType.Reference,
             VerificationType.UninitializedReference,
+            VerificationType.Byte,
+            VerificationType.Boolean,
             VerificationType.Integer,
             VerificationType.Float,
             VerificationType.Long,
@@ -93,6 +97,21 @@ class VerificationTypeTest {
 
         assertEquals(false, VerificationType.Integer.isAssignableTo(VerificationType.TwoWord))
         assertEquals(false, VerificationType.Long.isAssignableTo(VerificationType.OneWord))
+    }
+
+    @Test
+    fun `byte and boolean are exact primitive array component markers`() {
+        val byteArrayType = VerificationType.ArrayOf(VerificationType.Byte)
+        val booleanArrayType = VerificationType.ArrayOf(VerificationType.Boolean)
+
+        assertEquals(true, byteArrayType.isAssignableTo(VerificationType.Reference))
+        assertEquals(true, booleanArrayType.isAssignableTo(VerificationType.Reference))
+        assertEquals(true, VerificationType.Null.isAssignableTo(byteArrayType))
+        assertEquals(true, VerificationType.Null.isAssignableTo(booleanArrayType))
+
+        assertEquals(false, VerificationType.Byte.isAssignableTo(VerificationType.Integer))
+        assertEquals(false, VerificationType.Boolean.isAssignableTo(VerificationType.Integer))
+        assertEquals(false, byteArrayType.isAssignableTo(booleanArrayType))
     }
 
     @Test
