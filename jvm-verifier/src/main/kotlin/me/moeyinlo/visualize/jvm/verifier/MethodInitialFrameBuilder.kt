@@ -18,6 +18,11 @@ object MethodInitialFrameBuilder {
     ): MethodInitialFrame {
         val descriptorTypes = MethodDescriptorVerificationTypeParser.parse(descriptor)
         val argumentLocals = VerificationTypeSlotExpander.expand(descriptorTypes.parameterTypes)
+        if (argumentLocals.size > maxLocals) {
+            throw MethodVerificationException(
+                "Initial frame locals use ${argumentLocals.size} local variable unit(s), exceeding max_locals=$maxLocals",
+            )
+        }
         val paddedLocals = argumentLocals + List(maxLocals - argumentLocals.size) { VerificationType.Top }
         return MethodInitialFrame(
             locals = paddedLocals,
