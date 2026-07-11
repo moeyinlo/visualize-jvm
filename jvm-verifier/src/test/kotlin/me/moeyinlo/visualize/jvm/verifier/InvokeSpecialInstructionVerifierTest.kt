@@ -101,6 +101,118 @@ class InvokeSpecialInstructionVerifierTest {
     }
 
     @Test
+    fun `invokespecial non-initializer accepts method owner as current class`() {
+        val frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub")))
+
+        val nextFrame = InvokeSpecialInstructionVerifier.verifyNonInitializer(
+            frame = frame,
+            thisType = VerificationType.ClassType("pkg/Sub"),
+            methodName = "m",
+            descriptor = "()V",
+            maxStack = 1,
+            methodOwnerType = VerificationType.ClassType("pkg/Sub"),
+            ownerEnvironment = ownerEnvironment(),
+        )
+
+        assertEquals(frame(stack = emptyList()), nextFrame)
+    }
+
+    @Test
+    fun `invokespecial non-initializer accepts method owner as superclass`() {
+        val frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub")))
+
+        val nextFrame = InvokeSpecialInstructionVerifier.verifyNonInitializer(
+            frame = frame,
+            thisType = VerificationType.ClassType("pkg/Sub"),
+            methodName = "m",
+            descriptor = "()V",
+            maxStack = 1,
+            methodOwnerType = VerificationType.ClassType("lib/Base"),
+            ownerEnvironment = ownerEnvironment(),
+        )
+
+        assertEquals(frame(stack = emptyList()), nextFrame)
+    }
+
+    @Test
+    fun `invokespecial non-initializer accepts method owner as direct superinterface`() {
+        val frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub")))
+
+        val nextFrame = InvokeSpecialInstructionVerifier.verifyNonInitializer(
+            frame = frame,
+            thisType = VerificationType.ClassType("pkg/Sub"),
+            methodName = "m",
+            descriptor = "()V",
+            maxStack = 1,
+            methodOwnerType = VerificationType.ClassType("api/Iface"),
+            ownerEnvironment = ownerEnvironment(),
+        )
+
+        assertEquals(frame(stack = emptyList()), nextFrame)
+    }
+
+    @Test
+    fun `invokespecial non-initializer rejects unrelated method owner`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyNonInitializer(
+                frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub"))),
+                thisType = VerificationType.ClassType("pkg/Sub"),
+                methodName = "m",
+                descriptor = "()V",
+                maxStack = 1,
+                methodOwnerType = VerificationType.ClassType("other/Helper"),
+                ownerEnvironment = ownerEnvironment(),
+            )
+        }
+
+        assertEquals(
+            "invokespecial non-initializer owner other/Helper is not current class pkg/Sub, " +
+                "a superclass, or a direct superinterface",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokespecial non-initializer rejects superclass owner from another loader`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyNonInitializer(
+                frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub"))),
+                thisType = VerificationType.ClassType("pkg/Sub"),
+                methodName = "m",
+                descriptor = "()V",
+                maxStack = 1,
+                methodOwnerType = VerificationType.ClassType("lib/Base", loader = "child"),
+                ownerEnvironment = ownerEnvironment(),
+            )
+        }
+
+        assertEquals(
+            "invokespecial non-initializer owner lib/Base is not current class pkg/Sub, " +
+                "a superclass, or a direct superinterface",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokespecial non-initializer owner verification requires owner and environment together`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyNonInitializer(
+                frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub"))),
+                thisType = VerificationType.ClassType("pkg/Sub"),
+                methodName = "m",
+                descriptor = "()V",
+                maxStack = 1,
+                methodOwnerType = VerificationType.ClassType("pkg/Sub"),
+            )
+        }
+
+        assertEquals(
+            "invokespecial non-initializer owner verification requires both owner and environment",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `invokespecial non-initializer rejects instance initialization method names`() {
         val exception = assertFailsWith<MethodVerificationException> {
             InvokeSpecialInstructionVerifier.verifyNonInitializer(
@@ -137,4 +249,14 @@ class InvokeSpecialInstructionVerifierTest {
 
         assertEquals("invokespecial non-initializer target method must not be <clinit>", exception.message)
     }
+
+    private fun frame(stack: List<VerificationType>): VerificationFrameState =
+        VerificationFrameState(bytecodeOffset = 183, locals = emptyList(), stack = stack)
+
+    private fun ownerEnvironment(): InvokeSpecialOwnerEnvironment =
+        InvokeSpecialOwnerEnvironment(
+            currentClass = ProtectedVerifierClass("pkg/Sub"),
+            superclasses = listOf(ProtectedVerifierClass("lib/Base")),
+            directSuperinterfaceNames = listOf("api/Iface"),
+        )
 }
