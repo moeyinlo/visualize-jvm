@@ -80,6 +80,29 @@ class InvokeInterfaceInstructionVerifierTest {
     }
 
     @Test
+    fun `invokeinterface count includes category two parameter slots`() {
+        val frame = VerificationFrameState(
+            bytecodeOffset = 185,
+            locals = emptyList(),
+            stack = listOf(
+                VerificationType.ClassType("pkg/Impl"),
+                VerificationType.Long,
+            ),
+        )
+
+        val nextFrame = InvokeInterfaceInstructionVerifier.verify(
+            frame = frame,
+            methodOwnerType = VerificationType.Reference,
+            methodName = "m",
+            descriptor = "(J)V",
+            count = 3,
+            maxStack = 3,
+        )
+
+        assertEquals(frame.copy(stack = emptyList()), nextFrame)
+    }
+
+    @Test
     fun `invokeinterface rejects descriptor argument mismatch before count validation`() {
         val exception = assertFailsWith<MethodVerificationException> {
             InvokeInterfaceInstructionVerifier.verify(

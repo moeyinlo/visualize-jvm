@@ -295,6 +295,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | `invokespecial <init>` on `uninitialized(offset)` enforces void descriptor, matching `new` owner, normal initialization, and exception-frame poisoning | `jvm-verifier` | `InvokeSpecialInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1.8, 6.5 | `invokespecial <init>` on `uninitialized(offset)` applies protected constructor receiver narrowing to the initialized normal frame | `jvm-verifier` | `InvokeSpecialInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokeinterface` receiver plus descriptor argument/return operand stack transition and `count` validation | `jvm-verifier` | `InvokeInterfaceInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | `invokeinterface` `count` validation counts category-2 descriptor parameters as two operand units | `jvm-verifier` | `InvokeInterfaceInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokedynamic` dynamic call site descriptor argument/return operand stack transition | `jvm-verifier` | `InvokeDynamicInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `nop` instruction no type-state transition | `jvm-verifier` | `NopInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `arraylength` array-or-null reference to int stack transition | `jvm-verifier` | `ArrayLengthInstructionVerifierTest` | IMPLEMENTED |

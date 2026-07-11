@@ -13,16 +13,15 @@ object InvokeInterfaceInstructionVerifier {
             throw MethodVerificationException("invokeinterface target method must not be $methodName")
         }
         val methodTypes = MethodDescriptorVerificationTypeParser.parse(descriptor)
-        val inputOperandCount = frame.stack.size
+        val expectedOperandCount = 1 + methodTypes.parameterTypes.sumOf { type -> type.locationCount }
         var stack = VerifierOperandStack.fromFrame(stack = frame.stack, maxStack = maxStack)
         for (argumentType in methodTypes.parameterTypes.asReversed()) {
             stack = stack.pop(argumentType).stack
         }
         stack = stack.pop(methodOwnerType).stack
-        val poppedOperandCount = inputOperandCount - stack.values.size
-        if (count != poppedOperandCount) {
+        if (count != expectedOperandCount) {
             throw MethodVerificationException(
-                "invokeinterface count operand $count does not match popped operand count $poppedOperandCount",
+                "invokeinterface count operand $count does not match popped operand count $expectedOperandCount",
             )
         }
         if (methodTypes.returnType != null) {
