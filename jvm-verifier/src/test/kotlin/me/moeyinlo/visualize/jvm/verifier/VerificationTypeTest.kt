@@ -37,6 +37,9 @@ class VerificationTypeTest {
     fun `reports verification type location counts`() {
         val oneLocationTypes = listOf(
             VerificationType.Top,
+            VerificationType.OneWord,
+            VerificationType.Reference,
+            VerificationType.UninitializedReference,
             VerificationType.Integer,
             VerificationType.Float,
             VerificationType.Null,
@@ -50,5 +53,63 @@ class VerificationTypeTest {
         }
         assertEquals(2, VerificationType.Long.locationCount)
         assertEquals(2, VerificationType.Double.locationCount)
+        assertEquals(2, VerificationType.TwoWord.locationCount)
+    }
+
+    @Test
+    fun `assignability is reflexive`() {
+        val types = listOf(
+            VerificationType.Top,
+            VerificationType.OneWord,
+            VerificationType.TwoWord,
+            VerificationType.Reference,
+            VerificationType.UninitializedReference,
+            VerificationType.Integer,
+            VerificationType.Float,
+            VerificationType.Long,
+            VerificationType.Double,
+            VerificationType.Null,
+            VerificationType.UninitializedThis,
+            VerificationType.ObjectType(ConstantPoolIndex(1)),
+            VerificationType.Uninitialized(offset = 0),
+        )
+
+        types.forEach { type ->
+            assertEquals(true, type.isAssignableTo(type), "expected $type to be assignable to itself")
+        }
+    }
+
+    @Test
+    fun `assigns primitive verification types through abstract categories`() {
+        assertEquals(true, VerificationType.Integer.isAssignableTo(VerificationType.OneWord))
+        assertEquals(true, VerificationType.Float.isAssignableTo(VerificationType.OneWord))
+        assertEquals(true, VerificationType.Long.isAssignableTo(VerificationType.TwoWord))
+        assertEquals(true, VerificationType.Double.isAssignableTo(VerificationType.TwoWord))
+
+        assertEquals(true, VerificationType.Integer.isAssignableTo(VerificationType.Top))
+        assertEquals(true, VerificationType.Long.isAssignableTo(VerificationType.Top))
+
+        assertEquals(false, VerificationType.Integer.isAssignableTo(VerificationType.TwoWord))
+        assertEquals(false, VerificationType.Long.isAssignableTo(VerificationType.OneWord))
+    }
+
+    @Test
+    fun `assigns reference null and uninitialized verification types through abstract categories`() {
+        val objectType = VerificationType.ObjectType(ConstantPoolIndex(1))
+
+        assertEquals(true, objectType.isAssignableTo(VerificationType.Reference))
+        assertEquals(true, objectType.isAssignableTo(VerificationType.OneWord))
+        assertEquals(true, objectType.isAssignableTo(VerificationType.Top))
+
+        assertEquals(true, VerificationType.Null.isAssignableTo(objectType))
+        assertEquals(true, VerificationType.Null.isAssignableTo(VerificationType.Reference))
+
+        assertEquals(true, VerificationType.UninitializedThis.isAssignableTo(VerificationType.UninitializedReference))
+        assertEquals(true, VerificationType.Uninitialized(offset = 10).isAssignableTo(VerificationType.UninitializedReference))
+        assertEquals(true, VerificationType.Uninitialized(offset = 10).isAssignableTo(VerificationType.Reference))
+        assertEquals(true, VerificationType.Uninitialized(offset = 10).isAssignableTo(VerificationType.Top))
+
+        assertEquals(false, objectType.isAssignableTo(VerificationType.Null))
+        assertEquals(false, VerificationType.Integer.isAssignableTo(VerificationType.Reference))
     }
 }

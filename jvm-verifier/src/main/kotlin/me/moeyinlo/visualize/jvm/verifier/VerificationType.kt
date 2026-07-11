@@ -6,7 +6,26 @@ import me.moeyinlo.visualize.jvm.classfile.VerificationTypeInfo as ClassfileVeri
 sealed interface VerificationType {
     val locationCount: Int
 
+    fun isAssignableTo(target: VerificationType): Boolean =
+        VerificationTypeLattice.isAssignable(source = this, target = target)
+
     data object Top : VerificationType {
+        override val locationCount: Int = 1
+    }
+
+    data object OneWord : VerificationType {
+        override val locationCount: Int = 1
+    }
+
+    data object TwoWord : VerificationType {
+        override val locationCount: Int = 2
+    }
+
+    data object Reference : VerificationType {
+        override val locationCount: Int = 1
+    }
+
+    data object UninitializedReference : VerificationType {
         override val locationCount: Int = 1
     }
 
@@ -56,4 +75,39 @@ sealed interface VerificationType {
                 is ClassfileVerificationTypeInfo.UninitializedVariable -> Uninitialized(type.offset)
             }
     }
+}
+
+private object VerificationTypeLattice {
+    fun isAssignable(source: VerificationType, target: VerificationType): Boolean {
+        if (source == target) {
+            return true
+        }
+        if (source == VerificationType.Null && target is VerificationType.ObjectType) {
+            return true
+        }
+        return directSupertypes(source).any { supertype ->
+            isAssignable(source = supertype, target = target)
+        }
+    }
+
+    private fun directSupertypes(type: VerificationType): List<VerificationType> =
+        when (type) {
+            VerificationType.Top -> emptyList()
+            VerificationType.OneWord -> listOf(VerificationType.Top)
+            VerificationType.TwoWord -> listOf(VerificationType.Top)
+            VerificationType.Integer,
+            VerificationType.Float,
+            VerificationType.Reference,
+            -> listOf(VerificationType.OneWord)
+            VerificationType.Long,
+            VerificationType.Double,
+            -> listOf(VerificationType.TwoWord)
+            VerificationType.Null,
+            is VerificationType.ObjectType,
+            -> listOf(VerificationType.Reference)
+            VerificationType.UninitializedReference -> listOf(VerificationType.Reference)
+            VerificationType.UninitializedThis,
+            is VerificationType.Uninitialized,
+            -> listOf(VerificationType.UninitializedReference)
+        }
 }
