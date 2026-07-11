@@ -1126,6 +1126,34 @@ class MethodTypeCheckingVerifierTest {
         )
     }
 
+    @Test
+    fun `type checking verifier applies implicit reference local store transitions`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 4,
+                    code = byteArrayOf(
+                        0x4E.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack is empty, expected category 1 value",
+            exception.message,
+        )
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
