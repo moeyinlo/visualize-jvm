@@ -140,4 +140,41 @@ class VerificationTypeLatticeTest {
             ),
         )
     }
+
+    @Test
+    fun `array verification type widens to bootstrap defined Object`() {
+        val hierarchy = VerificationTypeHierarchy(
+            classes = listOf(
+                VerificationTypeClass(
+                    internalName = "java/lang/Object",
+                    loader = "app",
+                    definition = VerificationTypeClassKey("java/lang/Object", loader = "bootstrap"),
+                ),
+                VerificationTypeClass(
+                    internalName = "java/lang/Object",
+                    loader = "custom",
+                    definition = VerificationTypeClassKey("java/lang/Object", loader = "custom"),
+                ),
+            ),
+        )
+
+        assertTrue(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/lang/Object", loader = "app"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/lang/Object", loader = "missing"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/lang/Object", loader = "custom"),
+                hierarchy = hierarchy,
+            ),
+        )
+    }
 }

@@ -123,11 +123,15 @@ class VerificationTypeHierarchy(
         }
 
     internal fun isWideningReference(source: VerificationType, target: VerificationType): kotlin.Boolean =
-        source is VerificationType.ClassType &&
-            target is VerificationType.ClassType &&
-            (isLoadedInterface(target) ||
-                isLoadedSuperclass(source = source, target = target) ||
-                isSameLoadedClassFromDifferentInitiatingLoaders(source = source, target = target))
+        when {
+            source is VerificationType.ClassType && target is VerificationType.ClassType ->
+                isLoadedInterface(target) ||
+                    isLoadedSuperclass(source = source, target = target) ||
+                    isSameLoadedClassFromDifferentInitiatingLoaders(source = source, target = target)
+            source is VerificationType.ArrayOf && target is VerificationType.ClassType ->
+                isArraySubtypeOfBootstrapObject(target)
+            else -> false
+        }
 
     private fun isLoadedInterface(type: VerificationType.ClassType): kotlin.Boolean =
         loadedClass(type)?.isInterface == true
@@ -151,6 +155,14 @@ class VerificationTypeHierarchy(
         val sourceClass = loadedClass(source) ?: return false
         val targetClass = loadedClass(target) ?: return false
         return sourceClass.definition == targetClass.definition
+    }
+
+    private fun isArraySubtypeOfBootstrapObject(target: VerificationType.ClassType): kotlin.Boolean {
+        if (target.internalName != "java/lang/Object") {
+            return false
+        }
+        val targetClass = loadedClass(target) ?: return false
+        return targetClass.definition == VerificationTypeClassKey("java/lang/Object", loader = "bootstrap")
     }
 
     private fun loadedClass(type: VerificationType.ClassType): VerificationTypeClass? =
