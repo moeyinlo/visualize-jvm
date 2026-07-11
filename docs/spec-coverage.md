@@ -225,6 +225,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Float compare greater instruction type transition | `jvm-verifier` | `FloatCompareGreaterInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Double compare less instruction type transition | `jvm-verifier` | `DoubleCompareLessInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Double compare greater instruction type transition | `jvm-verifier` | `DoubleCompareGreaterInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Int zero branch instruction operand stack transition | `jvm-verifier` | `IntZeroBranchInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
