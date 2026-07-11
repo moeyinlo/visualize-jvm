@@ -73,6 +73,13 @@ sealed interface VerificationType {
         override val locationCount: Int = 1
     }
 
+    data class ClassType(
+        val internalName: String,
+        val loader: String = "bootstrap",
+    ) : VerificationType {
+        override val locationCount: Int = 1
+    }
+
     data class ArrayOf(val component: VerificationType) : VerificationType {
         override val locationCount: Int = 1
     }
@@ -102,13 +109,18 @@ private object VerificationTypeLattice {
         if (source == target) {
             return true
         }
-        if (source == VerificationType.Null && (target is VerificationType.ObjectType || target is VerificationType.ArrayOf)) {
+        if (source == VerificationType.Null && target.isReferenceType()) {
             return true
         }
         return directSupertypes(source).any { supertype ->
             isAssignable(source = supertype, target = target)
         }
     }
+
+    private fun VerificationType.isReferenceType(): kotlin.Boolean =
+        this is VerificationType.ObjectType ||
+            this is VerificationType.ClassType ||
+            this is VerificationType.ArrayOf
 
     private fun directSupertypes(type: VerificationType): List<VerificationType> =
         when (type) {
@@ -129,6 +141,7 @@ private object VerificationTypeLattice {
             -> listOf(VerificationType.TwoWord)
             VerificationType.Null,
             is VerificationType.ObjectType,
+            is VerificationType.ClassType,
             is VerificationType.ArrayOf,
             -> listOf(VerificationType.Reference)
             VerificationType.UninitializedReference -> listOf(VerificationType.Reference)

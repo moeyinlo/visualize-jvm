@@ -185,6 +185,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.9 | Static and structural constraints | `jvm-verifier` | TBD | PENDING |
 | 4.10.1 | Verification type model and StackMapTable type conversion | `jvm-verifier` | `VerificationTypeTest` | IMPLEMENTED |
 | 4.10.1 | Verification type lattice base assignability | `jvm-verifier` | `VerificationTypeTest` | IMPLEMENTED |
+| 4.10.1.2 | Class verification type `class(N,L)` lattice representation | `jvm-verifier` | `VerificationTypeLatticeTest` | IMPLEMENTED |
 | 4.10.1 | Method control flow graph for fixed-size branches and exception handlers | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.10.1 | Verifier frame max locals and max stack resource limits | `jvm-verifier` | `MethodResourceLimitsVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verifier local variable slot reads and writes | `jvm-verifier` | `VerifierLocalVariablesTest` | IMPLEMENTED |
