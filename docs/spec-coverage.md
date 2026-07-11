@@ -219,6 +219,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Double-to-float conversion instruction type transition | `jvm-verifier` | `DoubleToFloatConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-byte conversion instruction type transition | `jvm-verifier` | `IntToByteConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-char conversion instruction type transition | `jvm-verifier` | `IntToCharConversionInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Int-to-short conversion instruction type transition | `jvm-verifier` | `IntToShortConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
