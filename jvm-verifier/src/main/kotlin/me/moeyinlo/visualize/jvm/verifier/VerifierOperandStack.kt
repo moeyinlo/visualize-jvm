@@ -27,6 +27,20 @@ class VerifierOperandStack private constructor(
         )
     }
 
+    fun popCategory1(): VerifierOperandStackPop {
+        val actual = values.lastOrNull()
+            ?: throw MethodVerificationException("Operand stack is empty, expected category 1 value")
+        if (actual == VerificationType.Top || actual.locationCount != 1) {
+            throw MethodVerificationException(
+                "Operand stack top contains $actual, expected category 1 value",
+            )
+        }
+        return VerifierOperandStackPop(
+            value = actual,
+            stack = VerifierOperandStack(values.dropLast(1), maxStack),
+        )
+    }
+
     companion object {
         fun empty(maxStack: Int): VerifierOperandStack =
             VerifierOperandStack(values = emptyList(), maxStack = maxStack)
