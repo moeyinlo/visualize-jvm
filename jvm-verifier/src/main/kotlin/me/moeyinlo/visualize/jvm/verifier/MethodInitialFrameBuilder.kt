@@ -47,6 +47,18 @@ object MethodInitialFrameBuilder {
             flags = listOf(MethodInitialFrameFlag.ThisUninitialized),
         )
 
+    fun buildObjectConstructor(
+        descriptor: String,
+        maxLocals: Int,
+        currentClassLoader: String = "bootstrap",
+    ): MethodInitialFrame =
+        build(
+            descriptor = descriptor,
+            maxLocals = maxLocals,
+            thisLocals = listOf(VerificationType.ClassType("java/lang/Object", loader = currentClassLoader)),
+            flags = emptyList(),
+        )
+
     private fun build(
         descriptor: String,
         maxLocals: Int,
