@@ -20,6 +20,7 @@ class InvokeStaticInstructionVerifierTest {
 
         val nextFrame = InvokeStaticInstructionVerifier.verify(
             frame = frame,
+            methodName = "mix",
             descriptor = "(Ljava/lang/String;JI)D",
             maxStack = 5,
         )
@@ -40,6 +41,7 @@ class InvokeStaticInstructionVerifierTest {
 
         val nextFrame = InvokeStaticInstructionVerifier.verify(
             frame = frame,
+            methodName = "drop",
             descriptor = "(I)V",
             maxStack = 2,
         )
@@ -62,6 +64,7 @@ class InvokeStaticInstructionVerifierTest {
                         VerificationType.Float,
                     ),
                 ),
+                methodName = "mix",
                 descriptor = "(Ljava/lang/String;I)D",
                 maxStack = 2,
             )
@@ -82,6 +85,7 @@ class InvokeStaticInstructionVerifierTest {
                     locals = emptyList(),
                     stack = listOf(VerificationType.Integer),
                 ),
+                methodName = "wide",
                 descriptor = "()J",
                 maxStack = 2,
             )
@@ -89,6 +93,48 @@ class InvokeStaticInstructionVerifierTest {
 
         assertEquals(
             "Operand stack depth 3 exceeds max_stack=2",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokestatic rejects instance initialization method names`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeStaticInstructionVerifier.verify(
+                frame = VerificationFrameState(
+                    bytecodeOffset = 184,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+                methodName = "<init>",
+                descriptor = "()V",
+                maxStack = 0,
+            )
+        }
+
+        assertEquals(
+            "invokestatic target method must not be <init>",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokestatic rejects class initialization method names`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeStaticInstructionVerifier.verify(
+                frame = VerificationFrameState(
+                    bytecodeOffset = 184,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+                methodName = "<clinit>",
+                descriptor = "()V",
+                maxStack = 0,
+            )
+        }
+
+        assertEquals(
+            "invokestatic target method must not be <clinit>",
             exception.message,
         )
     }
