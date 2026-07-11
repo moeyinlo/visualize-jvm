@@ -37,6 +37,10 @@ sealed interface VerificationType {
         override val locationCount: Int = 1
     }
 
+    data object Char : VerificationType {
+        override val locationCount: Int = 1
+    }
+
     data object Integer : VerificationType {
         override val locationCount: Int = 1
     }
@@ -109,6 +113,7 @@ private object VerificationTypeLattice {
             VerificationType.TwoWord -> listOf(VerificationType.Top)
             VerificationType.Byte,
             VerificationType.Boolean,
+            VerificationType.Char,
             -> emptyList()
             VerificationType.Integer,
             VerificationType.Float,
