@@ -499,6 +499,36 @@ class MethodTypeCheckingVerifierTest {
         }
     }
 
+    @Test
+    fun `type checking verifier applies implicit double local load transitions`() {
+        listOf(0x26 to 0, 0x27 to 1, 0x28 to 2, 0x29 to 3).forEach { (opcode, index) ->
+            val exception = assertFailsWith<MethodVerificationException> {
+                MethodTypeCheckingVerifier.verify(
+                    code = code(
+                        maxStack = 2,
+                        maxLocals = 5,
+                        code = byteArrayOf(
+                            opcode.toByte(),
+                            0xB1.toByte(),
+                        ),
+                    ),
+                    frameStates = listOf(
+                        VerificationFrameState(
+                            bytecodeOffset = 0,
+                            locals = emptyList(),
+                            stack = emptyList(),
+                        ),
+                    ),
+                )
+            }
+
+            assertEquals(
+                "Local variable $index contains Top, expected Double",
+                exception.message,
+            )
+        }
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
