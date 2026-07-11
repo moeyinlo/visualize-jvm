@@ -125,7 +125,9 @@ class VerificationTypeHierarchy(
     internal fun isWideningReference(source: VerificationType, target: VerificationType): kotlin.Boolean =
         source is VerificationType.ClassType &&
             target is VerificationType.ClassType &&
-            (isLoadedInterface(target) || isLoadedSuperclass(source = source, target = target))
+            (isLoadedInterface(target) ||
+                isLoadedSuperclass(source = source, target = target) ||
+                isSameLoadedClassFromDifferentInitiatingLoaders(source = source, target = target))
 
     private fun isLoadedInterface(type: VerificationType.ClassType): kotlin.Boolean =
         loadedClass(type)?.isInterface == true
@@ -139,6 +141,18 @@ class VerificationTypeHierarchy(
         return targetKey in classesByKey && targetKey in sourceClass.superclasses
     }
 
+    private fun isSameLoadedClassFromDifferentInitiatingLoaders(
+        source: VerificationType.ClassType,
+        target: VerificationType.ClassType,
+    ): kotlin.Boolean {
+        if (source.internalName != target.internalName || source.loader == target.loader) {
+            return false
+        }
+        val sourceClass = loadedClass(source) ?: return false
+        val targetClass = loadedClass(target) ?: return false
+        return sourceClass.definition == targetClass.definition
+    }
+
     private fun loadedClass(type: VerificationType.ClassType): VerificationTypeClass? =
         classesByKey[VerificationTypeClassKey(type.internalName, type.loader)]
 
@@ -150,6 +164,7 @@ class VerificationTypeHierarchy(
 data class VerificationTypeClass(
     val internalName: String,
     val loader: String = "bootstrap",
+    val definition: VerificationTypeClassKey = VerificationTypeClassKey(internalName, loader),
     val isInterface: kotlin.Boolean = false,
     val superclasses: List<VerificationTypeClassKey> = emptyList(),
 )

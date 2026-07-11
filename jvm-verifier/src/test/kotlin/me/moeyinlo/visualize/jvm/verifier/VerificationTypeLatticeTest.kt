@@ -97,4 +97,47 @@ class VerificationTypeLatticeTest {
             ),
         )
     }
+
+    @Test
+    fun `class verification type widens between different initiating loaders for the same loaded class`() {
+        val sharedDefinition = VerificationTypeClassKey("pkg/Shared", loader = "defining")
+        val hierarchy = VerificationTypeHierarchy(
+            classes = listOf(
+                VerificationTypeClass(
+                    internalName = "pkg/Shared",
+                    loader = "loaderA",
+                    definition = sharedDefinition,
+                ),
+                VerificationTypeClass(
+                    internalName = "pkg/Shared",
+                    loader = "loaderB",
+                    definition = sharedDefinition,
+                ),
+                VerificationTypeClass(
+                    internalName = "pkg/Shared",
+                    loader = "loaderC",
+                    definition = VerificationTypeClassKey("pkg/Shared", loader = "otherDefining"),
+                ),
+            ),
+        )
+
+        assertTrue(
+            VerificationType.ClassType("pkg/Shared", loader = "loaderA").isAssignableTo(
+                VerificationType.ClassType("pkg/Shared", loader = "loaderB"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ClassType("pkg/Shared", loader = "loaderA").isAssignableTo(
+                VerificationType.ClassType("pkg/Shared", loader = "loaderC"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ClassType("pkg/Shared", loader = "loaderA").isAssignableTo(
+                VerificationType.ClassType("pkg/Shared", loader = "missingLoader"),
+                hierarchy = hierarchy,
+            ),
+        )
+    }
 }
