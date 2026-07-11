@@ -245,6 +245,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Double negation instruction type transitions | `jvm-verifier` | `DoubleNegationInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `iinc` instruction int local type check with unchanged type state | `jvm-verifier` | `IncrementInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `wide` local-load widened index equivalent type rule | `jvm-verifier` | `WideLocalLoadInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | `wide` local-store widened index equivalent type rule | `jvm-verifier` | `WideLocalStoreInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-long conversion instruction type transition | `jvm-verifier` | `IntToLongConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-float conversion instruction type transition | `jvm-verifier` | `IntToFloatConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-double conversion instruction type transition | `jvm-verifier` | `IntToDoubleConversionInstructionVerifierTest` | IMPLEMENTED |
