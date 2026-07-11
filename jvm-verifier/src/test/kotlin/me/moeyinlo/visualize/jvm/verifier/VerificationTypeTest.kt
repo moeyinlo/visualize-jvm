@@ -45,6 +45,7 @@ class VerificationTypeTest {
             VerificationType.Null,
             VerificationType.UninitializedThis,
             VerificationType.ObjectType(ConstantPoolIndex(1)),
+            VerificationType.ArrayOf(VerificationType.Integer),
             VerificationType.Uninitialized(offset = 0),
         )
 
@@ -71,6 +72,7 @@ class VerificationTypeTest {
             VerificationType.Null,
             VerificationType.UninitializedThis,
             VerificationType.ObjectType(ConstantPoolIndex(1)),
+            VerificationType.ArrayOf(VerificationType.Integer),
             VerificationType.Uninitialized(offset = 0),
         )
 
@@ -96,13 +98,19 @@ class VerificationTypeTest {
     @Test
     fun `assigns reference null and uninitialized verification types through abstract categories`() {
         val objectType = VerificationType.ObjectType(ConstantPoolIndex(1))
+        val intArrayType = VerificationType.ArrayOf(VerificationType.Integer)
+        val floatArrayType = VerificationType.ArrayOf(VerificationType.Float)
 
         assertEquals(true, objectType.isAssignableTo(VerificationType.Reference))
         assertEquals(true, objectType.isAssignableTo(VerificationType.OneWord))
         assertEquals(true, objectType.isAssignableTo(VerificationType.Top))
 
         assertEquals(true, VerificationType.Null.isAssignableTo(objectType))
+        assertEquals(true, VerificationType.Null.isAssignableTo(intArrayType))
         assertEquals(true, VerificationType.Null.isAssignableTo(VerificationType.Reference))
+        assertEquals(true, intArrayType.isAssignableTo(VerificationType.Reference))
+        assertEquals(true, intArrayType.isAssignableTo(VerificationType.OneWord))
+        assertEquals(true, intArrayType.isAssignableTo(VerificationType.Top))
 
         assertEquals(true, VerificationType.UninitializedThis.isAssignableTo(VerificationType.UninitializedReference))
         assertEquals(true, VerificationType.Uninitialized(offset = 10).isAssignableTo(VerificationType.UninitializedReference))
@@ -110,6 +118,7 @@ class VerificationTypeTest {
         assertEquals(true, VerificationType.Uninitialized(offset = 10).isAssignableTo(VerificationType.Top))
 
         assertEquals(false, objectType.isAssignableTo(VerificationType.Null))
+        assertEquals(false, intArrayType.isAssignableTo(floatArrayType))
         assertEquals(false, VerificationType.Integer.isAssignableTo(VerificationType.Reference))
     }
 }

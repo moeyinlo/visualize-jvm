@@ -57,6 +57,10 @@ sealed interface VerificationType {
         override val locationCount: Int = 1
     }
 
+    data class ArrayOf(val component: VerificationType) : VerificationType {
+        override val locationCount: Int = 1
+    }
+
     data class Uninitialized(val offset: Int) : VerificationType {
         override val locationCount: Int = 1
     }
@@ -82,7 +86,7 @@ private object VerificationTypeLattice {
         if (source == target) {
             return true
         }
-        if (source == VerificationType.Null && target is VerificationType.ObjectType) {
+        if (source == VerificationType.Null && (target is VerificationType.ObjectType || target is VerificationType.ArrayOf)) {
             return true
         }
         return directSupertypes(source).any { supertype ->
@@ -104,6 +108,7 @@ private object VerificationTypeLattice {
             -> listOf(VerificationType.TwoWord)
             VerificationType.Null,
             is VerificationType.ObjectType,
+            is VerificationType.ArrayOf,
             -> listOf(VerificationType.Reference)
             VerificationType.UninitializedReference -> listOf(VerificationType.Reference)
             VerificationType.UninitializedThis,
