@@ -100,6 +100,39 @@ class MethodControlFlowGraphTest {
     }
 
     @Test
+    fun `builds branch edges for tableswitch jump table targets`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(
+                0xAA.toByte(),
+                0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x18,
+                0x00, 0x00, 0x00, 0x01,
+                0x00, 0x00, 0x00, 0x02,
+                0x00, 0x00, 0x00, 0x19,
+                0x00, 0x00, 0x00, 0x1A,
+                0xB1.toByte(),
+                0xB1.toByte(),
+                0xB1.toByte(),
+            ),
+        )
+
+        val graph = MethodControlFlowGraphBuilder.build(code)
+
+        assertEquals(setOf(0, 24, 25, 26), graph.instructionOffsets)
+        assertEquals(
+            setOf(
+                ControlFlowEdge(0, 24, ControlFlowEdgeKind.Branch),
+                ControlFlowEdge(0, 25, ControlFlowEdgeKind.Branch),
+                ControlFlowEdge(0, 26, ControlFlowEdgeKind.Branch),
+            ),
+            graph.edges,
+        )
+    }
+
+    @Test
     fun `rejects branch targets that are not instruction offsets`() {
         val code = CodeAttribute(
             nameIndex = ConstantPoolIndex(1),

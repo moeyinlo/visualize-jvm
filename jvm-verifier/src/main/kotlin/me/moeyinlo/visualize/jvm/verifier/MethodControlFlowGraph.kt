@@ -34,8 +34,7 @@ object MethodControlFlowGraphBuilder {
 
         instructions.forEachIndexed { index, instruction ->
             val next = instructions.getOrNull(index + 1)
-            val branchTarget = instruction.branchTarget
-            if (branchTarget != null) {
+            instruction.branchTargets.forEach { branchTarget ->
                 if (branchTarget !in instructionOffsets) {
                     throw ControlFlowGraphException(
                         "Invalid branch target $branchTarget from instruction ${instruction.offset}",
@@ -67,27 +66,78 @@ object MethodControlFlowGraphBuilder {
         var offset = 0
         while (offset < code.size) {
             val opcode = code.u1(offset)
-            val length = fixedLength(opcode)
-            if (offset + length > code.size) {
-                throw ControlFlowGraphException(
-                    "Instruction at $offset length $length exceeds code_length=${code.size}",
-                )
+            val instruction = when (opcode) {
+                0xAA -> code.decodeTableSwitch(offset)
+                else -> code.decodeFixedInstruction(offset, opcode)
             }
-            val branchTarget = when (opcode) {
-                in conditionalBranches,
-                0xA7,
-                -> offset + code.s2(offset + 1)
-                0xC8 -> offset + code.s4(offset + 1)
-                else -> null
-            }
-            instructions += DecodedInstruction(
-                offset = offset,
-                opcode = opcode,
-                branchTarget = branchTarget,
-            )
-            offset += length
+            instructions += instruction
+            offset += instruction.length
         }
         return instructions
+    }
+
+    private fun ByteArray.decodeFixedInstruction(
+        offset: Int,
+        opcode: Int,
+    ): DecodedInstruction {
+        val length = fixedLength(opcode)
+        if (offset + length > size) {
+            throw ControlFlowGraphException(
+                "Instruction at $offset length $length exceeds code_length=$size",
+            )
+        }
+        val branchTargets = when (opcode) {
+            in conditionalBranches,
+            0xA7,
+            -> setOf(offset + s2(offset + 1))
+            0xC8 -> setOf(offset + s4(offset + 1))
+            else -> emptySet()
+        }
+        return DecodedInstruction(
+            offset = offset,
+            opcode = opcode,
+            length = length,
+            branchTargets = branchTargets,
+        )
+    }
+
+    private fun ByteArray.decodeTableSwitch(offset: Int): DecodedInstruction {
+        val padding = switchPadding(offset)
+        val defaultOffset = offset + 1 + padding
+        if (defaultOffset + 12 > size) {
+            throw ControlFlowGraphException(
+                "tableswitch at $offset header exceeds code_length=$size",
+            )
+        }
+
+        val defaultTarget = offset + s4(defaultOffset)
+        val low = s4(defaultOffset + 4)
+        val high = s4(defaultOffset + 8)
+        if (low > high) {
+            throw ControlFlowGraphException(
+                "tableswitch at $offset has low $low greater than high $high",
+            )
+        }
+
+        val entryCount = high.toLong() - low.toLong() + 1L
+        val length = 1L + padding.toLong() + 12L + entryCount * 4L
+        if (length > Int.MAX_VALUE || offset.toLong() + length > size.toLong()) {
+            throw ControlFlowGraphException(
+                "tableswitch at $offset length $length exceeds code_length=$size",
+            )
+        }
+
+        val jumpOffsets = defaultOffset + 12
+        val targets = linkedSetOf(defaultTarget)
+        repeat(entryCount.toInt()) { index ->
+            targets += offset + s4(jumpOffsets + index * 4)
+        }
+        return DecodedInstruction(
+            offset = offset,
+            opcode = 0xAA,
+            length = length.toInt(),
+            branchTargets = targets,
+        )
     }
 
     private fun validateExceptionHandlers(
@@ -143,7 +193,9 @@ object MethodControlFlowGraphBuilder {
         }
 
     private val DecodedInstruction.hasFallThrough: Boolean
-        get() = opcode !in terminalOpcodes && opcode != 0xA7 && opcode != 0xC8
+        get() = opcode !in terminalOpcodes && opcode != 0xA7 && opcode != 0xAA && opcode != 0xC8
+
+    private fun switchPadding(offset: Int): Int = (4 - ((offset + 1) % 4)) % 4
 
     private fun ByteArray.u1(offset: Int): Int = this[offset].toInt() and 0xFF
 
@@ -156,6 +208,7 @@ object MethodControlFlowGraphBuilder {
     private data class DecodedInstruction(
         val offset: Int,
         val opcode: Int,
-        val branchTarget: Int?,
+        val length: Int,
+        val branchTargets: Set<Int>,
     )
 }
