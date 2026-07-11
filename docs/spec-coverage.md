@@ -204,6 +204,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Int negation instruction type transitions | `jvm-verifier` | `IntNegationInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Long negation instruction type transitions | `jvm-verifier` | `LongNegationInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Float negation instruction type transitions | `jvm-verifier` | `FloatNegationInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Double negation instruction type transitions | `jvm-verifier` | `DoubleNegationInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
