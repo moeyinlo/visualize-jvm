@@ -143,6 +143,7 @@ object MethodControlFlowGraphBuilder {
             opcode = 0xC4,
             length = length,
             branchTargets = emptySet(),
+            suppressFallThrough = modifiedOpcode == 0xA9,
         )
     }
 
@@ -288,9 +289,11 @@ object MethodControlFlowGraphBuilder {
         get() =
             opcode !in terminalOpcodes &&
                 opcode != 0xA7 &&
+                opcode != 0xA9 &&
                 opcode != 0xAA &&
                 opcode != 0xAB &&
-                opcode != 0xC8
+                opcode != 0xC8 &&
+                !suppressFallThrough
 
     private fun switchPadding(offset: Int): Int = (4 - ((offset + 1) % 4)) % 4
 
@@ -307,5 +310,6 @@ object MethodControlFlowGraphBuilder {
         val opcode: Int,
         val length: Int,
         val branchTargets: Set<Int>,
+        val suppressFallThrough: Boolean = false,
     )
 }

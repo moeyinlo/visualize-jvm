@@ -202,6 +202,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.9, 6.5 | Method control flow graph for `lookupswitch` match-offset targets | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.9, 6.5 | Method control flow graph rejects unsorted `lookupswitch` match values | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.9, 6.5 | Method control flow graph decodes `wide` local-variable instruction forms | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
+| 6.5 | Method control flow graph treats `ret` and `wide ret` as non-fallthrough control transfers | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.10.1 | Verifier frame max locals and max stack resource limits | `jvm-verifier` | `MethodResourceLimitsVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verifier local variable slot reads and writes | `jvm-verifier` | `VerifierLocalVariablesTest` | IMPLEMENTED |
 | 4.10.1 | Verifier operand stack push and pop transfers | `jvm-verifier` | `VerifierOperandStackTest` | IMPLEMENTED |

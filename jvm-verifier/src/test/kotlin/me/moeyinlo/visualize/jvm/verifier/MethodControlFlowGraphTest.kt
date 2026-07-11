@@ -121,6 +121,40 @@ class MethodControlFlowGraphTest {
     }
 
     @Test
+    fun `does not add fallthrough edges for ret`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(
+                0xA9.toByte(), 0x00,
+            ),
+        )
+
+        val graph = MethodControlFlowGraphBuilder.build(code)
+
+        assertEquals(setOf(0), graph.instructionOffsets)
+        assertEquals(emptySet(), graph.edges)
+    }
+
+    @Test
+    fun `does not add fallthrough edges for wide ret`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 257,
+            code = byteArrayOf(
+                0xC4.toByte(), 0xA9.toByte(), 0x01, 0x00,
+            ),
+        )
+
+        val graph = MethodControlFlowGraphBuilder.build(code)
+
+        assertEquals(setOf(0), graph.instructionOffsets)
+        assertEquals(emptySet(), graph.edges)
+    }
+
+    @Test
     fun `builds fallthrough edges for wide local variable instructions`() {
         val code = CodeAttribute(
             nameIndex = ConstantPoolIndex(1),
