@@ -439,6 +439,36 @@ class MethodTypeCheckingVerifierTest {
         }
     }
 
+    @Test
+    fun `type checking verifier applies implicit long local load transitions`() {
+        listOf(0x1E to 0, 0x1F to 1, 0x20 to 2, 0x21 to 3).forEach { (opcode, index) ->
+            val exception = assertFailsWith<MethodVerificationException> {
+                MethodTypeCheckingVerifier.verify(
+                    code = code(
+                        maxStack = 2,
+                        maxLocals = 5,
+                        code = byteArrayOf(
+                            opcode.toByte(),
+                            0xB1.toByte(),
+                        ),
+                    ),
+                    frameStates = listOf(
+                        VerificationFrameState(
+                            bytecodeOffset = 0,
+                            locals = emptyList(),
+                            stack = emptyList(),
+                        ),
+                    ),
+                )
+            }
+
+            assertEquals(
+                "Local variable $index contains Top, expected Long",
+                exception.message,
+            )
+        }
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
