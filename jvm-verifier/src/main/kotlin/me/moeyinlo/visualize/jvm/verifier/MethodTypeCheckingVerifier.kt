@@ -148,6 +148,15 @@ object MethodTypeCheckingVerifier {
                     maxLocals = code.maxLocals,
                     maxStack = code.maxStack,
                 )
+                0xC4 -> when (code.code.u1(offset + 1)) {
+                    0x15 -> WideLocalLoadInstructionVerifier.verify(
+                        frame = frame,
+                        index = code.code.u2(offset + 2),
+                        kind = LocalLoadKind.Int,
+                        maxLocals = code.maxLocals,
+                        maxStack = code.maxStack,
+                    )
+                }
                 in 0x1A..0x1D -> LocalLoadInstructionVerifier.verify(
                     frame = frame,
                     index = opcode - 0x1A,
@@ -204,4 +213,6 @@ object MethodTypeCheckingVerifier {
     }
 
     private fun ByteArray.u1(offset: Int): Int = this[offset].toInt() and 0xFF
+
+    private fun ByteArray.u2(offset: Int): Int = (u1(offset) shl 8) or u1(offset + 1)
 }
