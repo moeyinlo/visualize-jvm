@@ -199,6 +199,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Laload instruction long array operand stack transition | `jvm-verifier` | `LongArrayLoadInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Faload instruction float array operand stack transition | `jvm-verifier` | `FloatArrayLoadInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Daload instruction double array operand stack transition | `jvm-verifier` | `DoubleArrayLoadInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Aaload instruction reference array operand stack transition | `jvm-verifier` | `ReferenceArrayLoadInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int binary arithmetic instruction type transitions | `jvm-verifier` | `IntBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Long binary arithmetic instruction type transitions | `jvm-verifier` | `LongBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Float binary arithmetic instruction type transitions | `jvm-verifier` | `FloatBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
