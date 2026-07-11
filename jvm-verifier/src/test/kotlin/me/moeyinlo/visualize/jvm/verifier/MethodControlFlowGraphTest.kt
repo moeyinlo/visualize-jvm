@@ -100,6 +100,53 @@ class MethodControlFlowGraphTest {
     }
 
     @Test
+    fun `builds fallthrough edges for wide local variable instructions`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 257,
+            code = byteArrayOf(
+                0xC4.toByte(), 0x15, 0x01, 0x00,
+                0xC4.toByte(), 0x84.toByte(), 0x01, 0x00, 0x00, 0x01,
+                0xB1.toByte(),
+            ),
+        )
+
+        val graph = MethodControlFlowGraphBuilder.build(code)
+
+        assertEquals(setOf(0, 4, 10), graph.instructionOffsets)
+        assertEquals(
+            setOf(
+                ControlFlowEdge(0, 4, ControlFlowEdgeKind.FallThrough),
+                ControlFlowEdge(4, 10, ControlFlowEdgeKind.FallThrough),
+            ),
+            graph.edges,
+        )
+    }
+
+    @Test
+    fun `rejects wide modifying an unsupported opcode`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(
+                0xC4.toByte(), 0x03, 0x00, 0x00,
+                0xB1.toByte(),
+            ),
+        )
+
+        val exception = assertFailsWith<ControlFlowGraphException> {
+            MethodControlFlowGraphBuilder.build(code)
+        }
+
+        assertEquals(
+            "wide at 0 cannot modify opcode 0x3",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `builds branch edges for tableswitch jump table targets`() {
         val code = CodeAttribute(
             nameIndex = ConstantPoolIndex(1),

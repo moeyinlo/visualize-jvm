@@ -24,6 +24,19 @@ class ControlFlowGraphException(message: String) : RuntimeException(message)
 object MethodControlFlowGraphBuilder {
     private val conditionalBranches = (0x99..0xA6).toSet() + setOf(0xC6, 0xC7)
     private val terminalOpcodes = (0xAC..0xB1).toSet() + setOf(0xBF)
+    private val wideFormatOneOpcodes = setOf(
+        0x15,
+        0x16,
+        0x17,
+        0x18,
+        0x19,
+        0x36,
+        0x37,
+        0x38,
+        0x39,
+        0x3A,
+        0xA9,
+    )
 
     fun build(code: CodeAttribute): MethodControlFlowGraph {
         val codeBytes = code.code
@@ -69,6 +82,7 @@ object MethodControlFlowGraphBuilder {
             val instruction = when (opcode) {
                 0xAA -> code.decodeTableSwitch(offset)
                 0xAB -> code.decodeLookupSwitch(offset)
+                0xC4 -> code.decodeWideInstruction(offset)
                 else -> code.decodeFixedInstruction(offset, opcode)
             }
             instructions += instruction
@@ -99,6 +113,31 @@ object MethodControlFlowGraphBuilder {
             opcode = opcode,
             length = length,
             branchTargets = branchTargets,
+        )
+    }
+
+    private fun ByteArray.decodeWideInstruction(offset: Int): DecodedInstruction {
+        if (offset + 1 >= size) {
+            throw ControlFlowGraphException("wide at $offset missing modified opcode")
+        }
+        val modifiedOpcode = u1(offset + 1)
+        val length = when (modifiedOpcode) {
+            in wideFormatOneOpcodes -> 4
+            0x84 -> 6
+            else -> throw ControlFlowGraphException(
+                "wide at $offset cannot modify opcode 0x${modifiedOpcode.toString(16)}",
+            )
+        }
+        if (offset + length > size) {
+            throw ControlFlowGraphException(
+                "wide at $offset length $length exceeds code_length=$size",
+            )
+        }
+        return DecodedInstruction(
+            offset = offset,
+            opcode = 0xC4,
+            length = length,
+            branchTargets = emptySet(),
         )
     }
 
