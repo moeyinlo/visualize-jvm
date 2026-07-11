@@ -282,6 +282,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | `putstatic` declared field type operand stack transition | `jvm-verifier` | `PutStaticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `getfield` receiver-to-declared-field operand stack transition | `jvm-verifier` | `GetFieldInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `putfield` receiver-and-value operand stack transition | `jvm-verifier` | `PutFieldInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1.8, 6.5 | `getfield` protected superclass member receiver narrowing | `jvm-verifier` | `GetFieldInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `nop` instruction no type-state transition | `jvm-verifier` | `NopInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `arraylength` array-or-null reference to int stack transition | `jvm-verifier` | `ArrayLengthInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `instanceof` class-or-array target and reference-to-int stack transition | `jvm-verifier` | `InstanceOfInstructionVerifierTest` | IMPLEMENTED |

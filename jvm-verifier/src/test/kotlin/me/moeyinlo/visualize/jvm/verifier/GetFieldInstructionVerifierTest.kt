@@ -114,6 +114,62 @@ class GetFieldInstructionVerifierTest {
         )
     }
 
+    @Test
+    fun `getfield rejects protected superclass receiver not assignable to current class`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            GetFieldInstructionVerifier.verify(
+                frame = frame(stack = listOf(VerificationType.ClassType("other/Helper"))),
+                fieldOwnerType = VerificationType.Reference,
+                fieldType = VerificationType.Integer,
+                maxStack = 1,
+                protectedAccess = protectedFieldAccess(),
+                protectedEnvironment = protectedEnvironment(),
+            )
+        }
+
+        assertEquals(
+            "Protected member lib/Base.p:I requires receiver assignable to current class pkg/Sub " +
+                "at bytecode offset 180, but found ClassType(internalName=other/Helper, loader=bootstrap)",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `getfield applies protected superclass check before stack transition`() {
+        val frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub")))
+
+        val nextFrame = GetFieldInstructionVerifier.verify(
+            frame = frame,
+            fieldOwnerType = VerificationType.Reference,
+            fieldType = VerificationType.Integer,
+            maxStack = 1,
+            protectedAccess = protectedFieldAccess(),
+            protectedEnvironment = protectedEnvironment(),
+        )
+
+        assertEquals(frame(stack = listOf(VerificationType.Integer)), nextFrame)
+    }
+
     private fun frame(stack: List<VerificationType>): VerificationFrameState =
         VerificationFrameState(bytecodeOffset = 180, locals = emptyList(), stack = stack)
+
+    private fun protectedEnvironment(): ProtectedMemberAccessEnvironment {
+        val baseClass = ProtectedVerifierClass(
+            internalName = "lib/Base",
+            members = listOf(ProtectedClassMember(name = "p", descriptor = "I", isProtected = true)),
+        )
+        return ProtectedMemberAccessEnvironment(
+            currentClass = ProtectedVerifierClass("pkg/Sub"),
+            thisType = VerificationType.ClassType("pkg/Sub"),
+            superclasses = listOf(baseClass),
+            loadedClasses = mapOf(ProtectedClassKey("lib/Base") to baseClass),
+        )
+    }
+
+    private fun protectedFieldAccess(): ProtectedMemberAccess =
+        ProtectedMemberAccess(
+            owner = ProtectedMemberOwner.ClassType("lib/Base"),
+            name = "p",
+            descriptor = "I",
+        )
 }
