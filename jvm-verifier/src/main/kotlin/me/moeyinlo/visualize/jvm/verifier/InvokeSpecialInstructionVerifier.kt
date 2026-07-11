@@ -35,10 +35,7 @@ object InvokeSpecialInstructionVerifier {
         initializedThisType: VerificationType.ObjectType,
     ): ConstructorInvocationTransition {
         verifyThisInitializerOwner(methodOwnerType, ownerEnvironment)
-        val methodTypes = MethodDescriptorVerificationTypeParser.parse(descriptor)
-        if (methodTypes.returnType != null) {
-            throw MethodVerificationException("invokespecial initializer descriptor must return void")
-        }
+        val methodTypes = parseVoidInitializerDescriptor(descriptor)
         var stack = VerifierOperandStack.fromFrame(stack = frame.stack, maxStack = maxStack)
         for (argumentType in methodTypes.parameterTypes.asReversed()) {
             stack = stack.pop(argumentType).stack
@@ -47,6 +44,32 @@ object InvokeSpecialInstructionVerifier {
         return UninitializedThisRules.completeConstructorInvocation(
             frameAfterPop = frame.copy(stack = stack.values),
             thisType = initializedThisType,
+        )
+    }
+
+    fun verifyUninitializedObjectInitializer(
+        frame: VerificationFrameState,
+        descriptor: String,
+        maxStack: Int,
+        newOffset: Int,
+        methodOwnerType: VerificationType.ObjectType,
+        newInstructionObjectType: VerificationType.ObjectType,
+    ): ConstructorInvocationTransition {
+        verifyNewInstructionOwner(
+            newOffset = newOffset,
+            methodOwnerType = methodOwnerType,
+            newInstructionObjectType = newInstructionObjectType,
+        )
+        val methodTypes = parseVoidInitializerDescriptor(descriptor)
+        var stack = VerifierOperandStack.fromFrame(stack = frame.stack, maxStack = maxStack)
+        for (argumentType in methodTypes.parameterTypes.asReversed()) {
+            stack = stack.pop(argumentType).stack
+        }
+        stack = stack.pop(VerificationType.Uninitialized(newOffset)).stack
+        return ObjectInitializationRules.completeObjectConstructorInvocation(
+            frameAfterPop = frame.copy(stack = stack.values),
+            newOffset = newOffset,
+            objectType = methodOwnerType,
         )
     }
 
@@ -80,6 +103,27 @@ object InvokeSpecialInstructionVerifier {
                     "${ownerEnvironment.currentClass.internalName} or its direct superclass",
             )
         }
+    }
+
+    private fun verifyNewInstructionOwner(
+        newOffset: Int,
+        methodOwnerType: VerificationType.ObjectType,
+        newInstructionObjectType: VerificationType.ObjectType,
+    ) {
+        if (methodOwnerType != newInstructionObjectType) {
+            throw MethodVerificationException(
+                "invokespecial initializer owner $methodOwnerType does not match " +
+                    "new instruction type $newInstructionObjectType at bytecode offset $newOffset",
+            )
+        }
+    }
+
+    private fun parseVoidInitializerDescriptor(descriptor: String): MethodDescriptorVerificationTypes {
+        val methodTypes = MethodDescriptorVerificationTypeParser.parse(descriptor)
+        if (methodTypes.returnType != null) {
+            throw MethodVerificationException("invokespecial initializer descriptor must return void")
+        }
+        return methodTypes
     }
 }
 

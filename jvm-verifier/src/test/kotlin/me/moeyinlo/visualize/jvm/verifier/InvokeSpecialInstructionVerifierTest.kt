@@ -335,6 +335,77 @@ class InvokeSpecialInstructionVerifierTest {
     }
 
     @Test
+    fun `invokespecial initializer with uninitialized object initializes normal frame and poisons exception frame`() {
+        val newItem = VerificationType.Uninitialized(offset = 4)
+        val objectType = VerificationType.ObjectType(ConstantPoolIndex(7))
+        val frame = frame(
+            locals = listOf(newItem, VerificationType.Integer),
+            stack = listOf(newItem, newItem, VerificationType.Integer),
+        )
+
+        val transition = InvokeSpecialInstructionVerifier.verifyUninitializedObjectInitializer(
+            frame = frame,
+            descriptor = "(I)V",
+            maxStack = 3,
+            newOffset = 4,
+            methodOwnerType = objectType,
+            newInstructionObjectType = objectType,
+        )
+
+        assertEquals(
+            frame(
+                locals = listOf(objectType, VerificationType.Integer),
+                stack = listOf(objectType),
+            ),
+            transition.normalFrame,
+        )
+        assertEquals(
+            frame(
+                locals = listOf(VerificationType.Top, VerificationType.Integer),
+                stack = emptyList(),
+            ),
+            transition.exceptionFrame,
+        )
+    }
+
+    @Test
+    fun `invokespecial initializer with uninitialized object rejects non-void descriptor`() {
+        val objectType = VerificationType.ObjectType(ConstantPoolIndex(7))
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyUninitializedObjectInitializer(
+                frame = frame(stack = listOf(VerificationType.Uninitialized(offset = 4))),
+                descriptor = "()Ljava/lang/Object;",
+                maxStack = 1,
+                newOffset = 4,
+                methodOwnerType = objectType,
+                newInstructionObjectType = objectType,
+            )
+        }
+
+        assertEquals("invokespecial initializer descriptor must return void", exception.message)
+    }
+
+    @Test
+    fun `invokespecial initializer with uninitialized object rejects owner not created by new instruction`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyUninitializedObjectInitializer(
+                frame = frame(stack = listOf(VerificationType.Uninitialized(offset = 4))),
+                descriptor = "()V",
+                maxStack = 1,
+                newOffset = 4,
+                methodOwnerType = VerificationType.ObjectType(ConstantPoolIndex(7)),
+                newInstructionObjectType = VerificationType.ObjectType(ConstantPoolIndex(8)),
+            )
+        }
+
+        assertEquals(
+            "invokespecial initializer owner ObjectType(constantPoolIndex=#7) does not match " +
+                "new instruction type ObjectType(constantPoolIndex=#8) at bytecode offset 4",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `invokespecial non-initializer rejects instance initialization method names`() {
         val exception = assertFailsWith<MethodVerificationException> {
             InvokeSpecialInstructionVerifier.verifyNonInitializer(
