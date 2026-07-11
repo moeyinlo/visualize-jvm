@@ -128,6 +128,73 @@ class InvokeVirtualInstructionVerifierTest {
     }
 
     @Test
+    fun `invokevirtual rejects protected superclass receiver after popping descriptor arguments`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeVirtualInstructionVerifier.verify(
+                frame = frame(
+                    stack = listOf(
+                        VerificationType.ClassType("other/Helper"),
+                        VerificationType.Integer,
+                    ),
+                ),
+                methodOwnerType = VerificationType.Reference,
+                methodName = "m",
+                descriptor = "(I)V",
+                maxStack = 2,
+                protectedAccess = protectedMethodAccess(),
+                protectedEnvironment = protectedEnvironment(),
+            )
+        }
+
+        assertEquals(
+            "Protected member lib/Base.m:(I)V requires receiver assignable to current class pkg/Sub " +
+                "at bytecode offset 182, but found ClassType(internalName=other/Helper, loader=bootstrap)",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokevirtual applies protected superclass check to receiver below descriptor arguments`() {
+        val frame = frame(
+            stack = listOf(
+                VerificationType.ClassType("pkg/Sub"),
+                VerificationType.Integer,
+            ),
+        )
+
+        val nextFrame = InvokeVirtualInstructionVerifier.verify(
+            frame = frame,
+            methodOwnerType = VerificationType.Reference,
+            methodName = "m",
+            descriptor = "(I)V",
+            maxStack = 2,
+            protectedAccess = protectedMethodAccess(),
+            protectedEnvironment = protectedEnvironment(),
+        )
+
+        assertEquals(frame(stack = emptyList()), nextFrame)
+    }
+
+    @Test
+    fun `invokevirtual protected access requires both access and environment`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeVirtualInstructionVerifier.verify(
+                frame = frame(stack = listOf(VerificationType.ClassType("pkg/Sub"))),
+                methodOwnerType = VerificationType.Reference,
+                methodName = "m",
+                descriptor = "()V",
+                maxStack = 1,
+                protectedAccess = protectedMethodAccess(),
+            )
+        }
+
+        assertEquals(
+            "invokevirtual protected access verification requires both access and environment",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `invokevirtual rejects instance initialization method names`() {
         val exception = assertFailsWith<MethodVerificationException> {
             InvokeVirtualInstructionVerifier.verify(
@@ -170,4 +237,29 @@ class InvokeVirtualInstructionVerifierTest {
             exception.message,
         )
     }
+
+    private fun frame(stack: List<VerificationType>): VerificationFrameState =
+        VerificationFrameState(bytecodeOffset = 182, locals = emptyList(), stack = stack)
+
+    private fun protectedEnvironment(): ProtectedMemberAccessEnvironment {
+        val baseClass = ProtectedVerifierClass(
+            internalName = "lib/Base",
+            members = listOf(
+                ProtectedClassMember(name = "m", descriptor = "(I)V", isProtected = true),
+            ),
+        )
+        return ProtectedMemberAccessEnvironment(
+            currentClass = ProtectedVerifierClass("pkg/Sub"),
+            thisType = VerificationType.ClassType("pkg/Sub"),
+            superclasses = listOf(baseClass),
+            loadedClasses = mapOf(ProtectedClassKey("lib/Base") to baseClass),
+        )
+    }
+
+    private fun protectedMethodAccess(): ProtectedMemberAccess =
+        ProtectedMemberAccess(
+            owner = ProtectedMemberOwner.ClassType("lib/Base"),
+            name = "m",
+            descriptor = "(I)V",
+        )
 }

@@ -288,6 +288,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | `invokestatic` rejects `<init>` and `<clinit>` method targets | `jvm-verifier` | `InvokeStaticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokevirtual` receiver plus descriptor argument/return operand stack transition | `jvm-verifier` | `InvokeVirtualInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokevirtual` rejects `<init>` and `<clinit>` method targets | `jvm-verifier` | `InvokeVirtualInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1.8, 6.5 | `invokevirtual` protected superclass method receiver narrowing after argument pop | `jvm-verifier` | `InvokeVirtualInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `nop` instruction no type-state transition | `jvm-verifier` | `NopInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `arraylength` array-or-null reference to int stack transition | `jvm-verifier` | `ArrayLengthInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `instanceof` class-or-array target and reference-to-int stack transition | `jvm-verifier` | `InstanceOfInstructionVerifierTest` | IMPLEMENTED |
