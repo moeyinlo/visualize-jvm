@@ -21,7 +21,7 @@ object MethodDescriptorVerificationTypeParser {
                 if (peek() == null) {
                     fail("missing ')' after parameter descriptors")
                 }
-                parameters += parsePrimitiveFieldType()
+                parameters += parseFieldType()
             }
             position++
             parseReturnDescriptor()
@@ -36,10 +36,10 @@ object MethodDescriptorVerificationTypeParser {
                 position++
                 return
             }
-            parsePrimitiveFieldType()
+            parseFieldType()
         }
 
-        private fun parsePrimitiveFieldType(): VerificationType =
+        private fun parseFieldType(): VerificationType =
             when (peek()) {
                 'B',
                 'C',
@@ -62,9 +62,28 @@ object MethodDescriptorVerificationTypeParser {
                     position++
                     VerificationType.Double
                 }
+                'L' -> parseClassType()
                 null -> fail("expected field type at offset $position")
                 else -> fail("unsupported field type '${peek()}' at offset $position")
             }
+
+        private fun parseClassType(): VerificationType.ClassType {
+            val start = position
+            position++
+            val nameStart = position
+            while (peek() != ';') {
+                if (peek() == null) {
+                    fail("missing ';' after class type at offset $start")
+                }
+                position++
+            }
+            if (position == nameStart) {
+                fail("empty class name at offset $start")
+            }
+            val internalName = descriptor.substring(nameStart, position)
+            position++
+            return VerificationType.ClassType(internalName)
+        }
 
         private fun peek(): Char? =
             if (position < descriptor.length) {

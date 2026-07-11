@@ -28,4 +28,17 @@ class MethodDescriptorVerificationTypeParserTest {
             MethodDescriptorVerificationTypeParser.parseParameterTypes("(IJFDZBCS)V"),
         )
     }
+
+    @Test
+    fun `parses class method parameters as loaded class verification types`() {
+        assertEquals(
+            listOf(
+                VerificationType.ClassType("java/lang/String"),
+                VerificationType.ClassType("java/util/List"),
+            ),
+            MethodDescriptorVerificationTypeParser.parseParameterTypes(
+                "(Ljava/lang/String;Ljava/util/List;)V",
+            ),
+        )
+    }
 }
