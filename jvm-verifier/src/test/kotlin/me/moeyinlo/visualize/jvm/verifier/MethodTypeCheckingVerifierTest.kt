@@ -1070,6 +1070,34 @@ class MethodTypeCheckingVerifierTest {
         )
     }
 
+    @Test
+    fun `type checking verifier applies implicit float local store transitions`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 4,
+                    code = byteArrayOf(
+                        0x46.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack is empty, expected Float",
+            exception.message,
+        )
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
