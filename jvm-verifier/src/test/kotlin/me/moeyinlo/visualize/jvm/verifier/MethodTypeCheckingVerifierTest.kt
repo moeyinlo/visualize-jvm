@@ -38,6 +38,28 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier treats initial frame as stack map frame at offset zero`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0x03.toByte(),
+                    0x99.toByte(), 0xFF.toByte(), 0xFF.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            initialFrame = MethodInitialFrame(
+                locals = emptyList(),
+                stack = emptyList(),
+                flags = emptyList(),
+                returnType = null,
+            ),
+            frameStates = emptyList(),
+        )
+    }
+
+    @Test
     fun `type checking verifier rejects frames exceeding code resource limits`() {
         val exception = assertFailsWith<MethodVerificationException> {
             MethodTypeCheckingVerifier.verify(

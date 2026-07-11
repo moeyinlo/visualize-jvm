@@ -7,14 +7,49 @@ object MethodTypeCheckingVerifier {
         code: CodeAttribute,
         frameStates: Iterable<VerificationFrameState>,
     ) {
+        verify(
+            code = code,
+            initialFrameState = null,
+            frameStates = frameStates,
+        )
+    }
+
+    fun verify(
+        code: CodeAttribute,
+        initialFrame: MethodInitialFrame,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            initialFrameState = initialFrame.toVerificationFrameState(),
+            frameStates = frameStates,
+        )
+    }
+
+    private fun verify(
+        code: CodeAttribute,
+        initialFrameState: VerificationFrameState?,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
         val frames = frameStates.toList()
-        MethodResourceLimitsVerifier.verify(code = code, frameStates = frames)
+        val framesWithInitial = listOfNotNull(initialFrameState) + frames
+        MethodResourceLimitsVerifier.verify(code = code, frameStates = framesWithInitial)
         val controlFlowGraph = MethodControlFlowGraphBuilder.build(code)
         verifyFrameOffsets(frames = frames, instructionOffsets = controlFlowGraph.instructionOffsets)
         val frameOffsets = frames.mapTo(hashSetOf()) { it.bytecodeOffset }
+        if (initialFrameState != null) {
+            frameOffsets += initialFrameState.bytecodeOffset
+        }
         verifyBranchTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
         verifyExceptionHandlerTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
     }
+
+    private fun MethodInitialFrame.toVerificationFrameState(): VerificationFrameState =
+        VerificationFrameState(
+            bytecodeOffset = 0,
+            locals = locals,
+            stack = stack,
+        )
 
     private fun verifyFrameOffsets(
         frames: List<VerificationFrameState>,
