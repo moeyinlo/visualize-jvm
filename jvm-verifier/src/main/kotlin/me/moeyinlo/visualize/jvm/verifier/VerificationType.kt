@@ -29,6 +29,10 @@ sealed interface VerificationType {
         override val locationCount: Int = 1
     }
 
+    data object ReturnAddress : VerificationType {
+        override val locationCount: Int = 1
+    }
+
     data object Byte : VerificationType {
         override val locationCount: Int = 1
     }
@@ -125,6 +129,7 @@ private object VerificationTypeLattice {
     private fun directSupertypes(type: VerificationType): List<VerificationType> =
         when (type) {
             VerificationType.Top -> emptyList()
+            VerificationType.ReturnAddress -> emptyList()
             VerificationType.OneWord -> listOf(VerificationType.Top)
             VerificationType.TwoWord -> listOf(VerificationType.Top)
             VerificationType.Byte,
