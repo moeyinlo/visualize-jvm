@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
+import me.moeyinlo.visualize.jvm.classfile.CodeExceptionHandler
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 
 class MethodTypeCheckingVerifierTest {
@@ -110,6 +111,42 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier rejects an exception handler target without a stack map frame`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 1,
+                    code = byteArrayOf(
+                        0xB1.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    exceptionTable = listOf(
+                        CodeExceptionHandler(
+                            startPc = 0,
+                            endPc = 1,
+                            handlerPc = 1,
+                            catchType = null,
+                        ),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Exception handler target 1 has no stack map frame",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier rejects a frame offset without a matching instruction`() {
         val exception = assertFailsWith<MethodVerificationException> {
             MethodTypeCheckingVerifier.verify(
@@ -176,11 +213,13 @@ class MethodTypeCheckingVerifierTest {
         maxStack: Int,
         maxLocals: Int,
         code: ByteArray = byteArrayOf(0xB1.toByte()),
+        exceptionTable: List<CodeExceptionHandler> = emptyList(),
     ): CodeAttribute =
         CodeAttribute(
             nameIndex = ConstantPoolIndex(1),
             maxStack = maxStack,
             maxLocals = maxLocals,
             code = code,
+            exceptionTable = exceptionTable,
         )
 }
