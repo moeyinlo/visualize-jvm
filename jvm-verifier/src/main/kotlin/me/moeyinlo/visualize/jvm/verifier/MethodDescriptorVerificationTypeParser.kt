@@ -39,16 +39,27 @@ object MethodDescriptorVerificationTypeParser {
             parseFieldType()
         }
 
-        private fun parseFieldType(): VerificationType =
+        private fun parseFieldType(preserveSmallPrimitive: Boolean = false): VerificationType =
             when (peek()) {
-                'B',
-                'C',
-                'I',
-                'S',
-                'Z',
-                -> {
+                'B' -> {
+                    position++
+                    if (preserveSmallPrimitive) VerificationType.Byte else VerificationType.Integer
+                }
+                'C' -> {
+                    position++
+                    if (preserveSmallPrimitive) VerificationType.Char else VerificationType.Integer
+                }
+                'I' -> {
                     position++
                     VerificationType.Integer
+                }
+                'S' -> {
+                    position++
+                    if (preserveSmallPrimitive) VerificationType.Short else VerificationType.Integer
+                }
+                'Z' -> {
+                    position++
+                    if (preserveSmallPrimitive) VerificationType.Boolean else VerificationType.Integer
                 }
                 'F' -> {
                     position++
@@ -63,6 +74,7 @@ object MethodDescriptorVerificationTypeParser {
                     VerificationType.Double
                 }
                 'L' -> parseClassType()
+                '[' -> parseArrayType()
                 null -> fail("expected field type at offset $position")
                 else -> fail("unsupported field type '${peek()}' at offset $position")
             }
@@ -83,6 +95,11 @@ object MethodDescriptorVerificationTypeParser {
             val internalName = descriptor.substring(nameStart, position)
             position++
             return VerificationType.ClassType(internalName)
+        }
+
+        private fun parseArrayType(): VerificationType.ArrayOf {
+            position++
+            return VerificationType.ArrayOf(parseFieldType(preserveSmallPrimitive = true))
         }
 
         private fun peek(): Char? =

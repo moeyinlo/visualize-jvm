@@ -41,4 +41,21 @@ class MethodDescriptorVerificationTypeParserTest {
             ),
         )
     }
+
+    @Test
+    fun `parses array method parameters as nested array verification types`() {
+        assertEquals(
+            listOf(
+                VerificationType.ArrayOf(VerificationType.Integer),
+                VerificationType.ArrayOf(
+                    VerificationType.ArrayOf(VerificationType.ClassType("java/lang/String")),
+                ),
+                VerificationType.ArrayOf(VerificationType.Byte),
+                VerificationType.ArrayOf(
+                    VerificationType.ArrayOf(VerificationType.Boolean),
+                ),
+            ),
+            MethodDescriptorVerificationTypeParser.parseParameterTypes("([I[[Ljava/lang/String;[B[[Z)V"),
+        )
+    }
 }
