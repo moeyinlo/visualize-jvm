@@ -16,7 +16,11 @@ class InstanceOfInstructionVerifierTest {
             stack = listOf(VerificationType.Float, objectType),
         )
 
-        val nextFrame = InstanceOfInstructionVerifier.verify(frame = frame, maxStack = 2)
+        val nextFrame = InstanceOfInstructionVerifier.verify(
+            frame = frame,
+            targetType = objectType,
+            maxStack = 2,
+        )
 
         assertEquals(
             frame.copy(stack = listOf(VerificationType.Float, VerificationType.Integer)),
@@ -32,7 +36,11 @@ class InstanceOfInstructionVerifierTest {
             stack = listOf(VerificationType.Null),
         )
 
-        val nextFrame = InstanceOfInstructionVerifier.verify(frame = frame, maxStack = 1)
+        val nextFrame = InstanceOfInstructionVerifier.verify(
+            frame = frame,
+            targetType = VerificationType.ArrayOf(VerificationType.Integer),
+            maxStack = 1,
+        )
 
         assertEquals(frame.copy(stack = listOf(VerificationType.Integer)), nextFrame)
     }
@@ -46,12 +54,33 @@ class InstanceOfInstructionVerifierTest {
                     locals = emptyList(),
                     stack = listOf(VerificationType.Integer),
                 ),
+                targetType = objectType,
                 maxStack = 1,
             )
         }
 
         assertEquals(
             "Operand stack top contains Integer, expected Reference",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `instanceof rejects non class and non array targets`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InstanceOfInstructionVerifier.verify(
+                frame = VerificationFrameState(
+                    bytecodeOffset = 40,
+                    locals = emptyList(),
+                    stack = listOf(objectType),
+                ),
+                targetType = VerificationType.Integer,
+                maxStack = 1,
+            )
+        }
+
+        assertEquals(
+            "instanceof target Integer is not a class or array type",
             exception.message,
         )
     }

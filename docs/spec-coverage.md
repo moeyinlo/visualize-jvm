@@ -271,7 +271,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Goto instruction no operand stack transition | `jvm-verifier` | `GotoInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `nop` instruction no type-state transition | `jvm-verifier` | `NopInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `arraylength` array-or-null reference to int stack transition | `jvm-verifier` | `ArrayLengthInstructionVerifierTest` | IMPLEMENTED |
-| 4.10.1, 6.5 | `instanceof` reference to int stack transition | `jvm-verifier` | `InstanceOfInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | `instanceof` class-or-array target and reference-to-int stack transition | `jvm-verifier` | `InstanceOfInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `checkcast` class-or-array target stack transition | `jvm-verifier` | `CheckCastInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `monitorenter` and `monitorexit` reference operand stack transition | `jvm-verifier` | `MonitorInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Void return instruction type transition | `jvm-verifier` | `ReturnInstructionVerifierTest` | IMPLEMENTED |
