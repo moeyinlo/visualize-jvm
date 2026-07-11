@@ -52,6 +52,26 @@ class MethodInitialFrameBuilderTest {
     }
 
     @Test
+    fun `builds subclass constructor initial frame with uninitialized this`() {
+        assertEquals(
+            MethodInitialFrame(
+                locals = listOf(
+                    VerificationType.UninitializedThis,
+                    VerificationType.Integer,
+                    VerificationType.Top,
+                ),
+                stack = emptyList(),
+                flags = listOf(MethodInitialFrameFlag.ThisUninitialized),
+                returnType = null,
+            ),
+            MethodInitialFrameBuilder.buildSubclassConstructor(
+                descriptor = "(I)V",
+                maxLocals = 3,
+            ),
+        )
+    }
+
+    @Test
     fun `rejects static method initial frame when descriptor arguments exceed max locals`() {
         val exception =
             assertFailsWith<MethodVerificationException> {

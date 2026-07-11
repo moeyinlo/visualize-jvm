@@ -36,6 +36,17 @@ object MethodInitialFrameBuilder {
             flags = emptyList(),
         )
 
+    fun buildSubclassConstructor(
+        descriptor: String,
+        maxLocals: Int,
+    ): MethodInitialFrame =
+        build(
+            descriptor = descriptor,
+            maxLocals = maxLocals,
+            thisLocals = listOf(VerificationType.UninitializedThis),
+            flags = listOf(MethodInitialFrameFlag.ThisUninitialized),
+        )
+
     private fun build(
         descriptor: String,
         maxLocals: Int,
