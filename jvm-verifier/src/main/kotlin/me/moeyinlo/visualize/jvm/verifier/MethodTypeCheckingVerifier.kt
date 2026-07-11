@@ -141,6 +141,13 @@ object MethodTypeCheckingVerifier {
                     maxLocals = code.maxLocals,
                     maxStack = code.maxStack,
                 )
+                in 0x2A..0x2D -> LocalLoadInstructionVerifier.verify(
+                    frame = frame,
+                    index = opcode - 0x2A,
+                    kind = LocalLoadKind.Reference,
+                    maxLocals = code.maxLocals,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
