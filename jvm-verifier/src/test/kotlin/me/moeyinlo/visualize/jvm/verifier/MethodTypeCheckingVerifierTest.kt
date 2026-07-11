@@ -776,6 +776,37 @@ class MethodTypeCheckingVerifierTest {
         )
     }
 
+    @Test
+    fun `type checking verifier applies wide float local load transitions`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 257,
+                    code = byteArrayOf(
+                        0xC4.toByte(),
+                        0x17.toByte(),
+                        0x01.toByte(),
+                        0x00.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Local variable 256 contains Top, expected Float",
+            exception.message,
+        )
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
