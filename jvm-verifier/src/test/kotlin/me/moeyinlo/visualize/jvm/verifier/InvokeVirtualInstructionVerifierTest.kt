@@ -23,6 +23,7 @@ class InvokeVirtualInstructionVerifierTest {
         val nextFrame = InvokeVirtualInstructionVerifier.verify(
             frame = frame,
             methodOwnerType = targetType,
+            methodName = "mix",
             descriptor = "(IJ)Ljava/lang/String;",
             maxStack = 5,
         )
@@ -49,6 +50,7 @@ class InvokeVirtualInstructionVerifierTest {
         val nextFrame = InvokeVirtualInstructionVerifier.verify(
             frame = frame,
             methodOwnerType = targetType,
+            methodName = "drop",
             descriptor = "()V",
             maxStack = 1,
         )
@@ -69,6 +71,7 @@ class InvokeVirtualInstructionVerifierTest {
                     stack = listOf(targetType, VerificationType.Float),
                 ),
                 methodOwnerType = targetType,
+                methodName = "mix",
                 descriptor = "(I)V",
                 maxStack = 2,
             )
@@ -90,6 +93,7 @@ class InvokeVirtualInstructionVerifierTest {
                     stack = listOf(VerificationType.Float),
                 ),
                 methodOwnerType = targetType,
+                methodName = "drop",
                 descriptor = "()V",
                 maxStack = 1,
             )
@@ -111,6 +115,7 @@ class InvokeVirtualInstructionVerifierTest {
                     stack = listOf(VerificationType.Integer, targetType),
                 ),
                 methodOwnerType = targetType,
+                methodName = "wide",
                 descriptor = "()J",
                 maxStack = 2,
             )
@@ -118,6 +123,50 @@ class InvokeVirtualInstructionVerifierTest {
 
         assertEquals(
             "Operand stack depth 3 exceeds max_stack=2",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokevirtual rejects instance initialization method names`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeVirtualInstructionVerifier.verify(
+                frame = VerificationFrameState(
+                    bytecodeOffset = 182,
+                    locals = emptyList(),
+                    stack = listOf(targetType),
+                ),
+                methodOwnerType = targetType,
+                methodName = "<init>",
+                descriptor = "()V",
+                maxStack = 1,
+            )
+        }
+
+        assertEquals(
+            "invokevirtual target method must not be <init>",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokevirtual rejects class initialization method names`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeVirtualInstructionVerifier.verify(
+                frame = VerificationFrameState(
+                    bytecodeOffset = 182,
+                    locals = emptyList(),
+                    stack = listOf(targetType),
+                ),
+                methodOwnerType = targetType,
+                methodName = "<clinit>",
+                descriptor = "()V",
+                maxStack = 1,
+            )
+        }
+
+        assertEquals(
+            "invokevirtual target method must not be <clinit>",
             exception.message,
         )
     }
