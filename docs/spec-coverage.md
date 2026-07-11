@@ -206,6 +206,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Caload instruction char array operand stack transition | `jvm-verifier` | `CharArrayLoadInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Short primitive array component verification atom | `jvm-verifier` | `VerificationTypeTest` | IMPLEMENTED |
 | 4.10.1 | Saload instruction short array operand stack transition | `jvm-verifier` | `ShortArrayLoadInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Iastore instruction int array operand stack transition | `jvm-verifier` | `IntArrayStoreInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int binary arithmetic instruction type transitions | `jvm-verifier` | `IntBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Long binary arithmetic instruction type transitions | `jvm-verifier` | `LongBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Float binary arithmetic instruction type transitions | `jvm-verifier` | `FloatBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
