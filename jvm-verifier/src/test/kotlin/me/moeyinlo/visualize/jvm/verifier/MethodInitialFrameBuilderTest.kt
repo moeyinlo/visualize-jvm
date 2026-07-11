@@ -28,6 +28,30 @@ class MethodInitialFrameBuilderTest {
     }
 
     @Test
+    fun `builds instance method initial frame with class this local`() {
+        assertEquals(
+            MethodInitialFrame(
+                locals = listOf(
+                    VerificationType.ClassType("example/Foo", loader = "app"),
+                    VerificationType.Integer,
+                    VerificationType.Long,
+                    VerificationType.Top,
+                    VerificationType.Top,
+                ),
+                stack = emptyList(),
+                flags = emptyList(),
+                returnType = VerificationType.Integer,
+            ),
+            MethodInitialFrameBuilder.buildInstance(
+                currentClass = "example/Foo",
+                currentClassLoader = "app",
+                descriptor = "(IJ)I",
+                maxLocals = 5,
+            ),
+        )
+    }
+
+    @Test
     fun `rejects static method initial frame when descriptor arguments exceed max locals`() {
         val exception =
             assertFailsWith<MethodVerificationException> {

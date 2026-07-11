@@ -193,6 +193,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1.5 | `expandTypeList` local slot expansion for two-word verification types | `jvm-verifier` | `VerificationTypeSlotExpanderTest` | IMPLEMENTED |
 | 4.10.1.5 | Static method initial frame locals from descriptor arguments | `jvm-verifier` | `MethodInitialFrameBuilderTest` | IMPLEMENTED |
 | 4.10.1.5 | Static method initial frame rejects descriptor locals exceeding `max_locals` | `jvm-verifier` | `MethodInitialFrameBuilderTest` | IMPLEMENTED |
+| 4.10.1.5 | Instance method initial frame uses `class(N,L)` for non-constructor `this` | `jvm-verifier` | `MethodInitialFrameBuilderTest` | IMPLEMENTED |
 | 4.10.1 | Method control flow graph for fixed-size branches and exception handlers | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.10.1 | Verifier frame max locals and max stack resource limits | `jvm-verifier` | `MethodResourceLimitsVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verifier local variable slot reads and writes | `jvm-verifier` | `VerifierLocalVariablesTest` | IMPLEMENTED |

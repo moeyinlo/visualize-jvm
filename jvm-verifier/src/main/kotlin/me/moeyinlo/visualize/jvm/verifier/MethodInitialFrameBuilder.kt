@@ -15,19 +15,45 @@ object MethodInitialFrameBuilder {
     fun buildStatic(
         descriptor: String,
         maxLocals: Int,
+    ): MethodInitialFrame =
+        build(
+            descriptor = descriptor,
+            maxLocals = maxLocals,
+            thisLocals = emptyList(),
+            flags = emptyList(),
+        )
+
+    fun buildInstance(
+        currentClass: String,
+        currentClassLoader: String = "bootstrap",
+        descriptor: String,
+        maxLocals: Int,
+    ): MethodInitialFrame =
+        build(
+            descriptor = descriptor,
+            maxLocals = maxLocals,
+            thisLocals = listOf(VerificationType.ClassType(currentClass, loader = currentClassLoader)),
+            flags = emptyList(),
+        )
+
+    private fun build(
+        descriptor: String,
+        maxLocals: Int,
+        thisLocals: List<VerificationType>,
+        flags: List<MethodInitialFrameFlag>,
     ): MethodInitialFrame {
         val descriptorTypes = MethodDescriptorVerificationTypeParser.parse(descriptor)
-        val argumentLocals = VerificationTypeSlotExpander.expand(descriptorTypes.parameterTypes)
-        if (argumentLocals.size > maxLocals) {
+        val initialLocals = thisLocals + VerificationTypeSlotExpander.expand(descriptorTypes.parameterTypes)
+        if (initialLocals.size > maxLocals) {
             throw MethodVerificationException(
-                "Initial frame locals use ${argumentLocals.size} local variable unit(s), exceeding max_locals=$maxLocals",
+                "Initial frame locals use ${initialLocals.size} local variable unit(s), exceeding max_locals=$maxLocals",
             )
         }
-        val paddedLocals = argumentLocals + List(maxLocals - argumentLocals.size) { VerificationType.Top }
+        val paddedLocals = initialLocals + List(maxLocals - initialLocals.size) { VerificationType.Top }
         return MethodInitialFrame(
             locals = paddedLocals,
             stack = emptyList(),
-            flags = emptyList(),
+            flags = flags,
             returnType = descriptorTypes.returnType,
         )
     }
