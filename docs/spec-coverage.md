@@ -265,6 +265,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Dup2_x1 instruction category-1/category-2 operand stack transition | `jvm-verifier` | `Dup2X1InstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Dup2_x2 instruction category-1/category-2 operand stack transition | `jvm-verifier` | `Dup2X2InstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Swap instruction category-1 operand stack transition | `jvm-verifier` | `SwapInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Type checking verifier entrypoint for resource limits and fixed-length CFG | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
