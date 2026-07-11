@@ -130,6 +130,8 @@ class VerificationTypeHierarchy(
                     isSameLoadedClassFromDifferentInitiatingLoaders(source = source, target = target)
             source is VerificationType.ArrayOf && target is VerificationType.ClassType ->
                 isArraySubtypeOfBootstrapClass(target)
+            source is VerificationType.ArrayOf && target is VerificationType.ArrayOf ->
+                isWideningReference(source = source.component, target = target.component)
             else -> false
         }
 

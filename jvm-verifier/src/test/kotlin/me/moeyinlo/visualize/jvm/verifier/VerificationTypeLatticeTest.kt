@@ -251,4 +251,41 @@ class VerificationTypeLatticeTest {
             ),
         )
     }
+
+    @Test
+    fun `reference array verification type widens covariantly`() {
+        val hierarchy = VerificationTypeHierarchy(
+            classes = listOf(
+                VerificationTypeClass(
+                    internalName = "pkg/Base",
+                ),
+                VerificationTypeClass(
+                    internalName = "pkg/Sibling",
+                ),
+                VerificationTypeClass(
+                    internalName = "pkg/Sub",
+                    superclasses = listOf(VerificationTypeClassKey("pkg/Base")),
+                ),
+            ),
+        )
+
+        assertTrue(
+            VerificationType.ArrayOf(VerificationType.ClassType("pkg/Sub")).isAssignableTo(
+                VerificationType.ArrayOf(VerificationType.ClassType("pkg/Base")),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.ClassType("pkg/Sub")).isAssignableTo(
+                VerificationType.ArrayOf(VerificationType.ClassType("pkg/Sibling")),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ArrayOf(VerificationType.ClassType("pkg/Base")),
+                hierarchy = hierarchy,
+            ),
+        )
+    }
 }
