@@ -111,7 +111,15 @@ object MethodTypeCheckingVerifier {
         framesByOffset: Map<Int, VerificationFrameState>,
     ) {
         framesByOffset.forEach { (offset, frame) ->
-            when (code.code.u1(offset)) {
+            val opcode = code.code.u1(offset)
+            when (opcode) {
+                in 0x1A..0x1D -> LocalLoadInstructionVerifier.verify(
+                    frame = frame,
+                    index = opcode - 0x1A,
+                    kind = LocalLoadKind.Int,
+                    maxLocals = code.maxLocals,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
