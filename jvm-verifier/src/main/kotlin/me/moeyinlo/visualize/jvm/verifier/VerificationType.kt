@@ -6,8 +6,11 @@ import me.moeyinlo.visualize.jvm.classfile.VerificationTypeInfo as ClassfileVeri
 sealed interface VerificationType {
     val locationCount: Int
 
-    fun isAssignableTo(target: VerificationType): kotlin.Boolean =
-        VerificationTypeLattice.isAssignable(source = this, target = target)
+    fun isAssignableTo(
+        target: VerificationType,
+        hierarchy: VerificationTypeHierarchy = VerificationTypeHierarchy.Empty,
+    ): kotlin.Boolean =
+        VerificationTypeLattice.isAssignable(source = this, target = target, hierarchy = hierarchy)
 
     data object Top : VerificationType {
         override val locationCount: Int = 1
@@ -108,16 +111,58 @@ sealed interface VerificationType {
     }
 }
 
+class VerificationTypeHierarchy(
+    classes: Iterable<VerificationTypeClass> = emptyList(),
+) {
+    private val classesByKey: Map<VerificationTypeClassKey, VerificationTypeClass> =
+        classes.associateBy { typeClass ->
+            VerificationTypeClassKey(
+                internalName = typeClass.internalName,
+                loader = typeClass.loader,
+            )
+        }
+
+    internal fun isWideningReference(source: VerificationType, target: VerificationType): kotlin.Boolean =
+        source is VerificationType.ClassType &&
+            target is VerificationType.ClassType &&
+            isLoadedInterface(target)
+
+    private fun isLoadedInterface(type: VerificationType.ClassType): kotlin.Boolean =
+        classesByKey[VerificationTypeClassKey(type.internalName, type.loader)]?.isInterface == true
+
+    companion object {
+        val Empty: VerificationTypeHierarchy = VerificationTypeHierarchy()
+    }
+}
+
+data class VerificationTypeClass(
+    val internalName: String,
+    val loader: String = "bootstrap",
+    val isInterface: kotlin.Boolean = false,
+)
+
+data class VerificationTypeClassKey(
+    val internalName: String,
+    val loader: String = "bootstrap",
+)
+
 private object VerificationTypeLattice {
-    fun isAssignable(source: VerificationType, target: VerificationType): kotlin.Boolean {
+    fun isAssignable(
+        source: VerificationType,
+        target: VerificationType,
+        hierarchy: VerificationTypeHierarchy,
+    ): kotlin.Boolean {
         if (source == target) {
             return true
         }
         if (source == VerificationType.Null && target.isReferenceType()) {
             return true
         }
+        if (hierarchy.isWideningReference(source = source, target = target)) {
+            return true
+        }
         return directSupertypes(source).any { supertype ->
-            isAssignable(source = supertype, target = target)
+            isAssignable(source = supertype, target = target, hierarchy = hierarchy)
         }
     }
 

@@ -19,4 +19,39 @@ class VerificationTypeLatticeTest {
     fun `null is assignable to class verification type`() {
         assertTrue(VerificationType.Null.isAssignableTo(VerificationType.ClassType("java/lang/Object")))
     }
+
+    @Test
+    fun `class verification type widens to any loaded interface type`() {
+        val hierarchy = VerificationTypeHierarchy(
+            classes = listOf(
+                VerificationTypeClass(
+                    internalName = "pkg/Api",
+                    isInterface = true,
+                ),
+                VerificationTypeClass(
+                    internalName = "pkg/Concrete",
+                    isInterface = false,
+                ),
+            ),
+        )
+
+        assertTrue(
+            VerificationType.ClassType("pkg/Impl").isAssignableTo(
+                VerificationType.ClassType("pkg/Api"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ClassType("pkg/Impl").isAssignableTo(
+                VerificationType.ClassType("pkg/MissingInterface"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ClassType("pkg/Impl").isAssignableTo(
+                VerificationType.ClassType("pkg/Concrete"),
+                hierarchy = hierarchy,
+            ),
+        )
+    }
 }

@@ -186,6 +186,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Verification type model and StackMapTable type conversion | `jvm-verifier` | `VerificationTypeTest` | IMPLEMENTED |
 | 4.10.1 | Verification type lattice base assignability | `jvm-verifier` | `VerificationTypeTest` | IMPLEMENTED |
 | 4.10.1.2 | Class verification type `class(N,L)` lattice representation | `jvm-verifier` | `VerificationTypeLatticeTest` | IMPLEMENTED |
+| 4.10.1.2 | Verification type lattice widens any class verification type to a loaded interface type | `jvm-verifier` | `VerificationTypeLatticeTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor primitive parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor class parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor array parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
