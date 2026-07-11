@@ -196,6 +196,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Local load instruction type transitions | `jvm-verifier` | `LocalLoadInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Local store instruction type transitions | `jvm-verifier` | `LocalStoreInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int binary arithmetic instruction type transitions | `jvm-verifier` | `IntBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Long binary arithmetic instruction type transitions | `jvm-verifier` | `LongBinaryArithmeticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
