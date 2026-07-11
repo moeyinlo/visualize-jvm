@@ -79,6 +79,69 @@ class MethodTypeCheckingVerifierTest {
         )
     }
 
+    @Test
+    fun `type checking verifier rejects a frame offset without a matching instruction`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 1,
+                    code = byteArrayOf(
+                        0x1A.toByte(),
+                        0x99.toByte(), 0x00.toByte(), 0x03.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 2,
+                        locals = listOf(VerificationType.Integer),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Frame at bytecode offset 2 does not correspond to an instruction offset",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `type checking verifier rejects non increasing frame offsets`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 1,
+                    code = byteArrayOf(
+                        0x1A.toByte(),
+                        0x99.toByte(), 0x00.toByte(), 0x03.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 4,
+                        locals = listOf(VerificationType.Integer),
+                        stack = emptyList(),
+                    ),
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = listOf(VerificationType.Integer),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Frame at bytecode offset 0 is not after previous frame offset 4",
+            exception.message,
+        )
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
