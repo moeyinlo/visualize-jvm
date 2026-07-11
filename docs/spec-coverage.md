@@ -236,6 +236,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Float return instruction type transition | `jvm-verifier` | `FloatReturnInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Double return instruction type transition | `jvm-verifier` | `DoubleReturnInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Reference return instruction type transition | `jvm-verifier` | `ReferenceReturnInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1 | Athrow instruction Throwable operand stack check | `jvm-verifier` | `AthrowInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
