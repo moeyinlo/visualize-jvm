@@ -54,4 +54,47 @@ class VerificationTypeLatticeTest {
             ),
         )
     }
+
+    @Test
+    fun `class verification type widens to a loaded superclass type`() {
+        val hierarchy = VerificationTypeHierarchy(
+            classes = listOf(
+                VerificationTypeClass(
+                    internalName = "pkg/Base",
+                ),
+                VerificationTypeClass(
+                    internalName = "pkg/Sibling",
+                ),
+                VerificationTypeClass(
+                    internalName = "pkg/Sub",
+                    superclasses = listOf(VerificationTypeClassKey("pkg/Base")),
+                ),
+            ),
+        )
+
+        assertTrue(
+            VerificationType.ClassType("pkg/Sub").isAssignableTo(
+                VerificationType.ClassType("pkg/Base"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ClassType("pkg/Sub").isAssignableTo(
+                VerificationType.ClassType("pkg/Sibling"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ClassType("pkg/MissingSub").isAssignableTo(
+                VerificationType.ClassType("pkg/Base"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ClassType("pkg/Sub").isAssignableTo(
+                VerificationType.ClassType("pkg/MissingBase"),
+                hierarchy = hierarchy,
+            ),
+        )
+    }
 }
