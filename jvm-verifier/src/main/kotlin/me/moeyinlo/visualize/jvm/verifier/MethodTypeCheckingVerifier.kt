@@ -205,6 +205,13 @@ object MethodTypeCheckingVerifier {
                         maxLocals = code.maxLocals,
                         maxStack = code.maxStack,
                     )
+                    0x39 -> WideLocalStoreInstructionVerifier.verify(
+                        frame = frame,
+                        index = code.code.u2(offset + 2),
+                        kind = LocalStoreKind.Double,
+                        maxLocals = code.maxLocals,
+                        maxStack = code.maxStack,
+                    )
                 }
                 in 0x1A..0x1D -> LocalLoadInstructionVerifier.verify(
                     frame = frame,
