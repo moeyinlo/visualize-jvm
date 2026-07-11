@@ -1,9 +1,18 @@
 package me.moeyinlo.visualize.jvm.verifier
 
+data class MethodDescriptorVerificationTypes(
+    val parameterTypes: List<VerificationType>,
+    val returnType: VerificationType?,
+)
+
 object MethodDescriptorVerificationTypeParser {
-    fun parseParameterTypes(descriptor: String): List<VerificationType> {
+    fun parse(descriptor: String): MethodDescriptorVerificationTypes {
         val parser = Parser(descriptor)
-        return parser.parseParameterTypes()
+        return parser.parse()
+    }
+
+    fun parseParameterTypes(descriptor: String): List<VerificationType> {
+        return parse(descriptor).parameterTypes
     }
 
     private class Parser(
@@ -11,7 +20,7 @@ object MethodDescriptorVerificationTypeParser {
     ) {
         private var position: Int = 0
 
-        fun parseParameterTypes(): List<VerificationType> {
+        fun parse(): MethodDescriptorVerificationTypes {
             if (peek() != '(') {
                 fail("must start with '('")
             }
@@ -24,19 +33,22 @@ object MethodDescriptorVerificationTypeParser {
                 parameters += parseFieldType()
             }
             position++
-            parseReturnDescriptor()
+            val returnType = parseReturnDescriptor()
             if (peek() != null) {
                 fail("has trailing characters at offset $position")
             }
-            return parameters
+            return MethodDescriptorVerificationTypes(
+                parameterTypes = parameters,
+                returnType = returnType,
+            )
         }
 
-        private fun parseReturnDescriptor() {
+        private fun parseReturnDescriptor(): VerificationType? {
             if (peek() == 'V') {
                 position++
-                return
+                return null
             }
-            parseFieldType()
+            return parseFieldType()
         }
 
         private fun parseFieldType(preserveSmallPrimitive: Boolean = false): VerificationType =

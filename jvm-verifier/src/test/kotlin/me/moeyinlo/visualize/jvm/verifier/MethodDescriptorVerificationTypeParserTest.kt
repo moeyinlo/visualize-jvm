@@ -58,4 +58,26 @@ class MethodDescriptorVerificationTypeParserTest {
             MethodDescriptorVerificationTypeParser.parseParameterTypes("([I[[Ljava/lang/String;[B[[Z)V"),
         )
     }
+
+    @Test
+    fun `exposes method return verification type`() {
+        assertEquals(
+            MethodDescriptorVerificationTypes(
+                parameterTypes = listOf(VerificationType.Integer),
+                returnType = VerificationType.ClassType("java/lang/String"),
+            ),
+            MethodDescriptorVerificationTypeParser.parse("(I)Ljava/lang/String;"),
+        )
+    }
+
+    @Test
+    fun `exposes void method return as absent verification type`() {
+        assertEquals(
+            MethodDescriptorVerificationTypes(
+                parameterTypes = listOf(VerificationType.Integer),
+                returnType = null,
+            ),
+            MethodDescriptorVerificationTypeParser.parse("(I)V"),
+        )
+    }
 }
