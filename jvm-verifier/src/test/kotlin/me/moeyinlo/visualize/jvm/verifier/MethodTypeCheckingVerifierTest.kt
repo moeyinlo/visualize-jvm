@@ -373,6 +373,42 @@ class MethodTypeCheckingVerifierTest {
         }
     }
 
+    @Test
+    fun `type checking verifier applies reference null branch operand stack transitions`() {
+        listOf(0xC6, 0xC7).forEach { opcode ->
+            val exception = assertFailsWith<MethodVerificationException> {
+                MethodTypeCheckingVerifier.verify(
+                    code = code(
+                        maxStack = 1,
+                        maxLocals = 0,
+                        code = byteArrayOf(
+                            opcode.toByte(), 0x00.toByte(), 0x04.toByte(),
+                            0xB1.toByte(),
+                            0xB1.toByte(),
+                        ),
+                    ),
+                    frameStates = listOf(
+                        VerificationFrameState(
+                            bytecodeOffset = 0,
+                            locals = emptyList(),
+                            stack = emptyList(),
+                        ),
+                        VerificationFrameState(
+                            bytecodeOffset = 4,
+                            locals = emptyList(),
+                            stack = emptyList(),
+                        ),
+                    ),
+                )
+            }
+
+            assertEquals(
+                "Operand stack is empty, expected Reference",
+                exception.message,
+            )
+        }
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
