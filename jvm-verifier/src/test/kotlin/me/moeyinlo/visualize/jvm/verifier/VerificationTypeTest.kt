@@ -43,6 +43,7 @@ class VerificationTypeTest {
             VerificationType.Byte,
             VerificationType.Boolean,
             VerificationType.Char,
+            VerificationType.Short,
             VerificationType.Integer,
             VerificationType.Float,
             VerificationType.Null,
@@ -71,6 +72,7 @@ class VerificationTypeTest {
             VerificationType.Byte,
             VerificationType.Boolean,
             VerificationType.Char,
+            VerificationType.Short,
             VerificationType.Integer,
             VerificationType.Float,
             VerificationType.Long,
@@ -126,6 +128,18 @@ class VerificationTypeTest {
 
         assertEquals(false, VerificationType.Char.isAssignableTo(VerificationType.Integer))
         assertEquals(false, charArrayType.isAssignableTo(intArrayType))
+    }
+
+    @Test
+    fun `short is an exact primitive array component marker`() {
+        val shortArrayType = VerificationType.ArrayOf(VerificationType.Short)
+        val intArrayType = VerificationType.ArrayOf(VerificationType.Integer)
+
+        assertEquals(true, shortArrayType.isAssignableTo(VerificationType.Reference))
+        assertEquals(true, VerificationType.Null.isAssignableTo(shortArrayType))
+
+        assertEquals(false, VerificationType.Short.isAssignableTo(VerificationType.Integer))
+        assertEquals(false, shortArrayType.isAssignableTo(intArrayType))
     }
 
     @Test

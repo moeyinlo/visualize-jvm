@@ -41,6 +41,10 @@ sealed interface VerificationType {
         override val locationCount: Int = 1
     }
 
+    data object Short : VerificationType {
+        override val locationCount: Int = 1
+    }
+
     data object Integer : VerificationType {
         override val locationCount: Int = 1
     }
@@ -114,6 +118,7 @@ private object VerificationTypeLattice {
             VerificationType.Byte,
             VerificationType.Boolean,
             VerificationType.Char,
+            VerificationType.Short,
             -> emptyList()
             VerificationType.Integer,
             VerificationType.Float,
