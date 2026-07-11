@@ -120,6 +120,10 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                in 0xA5..0xA6 -> ReferenceCompareBranchInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
             }
         }
     }
