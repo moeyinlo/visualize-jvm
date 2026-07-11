@@ -469,6 +469,36 @@ class MethodTypeCheckingVerifierTest {
         }
     }
 
+    @Test
+    fun `type checking verifier applies implicit float local load transitions`() {
+        listOf(0x22 to 0, 0x23 to 1, 0x24 to 2, 0x25 to 3).forEach { (opcode, index) ->
+            val exception = assertFailsWith<MethodVerificationException> {
+                MethodTypeCheckingVerifier.verify(
+                    code = code(
+                        maxStack = 1,
+                        maxLocals = 4,
+                        code = byteArrayOf(
+                            opcode.toByte(),
+                            0xB1.toByte(),
+                        ),
+                    ),
+                    frameStates = listOf(
+                        VerificationFrameState(
+                            bytecodeOffset = 0,
+                            locals = emptyList(),
+                            stack = emptyList(),
+                        ),
+                    ),
+                )
+            }
+
+            assertEquals(
+                "Local variable $index contains Top, expected Float",
+                exception.message,
+            )
+        }
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
