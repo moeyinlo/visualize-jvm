@@ -197,6 +197,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1.5 | Subclass constructor initial frame uses `uninitializedThis` and `flagThisUninit` | `jvm-verifier` | `MethodInitialFrameBuilderTest` | IMPLEMENTED |
 | 4.10.1.5 | Object constructor initial frame uses `class(java/lang/Object,L)` without `flagThisUninit` | `jvm-verifier` | `MethodInitialFrameBuilderTest` | IMPLEMENTED |
 | 4.10.1 | Method control flow graph for fixed-size branches and exception handlers | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
+| 4.9 | Method control flow graph rejects execution falling off the end of code | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.9, 6.5 | Method control flow graph for `tableswitch` jump table targets | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.9, 6.5 | Method control flow graph for `lookupswitch` match-offset targets | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |
 | 4.9, 6.5 | Method control flow graph rejects unsorted `lookupswitch` match values | `jvm-verifier` | `MethodControlFlowGraphTest` | IMPLEMENTED |

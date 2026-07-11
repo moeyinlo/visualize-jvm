@@ -100,6 +100,27 @@ class MethodControlFlowGraphTest {
     }
 
     @Test
+    fun `rejects execution falling off the end of code`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(
+                0x00,
+            ),
+        )
+
+        val exception = assertFailsWith<ControlFlowGraphException> {
+            MethodControlFlowGraphBuilder.build(code)
+        }
+
+        assertEquals(
+            "Execution can fall off the end of code after instruction 0",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `builds fallthrough edges for wide local variable instructions`() {
         val code = CodeAttribute(
             nameIndex = ConstantPoolIndex(1),

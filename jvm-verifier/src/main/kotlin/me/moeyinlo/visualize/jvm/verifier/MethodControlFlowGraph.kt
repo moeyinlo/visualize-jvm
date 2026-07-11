@@ -58,6 +58,11 @@ object MethodControlFlowGraphBuilder {
             if (next != null && instruction.hasFallThrough) {
                 edges += ControlFlowEdge(instruction.offset, next.offset, ControlFlowEdgeKind.FallThrough)
             }
+            if (next == null && instruction.hasFallThrough) {
+                throw ControlFlowGraphException(
+                    "Execution can fall off the end of code after instruction ${instruction.offset}",
+                )
+            }
         }
 
         code.exceptionTable.forEach { handler ->
