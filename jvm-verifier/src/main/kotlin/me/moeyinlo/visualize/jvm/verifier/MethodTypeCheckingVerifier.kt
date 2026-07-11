@@ -112,7 +112,7 @@ object MethodTypeCheckingVerifier {
     ) {
         framesByOffset.forEach { (offset, frame) ->
             when (code.code.u1(offset)) {
-                0x99 -> IntZeroBranchInstructionVerifier.verify(
+                in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
                 )

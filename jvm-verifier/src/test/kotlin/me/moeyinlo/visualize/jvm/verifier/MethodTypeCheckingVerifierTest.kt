@@ -265,6 +265,42 @@ class MethodTypeCheckingVerifierTest {
         )
     }
 
+    @Test
+    fun `type checking verifier applies all int zero branch operand stack transitions`() {
+        listOf(0x9A, 0x9B, 0x9C, 0x9D, 0x9E).forEach { opcode ->
+            val exception = assertFailsWith<MethodVerificationException> {
+                MethodTypeCheckingVerifier.verify(
+                    code = code(
+                        maxStack = 1,
+                        maxLocals = 0,
+                        code = byteArrayOf(
+                            opcode.toByte(), 0x00.toByte(), 0x04.toByte(),
+                            0xB1.toByte(),
+                            0xB1.toByte(),
+                        ),
+                    ),
+                    frameStates = listOf(
+                        VerificationFrameState(
+                            bytecodeOffset = 0,
+                            locals = emptyList(),
+                            stack = emptyList(),
+                        ),
+                        VerificationFrameState(
+                            bytecodeOffset = 4,
+                            locals = emptyList(),
+                            stack = emptyList(),
+                        ),
+                    ),
+                )
+            }
+
+            assertEquals(
+                "Operand stack is empty, expected Integer",
+                exception.message,
+            )
+        }
+    }
+
     private fun code(
         maxStack: Int,
         maxLocals: Int,
