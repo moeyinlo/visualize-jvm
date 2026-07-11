@@ -191,6 +191,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1 | Verifier operand stack push and pop transfers | `jvm-verifier` | `VerifierOperandStackTest` | IMPLEMENTED |
 | 4.10.1 | `uninitializedThis` constructor state transitions | `jvm-verifier` | `UninitializedThisRulesTest` | IMPLEMENTED |
 | 4.10.1 | `new` object uninitialized state transitions | `jvm-verifier` | `ObjectInitializationRulesTest` | IMPLEMENTED |
+| 4.10.1 | Exception handler edge frame derivation and target assignability | `jvm-verifier` | `ExceptionHandlerEdgesVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
