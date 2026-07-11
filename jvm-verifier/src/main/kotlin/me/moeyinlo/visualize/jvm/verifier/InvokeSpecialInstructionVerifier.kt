@@ -26,6 +26,30 @@ object InvokeSpecialInstructionVerifier {
         return frame.copy(stack = stack.values)
     }
 
+    fun verifyUninitializedThisInitializer(
+        frame: VerificationFrameState,
+        descriptor: String,
+        maxStack: Int,
+        methodOwnerType: VerificationType.ClassType,
+        ownerEnvironment: InvokeSpecialOwnerEnvironment,
+        initializedThisType: VerificationType.ObjectType,
+    ): ConstructorInvocationTransition {
+        verifyThisInitializerOwner(methodOwnerType, ownerEnvironment)
+        val methodTypes = MethodDescriptorVerificationTypeParser.parse(descriptor)
+        if (methodTypes.returnType != null) {
+            throw MethodVerificationException("invokespecial initializer descriptor must return void")
+        }
+        var stack = VerifierOperandStack.fromFrame(stack = frame.stack, maxStack = maxStack)
+        for (argumentType in methodTypes.parameterTypes.asReversed()) {
+            stack = stack.pop(argumentType).stack
+        }
+        stack = stack.pop(VerificationType.UninitializedThis).stack
+        return UninitializedThisRules.completeConstructorInvocation(
+            frameAfterPop = frame.copy(stack = stack.values),
+            thisType = initializedThisType,
+        )
+    }
+
     private fun verifyMethodOwner(
         methodOwnerType: VerificationType.ClassType?,
         ownerEnvironment: InvokeSpecialOwnerEnvironment?,
@@ -45,12 +69,25 @@ object InvokeSpecialInstructionVerifier {
             )
         }
     }
+
+    private fun verifyThisInitializerOwner(
+        methodOwnerType: VerificationType.ClassType,
+        ownerEnvironment: InvokeSpecialOwnerEnvironment,
+    ) {
+        if (!ownerEnvironment.isValidThisInitializerOwner(methodOwnerType)) {
+            throw MethodVerificationException(
+                "invokespecial initializer owner ${methodOwnerType.internalName} is not current class " +
+                    "${ownerEnvironment.currentClass.internalName} or its direct superclass",
+            )
+        }
+    }
 }
 
 data class InvokeSpecialOwnerEnvironment(
     val currentClass: ProtectedVerifierClass,
     val superclasses: List<ProtectedVerifierClass>,
     val directSuperinterfaceNames: List<String>,
+    val directSuperclassName: String? = superclasses.firstOrNull()?.internalName,
 ) {
     fun isValidOwner(methodOwnerType: VerificationType.ClassType): Boolean =
         methodOwnerType.internalName == currentClass.internalName ||
@@ -59,4 +96,8 @@ data class InvokeSpecialOwnerEnvironment(
                     superclass.definingLoader == methodOwnerType.loader
             } ||
             directSuperinterfaceNames.any { internalName -> internalName == methodOwnerType.internalName }
+
+    fun isValidThisInitializerOwner(methodOwnerType: VerificationType.ClassType): Boolean =
+        methodOwnerType.internalName == currentClass.internalName ||
+            methodOwnerType.internalName == directSuperclassName
 }

@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.verifier
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 
 class InvokeSpecialInstructionVerifierTest {
     @Test
@@ -213,6 +214,127 @@ class InvokeSpecialInstructionVerifierTest {
     }
 
     @Test
+    fun `invokespecial initializer with uninitializedThis initializes normal frame and poisons exception frame`() {
+        val thisType = VerificationType.ObjectType(ConstantPoolIndex(1))
+        val frame = frame(
+            locals = listOf(VerificationType.UninitializedThis, VerificationType.Integer),
+            stack = listOf(
+                VerificationType.UninitializedThis,
+                VerificationType.UninitializedThis,
+                VerificationType.Integer,
+            ),
+        )
+
+        val transition = InvokeSpecialInstructionVerifier.verifyUninitializedThisInitializer(
+            frame = frame,
+            descriptor = "(I)V",
+            maxStack = 3,
+            methodOwnerType = VerificationType.ClassType("pkg/Sub"),
+            ownerEnvironment = ownerEnvironment(),
+            initializedThisType = thisType,
+        )
+
+        assertEquals(
+            frame(
+                locals = listOf(thisType, VerificationType.Integer),
+                stack = listOf(thisType),
+            ),
+            transition.normalFrame,
+        )
+        assertEquals(
+            frame(
+                locals = listOf(VerificationType.Top, VerificationType.Integer),
+                stack = emptyList(),
+            ),
+            transition.exceptionFrame,
+        )
+    }
+
+    @Test
+    fun `invokespecial initializer with uninitializedThis accepts direct superclass owner`() {
+        val thisType = VerificationType.ObjectType(ConstantPoolIndex(1))
+
+        val transition = InvokeSpecialInstructionVerifier.verifyUninitializedThisInitializer(
+            frame = frame(
+                locals = listOf(VerificationType.UninitializedThis),
+                stack = listOf(VerificationType.UninitializedThis),
+            ),
+            descriptor = "()V",
+            maxStack = 1,
+            methodOwnerType = VerificationType.ClassType("lib/Base"),
+            ownerEnvironment = ownerEnvironment(),
+            initializedThisType = thisType,
+        )
+
+        assertEquals(
+            frame(locals = listOf(thisType), stack = emptyList()),
+            transition.normalFrame,
+        )
+    }
+
+    @Test
+    fun `invokespecial initializer with uninitializedThis rejects non-void descriptor`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyUninitializedThisInitializer(
+                frame = frame(stack = listOf(VerificationType.UninitializedThis)),
+                descriptor = "()Ljava/lang/Object;",
+                maxStack = 1,
+                methodOwnerType = VerificationType.ClassType("pkg/Sub"),
+                ownerEnvironment = ownerEnvironment(),
+                initializedThisType = VerificationType.ObjectType(ConstantPoolIndex(1)),
+            )
+        }
+
+        assertEquals("invokespecial initializer descriptor must return void", exception.message)
+    }
+
+    @Test
+    fun `invokespecial initializer with uninitializedThis rejects unrelated owner`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyUninitializedThisInitializer(
+                frame = frame(stack = listOf(VerificationType.UninitializedThis)),
+                descriptor = "()V",
+                maxStack = 1,
+                methodOwnerType = VerificationType.ClassType("other/Helper"),
+                ownerEnvironment = ownerEnvironment(),
+                initializedThisType = VerificationType.ObjectType(ConstantPoolIndex(1)),
+            )
+        }
+
+        assertEquals(
+            "invokespecial initializer owner other/Helper is not current class pkg/Sub or its direct superclass",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokespecial initializer with uninitializedThis rejects indirect superclass owner`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyUninitializedThisInitializer(
+                frame = frame(stack = listOf(VerificationType.UninitializedThis)),
+                descriptor = "()V",
+                maxStack = 1,
+                methodOwnerType = VerificationType.ClassType("java/lang/Object"),
+                ownerEnvironment = InvokeSpecialOwnerEnvironment(
+                    currentClass = ProtectedVerifierClass("pkg/Sub"),
+                    superclasses = listOf(
+                        ProtectedVerifierClass("lib/Base"),
+                        ProtectedVerifierClass("java/lang/Object"),
+                    ),
+                    directSuperinterfaceNames = emptyList(),
+                    directSuperclassName = "lib/Base",
+                ),
+                initializedThisType = VerificationType.ObjectType(ConstantPoolIndex(1)),
+            )
+        }
+
+        assertEquals(
+            "invokespecial initializer owner java/lang/Object is not current class pkg/Sub or its direct superclass",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `invokespecial non-initializer rejects instance initialization method names`() {
         val exception = assertFailsWith<MethodVerificationException> {
             InvokeSpecialInstructionVerifier.verifyNonInitializer(
@@ -250,8 +372,11 @@ class InvokeSpecialInstructionVerifierTest {
         assertEquals("invokespecial non-initializer target method must not be <clinit>", exception.message)
     }
 
-    private fun frame(stack: List<VerificationType>): VerificationFrameState =
-        VerificationFrameState(bytecodeOffset = 183, locals = emptyList(), stack = stack)
+    private fun frame(
+        stack: List<VerificationType>,
+        locals: List<VerificationType> = emptyList(),
+    ): VerificationFrameState =
+        VerificationFrameState(bytecodeOffset = 183, locals = locals, stack = stack)
 
     private fun ownerEnvironment(): InvokeSpecialOwnerEnvironment =
         InvokeSpecialOwnerEnvironment(

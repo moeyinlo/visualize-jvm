@@ -291,6 +291,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1.8, 6.5 | `invokevirtual` protected superclass method receiver narrowing after argument pop | `jvm-verifier` | `InvokeVirtualInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokespecial` non-`<init>` current receiver plus descriptor argument/return operand stack transition | `jvm-verifier` | `InvokeSpecialInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokespecial` non-`<init>` method owner is current class, superclass, or direct superinterface | `jvm-verifier` | `InvokeSpecialInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | `invokespecial <init>` on `uninitializedThis` enforces void descriptor, current/direct-super owner, normal initialization, and exception-frame poisoning | `jvm-verifier` | `InvokeSpecialInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokeinterface` receiver plus descriptor argument/return operand stack transition and `count` validation | `jvm-verifier` | `InvokeInterfaceInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `invokedynamic` dynamic call site descriptor argument/return operand stack transition | `jvm-verifier` | `InvokeDynamicInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `nop` instruction no type-state transition | `jvm-verifier` | `NopInstructionVerifierTest` | IMPLEMENTED |
