@@ -42,6 +42,10 @@ object MethodTypeCheckingVerifier {
         }
         verifyBranchTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
         verifyExceptionHandlerTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
+        verifyInstructionTransfers(
+            code = code,
+            framesByOffset = framesWithInitial.associateBy { frame -> frame.bytecodeOffset },
+        )
     }
 
     private fun MethodInitialFrame.toVerificationFrameState(): VerificationFrameState =
@@ -101,4 +105,20 @@ object MethodTypeCheckingVerifier {
                 }
             }
     }
+
+    private fun verifyInstructionTransfers(
+        code: CodeAttribute,
+        framesByOffset: Map<Int, VerificationFrameState>,
+    ) {
+        framesByOffset.forEach { (offset, frame) ->
+            when (code.code.u1(offset)) {
+                0x99 -> IntZeroBranchInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
+            }
+        }
+    }
+
+    private fun ByteArray.u1(offset: Int): Int = this[offset].toInt() and 0xFF
 }
