@@ -42,6 +42,21 @@ class LocalStoreInstructionVerifierTest {
     }
 
     @Test
+    fun `astore stores a returnAddress popped from the operand stack`() {
+        val frame = frame(locals = listOf(VerificationType.Top), stack = listOf(VerificationType.ReturnAddress))
+
+        val nextFrame = LocalStoreInstructionVerifier.verify(
+            frame = frame,
+            index = 0,
+            kind = LocalStoreKind.Reference,
+            maxLocals = 1,
+            maxStack = 1,
+        )
+
+        assertEquals(frame.copy(locals = listOf(VerificationType.ReturnAddress), stack = emptyList()), nextFrame)
+    }
+
+    @Test
     fun `dstore writes a category two value with a trailing top local slot`() {
         val frame = frame(locals = emptyList(), stack = listOf(VerificationType.Double))
 

@@ -10,7 +10,7 @@ object LocalStoreInstructionVerifier {
     ): VerificationFrameState {
         val popped = VerifierOperandStack
             .fromFrame(stack = frame.stack, maxStack = maxStack)
-            .pop(kind.expectedType)
+            .popStoreValue(kind)
         val localVariables = VerifierLocalVariables
             .fromCompact(locals = frame.locals, maxLocals = maxLocals)
             .store(index = index, value = popped.value)
@@ -19,6 +19,23 @@ object LocalStoreInstructionVerifier {
             stack = popped.stack.values,
         )
     }
+}
+
+private fun VerifierOperandStack.popStoreValue(kind: LocalStoreKind): VerifierOperandStackPop =
+    when (kind) {
+        LocalStoreKind.Reference -> popReferenceOrReturnAddress()
+        else -> pop(kind.expectedType)
+    }
+
+private fun VerifierOperandStack.popReferenceOrReturnAddress(): VerifierOperandStackPop {
+    val popped = popCategory1()
+    val value = popped.value
+    if (value != VerificationType.ReturnAddress && !value.isAssignableTo(VerificationType.Reference)) {
+        throw MethodVerificationException(
+            "Operand stack top contains $value, expected Reference or ReturnAddress",
+        )
+    }
+    return popped
 }
 
 enum class LocalStoreKind(

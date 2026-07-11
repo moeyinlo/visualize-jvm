@@ -251,6 +251,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | `wide ret` widened index equivalent returnAddress local type rule | `jvm-verifier` | `WideRetInstructionVerifierTest` | IMPLEMENTED |
 | 2.3.3, 4.10.2.5, 6.5 | `jsr` returnAddress operand-stack push transition | `jvm-verifier` | `JsrInstructionVerifierTest` | IMPLEMENTED |
 | 2.3.3, 4.10.2.5, 6.5 | `jsr_w` returnAddress operand-stack push transition | `jvm-verifier` | `JsrWideInstructionVerifierTest` | IMPLEMENTED |
+| 2.3.3, 6.5 | `astore` stores either reference or returnAddress stack values | `jvm-verifier` | `LocalStoreInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-long conversion instruction type transition | `jvm-verifier` | `IntToLongConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-float conversion instruction type transition | `jvm-verifier` | `IntToFloatConversionInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Int-to-double conversion instruction type transition | `jvm-verifier` | `IntToDoubleConversionInstructionVerifierTest` | IMPLEMENTED |
