@@ -133,6 +133,40 @@ class MethodControlFlowGraphTest {
     }
 
     @Test
+    fun `builds branch edges for lookupswitch match offset targets`() {
+        val code = CodeAttribute(
+            nameIndex = ConstantPoolIndex(1),
+            maxStack = 1,
+            maxLocals = 1,
+            code = byteArrayOf(
+                0xAB.toByte(),
+                0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x1C,
+                0x00, 0x00, 0x00, 0x02,
+                0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(),
+                0x00, 0x00, 0x00, 0x1D,
+                0x00, 0x00, 0x00, 0x05,
+                0x00, 0x00, 0x00, 0x1E,
+                0xB1.toByte(),
+                0xB1.toByte(),
+                0xB1.toByte(),
+            ),
+        )
+
+        val graph = MethodControlFlowGraphBuilder.build(code)
+
+        assertEquals(setOf(0, 28, 29, 30), graph.instructionOffsets)
+        assertEquals(
+            setOf(
+                ControlFlowEdge(0, 28, ControlFlowEdgeKind.Branch),
+                ControlFlowEdge(0, 29, ControlFlowEdgeKind.Branch),
+                ControlFlowEdge(0, 30, ControlFlowEdgeKind.Branch),
+            ),
+            graph.edges,
+        )
+    }
+
+    @Test
     fun `rejects branch targets that are not instruction offsets`() {
         val code = CodeAttribute(
             nameIndex = ConstantPoolIndex(1),

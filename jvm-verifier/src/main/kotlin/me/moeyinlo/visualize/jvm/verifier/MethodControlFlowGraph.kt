@@ -68,6 +68,7 @@ object MethodControlFlowGraphBuilder {
             val opcode = code.u1(offset)
             val instruction = when (opcode) {
                 0xAA -> code.decodeTableSwitch(offset)
+                0xAB -> code.decodeLookupSwitch(offset)
                 else -> code.decodeFixedInstruction(offset, opcode)
             }
             instructions += instruction
@@ -140,6 +141,44 @@ object MethodControlFlowGraphBuilder {
         )
     }
 
+    private fun ByteArray.decodeLookupSwitch(offset: Int): DecodedInstruction {
+        val padding = switchPadding(offset)
+        val defaultOffset = offset + 1 + padding
+        if (defaultOffset + 8 > size) {
+            throw ControlFlowGraphException(
+                "lookupswitch at $offset header exceeds code_length=$size",
+            )
+        }
+
+        val defaultTarget = offset + s4(defaultOffset)
+        val pairCount = s4(defaultOffset + 4)
+        if (pairCount < 0) {
+            throw ControlFlowGraphException(
+                "lookupswitch at $offset has negative npairs=$pairCount",
+            )
+        }
+
+        val length = 1L + padding.toLong() + 8L + pairCount.toLong() * 8L
+        if (length > Int.MAX_VALUE || offset.toLong() + length > size.toLong()) {
+            throw ControlFlowGraphException(
+                "lookupswitch at $offset length $length exceeds code_length=$size",
+            )
+        }
+
+        val pairsOffset = defaultOffset + 8
+        val targets = linkedSetOf(defaultTarget)
+        repeat(pairCount) { index ->
+            val pairOffset = pairsOffset + index * 8
+            targets += offset + s4(pairOffset + 4)
+        }
+        return DecodedInstruction(
+            offset = offset,
+            opcode = 0xAB,
+            length = length.toInt(),
+            branchTargets = targets,
+        )
+    }
+
     private fun validateExceptionHandlers(
         code: CodeAttribute,
         codeLength: Int,
@@ -193,7 +232,12 @@ object MethodControlFlowGraphBuilder {
         }
 
     private val DecodedInstruction.hasFallThrough: Boolean
-        get() = opcode !in terminalOpcodes && opcode != 0xA7 && opcode != 0xAA && opcode != 0xC8
+        get() =
+            opcode !in terminalOpcodes &&
+                opcode != 0xA7 &&
+                opcode != 0xAA &&
+                opcode != 0xAB &&
+                opcode != 0xC8
 
     private fun switchPadding(offset: Int): Int = (4 - ((offset + 1) % 4)) % 4
 
