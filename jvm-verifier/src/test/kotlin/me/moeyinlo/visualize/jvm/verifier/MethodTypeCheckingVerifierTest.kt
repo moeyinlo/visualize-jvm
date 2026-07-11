@@ -80,6 +80,36 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier rejects a branch target without a stack map frame`() {
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 1,
+                    code = byteArrayOf(
+                        0x03.toByte(),
+                        0x99.toByte(), 0x00.toByte(), 0x04.toByte(),
+                        0xB1.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Branch target 5 has no stack map frame",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier rejects a frame offset without a matching instruction`() {
         val exception = assertFailsWith<MethodVerificationException> {
             MethodTypeCheckingVerifier.verify(

@@ -11,6 +11,7 @@ object MethodTypeCheckingVerifier {
         MethodResourceLimitsVerifier.verify(code = code, frameStates = frames)
         val controlFlowGraph = MethodControlFlowGraphBuilder.build(code)
         verifyFrameOffsets(frames = frames, instructionOffsets = controlFlowGraph.instructionOffsets)
+        verifyBranchTargetFrames(controlFlowGraph.edges, frameOffsets = frames.mapTo(hashSetOf()) { it.bytecodeOffset })
     }
 
     private fun verifyFrameOffsets(
@@ -32,5 +33,20 @@ object MethodTypeCheckingVerifier {
             }
             previousOffset = frame.bytecodeOffset
         }
+    }
+
+    private fun verifyBranchTargetFrames(
+        edges: Set<ControlFlowEdge>,
+        frameOffsets: Set<Int>,
+    ) {
+        edges.asSequence()
+            .filter { edge -> edge.kind == ControlFlowEdgeKind.Branch }
+            .forEach { edge ->
+                if (edge.targetOffset !in frameOffsets) {
+                    throw MethodVerificationException(
+                        "Branch target ${edge.targetOffset} has no stack map frame",
+                    )
+                }
+            }
     }
 }
