@@ -167,8 +167,17 @@ object MethodControlFlowGraphBuilder {
 
         val pairsOffset = defaultOffset + 8
         val targets = linkedSetOf(defaultTarget)
+        var previousMatch: Int? = null
         repeat(pairCount) { index ->
             val pairOffset = pairsOffset + index * 8
+            val match = s4(pairOffset)
+            val previous = previousMatch
+            if (previous != null && match <= previous) {
+                throw ControlFlowGraphException(
+                    "lookupswitch at $offset match value $match is not greater than previous match value $previous",
+                )
+            }
+            previousMatch = match
             targets += offset + s4(pairOffset + 4)
         }
         return DecodedInstruction(
