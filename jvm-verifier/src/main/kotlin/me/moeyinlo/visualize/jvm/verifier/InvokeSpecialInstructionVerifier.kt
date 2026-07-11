@@ -54,6 +54,8 @@ object InvokeSpecialInstructionVerifier {
         newOffset: Int,
         methodOwnerType: VerificationType.ObjectType,
         newInstructionObjectType: VerificationType.ObjectType,
+        protectedAccess: ProtectedMemberAccess? = null,
+        protectedEnvironment: ProtectedMemberAccessEnvironment? = null,
     ): ConstructorInvocationTransition {
         verifyNewInstructionOwner(
             newOffset = newOffset,
@@ -66,11 +68,17 @@ object InvokeSpecialInstructionVerifier {
             stack = stack.pop(argumentType).stack
         }
         stack = stack.pop(VerificationType.Uninitialized(newOffset)).stack
-        return ObjectInitializationRules.completeObjectConstructorInvocation(
+        val transition = ObjectInitializationRules.completeObjectConstructorInvocation(
             frameAfterPop = frame.copy(stack = stack.values),
             newOffset = newOffset,
             objectType = methodOwnerType,
         )
+        verifyProtectedConstructorAccess(
+            protectedAccess = protectedAccess,
+            protectedEnvironment = protectedEnvironment,
+            normalFrame = transition.normalFrame,
+        )
+        return transition
     }
 
     private fun verifyMethodOwner(
@@ -124,6 +132,25 @@ object InvokeSpecialInstructionVerifier {
             throw MethodVerificationException("invokespecial initializer descriptor must return void")
         }
         return methodTypes
+    }
+
+    private fun verifyProtectedConstructorAccess(
+        protectedAccess: ProtectedMemberAccess?,
+        protectedEnvironment: ProtectedMemberAccessEnvironment?,
+        normalFrame: VerificationFrameState,
+    ) {
+        when {
+            protectedAccess == null && protectedEnvironment == null -> return
+            protectedAccess != null && protectedEnvironment != null ->
+                ProtectedMemberAccessVerifier.verify(
+                    access = protectedAccess,
+                    environment = protectedEnvironment,
+                    frame = normalFrame,
+                )
+            else -> throw MethodVerificationException(
+                "invokespecial protected constructor check requires both access and environment",
+            )
+        }
     }
 }
 

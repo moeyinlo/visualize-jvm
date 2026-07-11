@@ -406,6 +406,49 @@ class InvokeSpecialInstructionVerifierTest {
     }
 
     @Test
+    fun `invokespecial initializer with protected constructor accepts initialized receiver assignable to current class`() {
+        val newItem = VerificationType.Uninitialized(offset = 4)
+        val thisType = VerificationType.ObjectType(ConstantPoolIndex(1))
+
+        val transition = InvokeSpecialInstructionVerifier.verifyUninitializedObjectInitializer(
+            frame = frame(stack = listOf(newItem, newItem)),
+            descriptor = "()V",
+            maxStack = 2,
+            newOffset = 4,
+            methodOwnerType = thisType,
+            newInstructionObjectType = thisType,
+            protectedAccess = protectedConstructorAccess(),
+            protectedEnvironment = protectedConstructorEnvironment(thisType = thisType),
+        )
+
+        assertEquals(frame(stack = listOf(thisType)), transition.normalFrame)
+    }
+
+    @Test
+    fun `invokespecial initializer with protected constructor rejects initialized receiver not assignable to current class`() {
+        val newItem = VerificationType.Uninitialized(offset = 4)
+        val otherType = VerificationType.ObjectType(ConstantPoolIndex(2))
+        val exception = assertFailsWith<MethodVerificationException> {
+            InvokeSpecialInstructionVerifier.verifyUninitializedObjectInitializer(
+                frame = frame(stack = listOf(newItem, newItem)),
+                descriptor = "()V",
+                maxStack = 2,
+                newOffset = 4,
+                methodOwnerType = otherType,
+                newInstructionObjectType = otherType,
+                protectedAccess = protectedConstructorAccess(),
+                protectedEnvironment = protectedConstructorEnvironment(thisType = VerificationType.ObjectType(ConstantPoolIndex(1))),
+            )
+        }
+
+        assertEquals(
+            "Protected member lib/Base.<init>:()V requires receiver assignable to current class pkg/Sub " +
+                "at bytecode offset 183, but found ObjectType(constantPoolIndex=#2)",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `invokespecial non-initializer rejects instance initialization method names`() {
         val exception = assertFailsWith<MethodVerificationException> {
             InvokeSpecialInstructionVerifier.verifyNonInitializer(
@@ -454,5 +497,30 @@ class InvokeSpecialInstructionVerifierTest {
             currentClass = ProtectedVerifierClass("pkg/Sub"),
             superclasses = listOf(ProtectedVerifierClass("lib/Base")),
             directSuperinterfaceNames = listOf("api/Iface"),
+        )
+
+    private fun protectedConstructorAccess(): ProtectedMemberAccess =
+        ProtectedMemberAccess(
+            owner = ProtectedMemberOwner.ClassType("lib/Base"),
+            name = "<init>",
+            descriptor = "()V",
+        )
+
+    private fun protectedConstructorEnvironment(thisType: VerificationType): ProtectedMemberAccessEnvironment =
+        ProtectedMemberAccessEnvironment(
+            currentClass = ProtectedVerifierClass("pkg/Sub"),
+            thisType = thisType,
+            superclasses = listOf(
+                ProtectedVerifierClass(
+                    internalName = "lib/Base",
+                    members = listOf(ProtectedClassMember("<init>", "()V", isProtected = true)),
+                ),
+            ),
+            loadedClasses = mapOf(
+                ProtectedClassKey("lib/Base") to ProtectedVerifierClass(
+                    internalName = "lib/Base",
+                    members = listOf(ProtectedClassMember("<init>", "()V", isProtected = true)),
+                ),
+            ),
         )
 }
