@@ -177,4 +177,41 @@ class VerificationTypeLatticeTest {
             ),
         )
     }
+
+    @Test
+    fun `array verification type widens to bootstrap defined Cloneable`() {
+        val hierarchy = VerificationTypeHierarchy(
+            classes = listOf(
+                VerificationTypeClass(
+                    internalName = "java/lang/Cloneable",
+                    loader = "app",
+                    definition = VerificationTypeClassKey("java/lang/Cloneable", loader = "bootstrap"),
+                ),
+                VerificationTypeClass(
+                    internalName = "java/lang/Cloneable",
+                    loader = "custom",
+                    definition = VerificationTypeClassKey("java/lang/Cloneable", loader = "custom"),
+                ),
+            ),
+        )
+
+        assertTrue(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/lang/Cloneable", loader = "app"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/lang/Cloneable", loader = "missing"),
+                hierarchy = hierarchy,
+            ),
+        )
+        assertFalse(
+            VerificationType.ArrayOf(VerificationType.Integer).isAssignableTo(
+                VerificationType.ClassType("java/lang/Cloneable", loader = "custom"),
+                hierarchy = hierarchy,
+            ),
+        )
+    }
 }

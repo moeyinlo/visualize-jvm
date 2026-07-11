@@ -190,6 +190,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1.2 | Verification type lattice widens class verification types to loaded superclass types | `jvm-verifier` | `VerificationTypeLatticeTest` | IMPLEMENTED |
 | 4.10.1.2 | Verification type lattice widens same-name class types from different initiating loaders when they resolve to the same loaded class | `jvm-verifier` | `VerificationTypeLatticeTest` | IMPLEMENTED |
 | 4.10.1.2 | Verification type lattice widens array types to bootstrap-defined `java/lang/Object` | `jvm-verifier` | `VerificationTypeLatticeTest` | IMPLEMENTED |
+| 4.10.1.2 | Verification type lattice widens array types to bootstrap-defined `java/lang/Cloneable` | `jvm-verifier` | `VerificationTypeLatticeTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor primitive parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor class parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor array parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |

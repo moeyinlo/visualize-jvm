@@ -129,7 +129,7 @@ class VerificationTypeHierarchy(
                     isLoadedSuperclass(source = source, target = target) ||
                     isSameLoadedClassFromDifferentInitiatingLoaders(source = source, target = target)
             source is VerificationType.ArrayOf && target is VerificationType.ClassType ->
-                isArraySubtypeOfBootstrapObject(target)
+                isArraySubtypeOfBootstrapClass(target)
             else -> false
         }
 
@@ -157,18 +157,23 @@ class VerificationTypeHierarchy(
         return sourceClass.definition == targetClass.definition
     }
 
-    private fun isArraySubtypeOfBootstrapObject(target: VerificationType.ClassType): kotlin.Boolean {
-        if (target.internalName != "java/lang/Object") {
+    private fun isArraySubtypeOfBootstrapClass(target: VerificationType.ClassType): kotlin.Boolean {
+        if (target.internalName !in arrayBootstrapSupertypeNames) {
             return false
         }
         val targetClass = loadedClass(target) ?: return false
-        return targetClass.definition == VerificationTypeClassKey("java/lang/Object", loader = "bootstrap")
+        return targetClass.definition == VerificationTypeClassKey(target.internalName, loader = "bootstrap")
     }
 
     private fun loadedClass(type: VerificationType.ClassType): VerificationTypeClass? =
         classesByKey[VerificationTypeClassKey(type.internalName, type.loader)]
 
     companion object {
+        private val arrayBootstrapSupertypeNames = setOf(
+            "java/lang/Object",
+            "java/lang/Cloneable",
+        )
+
         val Empty: VerificationTypeHierarchy = VerificationTypeHierarchy()
     }
 }
