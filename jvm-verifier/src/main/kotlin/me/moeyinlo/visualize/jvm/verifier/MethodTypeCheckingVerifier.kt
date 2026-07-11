@@ -116,6 +116,10 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                in 0x9F..0xA4 -> IntCompareBranchInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
             }
         }
     }
