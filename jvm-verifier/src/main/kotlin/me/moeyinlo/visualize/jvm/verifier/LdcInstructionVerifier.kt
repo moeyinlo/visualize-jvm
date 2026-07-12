@@ -90,6 +90,9 @@ object LdcInstructionVerifier {
             descriptor == "J" -> throw MethodVerificationException(
                 "ldc CONSTANT_Dynamic descriptor 'J' is category 2; use ldc2_w",
             )
+            descriptor == "D" -> throw MethodVerificationException(
+                "ldc CONSTANT_Dynamic descriptor 'D' is category 2; use ldc2_w",
+            )
             descriptor == "[I" -> VerificationType.ArrayOf(VerificationType.Integer)
             descriptor.startsWith("[L") && descriptor.endsWith(";") && descriptor.length > 3 ->
                 VerificationType.ArrayOf(
