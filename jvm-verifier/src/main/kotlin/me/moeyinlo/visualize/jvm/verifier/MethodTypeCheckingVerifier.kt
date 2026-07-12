@@ -138,6 +138,11 @@ object MethodTypeCheckingVerifier {
                     kind = ConstantPushKind.Double,
                     maxStack = code.maxStack,
                 )
+                0x10 -> ConstantInstructionVerifier.verify(
+                    frame = frame,
+                    kind = ConstantPushKind.Int,
+                    maxStack = code.maxStack,
+                )
                 0x15 -> LocalLoadInstructionVerifier.verify(
                     frame = frame,
                     index = code.code.u1(offset + 1),
