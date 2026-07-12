@@ -858,255 +858,95 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
-    fun `type checking verifier applies pop operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 1,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x57.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
+    fun `type checking verifier accepts stack manipulation operand stack transitions`() {
+        listOf(
+            StackTransitionCase("pop", 0x57, 1, listOf(VerificationType.Integer)),
+            StackTransitionCase("pop2", 0x58, 2, listOf(VerificationType.Long)),
+            StackTransitionCase("dup", 0x59, 2, listOf(VerificationType.Integer)),
+            StackTransitionCase("dup_x1", 0x5A, 3, listOf(VerificationType.Integer, VerificationType.Float)),
+            StackTransitionCase("dup_x2", 0x5B, 4, listOf(VerificationType.Long, VerificationType.Integer)),
+            StackTransitionCase("dup2", 0x5C, 4, listOf(VerificationType.Long)),
+            StackTransitionCase("dup2_x1", 0x5D, 5, listOf(VerificationType.Integer, VerificationType.Long)),
+            StackTransitionCase("dup2_x2", 0x5E, 6, listOf(VerificationType.Double, VerificationType.Long)),
+            StackTransitionCase("swap", 0x5F, 2, listOf(VerificationType.Integer, VerificationType.Float)),
+        ).forEach { case ->
+            verifyStackTransition(case)
         }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 value",
-            exception.message,
-        )
     }
 
     @Test
-    fun `type checking verifier applies pop2 operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 2,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x58.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
+    fun `type checking verifier rejects invalid stack manipulation operand stack transitions`() {
+        listOf(
+            StackTransitionRejection(
+                name = "pop rejects category two top",
+                opcode = 0x57,
+                maxStack = 2,
+                stack = listOf(VerificationType.Long),
+                expectedError = "Operand stack top contains Long, expected category 1 value",
+            ),
+            StackTransitionRejection(
+                name = "pop2 rejects category two below category one top",
+                opcode = 0x58,
+                maxStack = 3,
+                stack = listOf(VerificationType.Long, VerificationType.Integer),
+                expectedError = "Operand stack top contains Long, expected category 1 value",
+            ),
+            StackTransitionRejection(
+                name = "dup rejects max stack overflow caused by duplicate",
+                opcode = 0x59,
+                maxStack = 1,
+                stack = listOf(VerificationType.Integer),
+                expectedError = "Operand stack depth 2 exceeds max_stack=1",
+            ),
+            StackTransitionRejection(
+                name = "dup_x1 rejects category two below category one top",
+                opcode = 0x5A,
+                maxStack = 3,
+                stack = listOf(VerificationType.Long, VerificationType.Integer),
+                expectedError = "Operand stack top contains Long, expected category 1 value",
+            ),
+            StackTransitionRejection(
+                name = "dup_x2 rejects max stack overflow in category two form",
+                opcode = 0x5B,
+                maxStack = 3,
+                stack = listOf(VerificationType.Long, VerificationType.Integer),
+                expectedError = "Operand stack depth 4 exceeds max_stack=3",
+            ),
+            StackTransitionRejection(
+                name = "dup2 rejects category two below category one top",
+                opcode = 0x5C,
+                maxStack = 4,
+                stack = listOf(VerificationType.Long, VerificationType.Integer),
+                expectedError = "Operand stack top contains Long, expected category 1 value",
+            ),
+            StackTransitionRejection(
+                name = "dup2_x1 rejects category two top with missing lower operand",
+                opcode = 0x5D,
+                maxStack = 4,
+                stack = listOf(VerificationType.Long),
+                expectedError = "Operand stack is empty, expected category 1 value",
+            ),
+            StackTransitionRejection(
+                name = "dup2_x2 rejects category two top with missing lower operand",
+                opcode = 0x5E,
+                maxStack = 4,
+                stack = listOf(VerificationType.Long),
+                expectedError = "Operand stack is empty, expected category 1 or category 2 value",
+            ),
+            StackTransitionRejection(
+                name = "swap rejects category two below category one top",
+                opcode = 0x5F,
+                maxStack = 3,
+                stack = listOf(VerificationType.Long, VerificationType.Integer),
+                expectedError = "Operand stack top contains Long, expected category 1 value",
+            ),
+        ).forEach { case ->
+            val exception = assertFailsWith<MethodVerificationException>(case.name) {
+                verifyStackTransition(case)
+            }
+
+            assertEquals(case.expectedError, exception.message, case.name)
         }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 or category 2 value",
-            exception.message,
-        )
-    }
-
-    @Test
-    fun `type checking verifier applies dup operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 2,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x59.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
-        }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 value",
-            exception.message,
-        )
-    }
-
-    @Test
-    fun `type checking verifier applies dup_x1 operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 3,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x5A.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
-        }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 value",
-            exception.message,
-        )
-    }
-
-    @Test
-    fun `type checking verifier applies dup_x2 operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 4,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x5B.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
-        }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 value",
-            exception.message,
-        )
-    }
-
-    @Test
-    fun `type checking verifier applies dup2 operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 4,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x5C.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
-        }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 or category 2 value",
-            exception.message,
-        )
-    }
-
-    @Test
-    fun `type checking verifier applies dup2_x1 operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 5,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x5D.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
-        }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 or category 2 value",
-            exception.message,
-        )
-    }
-
-    @Test
-    fun `type checking verifier applies dup2_x2 operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 6,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x5E.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
-        }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 or category 2 value",
-            exception.message,
-        )
-    }
-
-    @Test
-    fun `type checking verifier applies swap operand stack transitions`() {
-        val exception = assertFailsWith<MethodVerificationException> {
-            MethodTypeCheckingVerifier.verify(
-                code = code(
-                    maxStack = 2,
-                    maxLocals = 0,
-                    code = byteArrayOf(
-                        0x5F.toByte(),
-                        0xB1.toByte(),
-                    ),
-                ),
-                frameStates = listOf(
-                    VerificationFrameState(
-                        bytecodeOffset = 0,
-                        locals = emptyList(),
-                        stack = emptyList(),
-                    ),
-                ),
-            )
-        }
-
-        assertEquals(
-            "Operand stack is empty, expected category 1 value",
-            exception.message,
-        )
     }
 
     @Test
@@ -2006,6 +1846,61 @@ class MethodTypeCheckingVerifierTest {
         assertEquals(
             "Operand stack is empty, expected category 1 value",
             exception.message,
+        )
+    }
+
+    private data class StackTransitionCase(
+        val name: String,
+        val opcode: Int,
+        val maxStack: Int,
+        val stack: List<VerificationType>,
+    )
+
+    private data class StackTransitionRejection(
+        val name: String,
+        val opcode: Int,
+        val maxStack: Int,
+        val stack: List<VerificationType>,
+        val expectedError: String,
+    )
+
+    private fun verifyStackTransition(case: StackTransitionCase) {
+        verifyStackTransition(
+            opcode = case.opcode,
+            maxStack = case.maxStack,
+            stack = case.stack,
+        )
+    }
+
+    private fun verifyStackTransition(case: StackTransitionRejection) {
+        verifyStackTransition(
+            opcode = case.opcode,
+            maxStack = case.maxStack,
+            stack = case.stack,
+        )
+    }
+
+    private fun verifyStackTransition(
+        opcode: Int,
+        maxStack: Int,
+        stack: List<VerificationType>,
+    ) {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = maxStack,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    opcode.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = stack,
+                ),
+            ),
         )
     }
 
