@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.verifier
 
+import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
@@ -19,6 +20,7 @@ object LdcInstructionVerifier {
             is ConstantIntegerEntry -> VerificationType.Integer
             is ConstantFloatEntry -> VerificationType.Float
             is ConstantStringEntry -> VerificationType.ClassType("java/lang/String")
+            is ConstantClassEntry -> VerificationType.ClassType("java/lang/Class")
             else -> throw MethodVerificationException(
                 "ldc constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
             )
