@@ -591,6 +591,11 @@ object MethodTypeCheckingVerifier {
                     kind = LongBinaryArithmeticKind.Or,
                     maxStack = code.maxStack,
                 )
+                0x82 -> IntBinaryArithmeticInstructionVerifier.verify(
+                    frame = frame,
+                    kind = IntBinaryArithmeticKind.Xor,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
