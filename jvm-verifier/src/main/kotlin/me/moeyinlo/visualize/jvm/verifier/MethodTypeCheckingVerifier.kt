@@ -869,6 +869,11 @@ object MethodTypeCheckingVerifier {
                     targetType = VerificationType.ObjectType(ConstantPoolIndex(code.code.u2(offset + 1))),
                     maxStack = code.maxStack,
                 )
+                0xC1 -> InstanceOfInstructionVerifier.verify(
+                    frame = frame,
+                    targetType = VerificationType.ObjectType(ConstantPoolIndex(code.code.u2(offset + 1))),
+                    maxStack = code.maxStack,
+                )
                 0xC2 -> MonitorInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
