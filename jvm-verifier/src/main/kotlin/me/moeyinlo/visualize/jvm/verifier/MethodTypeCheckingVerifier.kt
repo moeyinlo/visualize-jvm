@@ -1,6 +1,8 @@
 package me.moeyinlo.visualize.jvm.verifier
 
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
+import me.moeyinlo.visualize.jvm.classfile.ConstantPool
+import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 
 object MethodTypeCheckingVerifier {
     fun verify(
@@ -9,6 +11,20 @@ object MethodTypeCheckingVerifier {
     ) {
         verify(
             code = code,
+            constantPool = null,
+            initialFrameState = null,
+            frameStates = frameStates,
+        )
+    }
+
+    fun verify(
+        code: CodeAttribute,
+        constantPool: ConstantPool,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = constantPool,
             initialFrameState = null,
             frameStates = frameStates,
         )
@@ -21,6 +37,21 @@ object MethodTypeCheckingVerifier {
     ) {
         verify(
             code = code,
+            constantPool = null,
+            initialFrameState = initialFrame.toVerificationFrameState(),
+            frameStates = frameStates,
+        )
+    }
+
+    fun verify(
+        code: CodeAttribute,
+        constantPool: ConstantPool,
+        initialFrame: MethodInitialFrame,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = constantPool,
             initialFrameState = initialFrame.toVerificationFrameState(),
             frameStates = frameStates,
         )
@@ -28,6 +59,7 @@ object MethodTypeCheckingVerifier {
 
     private fun verify(
         code: CodeAttribute,
+        constantPool: ConstantPool?,
         initialFrameState: VerificationFrameState?,
         frameStates: Iterable<VerificationFrameState>,
     ) {
@@ -44,6 +76,7 @@ object MethodTypeCheckingVerifier {
         verifyExceptionHandlerTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
         verifyInstructionTransfers(
             code = code,
+            constantPool = constantPool,
             framesByOffset = framesWithInitial.associateBy { frame -> frame.bytecodeOffset },
         )
     }
@@ -108,6 +141,7 @@ object MethodTypeCheckingVerifier {
 
     private fun verifyInstructionTransfers(
         code: CodeAttribute,
+        constantPool: ConstantPool?,
         framesByOffset: Map<Int, VerificationFrameState>,
     ) {
         framesByOffset.forEach { (offset, frame) ->
@@ -146,6 +180,12 @@ object MethodTypeCheckingVerifier {
                 0x11 -> ConstantInstructionVerifier.verify(
                     frame = frame,
                     kind = ConstantPushKind.Int,
+                    maxStack = code.maxStack,
+                )
+                0x12 -> LdcInstructionVerifier.verify(
+                    frame = frame,
+                    index = ConstantPoolIndex(code.code.u1(offset + 1)),
+                    constantPool = requireConstantPool(mnemonic = "ldc", constantPool = constantPool),
                     maxStack = code.maxStack,
                 )
                 0x15 -> LocalLoadInstructionVerifier.verify(
@@ -740,6 +780,12 @@ object MethodTypeCheckingVerifier {
             }
         }
     }
+
+    private fun requireConstantPool(
+        mnemonic: String,
+        constantPool: ConstantPool?,
+    ): ConstantPool =
+        constantPool ?: throw MethodVerificationException("$mnemonic requires constant pool context")
 
     private fun ByteArray.u1(offset: Int): Int = this[offset].toInt() and 0xFF
 
