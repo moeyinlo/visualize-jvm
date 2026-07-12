@@ -27,6 +27,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.5.1 | pc register | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.5.2 | JVM stacks | `jvm-runtime` | TBD | PENDING |
 | 2.5.3 | Heap | `jvm-runtime` | TBD | PENDING |
+| 2.5.3, 2.7 | Guest heap object allocation with opaque positive object references | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.4 | Method area | `jvm-runtime` | TBD | PENDING |
 | 2.5.5 | Run-time constant pool | `jvm-runtime` | TBD | PENDING |
 | 2.5.6 | Native method stacks | `jvm-native`, `jvm-jni` | TBD | PENDING |
