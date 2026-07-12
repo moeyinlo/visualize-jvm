@@ -3266,6 +3266,71 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies putstatic operand stack transition at explicit source frames`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                ConstantUtf8Entry("field", "field".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantFieldRefEntry(
+                    classIndex = ConstantPoolIndex(2),
+                    nameAndTypeIndex = ConstantPoolIndex(5),
+                ),
+            ),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xB3.toByte(), 0x00.toByte(), 0x06.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = constantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Integer),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xB3.toByte(), 0x00.toByte(), 0x06.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                constantPool = constantPool,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack is empty, expected Integer",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies multianewarray operand stack transition at explicit source frames`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
