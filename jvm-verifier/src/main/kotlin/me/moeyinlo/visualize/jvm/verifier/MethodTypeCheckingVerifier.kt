@@ -525,6 +525,10 @@ object MethodTypeCheckingVerifier {
                     kind = DoubleBinaryArithmeticKind.Remainder,
                     maxStack = code.maxStack,
                 )
+                0x74 -> IntNegationInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
