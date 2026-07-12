@@ -413,6 +413,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | Type checking verifier applies `i2c` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `i2s` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `lcmp` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | Type checking verifier applies `fcmpl` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies explicit int local load transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies explicit long local load transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies explicit float local load transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
