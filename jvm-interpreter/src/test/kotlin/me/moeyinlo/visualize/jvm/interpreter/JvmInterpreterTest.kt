@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
@@ -16,6 +17,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
@@ -324,6 +326,40 @@ class JvmInterpreterTest {
             JvmHeapObject(
                 className = "java/lang/Class",
                 payload = JvmClassPayload("java/lang/String"),
+            ),
+            heap.get(reference),
+        )
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldc reuses guest method type constants with identical descriptors`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("(Ljava/lang/String;)I", "(Ljava/lang/String;)I".encodeToByteArray()),
+                    ConstantMethodTypeEntry(descriptorIndex = ConstantPoolIndex(1)),
+                    ConstantMethodTypeEntry(descriptorIndex = ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference, reference), result.operandStack.toList())
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodType",
+                payload = JvmMethodTypePayload("(Ljava/lang/String;)I"),
             ),
             heap.get(reference),
         )

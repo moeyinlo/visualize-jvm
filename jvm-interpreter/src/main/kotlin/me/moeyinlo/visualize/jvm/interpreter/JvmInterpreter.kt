@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
@@ -101,6 +102,24 @@ object JvmInterpreter {
             }
             is ConstantFloatEntry -> operandStack.push(JvmFloatValue(entry.value))
             is ConstantIntegerEntry -> operandStack.push(JvmIntValue(entry.value))
+            is ConstantMethodTypeEntry -> {
+                val descriptorEntry = try {
+                    constantPool[entry.descriptorIndex]
+                } catch (exception: ConstantPoolFormatException) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_MethodType descriptor_index ${entry.descriptorIndex} " +
+                            "at offset ${instruction.offset}: ${exception.message}",
+                    )
+                }
+                if (descriptorEntry !is ConstantUtf8Entry) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_MethodType descriptor_index ${entry.descriptorIndex} at offset " +
+                            "${instruction.offset}: expected ConstantUtf8Entry but was " +
+                            descriptorEntry.javaClass.simpleName,
+                    )
+                }
+                operandStack.push(heap.internMethodType(descriptorEntry.value))
+            }
             is ConstantStringEntry -> {
                 val stringEntry = try {
                     constantPool[entry.stringIndex]
