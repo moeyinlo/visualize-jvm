@@ -250,6 +250,54 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies dconst operand stack transitions`() {
+        (0x0E..0x0F).forEach { opcode ->
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 2,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        opcode.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+
+            val exception = assertFailsWith<MethodVerificationException> {
+                MethodTypeCheckingVerifier.verify(
+                    code = code(
+                        maxStack = 2,
+                        maxLocals = 0,
+                        code = byteArrayOf(
+                            opcode.toByte(),
+                            0xB1.toByte(),
+                        ),
+                    ),
+                    frameStates = listOf(
+                        VerificationFrameState(
+                            bytecodeOffset = 0,
+                            locals = emptyList(),
+                            stack = listOf(VerificationType.Integer),
+                        ),
+                    ),
+                )
+            }
+
+            assertEquals(
+                "Operand stack depth 3 exceeds max_stack=2",
+                exception.message,
+            )
+        }
+    }
+
+    @Test
     fun `type checking verifier rejects frames exceeding code resource limits`() {
         val exception = assertFailsWith<MethodVerificationException> {
             MethodTypeCheckingVerifier.verify(
