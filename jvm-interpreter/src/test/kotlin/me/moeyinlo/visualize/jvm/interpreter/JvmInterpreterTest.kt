@@ -1,5 +1,7 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
@@ -176,6 +178,25 @@ class JvmInterpreterTest {
             result.operandStack.toList(),
         )
         assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldc pushes integer constants from the runtime constant pool`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(123_456),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(123_456)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
     }
 
     @Test

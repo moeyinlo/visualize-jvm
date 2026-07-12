@@ -1,5 +1,9 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantPool
+import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
+import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
@@ -14,15 +18,23 @@ data class JvmExecutionResult(
 class JvmUnsupportedInstructionException(message: String) : IllegalStateException(message)
 
 object JvmInterpreter {
-    fun execute(code: ByteArray, maxStack: Int): JvmExecutionResult {
+    fun execute(
+        code: ByteArray,
+        maxStack: Int,
+        constantPool: ConstantPool = ConstantPool.fromEntries(emptyList()),
+    ): JvmExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         BytecodeDecoder.decode(code).forEach { instruction ->
-            executeInstruction(instruction, operandStack)
+            executeInstruction(instruction, operandStack, constantPool)
         }
         return JvmExecutionResult(operandStack = operandStack)
     }
 
-    private fun executeInstruction(instruction: DecodedInstruction, operandStack: JvmOperandStack) {
+    private fun executeInstruction(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+    ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
             0x01 -> operandStack.push(JvmNullValue)
@@ -34,9 +46,31 @@ object JvmInterpreter {
             0x11 -> operandStack.push(
                 JvmIntValue(((instruction.operands[0] shl 8) or instruction.operands[1]).toShort().toInt()),
             )
+            0x12 -> executeLdc(instruction, operandStack, constantPool)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
                     "(${instruction.metadata.opcode.hexByte()}) at offset ${instruction.offset}",
+            )
+        }
+    }
+
+    private fun executeLdc(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+    ) {
+        val index = ConstantPoolIndex(instruction.operands[0])
+        val entry = try {
+            constantPool[index]
+        } catch (exception: ConstantPoolFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc constant_pool index $index at offset ${instruction.offset}: ${exception.message}",
+            )
+        }
+        when (entry) {
+            is ConstantIntegerEntry -> operandStack.push(JvmIntValue(entry.value))
+            else -> throw JvmUnsupportedInstructionException(
+                "Unsupported ldc constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
             )
         }
     }
