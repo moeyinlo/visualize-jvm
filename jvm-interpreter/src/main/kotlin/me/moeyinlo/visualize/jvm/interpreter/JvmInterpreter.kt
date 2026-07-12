@@ -7,8 +7,11 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
+import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
@@ -25,10 +28,11 @@ object JvmInterpreter {
         code: ByteArray,
         maxStack: Int,
         constantPool: ConstantPool = ConstantPool.fromEntries(emptyList()),
+        heap: JvmHeap = JvmHeap(),
     ): JvmExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         BytecodeDecoder.decode(code).forEach { instruction ->
-            executeInstruction(instruction, operandStack, constantPool)
+            executeInstruction(instruction, operandStack, constantPool, heap)
         }
         return JvmExecutionResult(operandStack = operandStack)
     }
@@ -37,6 +41,7 @@ object JvmInterpreter {
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
+        heap: JvmHeap,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -51,7 +56,7 @@ object JvmInterpreter {
             )
             0x12,
             0x13,
-            -> executeLdc(instruction, operandStack, constantPool)
+            -> executeLdc(instruction, operandStack, constantPool, heap)
             0x14 -> executeLdc2(instruction, operandStack, constantPool)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -64,6 +69,7 @@ object JvmInterpreter {
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
+        heap: JvmHeap,
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -76,6 +82,24 @@ object JvmInterpreter {
         when (entry) {
             is ConstantFloatEntry -> operandStack.push(JvmFloatValue(entry.value))
             is ConstantIntegerEntry -> operandStack.push(JvmIntValue(entry.value))
+            is ConstantStringEntry -> {
+                val stringEntry = try {
+                    constantPool[entry.stringIndex]
+                } catch (exception: ConstantPoolFormatException) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_String string_index ${entry.stringIndex} " +
+                            "at offset ${instruction.offset}: ${exception.message}",
+                    )
+                }
+                if (stringEntry !is ConstantUtf8Entry) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_String string_index ${entry.stringIndex} at offset " +
+                            "${instruction.offset}: expected ConstantUtf8Entry but was " +
+                            stringEntry.javaClass.simpleName,
+                    )
+                }
+                operandStack.push(heap.allocateString(stringEntry.value))
+            }
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ldc constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
             )
