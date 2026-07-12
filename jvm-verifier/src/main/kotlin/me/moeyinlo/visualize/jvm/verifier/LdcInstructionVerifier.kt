@@ -79,13 +79,16 @@ object LdcInstructionVerifier {
         entry: ConstantDynamicEntry,
         constantPool: ConstantPool,
     ): VerificationType {
-        return when (val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)) {
-            "I" -> VerificationType.Integer
-            "Z" -> VerificationType.Integer
-            "B" -> VerificationType.Integer
-            "C" -> VerificationType.Integer
-            "S" -> VerificationType.Integer
-            "F" -> VerificationType.Float
+        val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)
+        return when {
+            descriptor == "I" -> VerificationType.Integer
+            descriptor == "Z" -> VerificationType.Integer
+            descriptor == "B" -> VerificationType.Integer
+            descriptor == "C" -> VerificationType.Integer
+            descriptor == "S" -> VerificationType.Integer
+            descriptor == "F" -> VerificationType.Float
+            descriptor.startsWith("L") && descriptor.endsWith(";") && descriptor.length > 2 ->
+                VerificationType.ClassType(descriptor.substring(1, descriptor.length - 1))
             else -> throw MethodVerificationException(
                 "ldc CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
             )
