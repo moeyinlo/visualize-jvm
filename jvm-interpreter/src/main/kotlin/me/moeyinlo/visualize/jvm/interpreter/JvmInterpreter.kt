@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
@@ -95,6 +96,7 @@ object JvmInterpreter {
             )
         }
         when (entry) {
+            is ConstantDoubleEntry -> operandStack.push(JvmDoubleValue(entry.value))
             is ConstantLongEntry -> operandStack.push(JvmLongValue(entry.value))
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ldc2_w constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
