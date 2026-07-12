@@ -75,6 +75,7 @@ object LdcInstructionVerifier {
             )
         return when (descriptor.value) {
             "I" -> VerificationType.Integer
+            "F" -> VerificationType.Float
             else -> throw MethodVerificationException(
                 "ldc CONSTANT_Dynamic descriptor '${descriptor.value}' is unsupported",
             )
