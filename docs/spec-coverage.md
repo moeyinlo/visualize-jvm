@@ -33,6 +33,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.6 | Frames | `jvm-runtime` | TBD | PENDING |
 | 2.6.1 | Local variables | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.6.2 | Operand stacks | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.6.2 | Runtime operand stack LIFO, slot depth, underflow, and `max_stack` bounds | `jvm-runtime` | `JvmOperandStackTest` | IMPLEMENTED |
 | 2.6.3 | Dynamic linking | `jvm-runtime` | TBD | PENDING |
 | 2.6.4 | Normal method invocation completion | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.6.5 | Abrupt method invocation completion | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
