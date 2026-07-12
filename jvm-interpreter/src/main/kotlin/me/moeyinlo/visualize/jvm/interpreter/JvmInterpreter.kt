@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
 
 data class JvmExecutionResult(
@@ -21,6 +22,7 @@ object JvmInterpreter {
     private fun executeInstruction(instruction: DecodedInstruction, operandStack: JvmOperandStack) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
+            0x01 -> operandStack.push(JvmNullValue)
             in 0x02..0x08 -> operandStack.push(JvmIntValue(instruction.metadata.opcode - 0x03))
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +

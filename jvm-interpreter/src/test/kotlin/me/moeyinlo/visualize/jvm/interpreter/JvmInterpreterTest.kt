@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,6 +47,17 @@ class JvmInterpreterTest {
             result.operandStack.toList(),
         )
         assertEquals(7, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `aconst_null pushes the null reference onto the operand stack`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(0x01.toByte()),
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(JvmNullValue), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
     }
 
     @Test
