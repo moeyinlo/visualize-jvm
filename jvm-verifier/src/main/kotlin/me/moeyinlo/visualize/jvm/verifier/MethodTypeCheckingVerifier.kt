@@ -2,6 +2,8 @@ package me.moeyinlo.visualize.jvm.verifier
 
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
@@ -871,6 +873,23 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xB2 -> {
+                    val constantPoolContext = requireConstantPool(
+                        mnemonic = "getstatic",
+                        constantPool = constantPool,
+                    )
+                    GetStaticInstructionVerifier.verify(
+                        frame = frame,
+                        fieldType = MethodDescriptorVerificationTypeParser.parseFieldType(
+                            resolveFieldDescriptor(
+                                mnemonic = "getstatic",
+                                index = ConstantPoolIndex(code.code.u2(offset + 1)),
+                                constantPool = constantPoolContext,
+                            ),
+                        ),
+                        maxStack = code.maxStack,
+                    )
+                }
                 0xBB -> ObjectInitializationRules.beginNewObject(
                     frame = frame,
                     newOffset = offset,
@@ -969,6 +988,43 @@ object MethodTypeCheckingVerifier {
             )
         }
         return nameEntry.value
+    }
+
+    private fun resolveFieldDescriptor(
+        mnemonic: String,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+    ): String {
+        val fieldRefEntry = constantPoolEntry(mnemonic = mnemonic, index = index, constantPool = constantPool)
+        if (fieldRefEntry !is ConstantFieldRefEntry) {
+            throw MethodVerificationException(
+                "$mnemonic constant pool index $index expected ConstantFieldRefEntry but found " +
+                    fieldRefEntry.javaClass.simpleName,
+            )
+        }
+        val nameAndTypeEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = fieldRefEntry.nameAndTypeIndex,
+            constantPool = constantPool,
+        )
+        if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
+            throw MethodVerificationException(
+                "$mnemonic name_and_type index ${fieldRefEntry.nameAndTypeIndex} " +
+                    "expected ConstantNameAndTypeEntry but found ${nameAndTypeEntry.javaClass.simpleName}",
+            )
+        }
+        val descriptorEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = nameAndTypeEntry.descriptorIndex,
+            constantPool = constantPool,
+        )
+        if (descriptorEntry !is ConstantUtf8Entry) {
+            throw MethodVerificationException(
+                "$mnemonic field descriptor index ${nameAndTypeEntry.descriptorIndex} " +
+                    "expected ConstantUtf8Entry but found ${descriptorEntry.javaClass.simpleName}",
+            )
+        }
+        return descriptorEntry.value
     }
 
     private fun constantPoolEntry(
