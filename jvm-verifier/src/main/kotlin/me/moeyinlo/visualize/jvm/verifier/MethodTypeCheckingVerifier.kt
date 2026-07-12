@@ -808,6 +808,10 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0xC9 -> JsrWideInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
             }
         }
     }
