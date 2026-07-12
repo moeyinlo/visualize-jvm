@@ -873,6 +873,11 @@ object MethodTypeCheckingVerifier {
                     atype = code.code.u1(offset + 1),
                     maxStack = code.maxStack,
                 )
+                0xBD -> ANewArrayInstructionVerifier.verify(
+                    frame = frame,
+                    componentType = VerificationType.ObjectType(ConstantPoolIndex(code.code.u2(offset + 1))),
+                    maxStack = code.maxStack,
+                )
                 0xBE -> ArrayLengthInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
