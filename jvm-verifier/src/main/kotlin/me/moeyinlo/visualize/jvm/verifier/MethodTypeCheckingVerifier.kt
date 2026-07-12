@@ -606,6 +606,10 @@ object MethodTypeCheckingVerifier {
                     index = code.code.u1(offset + 1),
                     maxLocals = code.maxLocals,
                 )
+                0x85 -> IntToLongConversionInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
