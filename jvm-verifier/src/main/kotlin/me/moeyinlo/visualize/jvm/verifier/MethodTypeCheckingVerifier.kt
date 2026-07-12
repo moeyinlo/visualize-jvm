@@ -556,6 +556,11 @@ object MethodTypeCheckingVerifier {
                     kind = IntShiftKind.Right,
                     maxStack = code.maxStack,
                 )
+                0x7B -> LongShiftInstructionVerifier.verify(
+                    frame = frame,
+                    kind = LongShiftKind.Right,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
