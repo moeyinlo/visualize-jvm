@@ -17,6 +17,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.1 | Class file format connection to runtime | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 2.2 | Data types | `jvm-runtime` | TBD | PENDING |
 | 2.3 | Primitive types and values | `jvm-runtime` | TBD | PENDING |
+| 2.3 | Primitive value runtime model and JVM slot categories | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
 | 2.3.1 | Integral types and values | `jvm-runtime` | TBD | PENDING |
 | 2.3.2 | Floating-point types and values | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.3.3 | `returnAddress` type and values | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
