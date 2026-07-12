@@ -126,6 +126,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `bipush sign extends the immediate byte onto the operand stack`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x7F.toByte(),
+                0x10.toByte(),
+                0x80.toByte(),
+                0x10.toByte(),
+                0xFF.toByte(),
+            ),
+            maxStack = 3,
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(127),
+                JvmIntValue(-128),
+                JvmIntValue(-1),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `constant execution respects max stack bounds`() {
         assertFailsWith<JvmOperandStackOverflowException> {
             JvmInterpreter.execute(
@@ -139,11 +164,11 @@ class JvmInterpreterTest {
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
-                code = byteArrayOf(0x10.toByte(), 0x01.toByte()),
+                code = byteArrayOf(0x60.toByte()),
                 maxStack = 1,
             )
         }
 
-        assertEquals("Unsupported instruction bipush (0x10) at offset 0", exception.message)
+        assertEquals("Unsupported instruction iadd (0x60) at offset 0", exception.message)
     }
 }

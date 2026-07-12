@@ -567,7 +567,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Lookupswitch decoder | `lookupswitch` 4-byte alignment, default/npairs header, and match-offset pair table length | `jvm-interpreter` | `BytecodeDecoderTest` | IMPLEMENTED |
 | Wide decoder | `wide` local-variable, `ret`, and `iinc` operand forms | `jvm-interpreter` | `BytecodeDecoderTest` | IMPLEMENTED |
 | Constants | `nop`, `aconst_null`, `iconst_m1`, `iconst_0..5`, `lconst_0..1`, `fconst_0..2`, `dconst_0..1`, `bipush`, `sipush`, `ldc`, `ldc_w`, `ldc2_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
-| Constants execution | `nop`, `aconst_null`, `iconst_m1..iconst_5`, `lconst_0..lconst_1`, `fconst_0..fconst_2`, and `dconst_0..dconst_1` mutate the runtime operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Constants execution | `nop`, `aconst_null`, `iconst_m1..iconst_5`, `lconst_0..lconst_1`, `fconst_0..fconst_2`, `dconst_0..dconst_1`, and `bipush` mutate the runtime operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads | `iload`, `lload`, `fload`, `dload`, `aload`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Array loads | `iaload`, `laload`, `faload`, `daload`, `aaload`, `baload`, `caload`, `saload` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Stores | `istore`, `lstore`, `fstore`, `dstore`, `astore`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
