@@ -455,6 +455,11 @@ object MethodTypeCheckingVerifier {
                     kind = LongBinaryArithmeticKind.Subtract,
                     maxStack = code.maxStack,
                 )
+                0x66 -> FloatBinaryArithmeticInstructionVerifier.verify(
+                    frame = frame,
+                    kind = FloatBinaryArithmeticKind.Subtract,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
