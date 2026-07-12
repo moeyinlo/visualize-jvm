@@ -409,6 +409,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | Type checking verifier applies `multianewarray` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `arraylength` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `athrow` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | Type checking verifier applies `athrow` operand stack transition from the method initial frame | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `checkcast` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `instanceof` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `monitorenter` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |

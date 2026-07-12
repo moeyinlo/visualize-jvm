@@ -87,6 +87,22 @@ object MethodTypeCheckingVerifier {
 
     fun verify(
         code: CodeAttribute,
+        initialFrame: MethodInitialFrame,
+        throwableType: VerificationType.ObjectType,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = null,
+            initialFrameState = initialFrame.toVerificationFrameState(),
+            declaredReturnType = initialFrame.returnType.toVerificationReturnType(),
+            throwableType = throwableType,
+            frameStates = frameStates,
+        )
+    }
+
+    fun verify(
+        code: CodeAttribute,
         constantPool: ConstantPool,
         initialFrame: MethodInitialFrame,
         frameStates: Iterable<VerificationFrameState>,
@@ -96,6 +112,23 @@ object MethodTypeCheckingVerifier {
             constantPool = constantPool,
             initialFrameState = initialFrame.toVerificationFrameState(),
             declaredReturnType = initialFrame.returnType.toVerificationReturnType(),
+            frameStates = frameStates,
+        )
+    }
+
+    fun verify(
+        code: CodeAttribute,
+        constantPool: ConstantPool,
+        initialFrame: MethodInitialFrame,
+        throwableType: VerificationType.ObjectType,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = constantPool,
+            initialFrameState = initialFrame.toVerificationFrameState(),
+            declaredReturnType = initialFrame.returnType.toVerificationReturnType(),
+            throwableType = throwableType,
             frameStates = frameStates,
         )
     }
