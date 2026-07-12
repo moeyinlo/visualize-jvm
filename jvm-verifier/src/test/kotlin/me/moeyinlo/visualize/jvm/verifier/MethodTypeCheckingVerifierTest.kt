@@ -5,6 +5,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.CodeExceptionHandler
+import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
@@ -395,6 +396,58 @@ class MethodTypeCheckingVerifierTest {
     fun `type checking verifier applies ldc integer operand stack transition`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(ConstantIntegerEntry(123)),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0x12.toByte(), 0x01.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = constantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0x12.toByte(), 0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                constantPool = constantPool,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack depth 2 exceeds max_stack=1",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `type checking verifier applies ldc float operand stack transition`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(ConstantFloatEntry(1.25f)),
         )
 
         MethodTypeCheckingVerifier.verify(

@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.verifier
 
+import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
@@ -15,6 +16,7 @@ object LdcInstructionVerifier {
         val entry = loadConstantPoolEntry(index = index, constantPool = constantPool)
         val kind = when (entry) {
             is ConstantIntegerEntry -> ConstantPushKind.Int
+            is ConstantFloatEntry -> ConstantPushKind.Float
             else -> throw MethodVerificationException(
                 "ldc constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
             )
