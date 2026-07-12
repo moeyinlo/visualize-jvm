@@ -475,6 +475,11 @@ object MethodTypeCheckingVerifier {
                     kind = LongBinaryArithmeticKind.Multiply,
                     maxStack = code.maxStack,
                 )
+                0x6A -> FloatBinaryArithmeticInstructionVerifier.verify(
+                    frame = frame,
+                    kind = FloatBinaryArithmeticKind.Multiply,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
