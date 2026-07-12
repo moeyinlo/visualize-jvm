@@ -194,6 +194,12 @@ object MethodTypeCheckingVerifier {
                     constantPool = requireConstantPool(mnemonic = "ldc_w", constantPool = constantPool),
                     maxStack = code.maxStack,
                 )
+                0x14 -> LdcInstructionVerifier.verifyCategory2(
+                    frame = frame,
+                    index = ConstantPoolIndex(code.code.u2(offset + 1)),
+                    constantPool = requireConstantPool(mnemonic = "ldc2_w", constantPool = constantPool),
+                    maxStack = code.maxStack,
+                )
                 0x15 -> LocalLoadInstructionVerifier.verify(
                     frame = frame,
                     index = code.code.u1(offset + 1),

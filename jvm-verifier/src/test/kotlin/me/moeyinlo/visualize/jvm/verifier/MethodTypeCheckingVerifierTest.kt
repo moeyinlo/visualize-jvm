@@ -10,6 +10,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
@@ -501,6 +502,58 @@ class MethodTypeCheckingVerifierTest {
 
         assertEquals(
             "Operand stack depth 2 exceeds max_stack=1",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `type checking verifier applies ldc2_w long operand stack transition`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(ConstantLongEntry(123L)),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 2,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0x14.toByte(), 0x00.toByte(), 0x01.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = constantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 2,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0x14.toByte(), 0x00.toByte(), 0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                constantPool = constantPool,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack depth 3 exceeds max_stack=2",
             exception.message,
         )
     }

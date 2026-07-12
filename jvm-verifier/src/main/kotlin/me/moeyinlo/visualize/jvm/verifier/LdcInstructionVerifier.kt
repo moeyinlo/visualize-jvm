@@ -4,6 +4,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
@@ -31,6 +32,26 @@ object LdcInstructionVerifier {
             is ConstantDynamicEntry -> dynamicConstantType(entry = entry, constantPool = constantPool)
             else -> throw MethodVerificationException(
                 "ldc constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
+            )
+        }
+        val nextStack = VerifierOperandStack
+            .fromFrame(stack = frame.stack, maxStack = maxStack)
+            .push(pushedType)
+            .values
+        return frame.copy(stack = nextStack)
+    }
+
+    fun verifyCategory2(
+        frame: VerificationFrameState,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+        maxStack: Int,
+    ): VerificationFrameState {
+        val entry = loadConstantPoolEntry(index = index, constantPool = constantPool)
+        val pushedType = when (entry) {
+            is ConstantLongEntry -> VerificationType.Long
+            else -> throw MethodVerificationException(
+                "ldc2_w constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
             )
         }
         val nextStack = VerifierOperandStack
