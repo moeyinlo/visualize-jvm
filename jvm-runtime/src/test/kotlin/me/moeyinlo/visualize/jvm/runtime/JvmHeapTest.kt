@@ -18,4 +18,19 @@ class JvmHeapTest {
         assertEquals(JvmHeapObject("java/lang/String"), heap.get(first))
         assertEquals(JvmHeapObject("java/lang/Class"), heap.get(second))
     }
+
+    @Test
+    fun `heap allocates string objects with guest payloads`() {
+        val heap = JvmHeap()
+
+        val reference = heap.allocateString("hello\u0000world")
+
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/String",
+                payload = JvmStringPayload("hello\u0000world"),
+            ),
+            heap.get(reference),
+        )
+    }
 }
