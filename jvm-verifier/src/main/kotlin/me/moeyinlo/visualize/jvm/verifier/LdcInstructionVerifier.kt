@@ -80,56 +80,27 @@ object LdcInstructionVerifier {
         constantPool: ConstantPool,
     ): VerificationType {
         val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)
-        return when {
-            descriptor == "I" -> VerificationType.Integer
-            descriptor == "Z" -> VerificationType.Integer
-            descriptor == "B" -> VerificationType.Integer
-            descriptor == "C" -> VerificationType.Integer
-            descriptor == "S" -> VerificationType.Integer
-            descriptor == "F" -> VerificationType.Float
-            descriptor == "J" -> throw MethodVerificationException(
-                "ldc CONSTANT_Dynamic descriptor 'J' is category 2; use ldc2_w",
-            )
-            descriptor == "D" -> throw MethodVerificationException(
-                "ldc CONSTANT_Dynamic descriptor 'D' is category 2; use ldc2_w",
-            )
-            descriptor == "[I" -> VerificationType.ArrayOf(VerificationType.Integer)
-            descriptor.startsWith("[L") && descriptor.endsWith(";") && descriptor.length > 3 ->
-                VerificationType.ArrayOf(
-                    VerificationType.ClassType(descriptor.substring(2, descriptor.length - 1)),
-                )
-            descriptor.startsWith("L") && descriptor.endsWith(";") && descriptor.length > 2 ->
-                VerificationType.ClassType(descriptor.substring(1, descriptor.length - 1))
-            else -> throw MethodVerificationException(
-                "ldc CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
+        val type = MethodDescriptorVerificationTypeParser.parseFieldType(descriptor)
+        if (type.locationCount == 2) {
+            throw MethodVerificationException(
+                "ldc CONSTANT_Dynamic descriptor '$descriptor' is category 2; use ldc2_w",
             )
         }
+        return type
     }
 
     private fun dynamicCategory2ConstantType(
         entry: ConstantDynamicEntry,
         constantPool: ConstantPool,
     ): VerificationType {
-        return when (val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)) {
-            "J" -> VerificationType.Long
-            "D" -> VerificationType.Double
-            "I" -> throw MethodVerificationException(
-                "ldc2_w CONSTANT_Dynamic descriptor 'I' is category 1; use ldc",
+        val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)
+        val type = MethodDescriptorVerificationTypeParser.parseFieldType(descriptor)
+        if (type.locationCount == 1) {
+            throw MethodVerificationException(
+                "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is category 1; use ldc",
             )
-            "F" -> throw MethodVerificationException(
-                "ldc2_w CONSTANT_Dynamic descriptor 'F' is category 1; use ldc",
-            )
-            else -> {
-                if ((descriptor.startsWith("L") && descriptor.endsWith(";")) || descriptor.startsWith("[")) {
-                    throw MethodVerificationException(
-                        "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is category 1; use ldc",
-                    )
-                }
-                throw MethodVerificationException(
-                    "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
-                )
-            }
         }
+        return type
     }
 
     private fun dynamicConstantDescriptor(

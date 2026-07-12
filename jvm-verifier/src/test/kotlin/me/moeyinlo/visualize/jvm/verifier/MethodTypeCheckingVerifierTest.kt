@@ -1624,6 +1624,60 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies ldc dynamic nested int array operand stack transition`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("dyn", "dyn".encodeToByteArray()),
+                ConstantUtf8Entry("[[I", "[[I".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(1),
+                    descriptorIndex = ConstantPoolIndex(2),
+                ),
+                ConstantDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(3),
+                ),
+            ),
+        )
+
+        val expectedType = VerificationType.ArrayOf(
+            VerificationType.ArrayOf(VerificationType.Integer),
+        )
+
+        val nextFrame = LdcInstructionVerifier.verify(
+            frame = VerificationFrameState(
+                bytecodeOffset = 0,
+                locals = emptyList(),
+                stack = emptyList(),
+            ),
+            index = ConstantPoolIndex(4),
+            constantPool = constantPool,
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(expectedType), nextFrame.stack)
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0x12.toByte(), 0x04.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = constantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun `type checking verifier rejects ldc dynamic long descriptor`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
