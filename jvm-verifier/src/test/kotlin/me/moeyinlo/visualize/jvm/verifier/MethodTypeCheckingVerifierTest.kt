@@ -2344,6 +2344,62 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies jsr operand stack transition`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 2,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xA8.toByte(), 0x00.toByte(), 0x03.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Float),
+                ),
+                VerificationFrameState(
+                    bytecodeOffset = 3,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xA8.toByte(), 0x00.toByte(), 0x03.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer),
+                    ),
+                    VerificationFrameState(
+                        bytecodeOffset = 3,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack depth 2 exceeds max_stack=1",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies reference null branch operand stack transitions`() {
         listOf(0xC6, 0xC7).forEach { opcode ->
             val exception = assertFailsWith<MethodVerificationException> {

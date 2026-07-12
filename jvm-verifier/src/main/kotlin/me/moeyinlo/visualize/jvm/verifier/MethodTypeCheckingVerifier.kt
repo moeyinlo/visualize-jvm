@@ -795,6 +795,10 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0xA8 -> JsrInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
                 0xA9 -> RetInstructionVerifier.verify(
                     frame = frame,
                     index = code.code.u1(offset + 1),
