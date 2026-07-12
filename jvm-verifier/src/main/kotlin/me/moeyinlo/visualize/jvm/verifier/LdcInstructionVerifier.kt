@@ -1,14 +1,17 @@
 package me.moeyinlo.visualize.jvm.verifier
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 
 object LdcInstructionVerifier {
     fun verify(
@@ -25,6 +28,7 @@ object LdcInstructionVerifier {
             is ConstantClassEntry -> VerificationType.ClassType("java/lang/Class")
             is ConstantMethodHandleEntry -> VerificationType.ClassType("java/lang/invoke/MethodHandle")
             is ConstantMethodTypeEntry -> VerificationType.ClassType("java/lang/invoke/MethodType")
+            is ConstantDynamicEntry -> dynamicConstantType(entry = entry, constantPool = constantPool)
             else -> throw MethodVerificationException(
                 "ldc constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
             )
@@ -45,5 +49,35 @@ object LdcInstructionVerifier {
         throw MethodVerificationException(
             "Invalid ldc constant_pool index $index: ${exception.message}",
         )
+    }
+
+    private fun dynamicConstantType(
+        entry: ConstantDynamicEntry,
+        constantPool: ConstantPool,
+    ): VerificationType {
+        val nameAndTypeEntry = loadConstantPoolEntry(
+            index = entry.nameAndTypeIndex,
+            constantPool = constantPool,
+        )
+        val nameAndType = nameAndTypeEntry as? ConstantNameAndTypeEntry
+            ?: throw MethodVerificationException(
+                "ldc CONSTANT_Dynamic name_and_type_index ${entry.nameAndTypeIndex} " +
+                    "references ${nameAndTypeEntry.javaClass.simpleName}",
+            )
+        val descriptorEntry = loadConstantPoolEntry(
+            index = nameAndType.descriptorIndex,
+            constantPool = constantPool,
+        )
+        val descriptor = descriptorEntry as? ConstantUtf8Entry
+            ?: throw MethodVerificationException(
+                "ldc CONSTANT_Dynamic descriptor_index ${nameAndType.descriptorIndex} " +
+                    "references ${descriptorEntry.javaClass.simpleName}",
+            )
+        return when (descriptor.value) {
+            "I" -> VerificationType.Integer
+            else -> throw MethodVerificationException(
+                "ldc CONSTANT_Dynamic descriptor '${descriptor.value}' is unsupported",
+            )
+        }
     }
 }
