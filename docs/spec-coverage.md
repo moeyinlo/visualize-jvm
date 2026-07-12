@@ -571,6 +571,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Constant pool execution | `ldc` resolves `CONSTANT_Integer` from the runtime constant pool and pushes the int value | `jvm-interpreter`, `jvm-runtime`, `jvm-classfile` | `JvmInterpreterTest` | IMPLEMENTED |
 | Constant pool execution | `ldc` resolves `CONSTANT_Float` from the runtime constant pool and pushes the float value | `jvm-interpreter`, `jvm-runtime`, `jvm-classfile` | `JvmInterpreterTest` | IMPLEMENTED |
 | Constant pool execution | `ldc_w` resolves a two-byte `CONSTANT_Integer` runtime constant-pool index and pushes the int value | `jvm-interpreter`, `jvm-runtime`, `jvm-classfile` | `JvmInterpreterTest` | IMPLEMENTED |
+| Constant pool execution | `ldc2_w` resolves `CONSTANT_Long` from the runtime constant pool and pushes the long value | `jvm-interpreter`, `jvm-runtime`, `jvm-classfile` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads | `iload`, `lload`, `fload`, `dload`, `aload`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Array loads | `iaload`, `laload`, `faload`, `daload`, `aaload`, `baload`, `caload`, `saload` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Stores | `istore`, `lstore`, `fstore`, `dstore`, `astore`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
