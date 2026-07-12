@@ -561,6 +561,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Opcode metadata | 0x00..0xff mnemonic, fixed-length, variable-length, and reserved opcode table | `jvm-interpreter` | `OpcodeMetadataTest` | IMPLEMENTED |
 | Fixed-length decoder | Fixed-length non-reserved opcodes decode into offsets, metadata, and unsigned operands | `jvm-interpreter` | `BytecodeDecoderTest` | IMPLEMENTED |
 | Tableswitch decoder | `tableswitch` 4-byte alignment, default/low/high header, and jump-offset table length | `jvm-interpreter` | `BytecodeDecoderTest` | IMPLEMENTED |
+| Lookupswitch decoder | `lookupswitch` 4-byte alignment, default/npairs header, and match-offset pair table length | `jvm-interpreter` | `BytecodeDecoderTest` | IMPLEMENTED |
 | Constants | `nop`, `aconst_null`, `iconst_m1`, `iconst_0..5`, `lconst_0..1`, `fconst_0..2`, `dconst_0..1`, `bipush`, `sipush`, `ldc`, `ldc_w`, `ldc2_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Loads | `iload`, `lload`, `fload`, `dload`, `aload`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Array loads | `iaload`, `laload`, `faload`, `daload`, `aaload`, `baload`, `caload`, `saload` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |

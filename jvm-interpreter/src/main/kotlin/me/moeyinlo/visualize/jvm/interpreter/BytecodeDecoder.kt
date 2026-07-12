@@ -38,7 +38,7 @@ object BytecodeDecoder {
                 "Instruction ${metadata.mnemonic} at offset $offset has no fixed length metadata",
             )
             OpcodeFormat.TableSwitch -> tableswitchLengthAt(code = code, metadata = metadata, offset = offset)
-            OpcodeFormat.LookupSwitch,
+            OpcodeFormat.LookupSwitch -> lookupswitchLengthAt(code = code, metadata = metadata, offset = offset)
             OpcodeFormat.Wide,
             -> throw BytecodeDecodingException(
                 "Instruction ${metadata.mnemonic} at offset $offset requires variable-length decoding",
@@ -49,7 +49,7 @@ object BytecodeDecoder {
         }
 
     private fun tableswitchLengthAt(code: ByteArray, metadata: OpcodeMetadata, offset: Int): Int {
-        val padding = (4 - ((offset + 1) % 4)) % 4
+        val padding = paddingAfterOpcode(offset)
         val alignedOperandOffset = offset + 1 + padding
         val headerLength = 1 + padding + TABLESWITCH_HEADER_BYTES
         val headerEnd = offset + headerLength
@@ -77,6 +77,35 @@ object BytecodeDecoder {
         return requiredLength.toInt()
     }
 
+    private fun lookupswitchLengthAt(code: ByteArray, metadata: OpcodeMetadata, offset: Int): Int {
+        val padding = paddingAfterOpcode(offset)
+        val alignedOperandOffset = offset + 1 + padding
+        val headerLength = 1 + padding + LOOKUPSWITCH_HEADER_BYTES
+        val headerEnd = offset + headerLength
+        if (headerEnd > code.size) {
+            throw BytecodeDecodingException(
+                "Instruction ${metadata.mnemonic} at offset $offset requires $headerLength bytes, code length is ${code.size}",
+            )
+        }
+
+        val pairCount = code.readSignedInt(alignedOperandOffset + Int.SIZE_BYTES)
+        if (pairCount < 0) {
+            throw BytecodeDecodingException(
+                "Instruction ${metadata.mnemonic} at offset $offset has negative npairs $pairCount",
+            )
+        }
+
+        val requiredLength = 1L + padding + LOOKUPSWITCH_HEADER_BYTES + pairCount.toLong() * LOOKUPSWITCH_PAIR_BYTES
+        if (requiredLength > code.size - offset) {
+            throw BytecodeDecodingException(
+                "Instruction ${metadata.mnemonic} at offset $offset requires $requiredLength bytes, code length is ${code.size}",
+            )
+        }
+        return requiredLength.toInt()
+    }
+
+    private fun paddingAfterOpcode(offset: Int): Int = (4 - ((offset + 1) % 4)) % 4
+
     private fun ByteArray.sliceUnsignedBytes(fromIndex: Int, toIndex: Int): List<Int> =
         (fromIndex until toIndex).map { index -> this[index].toInt() and 0xFF }
 
@@ -89,4 +118,6 @@ object BytecodeDecoder {
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"
 
     private const val TABLESWITCH_HEADER_BYTES = Int.SIZE_BYTES * 3
+    private const val LOOKUPSWITCH_HEADER_BYTES = Int.SIZE_BYTES * 2
+    private const val LOOKUPSWITCH_PAIR_BYTES = Int.SIZE_BYTES * 2
 }
