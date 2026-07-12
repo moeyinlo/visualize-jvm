@@ -4,6 +4,7 @@ import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantInvokeDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
@@ -1027,6 +1028,23 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xBA -> {
+                    val constantPoolContext = requireConstantPool(
+                        mnemonic = "invokedynamic",
+                        constantPool = constantPool,
+                    )
+                    val callSite = resolveInvokeDynamicCallSite(
+                        mnemonic = "invokedynamic",
+                        index = ConstantPoolIndex(code.code.u2(offset + 1)),
+                        constantPool = constantPoolContext,
+                    )
+                    InvokeDynamicInstructionVerifier.verify(
+                        frame = frame,
+                        callSiteName = callSite.name,
+                        descriptor = callSite.descriptor,
+                        maxStack = code.maxStack,
+                    )
+                }
                 0xBB -> ObjectInitializationRules.beginNewObject(
                     frame = frame,
                     newOffset = offset,
@@ -1097,6 +1115,11 @@ object MethodTypeCheckingVerifier {
 
     private data class ResolvedMethodReference(
         val ownerType: VerificationType.ClassType,
+        val name: String,
+        val descriptor: String,
+    )
+
+    private data class ResolvedCallSite(
         val name: String,
         val descriptor: String,
     )
@@ -1302,6 +1325,57 @@ object MethodTypeCheckingVerifier {
                     constantPool = constantPool,
                 ),
             ),
+            name = nameEntry.value,
+            descriptor = descriptorEntry.value,
+        )
+    }
+
+    private fun resolveInvokeDynamicCallSite(
+        mnemonic: String,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+    ): ResolvedCallSite {
+        val invokeDynamicEntry = constantPoolEntry(mnemonic = mnemonic, index = index, constantPool = constantPool)
+        if (invokeDynamicEntry !is ConstantInvokeDynamicEntry) {
+            throw MethodVerificationException(
+                "$mnemonic constant pool index $index expected ConstantInvokeDynamicEntry but found " +
+                    invokeDynamicEntry.javaClass.simpleName,
+            )
+        }
+        val nameAndTypeEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = invokeDynamicEntry.nameAndTypeIndex,
+            constantPool = constantPool,
+        )
+        if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
+            throw MethodVerificationException(
+                "$mnemonic name_and_type index ${invokeDynamicEntry.nameAndTypeIndex} " +
+                    "expected ConstantNameAndTypeEntry but found ${nameAndTypeEntry.javaClass.simpleName}",
+            )
+        }
+        val nameEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = nameAndTypeEntry.nameIndex,
+            constantPool = constantPool,
+        )
+        if (nameEntry !is ConstantUtf8Entry) {
+            throw MethodVerificationException(
+                "$mnemonic call site name index ${nameAndTypeEntry.nameIndex} " +
+                    "expected ConstantUtf8Entry but found ${nameEntry.javaClass.simpleName}",
+            )
+        }
+        val descriptorEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = nameAndTypeEntry.descriptorIndex,
+            constantPool = constantPool,
+        )
+        if (descriptorEntry !is ConstantUtf8Entry) {
+            throw MethodVerificationException(
+                "$mnemonic call site descriptor index ${nameAndTypeEntry.descriptorIndex} " +
+                    "expected ConstantUtf8Entry but found ${descriptorEntry.javaClass.simpleName}",
+            )
+        }
+        return ResolvedCallSite(
             name = nameEntry.value,
             descriptor = descriptorEntry.value,
         )
