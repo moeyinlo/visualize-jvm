@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.verifier
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
@@ -1007,6 +1008,25 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xB9 -> {
+                    val constantPoolContext = requireConstantPool(
+                        mnemonic = "invokeinterface",
+                        constantPool = constantPool,
+                    )
+                    val methodReference = resolveInterfaceMethodReference(
+                        mnemonic = "invokeinterface",
+                        index = ConstantPoolIndex(code.code.u2(offset + 1)),
+                        constantPool = constantPoolContext,
+                    )
+                    InvokeInterfaceInstructionVerifier.verify(
+                        frame = frame,
+                        methodOwnerType = methodReference.ownerType,
+                        methodName = methodReference.name,
+                        descriptor = methodReference.descriptor,
+                        count = code.code.u1(offset + 3),
+                        maxStack = code.maxStack,
+                    )
+                }
                 0xBB -> ObjectInitializationRules.beginNewObject(
                     frame = frame,
                     newOffset = offset,
@@ -1180,6 +1200,64 @@ object MethodTypeCheckingVerifier {
         if (methodRefEntry !is ConstantMethodRefEntry) {
             throw MethodVerificationException(
                 "$mnemonic constant pool index $index expected ConstantMethodRefEntry but found " +
+                    methodRefEntry.javaClass.simpleName,
+            )
+        }
+        val nameAndTypeEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = methodRefEntry.nameAndTypeIndex,
+            constantPool = constantPool,
+        )
+        if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
+            throw MethodVerificationException(
+                "$mnemonic name_and_type index ${methodRefEntry.nameAndTypeIndex} " +
+                    "expected ConstantNameAndTypeEntry but found ${nameAndTypeEntry.javaClass.simpleName}",
+            )
+        }
+        val nameEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = nameAndTypeEntry.nameIndex,
+            constantPool = constantPool,
+        )
+        if (nameEntry !is ConstantUtf8Entry) {
+            throw MethodVerificationException(
+                "$mnemonic method name index ${nameAndTypeEntry.nameIndex} " +
+                    "expected ConstantUtf8Entry but found ${nameEntry.javaClass.simpleName}",
+            )
+        }
+        val descriptorEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = nameAndTypeEntry.descriptorIndex,
+            constantPool = constantPool,
+        )
+        if (descriptorEntry !is ConstantUtf8Entry) {
+            throw MethodVerificationException(
+                "$mnemonic method descriptor index ${nameAndTypeEntry.descriptorIndex} " +
+                    "expected ConstantUtf8Entry but found ${descriptorEntry.javaClass.simpleName}",
+            )
+        }
+        return ResolvedMethodReference(
+            ownerType = VerificationType.ClassType(
+                resolveConstantClassName(
+                    mnemonic = mnemonic,
+                    index = methodRefEntry.classIndex,
+                    constantPool = constantPool,
+                ),
+            ),
+            name = nameEntry.value,
+            descriptor = descriptorEntry.value,
+        )
+    }
+
+    private fun resolveInterfaceMethodReference(
+        mnemonic: String,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+    ): ResolvedMethodReference {
+        val methodRefEntry = constantPoolEntry(mnemonic = mnemonic, index = index, constantPool = constantPool)
+        if (methodRefEntry !is ConstantInterfaceMethodRefEntry) {
+            throw MethodVerificationException(
+                "$mnemonic constant pool index $index expected ConstantInterfaceMethodRefEntry but found " +
                     methodRefEntry.javaClass.simpleName,
             )
         }
