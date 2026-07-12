@@ -5112,6 +5112,50 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies areturn declared return type transition`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xB0.toByte(),
+                ),
+            ),
+            initialFrame = MethodInitialFrame(
+                locals = emptyList(),
+                stack = listOf(VerificationType.Reference),
+                flags = emptyList(),
+                returnType = VerificationType.Reference,
+            ),
+            frameStates = emptyList(),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xB0.toByte(),
+                    ),
+                ),
+                initialFrame = MethodInitialFrame(
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Reference),
+                    flags = emptyList(),
+                    returnType = VerificationType.Integer,
+                ),
+                frameStates = emptyList(),
+            )
+        }
+
+        assertEquals(
+            "Method return type is Integer, expected Reference",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies i2l operand stack transition`() {
         MethodTypeCheckingVerifier.verify(
             code = code(

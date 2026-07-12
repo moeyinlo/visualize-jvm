@@ -444,6 +444,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | Type checking verifier applies `lreturn` declared return type transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `freturn` declared return type transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `dreturn` declared return type transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | Type checking verifier applies `areturn` declared return type transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `i2l` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `i2f` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies `i2d` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
