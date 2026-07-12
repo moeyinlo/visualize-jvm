@@ -868,6 +868,11 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xBC -> NewArrayInstructionVerifier.verify(
+                    frame = frame,
+                    atype = code.code.u1(offset + 1),
+                    maxStack = code.maxStack,
+                )
                 0xBE -> ArrayLengthInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,

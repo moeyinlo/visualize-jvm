@@ -3062,6 +3062,52 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies newarray operand stack transition at explicit source frames`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xBC.toByte(), 0x0A.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Integer),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xBC.toByte(), 0x0A.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Float),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains Float, expected Integer",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies arraylength operand stack transition at explicit source frames`() {
         val objectArrayType = VerificationType.ArrayOf(
             VerificationType.ObjectType(ConstantPoolIndex(7)),
