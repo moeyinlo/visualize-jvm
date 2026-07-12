@@ -2942,6 +2942,56 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies arraylength operand stack transition at explicit source frames`() {
+        val objectArrayType = VerificationType.ArrayOf(
+            VerificationType.ObjectType(ConstantPoolIndex(7)),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xBE.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(objectArrayType),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xBE.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.ObjectType(ConstantPoolIndex(9))),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains ObjectType(constantPoolIndex=#9), expected array or null reference",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier accepts stack manipulation operand stack transitions`() {
         listOf(
             StackTransitionCase("pop", 0x57, 1, listOf(VerificationType.Integer)),
