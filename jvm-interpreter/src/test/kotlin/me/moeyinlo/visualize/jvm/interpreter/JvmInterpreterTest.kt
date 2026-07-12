@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
 import kotlin.test.Test
@@ -58,6 +59,26 @@ class JvmInterpreterTest {
 
         assertEquals(listOf(JvmNullValue), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `lconst instructions push long values onto the operand stack`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x09.toByte(),
+                0x0A.toByte(),
+            ),
+            maxStack = 4,
+        )
+
+        assertEquals(
+            listOf(
+                JvmLongValue(0L),
+                JvmLongValue(1L),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
     }
 
     @Test
