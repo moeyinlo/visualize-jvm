@@ -119,9 +119,16 @@ object LdcInstructionVerifier {
             "F" -> throw MethodVerificationException(
                 "ldc2_w CONSTANT_Dynamic descriptor 'F' is category 1; use ldc",
             )
-            else -> throw MethodVerificationException(
-                "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
-            )
+            else -> {
+                if (descriptor.startsWith("L") && descriptor.endsWith(";")) {
+                    throw MethodVerificationException(
+                        "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is category 1; use ldc",
+                    )
+                }
+                throw MethodVerificationException(
+                    "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
+                )
+            }
         }
     }
 
