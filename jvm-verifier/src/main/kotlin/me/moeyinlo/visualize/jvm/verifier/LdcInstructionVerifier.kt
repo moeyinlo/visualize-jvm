@@ -120,7 +120,7 @@ object LdcInstructionVerifier {
                 "ldc2_w CONSTANT_Dynamic descriptor 'F' is category 1; use ldc",
             )
             else -> {
-                if (descriptor.startsWith("L") && descriptor.endsWith(";")) {
+                if ((descriptor.startsWith("L") && descriptor.endsWith(";")) || descriptor.startsWith("[")) {
                     throw MethodVerificationException(
                         "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is category 1; use ldc",
                     )
