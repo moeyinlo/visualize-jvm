@@ -907,6 +907,29 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xB4 -> {
+                    val constantPoolContext = requireConstantPool(
+                        mnemonic = "getfield",
+                        constantPool = constantPool,
+                    )
+                    val fieldIndex = ConstantPoolIndex(code.code.u2(offset + 1))
+                    GetFieldInstructionVerifier.verify(
+                        frame = frame,
+                        fieldOwnerType = resolveFieldOwnerType(
+                            mnemonic = "getfield",
+                            index = fieldIndex,
+                            constantPool = constantPoolContext,
+                        ),
+                        fieldType = MethodDescriptorVerificationTypeParser.parseFieldType(
+                            resolveFieldDescriptor(
+                                mnemonic = "getfield",
+                                index = fieldIndex,
+                                constantPool = constantPoolContext,
+                            ),
+                        ),
+                        maxStack = code.maxStack,
+                    )
+                }
                 0xBB -> ObjectInitializationRules.beginNewObject(
                     frame = frame,
                     newOffset = offset,
@@ -1042,6 +1065,27 @@ object MethodTypeCheckingVerifier {
             )
         }
         return descriptorEntry.value
+    }
+
+    private fun resolveFieldOwnerType(
+        mnemonic: String,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+    ): VerificationType.ClassType {
+        val fieldRefEntry = constantPoolEntry(mnemonic = mnemonic, index = index, constantPool = constantPool)
+        if (fieldRefEntry !is ConstantFieldRefEntry) {
+            throw MethodVerificationException(
+                "$mnemonic constant pool index $index expected ConstantFieldRefEntry but found " +
+                    fieldRefEntry.javaClass.simpleName,
+            )
+        }
+        return VerificationType.ClassType(
+            resolveConstantClassName(
+                mnemonic = mnemonic,
+                index = fieldRefEntry.classIndex,
+                constantPool = constantPool,
+            ),
+        )
     }
 
     private fun constantPoolEntry(
