@@ -261,6 +261,40 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc reuses interned guest string constants with identical code points`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("same literal", "same literal".encodeToByteArray()),
+                    ConstantStringEntry(stringIndex = ConstantPoolIndex(1)),
+                    ConstantStringEntry(stringIndex = ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference, reference), result.operandStack.toList())
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/String",
+                payload = JvmStringPayload("same literal"),
+            ),
+            heap.get(reference),
+        )
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc_w pushes integer constants from a two byte runtime constant pool index`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

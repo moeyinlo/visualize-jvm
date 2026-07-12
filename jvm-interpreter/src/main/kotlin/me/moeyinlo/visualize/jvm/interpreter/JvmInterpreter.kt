@@ -98,7 +98,7 @@ object JvmInterpreter {
                             stringEntry.javaClass.simpleName,
                     )
                 }
-                operandStack.push(heap.allocateString(stringEntry.value))
+                operandStack.push(heap.internString(stringEntry.value))
             }
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ldc constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",

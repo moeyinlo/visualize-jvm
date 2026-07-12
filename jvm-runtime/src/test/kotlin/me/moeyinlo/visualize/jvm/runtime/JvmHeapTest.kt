@@ -33,4 +33,18 @@ class JvmHeapTest {
             heap.get(reference),
         )
     }
+
+    @Test
+    fun `heap interns string objects with identical code points`() {
+        val heap = JvmHeap()
+
+        val first = heap.internString("same")
+        val second = heap.internString("same")
+        val distinct = heap.internString("different")
+
+        assertEquals(first, second)
+        assertNotEquals(first, distinct)
+        assertEquals(JvmReferenceId(1), first.referenceId)
+        assertEquals(JvmReferenceId(2), distinct.referenceId)
+    }
 }

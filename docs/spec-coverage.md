@@ -535,6 +535,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | JVMS | Requirement | Module | Tests | Status |
 | --- | --- | --- | --- | --- |
 | 5.1 | Run-time constant pool | `jvm-runtime` | TBD | PENDING |
+| 5.1 | `CONSTANT_String` string constants reuse an interned guest `java/lang/String` for identical code points | `jvm-runtime`, `jvm-interpreter` | `JvmHeapTest`, `JvmInterpreterTest` | IMPLEMENTED |
 | 5.2 | JVM startup | `jvm-runtime` | TBD | PENDING |
 | 5.3.1 | Bootstrap class loader loading | `jvm-runtime` | TBD | PENDING |
 | 5.3.2 | User-defined class loader loading | `jvm-runtime` | TBD | PENDING |
