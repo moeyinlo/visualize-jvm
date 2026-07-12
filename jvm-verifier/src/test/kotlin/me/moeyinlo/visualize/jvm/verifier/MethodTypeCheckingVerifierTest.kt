@@ -2992,6 +2992,52 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies monitorenter operand stack transition at explicit source frames`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xC2.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.ObjectType(ConstantPoolIndex(11))),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xC2.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains Integer, expected Reference",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier accepts stack manipulation operand stack transitions`() {
         listOf(
             StackTransitionCase("pop", 0x57, 1, listOf(VerificationType.Integer)),

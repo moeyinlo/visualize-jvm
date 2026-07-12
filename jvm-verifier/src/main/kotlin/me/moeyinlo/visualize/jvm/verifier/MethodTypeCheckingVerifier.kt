@@ -864,6 +864,10 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0xC2 -> MonitorInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
                 in 0xC6..0xC7 -> ReferenceNullBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
