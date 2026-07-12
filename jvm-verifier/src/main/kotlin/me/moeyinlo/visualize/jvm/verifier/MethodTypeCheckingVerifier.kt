@@ -972,6 +972,23 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xB8 -> {
+                    val constantPoolContext = requireConstantPool(
+                        mnemonic = "invokestatic",
+                        constantPool = constantPool,
+                    )
+                    val methodReference = resolveMethodReference(
+                        mnemonic = "invokestatic",
+                        index = ConstantPoolIndex(code.code.u2(offset + 1)),
+                        constantPool = constantPoolContext,
+                    )
+                    InvokeStaticInstructionVerifier.verify(
+                        frame = frame,
+                        methodName = methodReference.name,
+                        descriptor = methodReference.descriptor,
+                        maxStack = code.maxStack,
+                    )
+                }
                 0xBB -> ObjectInitializationRules.beginNewObject(
                     frame = frame,
                     newOffset = offset,
