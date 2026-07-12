@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
@@ -68,6 +69,7 @@ object JvmInterpreter {
             )
         }
         when (entry) {
+            is ConstantFloatEntry -> operandStack.push(JvmFloatValue(entry.value))
             is ConstantIntegerEntry -> operandStack.push(JvmIntValue(entry.value))
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ldc constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
