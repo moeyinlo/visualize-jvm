@@ -930,6 +930,29 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xB5 -> {
+                    val constantPoolContext = requireConstantPool(
+                        mnemonic = "putfield",
+                        constantPool = constantPool,
+                    )
+                    val fieldIndex = ConstantPoolIndex(code.code.u2(offset + 1))
+                    PutFieldInstructionVerifier.verify(
+                        frame = frame,
+                        fieldOwnerType = resolveFieldOwnerType(
+                            mnemonic = "putfield",
+                            index = fieldIndex,
+                            constantPool = constantPoolContext,
+                        ),
+                        fieldType = MethodDescriptorVerificationTypeParser.parseFieldType(
+                            resolveFieldDescriptor(
+                                mnemonic = "putfield",
+                                index = fieldIndex,
+                                constantPool = constantPoolContext,
+                            ),
+                        ),
+                        maxStack = code.maxStack,
+                    )
+                }
                 0xBB -> ObjectInitializationRules.beginNewObject(
                     frame = frame,
                     newOffset = offset,
