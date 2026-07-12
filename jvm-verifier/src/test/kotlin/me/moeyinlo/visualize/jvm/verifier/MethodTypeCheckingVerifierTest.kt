@@ -3154,6 +3154,52 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies new operand stack transition at explicit source frames`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xBB.toByte(), 0x00.toByte(), 0x1F.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 2,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xBB.toByte(), 0x00.toByte(), 0x1F.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Uninitialized(offset = 0)),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack already contains uninitialized object created at bytecode offset 0",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies multianewarray operand stack transition at explicit source frames`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

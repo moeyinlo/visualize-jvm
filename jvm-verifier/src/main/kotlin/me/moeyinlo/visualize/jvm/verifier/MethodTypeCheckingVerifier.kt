@@ -871,6 +871,11 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xBB -> ObjectInitializationRules.beginNewObject(
+                    frame = frame,
+                    newOffset = offset,
+                    maxStack = code.maxStack,
+                )
                 0xBC -> NewArrayInstructionVerifier.verify(
                     frame = frame,
                     atype = code.code.u1(offset + 1),
