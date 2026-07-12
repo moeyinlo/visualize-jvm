@@ -83,6 +83,7 @@ object LdcInstructionVerifier {
             "I" -> VerificationType.Integer
             "Z" -> VerificationType.Integer
             "B" -> VerificationType.Integer
+            "C" -> VerificationType.Integer
             "F" -> VerificationType.Float
             else -> throw MethodVerificationException(
                 "ldc CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
