@@ -73,4 +73,30 @@ class JvmHeapTest {
             heap.get(distinct),
         )
     }
+
+    @Test
+    fun `heap interns method type objects by descriptor`() {
+        val heap = JvmHeap()
+
+        val first = heap.internMethodType("(Ljava/lang/String;)I")
+        val second = heap.internMethodType("(Ljava/lang/String;)I")
+        val distinct = heap.internMethodType("()V")
+
+        assertEquals(first, second)
+        assertNotEquals(first, distinct)
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodType",
+                payload = JvmMethodTypePayload("(Ljava/lang/String;)I"),
+            ),
+            heap.get(first),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodType",
+                payload = JvmMethodTypePayload("()V"),
+            ),
+            heap.get(distinct),
+        )
+    }
 }

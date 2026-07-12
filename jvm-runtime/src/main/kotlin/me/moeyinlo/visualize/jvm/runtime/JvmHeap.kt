@@ -13,10 +13,13 @@ data class JvmStringPayload(val value: String) : JvmHeapPayload
 
 data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
 
+data class JvmMethodTypePayload(val descriptor: String) : JvmHeapPayload
+
 class JvmHeap {
     private val objects = linkedMapOf<JvmReferenceId, JvmHeapObject>()
     private val internedStrings = linkedMapOf<String, JvmObjectReferenceValue>()
     private val classMirrors = linkedMapOf<String, JvmObjectReferenceValue>()
+    private val methodTypes = linkedMapOf<String, JvmObjectReferenceValue>()
     private var nextReferenceId = 1
 
     fun allocateObject(className: String): JvmObjectReferenceValue {
@@ -43,6 +46,19 @@ class JvmHeap {
                 JvmHeapObject(
                     className = "java/lang/Class",
                     payload = JvmClassPayload(className),
+                ),
+            )
+        }
+    }
+
+    fun internMethodType(descriptor: String): JvmObjectReferenceValue {
+        require(descriptor.isNotBlank()) { "method type descriptor must not be blank" }
+
+        return methodTypes.getOrPut(descriptor) {
+            allocate(
+                JvmHeapObject(
+                    className = "java/lang/invoke/MethodType",
+                    payload = JvmMethodTypePayload(descriptor),
                 ),
             )
         }
