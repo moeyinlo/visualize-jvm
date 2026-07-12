@@ -28,6 +28,21 @@ object MethodTypeCheckingVerifier {
 
     fun verify(
         code: CodeAttribute,
+        throwableType: VerificationType.ObjectType,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = null,
+            initialFrameState = null,
+            declaredReturnType = null,
+            throwableType = throwableType,
+            frameStates = frameStates,
+        )
+    }
+
+    fun verify(
+        code: CodeAttribute,
         constantPool: ConstantPool,
         frameStates: Iterable<VerificationFrameState>,
     ) {
@@ -36,6 +51,22 @@ object MethodTypeCheckingVerifier {
             constantPool = constantPool,
             initialFrameState = null,
             declaredReturnType = null,
+            frameStates = frameStates,
+        )
+    }
+
+    fun verify(
+        code: CodeAttribute,
+        constantPool: ConstantPool,
+        throwableType: VerificationType.ObjectType,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = constantPool,
+            initialFrameState = null,
+            declaredReturnType = null,
+            throwableType = throwableType,
             frameStates = frameStates,
         )
     }
@@ -74,6 +105,7 @@ object MethodTypeCheckingVerifier {
         constantPool: ConstantPool?,
         initialFrameState: VerificationFrameState?,
         declaredReturnType: VerificationReturnType?,
+        throwableType: VerificationType.ObjectType? = null,
         frameStates: Iterable<VerificationFrameState>,
     ) {
         val frames = frameStates.toList()
@@ -91,6 +123,7 @@ object MethodTypeCheckingVerifier {
             code = code,
             constantPool = constantPool,
             declaredReturnType = declaredReturnType,
+            throwableType = throwableType,
             framesByOffset = framesWithInitial.associateBy { frame -> frame.bytecodeOffset },
         )
     }
@@ -164,6 +197,7 @@ object MethodTypeCheckingVerifier {
         code: CodeAttribute,
         constantPool: ConstantPool?,
         declaredReturnType: VerificationReturnType?,
+        throwableType: VerificationType.ObjectType?,
         framesByOffset: Map<Int, VerificationFrameState>,
     ) {
         framesByOffset.forEach { (offset, frame) ->
@@ -1072,6 +1106,11 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0xBF -> AthrowInstructionVerifier.verify(
+                    frame = frame,
+                    throwableType = requireThrowableType(throwableType),
+                    maxStack = code.maxStack,
+                )
                 0xC0 -> CheckCastInstructionVerifier.verify(
                     frame = frame,
                     targetType = VerificationType.ObjectType(ConstantPoolIndex(code.code.u2(offset + 1))),
@@ -1459,6 +1498,9 @@ object MethodTypeCheckingVerifier {
             "$mnemonic constant pool index $index is invalid: ${exception.message}",
         )
     }
+
+    private fun requireThrowableType(throwableType: VerificationType.ObjectType?): VerificationType.ObjectType =
+        throwableType ?: throw MethodVerificationException("athrow requires Throwable verification type context")
 
     private fun parseMultiANewArrayType(descriptor: String): VerificationType.ArrayOf {
         val type = MethodDescriptorVerificationTypeParser.parseFieldType(descriptor)

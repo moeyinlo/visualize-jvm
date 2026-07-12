@@ -3994,6 +3994,50 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies athrow operand stack transition at explicit source frames`() {
+        val throwableType = VerificationType.ObjectType(ConstantPoolIndex(11))
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(0xBF.toByte()),
+            ),
+            throwableType = throwableType,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(throwableType),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(0xBF.toByte()),
+                ),
+                throwableType = throwableType,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains Integer, expected ObjectType(constantPoolIndex=#11)",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies monitorenter operand stack transition at explicit source frames`() {
         MethodTypeCheckingVerifier.verify(
             code = code(
