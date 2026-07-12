@@ -220,6 +220,24 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc_w pushes integer constants from a two byte runtime constant pool index`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x13.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                (1..255).map { value -> ConstantIntegerEntry(value) } + ConstantIntegerEntry(65_536),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(65_536)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `constant execution respects max stack bounds`() {
         assertFailsWith<JvmOperandStackOverflowException> {
             JvmInterpreter.execute(

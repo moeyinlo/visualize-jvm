@@ -47,7 +47,9 @@ object JvmInterpreter {
             0x11 -> operandStack.push(
                 JvmIntValue(((instruction.operands[0] shl 8) or instruction.operands[1]).toShort().toInt()),
             )
-            0x12 -> executeLdc(instruction, operandStack, constantPool)
+            0x12,
+            0x13,
+            -> executeLdc(instruction, operandStack, constantPool)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
                     "(${instruction.metadata.opcode.hexByte()}) at offset ${instruction.offset}",
@@ -60,7 +62,7 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
     ) {
-        val index = ConstantPoolIndex(instruction.operands[0])
+        val index = instruction.constantPoolIndex()
         val entry = try {
             constantPool[index]
         } catch (exception: ConstantPoolFormatException) {
@@ -76,6 +78,15 @@ object JvmInterpreter {
             )
         }
     }
+
+    private fun DecodedInstruction.constantPoolIndex(): ConstantPoolIndex =
+        when (metadata.opcode) {
+            0x12 -> ConstantPoolIndex(operands[0])
+            0x13,
+            0x14,
+            -> ConstantPoolIndex((operands[0] shl 8) or operands[1])
+            else -> error("Instruction ${metadata.mnemonic} does not use a constant_pool index")
+        }
 
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"
 }

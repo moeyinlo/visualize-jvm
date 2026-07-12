@@ -570,6 +570,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Constants execution | `nop`, `aconst_null`, `iconst_m1..iconst_5`, `lconst_0..lconst_1`, `fconst_0..fconst_2`, `dconst_0..dconst_1`, `bipush`, and `sipush` mutate the runtime operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Constant pool execution | `ldc` resolves `CONSTANT_Integer` from the runtime constant pool and pushes the int value | `jvm-interpreter`, `jvm-runtime`, `jvm-classfile` | `JvmInterpreterTest` | IMPLEMENTED |
 | Constant pool execution | `ldc` resolves `CONSTANT_Float` from the runtime constant pool and pushes the float value | `jvm-interpreter`, `jvm-runtime`, `jvm-classfile` | `JvmInterpreterTest` | IMPLEMENTED |
+| Constant pool execution | `ldc_w` resolves a two-byte `CONSTANT_Integer` runtime constant-pool index and pushes the int value | `jvm-interpreter`, `jvm-runtime`, `jvm-classfile` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads | `iload`, `lload`, `fload`, `dload`, `aload`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Array loads | `iaload`, `laload`, `faload`, `daload`, `aaload`, `baload`, `caload`, `saload` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Stores | `istore`, `lstore`, `fstore`, `dstore`, `astore`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
