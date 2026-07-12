@@ -9,6 +9,8 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 
 class MethodTypeCheckingVerifierTest {
     @Test
@@ -476,6 +478,61 @@ class MethodTypeCheckingVerifierTest {
                     maxLocals = 0,
                     code = byteArrayOf(
                         0x12.toByte(), 0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                constantPool = constantPool,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack depth 2 exceeds max_stack=1",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `type checking verifier applies ldc string operand stack transition`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("hello", "hello".encodeToByteArray()),
+                ConstantStringEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0x12.toByte(), 0x02.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = constantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0x12.toByte(), 0x02.toByte(),
                         0xB1.toByte(),
                     ),
                 ),

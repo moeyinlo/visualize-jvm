@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 
 object LdcInstructionVerifier {
     fun verify(
@@ -14,18 +15,19 @@ object LdcInstructionVerifier {
         maxStack: Int,
     ): VerificationFrameState {
         val entry = loadConstantPoolEntry(index = index, constantPool = constantPool)
-        val kind = when (entry) {
-            is ConstantIntegerEntry -> ConstantPushKind.Int
-            is ConstantFloatEntry -> ConstantPushKind.Float
+        val pushedType = when (entry) {
+            is ConstantIntegerEntry -> VerificationType.Integer
+            is ConstantFloatEntry -> VerificationType.Float
+            is ConstantStringEntry -> VerificationType.ClassType("java/lang/String")
             else -> throw MethodVerificationException(
                 "ldc constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
             )
         }
-        return ConstantInstructionVerifier.verify(
-            frame = frame,
-            kind = kind,
-            maxStack = maxStack,
-        )
+        val nextStack = VerifierOperandStack
+            .fromFrame(stack = frame.stack, maxStack = maxStack)
+            .push(pushedType)
+            .values
+        return frame.copy(stack = nextStack)
     }
 
     private fun loadConstantPoolEntry(
