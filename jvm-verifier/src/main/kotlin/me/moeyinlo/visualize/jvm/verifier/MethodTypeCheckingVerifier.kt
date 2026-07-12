@@ -485,6 +485,11 @@ object MethodTypeCheckingVerifier {
                     kind = DoubleBinaryArithmeticKind.Multiply,
                     maxStack = code.maxStack,
                 )
+                0x6C -> IntBinaryArithmeticInstructionVerifier.verify(
+                    frame = frame,
+                    kind = IntBinaryArithmeticKind.Divide,
+                    maxStack = code.maxStack,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
