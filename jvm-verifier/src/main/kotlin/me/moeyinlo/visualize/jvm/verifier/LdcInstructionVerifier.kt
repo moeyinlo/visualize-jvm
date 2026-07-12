@@ -30,7 +30,7 @@ object LdcInstructionVerifier {
             is ConstantClassEntry -> VerificationType.ClassType("java/lang/Class")
             is ConstantMethodHandleEntry -> VerificationType.ClassType("java/lang/invoke/MethodHandle")
             is ConstantMethodTypeEntry -> VerificationType.ClassType("java/lang/invoke/MethodType")
-            is ConstantDynamicEntry -> dynamicConstantType(entry = entry, constantPool = constantPool)
+            is ConstantDynamicEntry -> dynamicCategory1ConstantType(entry = entry, constantPool = constantPool)
             else -> throw MethodVerificationException(
                 "ldc constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
             )
@@ -52,6 +52,7 @@ object LdcInstructionVerifier {
         val pushedType = when (entry) {
             is ConstantLongEntry -> VerificationType.Long
             is ConstantDoubleEntry -> VerificationType.Double
+            is ConstantDynamicEntry -> dynamicCategory2ConstantType(entry = entry, constantPool = constantPool)
             else -> throw MethodVerificationException(
                 "ldc2_w constant_pool index $index references unsupported constant ${entry.javaClass.simpleName}",
             )
@@ -74,10 +75,35 @@ object LdcInstructionVerifier {
         )
     }
 
-    private fun dynamicConstantType(
+    private fun dynamicCategory1ConstantType(
         entry: ConstantDynamicEntry,
         constantPool: ConstantPool,
     ): VerificationType {
+        return when (val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)) {
+            "I" -> VerificationType.Integer
+            "F" -> VerificationType.Float
+            else -> throw MethodVerificationException(
+                "ldc CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
+            )
+        }
+    }
+
+    private fun dynamicCategory2ConstantType(
+        entry: ConstantDynamicEntry,
+        constantPool: ConstantPool,
+    ): VerificationType {
+        return when (val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)) {
+            "J" -> VerificationType.Long
+            else -> throw MethodVerificationException(
+                "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
+            )
+        }
+    }
+
+    private fun dynamicConstantDescriptor(
+        entry: ConstantDynamicEntry,
+        constantPool: ConstantPool,
+    ): String {
         val nameAndTypeEntry = loadConstantPoolEntry(
             index = entry.nameAndTypeIndex,
             constantPool = constantPool,
@@ -96,12 +122,6 @@ object LdcInstructionVerifier {
                 "ldc CONSTANT_Dynamic descriptor_index ${nameAndType.descriptorIndex} " +
                     "references ${descriptorEntry.javaClass.simpleName}",
             )
-        return when (descriptor.value) {
-            "I" -> VerificationType.Integer
-            "F" -> VerificationType.Float
-            else -> throw MethodVerificationException(
-                "ldc CONSTANT_Dynamic descriptor '${descriptor.value}' is unsupported",
-            )
-        }
+        return descriptor.value
     }
 }
