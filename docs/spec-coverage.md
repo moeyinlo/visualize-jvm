@@ -288,6 +288,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | `tableswitch` and `lookupswitch` int key operand stack transition | `jvm-verifier` | `SwitchInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `newarray` primitive array type code and int-count stack transition | `jvm-verifier` | `NewArrayInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `anewarray` class-or-array component and int-count stack transition | `jvm-verifier` | `ANewArrayInstructionVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | `multianewarray` array dimensionality and int-count stack transition | `jvm-verifier` | `MultiANewArrayInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `getstatic` declared field type operand stack transition | `jvm-verifier` | `GetStaticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `putstatic` declared field type operand stack transition | `jvm-verifier` | `PutStaticInstructionVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | `getfield` receiver-to-declared-field operand stack transition | `jvm-verifier` | `GetFieldInstructionVerifierTest` | IMPLEMENTED |
