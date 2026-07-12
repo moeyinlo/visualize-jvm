@@ -3154,6 +3154,61 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies multianewarray operand stack transition at explicit source frames`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("[[I", "[[I".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+            ),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 2,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xC5.toByte(), 0x00.toByte(), 0x02.toByte(), 0x02.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = constantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Integer, VerificationType.Integer),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 2,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xC5.toByte(), 0x00.toByte(), 0x02.toByte(), 0x02.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                constantPool = constantPool,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer, VerificationType.Float),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains Float, expected Integer",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies arraylength operand stack transition at explicit source frames`() {
         val objectArrayType = VerificationType.ArrayOf(
             VerificationType.ObjectType(ConstantPoolIndex(7)),

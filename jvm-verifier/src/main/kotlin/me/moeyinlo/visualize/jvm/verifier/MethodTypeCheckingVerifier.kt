@@ -1,8 +1,11 @@
 package me.moeyinlo.visualize.jvm.verifier
 
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
+import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
+import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 
 object MethodTypeCheckingVerifier {
     fun verify(
@@ -900,6 +903,25 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0xC5 -> {
+                    val constantPoolContext = requireConstantPool(
+                        mnemonic = "multianewarray",
+                        constantPool = constantPool,
+                    )
+                    val arrayType = parseMultiANewArrayType(
+                        resolveConstantClassName(
+                            mnemonic = "multianewarray",
+                            index = ConstantPoolIndex(code.code.u2(offset + 1)),
+                            constantPool = constantPoolContext,
+                        ),
+                    )
+                    MultiANewArrayInstructionVerifier.verify(
+                        frame = frame,
+                        arrayType = arrayType,
+                        dimensions = code.code.u1(offset + 3),
+                        maxStack = code.maxStack,
+                    )
+                }
                 in 0xC6..0xC7 -> ReferenceNullBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
@@ -917,6 +939,52 @@ object MethodTypeCheckingVerifier {
         constantPool: ConstantPool?,
     ): ConstantPool =
         constantPool ?: throw MethodVerificationException("$mnemonic requires constant pool context")
+
+    private fun resolveConstantClassName(
+        mnemonic: String,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+    ): String {
+        val entry = constantPoolEntry(mnemonic = mnemonic, index = index, constantPool = constantPool)
+        if (entry !is ConstantClassEntry) {
+            throw MethodVerificationException(
+                "$mnemonic constant pool index $index expected ConstantClassEntry but found " +
+                    entry.javaClass.simpleName,
+            )
+        }
+        val nameEntry = constantPoolEntry(
+            mnemonic = mnemonic,
+            index = entry.nameIndex,
+            constantPool = constantPool,
+        )
+        if (nameEntry !is ConstantUtf8Entry) {
+            throw MethodVerificationException(
+                "$mnemonic class name index ${entry.nameIndex} expected ConstantUtf8Entry but found " +
+                    nameEntry.javaClass.simpleName,
+            )
+        }
+        return nameEntry.value
+    }
+
+    private fun constantPoolEntry(
+        mnemonic: String,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+    ) = try {
+        constantPool[index]
+    } catch (exception: ConstantPoolFormatException) {
+        throw MethodVerificationException(
+            "$mnemonic constant pool index $index is invalid: ${exception.message}",
+        )
+    }
+
+    private fun parseMultiANewArrayType(descriptor: String): VerificationType.ArrayOf {
+        val type = MethodDescriptorVerificationTypeParser.parseFieldType(descriptor)
+        if (type !is VerificationType.ArrayOf) {
+            throw MethodVerificationException("multianewarray target '$descriptor' is not an array descriptor")
+        }
+        return type
+    }
 
     private fun ByteArray.u1(offset: Int): Int = this[offset].toInt() and 0xFF
 
