@@ -14,6 +14,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
@@ -3456,6 +3457,77 @@ class MethodTypeCheckingVerifierTest {
 
         assertEquals(
             "Operand stack is empty, expected ClassType(internalName=pkg/Owner, loader=bootstrap)",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `type checking verifier applies invokevirtual operand stack transition at explicit source frames`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                ConstantUtf8Entry("mix", "mix".encodeToByteArray()),
+                ConstantUtf8Entry("(I)J", "(I)J".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(2),
+                    nameAndTypeIndex = ConstantPoolIndex(5),
+                ),
+            ),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 2,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xB6.toByte(), 0x00.toByte(), 0x06.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = constantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(
+                        VerificationType.ClassType("pkg/Owner"),
+                        VerificationType.Integer,
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 2,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xB6.toByte(), 0x00.toByte(), 0x06.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                constantPool = constantPool,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(
+                            VerificationType.ClassType("pkg/Owner"),
+                            VerificationType.Float,
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains Float, expected Integer",
             exception.message,
         )
     }
