@@ -11,9 +11,12 @@ sealed interface JvmHeapPayload {
 
 data class JvmStringPayload(val value: String) : JvmHeapPayload
 
+data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
+
 class JvmHeap {
     private val objects = linkedMapOf<JvmReferenceId, JvmHeapObject>()
     private val internedStrings = linkedMapOf<String, JvmObjectReferenceValue>()
+    private val classMirrors = linkedMapOf<String, JvmObjectReferenceValue>()
     private var nextReferenceId = 1
 
     fun allocateObject(className: String): JvmObjectReferenceValue {
@@ -31,6 +34,19 @@ class JvmHeap {
 
     fun internString(value: String): JvmObjectReferenceValue =
         internedStrings.getOrPut(value) { allocateString(value) }
+
+    fun internClassMirror(className: String): JvmObjectReferenceValue {
+        require(className.isNotBlank()) { "class name must not be blank" }
+
+        return classMirrors.getOrPut(className) {
+            allocate(
+                JvmHeapObject(
+                    className = "java/lang/Class",
+                    payload = JvmClassPayload(className),
+                ),
+            )
+        }
+    }
 
     fun get(reference: JvmObjectReferenceValue): JvmHeapObject =
         objects[reference.referenceId]

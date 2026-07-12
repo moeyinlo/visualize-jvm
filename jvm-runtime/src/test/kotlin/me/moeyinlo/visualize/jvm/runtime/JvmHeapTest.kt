@@ -47,4 +47,30 @@ class JvmHeapTest {
         assertEquals(JvmReferenceId(1), first.referenceId)
         assertEquals(JvmReferenceId(2), distinct.referenceId)
     }
+
+    @Test
+    fun `heap interns class mirror objects by represented class name`() {
+        val heap = JvmHeap()
+
+        val first = heap.internClassMirror("java/lang/String")
+        val second = heap.internClassMirror("java/lang/String")
+        val distinct = heap.internClassMirror("java/lang/Object")
+
+        assertEquals(first, second)
+        assertNotEquals(first, distinct)
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/Class",
+                payload = JvmClassPayload("java/lang/String"),
+            ),
+            heap.get(first),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/Class",
+                payload = JvmClassPayload("java/lang/Object"),
+            ),
+            heap.get(distinct),
+        )
+    }
 }
