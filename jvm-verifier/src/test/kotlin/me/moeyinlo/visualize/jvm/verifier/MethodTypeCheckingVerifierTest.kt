@@ -3606,6 +3606,90 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies invokespecial initializer operand stack transition at explicit source frames`() {
+        val validConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("pkg/Widget", "pkg/Widget".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(2),
+                    nameAndTypeIndex = ConstantPoolIndex(5),
+                ),
+            ),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0xBB.toByte(), 0x00.toByte(), 0x02.toByte(),
+                    0xB7.toByte(), 0x00.toByte(), 0x06.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            constantPool = validConstantPool,
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 3,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Uninitialized(offset = 0)),
+                ),
+            ),
+        )
+
+        val invalidDescriptorConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("pkg/Widget", "pkg/Widget".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                ConstantUtf8Entry("()Ljava/lang/Object;", "()Ljava/lang/Object;".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(2),
+                    nameAndTypeIndex = ConstantPoolIndex(5),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0xBB.toByte(), 0x00.toByte(), 0x02.toByte(),
+                        0xB7.toByte(), 0x00.toByte(), 0x06.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                constantPool = invalidDescriptorConstantPool,
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 3,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Uninitialized(offset = 0)),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "invokespecial initializer descriptor must return void",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies invokestatic operand stack transition at explicit source frames`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

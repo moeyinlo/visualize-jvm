@@ -984,13 +984,21 @@ object MethodTypeCheckingVerifier {
                         index = ConstantPoolIndex(code.code.u2(offset + 1)),
                         constantPool = constantPoolContext,
                     )
-                    InvokeSpecialInstructionVerifier.verifyNonInitializer(
-                        frame = frame,
-                        thisType = methodReference.ownerType,
-                        methodName = methodReference.name,
-                        descriptor = methodReference.descriptor,
-                        maxStack = code.maxStack,
-                    )
+                    if (methodReference.name == "<init>") {
+                        verifyInvokespecialInitializer(
+                            code = code,
+                            frame = frame,
+                            methodReference = methodReference,
+                        )
+                    } else {
+                        InvokeSpecialInstructionVerifier.verifyNonInitializer(
+                            frame = frame,
+                            thisType = methodReference.ownerType,
+                            methodName = methodReference.name,
+                            descriptor = methodReference.descriptor,
+                            maxStack = code.maxStack,
+                        )
+                    }
                 }
                 0xB8 -> {
                     val constantPoolContext = requireConstantPool(
@@ -1114,6 +1122,7 @@ object MethodTypeCheckingVerifier {
     }
 
     private data class ResolvedMethodReference(
+        val ownerClassIndex: ConstantPoolIndex,
         val ownerType: VerificationType.ClassType,
         val name: String,
         val descriptor: String,
@@ -1260,6 +1269,7 @@ object MethodTypeCheckingVerifier {
             )
         }
         return ResolvedMethodReference(
+            ownerClassIndex = methodRefEntry.classIndex,
             ownerType = VerificationType.ClassType(
                 resolveConstantClassName(
                     mnemonic = mnemonic,
@@ -1318,6 +1328,7 @@ object MethodTypeCheckingVerifier {
             )
         }
         return ResolvedMethodReference(
+            ownerClassIndex = methodRefEntry.classIndex,
             ownerType = VerificationType.ClassType(
                 resolveConstantClassName(
                     mnemonic = mnemonic,
@@ -1379,6 +1390,62 @@ object MethodTypeCheckingVerifier {
             name = nameEntry.value,
             descriptor = descriptorEntry.value,
         )
+    }
+
+    private fun verifyInvokespecialInitializer(
+        code: CodeAttribute,
+        frame: VerificationFrameState,
+        methodReference: ResolvedMethodReference,
+    ) {
+        val receiver = invokespecialInitializerReceiver(
+            frame = frame,
+            descriptor = methodReference.descriptor,
+        )
+        if (receiver !is VerificationType.Uninitialized) {
+            throw MethodVerificationException(
+                "invokespecial initializer receiver must be uninitialized(offset), found $receiver",
+            )
+        }
+        InvokeSpecialInstructionVerifier.verifyUninitializedObjectInitializer(
+            frame = frame,
+            descriptor = methodReference.descriptor,
+            maxStack = code.maxStack,
+            newOffset = receiver.offset,
+            methodOwnerType = VerificationType.ObjectType(methodReference.ownerClassIndex),
+            newInstructionObjectType = resolveNewInstructionObjectType(
+                code = code,
+                newOffset = receiver.offset,
+            ),
+        )
+    }
+
+    private fun invokespecialInitializerReceiver(
+        frame: VerificationFrameState,
+        descriptor: String,
+    ): VerificationType {
+        val parameterCount = MethodDescriptorVerificationTypeParser.parse(descriptor).parameterTypes.size
+        val receiverIndex = frame.stack.size - parameterCount - 1
+        if (receiverIndex < 0) {
+            throw MethodVerificationException("Operand stack does not contain invokespecial initializer receiver")
+        }
+        return frame.stack[receiverIndex]
+    }
+
+    private fun resolveNewInstructionObjectType(
+        code: CodeAttribute,
+        newOffset: Int,
+    ): VerificationType.ObjectType {
+        if (newOffset < 0 || newOffset + 2 >= code.code.size) {
+            throw MethodVerificationException(
+                "invokespecial initializer receiver offset $newOffset does not point to a complete new instruction",
+            )
+        }
+        if (code.code.u1(newOffset) != 0xBB) {
+            throw MethodVerificationException(
+                "invokespecial initializer receiver offset $newOffset does not point to a new instruction",
+            )
+        }
+        return VerificationType.ObjectType(ConstantPoolIndex(code.code.u2(newOffset + 1)))
     }
 
     private fun constantPoolEntry(
