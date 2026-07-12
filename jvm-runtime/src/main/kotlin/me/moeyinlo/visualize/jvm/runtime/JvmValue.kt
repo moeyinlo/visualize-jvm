@@ -11,6 +11,23 @@ enum class JvmValueCategory(val slotWidth: Int) {
 
 sealed interface JvmPrimitiveValue : JvmValue
 
+sealed interface JvmReferenceValue : JvmValue
+
+data object JvmNullValue : JvmReferenceValue {
+    override val category: JvmValueCategory = JvmValueCategory.Category1
+}
+
+@JvmInline
+value class JvmReferenceId(val value: Int) {
+    init {
+        require(value > 0) { "reference id must be positive: $value" }
+    }
+}
+
+data class JvmObjectReferenceValue(val referenceId: JvmReferenceId) : JvmReferenceValue {
+    override val category: JvmValueCategory = JvmValueCategory.Category1
+}
+
 data class JvmBooleanValue(val value: Boolean) : JvmPrimitiveValue {
     override val category: JvmValueCategory = JvmValueCategory.Category1
 }

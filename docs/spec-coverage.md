@@ -23,6 +23,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.3.3 | `returnAddress` type and values | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | 2.3.4 | `boolean` type and values | `jvm-runtime` | TBD | PENDING |
 | 2.4 | Reference types and values | `jvm-runtime` | TBD | PENDING |
+| 2.4 | Null and non-null reference runtime value model | `jvm-runtime` | `JvmReferenceValueTest` | IMPLEMENTED |
 | 2.5.1 | pc register | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.5.2 | JVM stacks | `jvm-runtime` | TBD | PENDING |
 | 2.5.3 | Heap | `jvm-runtime` | TBD | PENDING |
