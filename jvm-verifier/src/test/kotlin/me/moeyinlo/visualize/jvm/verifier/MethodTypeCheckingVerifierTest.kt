@@ -2468,6 +2468,52 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies lor operand stack transition`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 4,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0x81.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Long, VerificationType.Long),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 4,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0x81.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Long, VerificationType.Integer),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains Integer, expected Long",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies implicit int local load transitions`() {
         listOf(0x1A to 0, 0x1B to 1, 0x1C to 2, 0x1D to 3).forEach { (opcode, index) ->
             val exception = assertFailsWith<MethodVerificationException> {
