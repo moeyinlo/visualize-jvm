@@ -31,6 +31,9 @@ object JvmInterpreter {
             in 0x0B..0x0D -> operandStack.push(JvmFloatValue((instruction.metadata.opcode - 0x0B).toFloat()))
             in 0x0E..0x0F -> operandStack.push(JvmDoubleValue((instruction.metadata.opcode - 0x0E).toDouble()))
             0x10 -> operandStack.push(JvmIntValue(instruction.operands[0].toByte().toInt()))
+            0x11 -> operandStack.push(
+                JvmIntValue(((instruction.operands[0] shl 8) or instruction.operands[1]).toShort().toInt()),
+            )
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
                     "(${instruction.metadata.opcode.hexByte()}) at offset ${instruction.offset}",

@@ -151,6 +151,34 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `sipush sign extends the immediate short onto the operand stack`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x11.toByte(),
+                0x7F.toByte(),
+                0xFF.toByte(),
+                0x11.toByte(),
+                0x80.toByte(),
+                0x00.toByte(),
+                0x11.toByte(),
+                0xFF.toByte(),
+                0xFF.toByte(),
+            ),
+            maxStack = 3,
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(32767),
+                JvmIntValue(-32768),
+                JvmIntValue(-1),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `constant execution respects max stack bounds`() {
         assertFailsWith<JvmOperandStackOverflowException> {
             JvmInterpreter.execute(
