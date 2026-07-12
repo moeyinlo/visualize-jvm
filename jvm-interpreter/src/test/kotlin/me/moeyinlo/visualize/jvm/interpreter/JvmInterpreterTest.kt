@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
@@ -102,6 +103,26 @@ class JvmInterpreterTest {
             result.operandStack.toList(),
         )
         assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dconst instructions push double values onto the operand stack`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0E.toByte(),
+                0x0F.toByte(),
+            ),
+            maxStack = 4,
+        )
+
+        assertEquals(
+            listOf(
+                JvmDoubleValue(0.0),
+                JvmDoubleValue(1.0),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
     }
 
     @Test
