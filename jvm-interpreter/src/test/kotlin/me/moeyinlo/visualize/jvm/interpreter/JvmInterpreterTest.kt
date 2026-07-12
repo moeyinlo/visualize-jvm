@@ -367,6 +367,67 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc_w pushes wide indexed reference constants from the runtime constant pool`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x13.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x13.toByte(),
+                0x01.toByte(),
+                0x01.toByte(),
+                0x13.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("wide literal", "wide literal".encodeToByteArray()),
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ) +
+                    List(252) { value -> ConstantIntegerEntry(value) } +
+                    listOf(
+                        ConstantStringEntry(stringIndex = ConstantPoolIndex(1)),
+                        ConstantClassEntry(nameIndex = ConstantPoolIndex(2)),
+                        ConstantMethodTypeEntry(descriptorIndex = ConstantPoolIndex(3)),
+                    ),
+            ),
+            heap = heap,
+        )
+
+        val stringReference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val classReference = JvmObjectReferenceValue(JvmReferenceId(2))
+        val methodTypeReference = JvmObjectReferenceValue(JvmReferenceId(3))
+        assertEquals(listOf(stringReference, classReference, methodTypeReference), result.operandStack.toList())
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/String",
+                payload = JvmStringPayload("wide literal"),
+            ),
+            heap.get(stringReference),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/Class",
+                payload = JvmClassPayload("java/lang/String"),
+            ),
+            heap.get(classReference),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodType",
+                payload = JvmMethodTypePayload("()V"),
+            ),
+            heap.get(methodTypeReference),
+        )
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc_w pushes integer constants from a two byte runtime constant pool index`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
