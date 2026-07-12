@@ -116,6 +116,9 @@ object LdcInstructionVerifier {
             "I" -> throw MethodVerificationException(
                 "ldc2_w CONSTANT_Dynamic descriptor 'I' is category 1; use ldc",
             )
+            "F" -> throw MethodVerificationException(
+                "ldc2_w CONSTANT_Dynamic descriptor 'F' is category 1; use ldc",
+            )
             else -> throw MethodVerificationException(
                 "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
             )
