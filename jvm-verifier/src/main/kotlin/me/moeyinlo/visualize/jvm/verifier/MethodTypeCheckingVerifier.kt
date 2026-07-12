@@ -864,6 +864,11 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0xC0 -> CheckCastInstructionVerifier.verify(
+                    frame = frame,
+                    targetType = VerificationType.ObjectType(ConstantPoolIndex(code.code.u2(offset + 1))),
+                    maxStack = code.maxStack,
+                )
                 0xC2 -> MonitorInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
