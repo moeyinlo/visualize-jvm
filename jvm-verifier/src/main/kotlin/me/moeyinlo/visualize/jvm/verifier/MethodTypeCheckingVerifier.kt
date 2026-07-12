@@ -306,6 +306,11 @@ object MethodTypeCheckingVerifier {
                         maxLocals = code.maxLocals,
                         maxStack = code.maxStack,
                     )
+                    0x84 -> WideIncrementInstructionVerifier.verify(
+                        frame = frame,
+                        index = code.code.u2(offset + 2),
+                        maxLocals = code.maxLocals,
+                    )
                 }
                 in 0x1A..0x1D -> LocalLoadInstructionVerifier.verify(
                     frame = frame,

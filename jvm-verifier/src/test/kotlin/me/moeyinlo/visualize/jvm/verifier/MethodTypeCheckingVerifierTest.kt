@@ -4626,6 +4626,62 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies wide iinc local variable transition`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 301,
+                code = byteArrayOf(
+                    0xC4.toByte(),
+                    0x84.toByte(),
+                    0x01.toByte(),
+                    0x2C.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = List(300) { VerificationType.Top } + VerificationType.Integer,
+                    stack = listOf(VerificationType.Float),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 0,
+                    maxLocals = 301,
+                    code = byteArrayOf(
+                        0xC4.toByte(),
+                        0x84.toByte(),
+                        0x01.toByte(),
+                        0x2C.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = List(300) { VerificationType.Top } + VerificationType.Float,
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Local variable 300 contains Float, expected Integer",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies i2l operand stack transition`() {
         MethodTypeCheckingVerifier.verify(
             code = code(
