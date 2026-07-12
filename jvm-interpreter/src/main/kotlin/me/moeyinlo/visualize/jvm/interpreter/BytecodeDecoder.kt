@@ -39,10 +39,7 @@ object BytecodeDecoder {
             )
             OpcodeFormat.TableSwitch -> tableswitchLengthAt(code = code, metadata = metadata, offset = offset)
             OpcodeFormat.LookupSwitch -> lookupswitchLengthAt(code = code, metadata = metadata, offset = offset)
-            OpcodeFormat.Wide,
-            -> throw BytecodeDecodingException(
-                "Instruction ${metadata.mnemonic} at offset $offset requires variable-length decoding",
-            )
+            OpcodeFormat.Wide -> wideLengthAt(code = code, metadata = metadata, offset = offset)
             OpcodeFormat.Reserved -> throw BytecodeDecodingException(
                 "Reserved opcode ${metadata.mnemonic} (${metadata.opcode.hexByte()}) at offset $offset cannot be decoded for execution",
             )
@@ -104,6 +101,25 @@ object BytecodeDecoder {
         return requiredLength.toInt()
     }
 
+    private fun wideLengthAt(code: ByteArray, metadata: OpcodeMetadata, offset: Int): Int {
+        if (offset + WIDE_MIN_BYTES > code.size) {
+            return WIDE_MIN_BYTES
+        }
+
+        val modifiedOpcode = code[offset + 1].toInt() and 0xFF
+        return when (modifiedOpcode) {
+            0x84 -> WIDE_IINC_BYTES
+            in 0x15..0x19,
+            in 0x36..0x3A,
+            0xA9,
+            -> WIDE_LOCAL_BYTES
+            else -> throw BytecodeDecodingException(
+                "Instruction ${metadata.mnemonic} at offset $offset cannot modify opcode " +
+                    "${OpcodeTable.metadata(modifiedOpcode).mnemonic}",
+            )
+        }
+    }
+
     private fun paddingAfterOpcode(offset: Int): Int = (4 - ((offset + 1) % 4)) % 4
 
     private fun ByteArray.sliceUnsignedBytes(fromIndex: Int, toIndex: Int): List<Int> =
@@ -120,4 +136,7 @@ object BytecodeDecoder {
     private const val TABLESWITCH_HEADER_BYTES = Int.SIZE_BYTES * 3
     private const val LOOKUPSWITCH_HEADER_BYTES = Int.SIZE_BYTES * 2
     private const val LOOKUPSWITCH_PAIR_BYTES = Int.SIZE_BYTES * 2
+    private const val WIDE_MIN_BYTES = 2
+    private const val WIDE_LOCAL_BYTES = 4
+    private const val WIDE_IINC_BYTES = 6
 }

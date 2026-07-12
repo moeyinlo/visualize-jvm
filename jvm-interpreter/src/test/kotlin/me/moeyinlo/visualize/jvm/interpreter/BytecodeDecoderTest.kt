@@ -120,6 +120,30 @@ class BytecodeDecoderTest {
     }
 
     @Test
+    fun `decoder decodes wide local variable and iinc forms`() {
+        val instructions = BytecodeDecoder.decode(
+            byteArrayOf(
+                0xC4.toByte(), 0x15.toByte(), 0x01.toByte(), 0x02.toByte(),
+                0xC4.toByte(), 0x84.toByte(), 0x01.toByte(), 0x02.toByte(), 0xFF.toByte(), 0xFE.toByte(),
+                0xB1.toByte(),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                DecodedInstruction(offset = 0, metadata = OpcodeTable.metadata(0xC4), operands = listOf(0x15, 0x01, 0x02)),
+                DecodedInstruction(
+                    offset = 4,
+                    metadata = OpcodeTable.metadata(0xC4),
+                    operands = listOf(0x84, 0x01, 0x02, 0xFF, 0xFE),
+                ),
+                DecodedInstruction(offset = 10, metadata = OpcodeTable.metadata(0xB1), operands = emptyList()),
+            ),
+            instructions,
+        )
+    }
+
+    @Test
     fun `decoder rejects truncated fixed length instructions`() {
         val exception = assertFailsWith<BytecodeDecodingException> {
             BytecodeDecoder.decode(byteArrayOf(0x11.toByte(), 0x00.toByte()))
@@ -132,13 +156,13 @@ class BytecodeDecoderTest {
     }
 
     @Test
-    fun `decoder rejects variable length instructions until their dedicated decoders run`() {
+    fun `decoder rejects truncated wide instructions`() {
         val exception = assertFailsWith<BytecodeDecodingException> {
             BytecodeDecoder.decode(byteArrayOf(0xC4.toByte()))
         }
 
         assertEquals(
-            "Instruction wide at offset 0 requires variable-length decoding",
+            "Instruction wide at offset 0 requires 2 bytes, code length is 1",
             exception.message,
         )
     }
