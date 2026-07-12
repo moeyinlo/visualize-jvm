@@ -601,6 +601,11 @@ object MethodTypeCheckingVerifier {
                     kind = LongBinaryArithmeticKind.Xor,
                     maxStack = code.maxStack,
                 )
+                0x84 -> IncrementInstructionVerifier.verify(
+                    frame = frame,
+                    index = code.code.u1(offset + 1),
+                    maxLocals = code.maxLocals,
+                )
                 in 0x99..0x9E -> IntZeroBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,

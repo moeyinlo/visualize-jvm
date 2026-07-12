@@ -2606,6 +2606,56 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies iinc local variable transition`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 1,
+                code = byteArrayOf(
+                    0x84.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = listOf(VerificationType.Integer),
+                    stack = listOf(VerificationType.Float),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 0,
+                    maxLocals = 1,
+                    code = byteArrayOf(
+                        0x84.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = listOf(VerificationType.Float),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Local variable 0 contains Float, expected Integer",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies implicit int local load transitions`() {
         listOf(0x1A to 0, 0x1B to 1, 0x1C to 2, 0x1D to 3).forEach { (opcode, index) ->
             val exception = assertFailsWith<MethodVerificationException> {
