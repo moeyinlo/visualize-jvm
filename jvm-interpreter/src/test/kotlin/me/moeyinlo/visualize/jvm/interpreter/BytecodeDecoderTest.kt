@@ -44,6 +44,43 @@ class BytecodeDecoderTest {
     }
 
     @Test
+    fun `decoder decodes tableswitch with four byte aligned operands`() {
+        val instructions = BytecodeDecoder.decode(
+            byteArrayOf(
+                0x00.toByte(),
+                0xAA.toByte(),
+                0x00.toByte(), 0x00.toByte(),
+                0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x10.toByte(),
+                0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(),
+                0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(),
+                0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x20.toByte(),
+                0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xFC.toByte(),
+                0xB1.toByte(),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                DecodedInstruction(offset = 0, metadata = OpcodeTable.metadata(0x00), operands = emptyList()),
+                DecodedInstruction(
+                    offset = 1,
+                    metadata = OpcodeTable.metadata(0xAA),
+                    operands = listOf(
+                        0x00, 0x00,
+                        0x00, 0x00, 0x00, 0x10,
+                        0x00, 0x00, 0x00, 0x01,
+                        0x00, 0x00, 0x00, 0x02,
+                        0x00, 0x00, 0x00, 0x20,
+                        0xFF, 0xFF, 0xFF, 0xFC,
+                    ),
+                ),
+                DecodedInstruction(offset = 24, metadata = OpcodeTable.metadata(0xB1), operands = emptyList()),
+            ),
+            instructions,
+        )
+    }
+
+    @Test
     fun `decoder rejects truncated fixed length instructions`() {
         val exception = assertFailsWith<BytecodeDecodingException> {
             BytecodeDecoder.decode(byteArrayOf(0x11.toByte(), 0x00.toByte()))
@@ -58,11 +95,11 @@ class BytecodeDecoderTest {
     @Test
     fun `decoder rejects variable length instructions until their dedicated decoders run`() {
         val exception = assertFailsWith<BytecodeDecodingException> {
-            BytecodeDecoder.decode(byteArrayOf(0xAA.toByte()))
+            BytecodeDecoder.decode(byteArrayOf(0xAB.toByte()))
         }
 
         assertEquals(
-            "Instruction tableswitch at offset 0 requires variable-length decoding",
+            "Instruction lookupswitch at offset 0 requires variable-length decoding",
             exception.message,
         )
     }
