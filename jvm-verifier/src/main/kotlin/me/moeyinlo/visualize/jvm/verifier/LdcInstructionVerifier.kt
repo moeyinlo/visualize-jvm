@@ -87,6 +87,7 @@ object LdcInstructionVerifier {
             descriptor == "C" -> VerificationType.Integer
             descriptor == "S" -> VerificationType.Integer
             descriptor == "F" -> VerificationType.Float
+            descriptor == "[I" -> VerificationType.ArrayOf(VerificationType.Integer)
             descriptor.startsWith("L") && descriptor.endsWith(";") && descriptor.length > 2 ->
                 VerificationType.ClassType(descriptor.substring(1, descriptor.length - 1))
             else -> throw MethodVerificationException(
