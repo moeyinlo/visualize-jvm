@@ -7,7 +7,7 @@ data class MethodDescriptorVerificationTypes(
 
 object MethodDescriptorVerificationTypeParser {
     fun parse(descriptor: String): MethodDescriptorVerificationTypes {
-        val parser = Parser(descriptor)
+        val parser = Parser(descriptor, descriptorKind = "method")
         return parser.parse()
     }
 
@@ -15,10 +15,23 @@ object MethodDescriptorVerificationTypeParser {
         return parse(descriptor).parameterTypes
     }
 
+    fun parseFieldType(descriptor: String): VerificationType {
+        return Parser(descriptor, descriptorKind = "field").parseFieldDescriptor()
+    }
+
     private class Parser(
         private val descriptor: String,
+        private val descriptorKind: String,
     ) {
         private var position: Int = 0
+
+        fun parseFieldDescriptor(): VerificationType {
+            val type = parseFieldType()
+            if (peek() != null) {
+                fail("has trailing characters at offset $position")
+            }
+            return type
+        }
 
         fun parse(): MethodDescriptorVerificationTypes {
             if (peek() != '(') {
@@ -122,6 +135,6 @@ object MethodDescriptorVerificationTypeParser {
             }
 
         private fun fail(reason: String): Nothing =
-            throw MethodVerificationException("Invalid method descriptor '$descriptor': $reason")
+            throw MethodVerificationException("Invalid $descriptorKind descriptor '$descriptor': $reason")
     }
 }

@@ -60,6 +60,16 @@ class MethodDescriptorVerificationTypeParserTest {
     }
 
     @Test
+    fun `parses standalone field descriptor as verification type`() {
+        assertEquals(
+            VerificationType.ArrayOf(
+                VerificationType.ArrayOf(VerificationType.ClassType("java/lang/String")),
+            ),
+            MethodDescriptorVerificationTypeParser.parseFieldType("[[Ljava/lang/String;"),
+        )
+    }
+
+    @Test
     fun `exposes method return verification type`() {
         assertEquals(
             MethodDescriptorVerificationTypes(

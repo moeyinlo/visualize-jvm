@@ -196,6 +196,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1.5 | Method descriptor primitive parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor class parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor array parameter verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
+| 4.3.2, 4.10.1.5 | Standalone field descriptor verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | Method descriptor return verification type parsing | `jvm-verifier` | `MethodDescriptorVerificationTypeParserTest` | IMPLEMENTED |
 | 4.10.1.5 | `expandTypeList` local slot expansion for two-word verification types | `jvm-verifier` | `VerificationTypeSlotExpanderTest` | IMPLEMENTED |
 | 4.10.1.5 | Static method initial frame locals from descriptor arguments | `jvm-verifier` | `MethodInitialFrameBuilderTest` | IMPLEMENTED |
