@@ -839,6 +839,13 @@ object MethodTypeCheckingVerifier {
                         maxStack = code.maxStack,
                     )
                 }
+                0xAF -> if (declaredReturnType != null) {
+                    DoubleReturnInstructionVerifier.verify(
+                        frame = frame,
+                        declaredReturnType = declaredReturnType,
+                        maxStack = code.maxStack,
+                    )
+                }
                 0xB1 -> if (declaredReturnType != null) {
                     ReturnInstructionVerifier.verify(
                         frame = frame,
