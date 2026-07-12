@@ -822,6 +822,10 @@ object MethodTypeCheckingVerifier {
                     frame = frame,
                     maxStack = code.maxStack,
                 )
+                0xAB -> SwitchInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
                 0xAC -> if (declaredReturnType != null) {
                     IntReturnInstructionVerifier.verify(
                         frame = frame,

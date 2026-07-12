@@ -2554,6 +2554,66 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies lookupswitch operand stack transition`() {
+        val lookupswitch = byteArrayOf(
+            0xAB.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x14.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x01.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x07.toByte(),
+            0x00.toByte(), 0x00.toByte(), 0x00.toByte(), 0x14.toByte(),
+            0xB1.toByte(),
+        )
+
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = lookupswitch,
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = listOf(VerificationType.Integer),
+                ),
+                VerificationFrameState(
+                    bytecodeOffset = 20,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = lookupswitch,
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Float),
+                    ),
+                    VerificationFrameState(
+                        bytecodeOffset = 20,
+                        locals = emptyList(),
+                        stack = emptyList(),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack top contains Float, expected Integer",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier applies int array load operand stack transitions`() {
         val exception = assertFailsWith<MethodVerificationException> {
             MethodTypeCheckingVerifier.verify(
