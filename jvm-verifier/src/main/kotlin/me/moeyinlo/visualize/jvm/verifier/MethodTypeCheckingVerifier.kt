@@ -13,6 +13,7 @@ object MethodTypeCheckingVerifier {
             code = code,
             constantPool = null,
             initialFrameState = null,
+            declaredReturnType = null,
             frameStates = frameStates,
         )
     }
@@ -26,6 +27,7 @@ object MethodTypeCheckingVerifier {
             code = code,
             constantPool = constantPool,
             initialFrameState = null,
+            declaredReturnType = null,
             frameStates = frameStates,
         )
     }
@@ -39,6 +41,7 @@ object MethodTypeCheckingVerifier {
             code = code,
             constantPool = null,
             initialFrameState = initialFrame.toVerificationFrameState(),
+            declaredReturnType = initialFrame.returnType.toVerificationReturnType(),
             frameStates = frameStates,
         )
     }
@@ -53,6 +56,7 @@ object MethodTypeCheckingVerifier {
             code = code,
             constantPool = constantPool,
             initialFrameState = initialFrame.toVerificationFrameState(),
+            declaredReturnType = initialFrame.returnType.toVerificationReturnType(),
             frameStates = frameStates,
         )
     }
@@ -61,6 +65,7 @@ object MethodTypeCheckingVerifier {
         code: CodeAttribute,
         constantPool: ConstantPool?,
         initialFrameState: VerificationFrameState?,
+        declaredReturnType: VerificationReturnType?,
         frameStates: Iterable<VerificationFrameState>,
     ) {
         val frames = frameStates.toList()
@@ -77,6 +82,7 @@ object MethodTypeCheckingVerifier {
         verifyInstructionTransfers(
             code = code,
             constantPool = constantPool,
+            declaredReturnType = declaredReturnType,
             framesByOffset = framesWithInitial.associateBy { frame -> frame.bytecodeOffset },
         )
     }
@@ -87,6 +93,13 @@ object MethodTypeCheckingVerifier {
             locals = locals,
             stack = stack,
         )
+
+    private fun VerificationType?.toVerificationReturnType(): VerificationReturnType =
+        if (this == null) {
+            VerificationReturnType.Void
+        } else {
+            VerificationReturnType.Value(this)
+        }
 
     private fun verifyFrameOffsets(
         frames: List<VerificationFrameState>,
@@ -142,6 +155,7 @@ object MethodTypeCheckingVerifier {
     private fun verifyInstructionTransfers(
         code: CodeAttribute,
         constantPool: ConstantPool?,
+        declaredReturnType: VerificationReturnType?,
         framesByOffset: Map<Int, VerificationFrameState>,
     ) {
         framesByOffset.forEach { (offset, frame) ->
@@ -804,6 +818,13 @@ object MethodTypeCheckingVerifier {
                     index = code.code.u1(offset + 1),
                     maxLocals = code.maxLocals,
                 )
+                0xB1 -> if (declaredReturnType != null) {
+                    ReturnInstructionVerifier.verify(
+                        frame = frame,
+                        declaredReturnType = declaredReturnType,
+                        maxStack = code.maxStack,
+                    )
+                }
                 in 0xC6..0xC7 -> ReferenceNullBranchInstructionVerifier.verify(
                     frame = frame,
                     maxStack = code.maxStack,
