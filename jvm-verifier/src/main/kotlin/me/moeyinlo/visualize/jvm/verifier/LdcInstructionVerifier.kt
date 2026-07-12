@@ -94,6 +94,7 @@ object LdcInstructionVerifier {
     ): VerificationType {
         return when (val descriptor = dynamicConstantDescriptor(entry = entry, constantPool = constantPool)) {
             "J" -> VerificationType.Long
+            "D" -> VerificationType.Double
             else -> throw MethodVerificationException(
                 "ldc2_w CONSTANT_Dynamic descriptor '$descriptor' is unsupported",
             )
