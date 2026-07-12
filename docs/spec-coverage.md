@@ -372,6 +372,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | Type checking verifier applies int-compare branch operand stack transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies reference-compare branch operand stack transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies reference-null branch operand stack transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
+| 4.10.1, 6.5 | Type checking verifier applies `tableswitch` operand stack transition at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies int array load operand stack transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies long array load operand stack transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies float array load operand stack transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |

@@ -818,6 +818,10 @@ object MethodTypeCheckingVerifier {
                     index = code.code.u1(offset + 1),
                     maxLocals = code.maxLocals,
                 )
+                0xAA -> SwitchInstructionVerifier.verify(
+                    frame = frame,
+                    maxStack = code.maxStack,
+                )
                 0xAC -> if (declaredReturnType != null) {
                     IntReturnInstructionVerifier.verify(
                         frame = frame,
