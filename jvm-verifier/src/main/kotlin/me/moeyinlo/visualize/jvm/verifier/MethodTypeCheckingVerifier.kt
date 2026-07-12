@@ -113,6 +113,11 @@ object MethodTypeCheckingVerifier {
         framesByOffset.forEach { (offset, frame) ->
             val opcode = code.code.u1(offset)
             when (opcode) {
+                0x01 -> ConstantInstructionVerifier.verify(
+                    frame = frame,
+                    kind = ConstantPushKind.Null,
+                    maxStack = code.maxStack,
+                )
                 0x15 -> LocalLoadInstructionVerifier.verify(
                     frame = frame,
                     index = code.code.u1(offset + 1),

@@ -60,6 +60,52 @@ class MethodTypeCheckingVerifierTest {
     }
 
     @Test
+    fun `type checking verifier applies aconst_null operand stack transition`() {
+        MethodTypeCheckingVerifier.verify(
+            code = code(
+                maxStack = 1,
+                maxLocals = 0,
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0xB1.toByte(),
+                ),
+            ),
+            frameStates = listOf(
+                VerificationFrameState(
+                    bytecodeOffset = 0,
+                    locals = emptyList(),
+                    stack = emptyList(),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<MethodVerificationException> {
+            MethodTypeCheckingVerifier.verify(
+                code = code(
+                    maxStack = 1,
+                    maxLocals = 0,
+                    code = byteArrayOf(
+                        0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                ),
+                frameStates = listOf(
+                    VerificationFrameState(
+                        bytecodeOffset = 0,
+                        locals = emptyList(),
+                        stack = listOf(VerificationType.Integer),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Operand stack depth 2 exceeds max_stack=1",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `type checking verifier rejects frames exceeding code resource limits`() {
         val exception = assertFailsWith<MethodVerificationException> {
             MethodTypeCheckingVerifier.verify(
