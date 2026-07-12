@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
@@ -80,6 +81,24 @@ object JvmInterpreter {
             )
         }
         when (entry) {
+            is ConstantClassEntry -> {
+                val nameEntry = try {
+                    constantPool[entry.nameIndex]
+                } catch (exception: ConstantPoolFormatException) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_Class name_index ${entry.nameIndex} " +
+                            "at offset ${instruction.offset}: ${exception.message}",
+                    )
+                }
+                if (nameEntry !is ConstantUtf8Entry) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_Class name_index ${entry.nameIndex} at offset " +
+                            "${instruction.offset}: expected ConstantUtf8Entry but was " +
+                            nameEntry.javaClass.simpleName,
+                    )
+                }
+                operandStack.push(heap.internClassMirror(nameEntry.value))
+            }
             is ConstantFloatEntry -> operandStack.push(JvmFloatValue(entry.value))
             is ConstantIntegerEntry -> operandStack.push(JvmIntValue(entry.value))
             is ConstantStringEntry -> {

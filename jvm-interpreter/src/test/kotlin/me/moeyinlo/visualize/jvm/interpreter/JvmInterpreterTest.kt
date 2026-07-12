@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
@@ -9,6 +10,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
@@ -288,6 +290,40 @@ class JvmInterpreterTest {
             JvmHeapObject(
                 className = "java/lang/String",
                 payload = JvmStringPayload("same literal"),
+            ),
+            heap.get(reference),
+        )
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldc reuses guest class mirror constants with identical represented names`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                    ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                    ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference, reference), result.operandStack.toList())
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/Class",
+                payload = JvmClassPayload("java/lang/String"),
             ),
             heap.get(reference),
         )
