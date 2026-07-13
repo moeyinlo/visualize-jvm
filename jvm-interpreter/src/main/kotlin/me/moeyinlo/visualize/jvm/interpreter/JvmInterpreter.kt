@@ -284,6 +284,7 @@ object JvmInterpreter {
             0x37 -> executeLongStore(instruction, operandStack, localVariables)
             0x38 -> executeFloatStore(instruction, operandStack, localVariables)
             0x39 -> executeDoubleStore(instruction, operandStack, localVariables)
+            0x3A -> executeReferenceStore(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported wide-modified instruction ${OpcodeTable.metadata(modifiedOpcode).mnemonic} " +
                     "(${modifiedOpcode.hexByte()}) at offset ${instruction.offset}",

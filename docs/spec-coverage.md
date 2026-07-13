@@ -608,6 +608,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Stores execution | `dstore` and `dstore_0..dstore_3` pop double values from the operand stack into the runtime local variable array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Stores execution | `wide dstore` pops double values into a runtime local variable selected by a two-byte local variable index | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Stores execution | `astore` and `astore_0..astore_3` pop reference values, including `null`, from the operand stack into the runtime local variable array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Stores execution | `wide astore` pops reference values into a runtime local variable selected by a two-byte local variable index | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Array stores | `iastore`, `lastore`, `fastore`, `dastore`, `aastore`, `bastore`, `castore`, `sastore` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Stack | `pop`, `pop2`, `dup`, `dup_x1`, `dup_x2`, `dup2`, `dup2_x1`, `dup2_x2`, `swap` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Integer and long math | `iadd`, `ladd`, `isub`, `lsub`, `imul`, `lmul`, `idiv`, `ldiv`, `irem`, `lrem`, `ineg`, `lneg`, shifts, bitwise ops | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
