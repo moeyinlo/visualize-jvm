@@ -600,6 +600,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Array loads | `iaload`, `laload`, `faload`, `daload`, `aaload`, `baload`, `caload`, `saload` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Stores | `istore`, `lstore`, `fstore`, `dstore`, `astore`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Stores execution | `istore` and `istore_0..istore_3` pop int values from the operand stack into the runtime local variable array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Stores execution | `wide istore` pops int values into a runtime local variable selected by a two-byte local variable index | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Stores execution | `lstore` and `lstore_0..lstore_3` pop long values from the operand stack into the runtime local variable array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Stores execution | `fstore` and `fstore_0..fstore_3` pop float values from the operand stack into the runtime local variable array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Stores execution | `dstore` and `dstore_0..dstore_3` pop double values from the operand stack into the runtime local variable array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

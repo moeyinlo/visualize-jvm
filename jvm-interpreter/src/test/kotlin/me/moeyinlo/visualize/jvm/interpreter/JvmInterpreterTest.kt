@@ -458,6 +458,27 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `wide istore pops int values into a two byte local variable index`() {
+        val locals = JvmLocalVariables(maxLocals = 259)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x08.toByte(),
+                0xC4.toByte(),
+                0x36.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmIntValue(5), locals.load(258))
+    }
+
+    @Test
     fun `lstore instructions pop long values into local variables`() {
         val locals = JvmLocalVariables(maxLocals = 4)
 
