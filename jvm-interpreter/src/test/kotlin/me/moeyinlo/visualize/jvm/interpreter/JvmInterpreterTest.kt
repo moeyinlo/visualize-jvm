@@ -435,6 +435,29 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `istore instructions pop int values into local variables`() {
+        val locals = JvmLocalVariables(maxLocals = 3)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x08.toByte(),
+                0x36.toByte(),
+                0x02.toByte(),
+                0x10.toByte(),
+                0x7F.toByte(),
+                0x3B.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmIntValue(5), locals.load(2))
+        assertEquals(JvmIntValue(127), locals.load(0))
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
