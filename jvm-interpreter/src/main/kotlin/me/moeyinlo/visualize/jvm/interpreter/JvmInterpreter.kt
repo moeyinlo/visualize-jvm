@@ -21,6 +21,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
@@ -38,10 +39,11 @@ object JvmInterpreter {
         maxStack: Int,
         constantPool: ConstantPool = ConstantPool.fromEntries(emptyList()),
         heap: JvmHeap = JvmHeap(),
+        localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
     ): JvmExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         BytecodeDecoder.decode(code).forEach { instruction ->
-            executeInstruction(instruction, operandStack, constantPool, heap)
+            executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
         }
         return JvmExecutionResult(operandStack = operandStack)
     }
@@ -51,6 +53,7 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
         heap: JvmHeap,
+        localVariables: JvmLocalVariables,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -67,11 +70,30 @@ object JvmInterpreter {
             0x13,
             -> executeLdc(instruction, operandStack, constantPool, heap)
             0x14 -> executeLdc2(instruction, operandStack, constantPool)
+            0x15,
+            in 0x1A..0x1D,
+            -> executeIntLoad(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
                     "(${instruction.metadata.opcode.hexByte()}) at offset ${instruction.offset}",
             )
         }
+    }
+
+    private fun executeIntLoad(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        localVariables: JvmLocalVariables,
+    ) {
+        val index = instruction.localVariableIndex()
+        val value = localVariables.load(index)
+        if (value !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} local variable $index at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        operandStack.push(value)
     }
 
     private fun executeLdc(
@@ -203,6 +225,13 @@ object JvmInterpreter {
             0x14,
             -> ConstantPoolIndex((operands[0] shl 8) or operands[1])
             else -> error("Instruction ${metadata.mnemonic} does not use a constant_pool index")
+        }
+
+    private fun DecodedInstruction.localVariableIndex(): Int =
+        when (metadata.opcode) {
+            0x15 -> operands[0]
+            in 0x1A..0x1D -> metadata.opcode - 0x1A
+            else -> error("Instruction ${metadata.mnemonic} does not use a local variable index")
         }
 
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"

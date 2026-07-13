@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
@@ -199,6 +200,32 @@ class JvmInterpreterTest {
             result.operandStack.toList(),
         )
         assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `iload instructions push int local variables onto the operand stack`() {
+        val locals = JvmLocalVariables(maxLocals = 3)
+        locals.store(0, JvmIntValue(-1))
+        locals.store(2, JvmIntValue(42))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x15.toByte(),
+                0x02.toByte(),
+                0x1A.toByte(),
+            ),
+            maxStack = 2,
+            localVariables = locals,
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(42),
+                JvmIntValue(-1),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(2, result.operandStack.slotDepth)
     }
 
     @Test
