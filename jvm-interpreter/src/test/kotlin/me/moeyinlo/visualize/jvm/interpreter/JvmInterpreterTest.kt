@@ -482,6 +482,50 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc_w pushes wide indexed method handle constants from the runtime constant pool`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x13.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                    ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("valueOf", "valueOf".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(nameIndex = ConstantPoolIndex(3), descriptorIndex = ConstantPoolIndex(4)),
+                    ConstantMethodRefEntry(classIndex = ConstantPoolIndex(2), nameAndTypeIndex = ConstantPoolIndex(5)),
+                ) +
+                    List(249) { value -> ConstantIntegerEntry(value) } +
+                    ConstantMethodHandleEntry(
+                        referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                        referenceIndex = ConstantPoolIndex(6),
+                    ),
+            ),
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodHandle",
+                payload = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 6,
+                ),
+            ),
+            heap.get(reference),
+        )
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc_w pushes integer constants from a two byte runtime constant pool index`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
