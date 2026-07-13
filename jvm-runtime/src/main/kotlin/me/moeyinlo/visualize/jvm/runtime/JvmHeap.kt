@@ -15,11 +15,34 @@ data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
 
 data class JvmMethodTypePayload(val descriptor: String) : JvmHeapPayload
 
+enum class JvmMethodHandleReferenceKind {
+    GetField,
+    GetStatic,
+    PutField,
+    PutStatic,
+    InvokeVirtual,
+    InvokeStatic,
+    InvokeSpecial,
+    NewInvokeSpecial,
+    InvokeInterface,
+}
+
+data class JvmMethodHandlePayload(
+    val referenceKind: JvmMethodHandleReferenceKind,
+    val referenceIndex: Int,
+) : JvmHeapPayload
+
+private data class JvmMethodHandleKey(
+    val referenceKind: JvmMethodHandleReferenceKind,
+    val referenceIndex: Int,
+)
+
 class JvmHeap {
     private val objects = linkedMapOf<JvmReferenceId, JvmHeapObject>()
     private val internedStrings = linkedMapOf<String, JvmObjectReferenceValue>()
     private val classMirrors = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodTypes = linkedMapOf<String, JvmObjectReferenceValue>()
+    private val methodHandles = linkedMapOf<JvmMethodHandleKey, JvmObjectReferenceValue>()
     private var nextReferenceId = 1
 
     fun allocateObject(className: String): JvmObjectReferenceValue {
@@ -59,6 +82,26 @@ class JvmHeap {
                 JvmHeapObject(
                     className = "java/lang/invoke/MethodType",
                     payload = JvmMethodTypePayload(descriptor),
+                ),
+            )
+        }
+    }
+
+    fun internMethodHandle(
+        referenceKind: JvmMethodHandleReferenceKind,
+        referenceIndex: Int,
+    ): JvmObjectReferenceValue {
+        require(referenceIndex > 0) { "method handle reference index must be positive" }
+
+        val key = JvmMethodHandleKey(referenceKind = referenceKind, referenceIndex = referenceIndex)
+        return methodHandles.getOrPut(key) {
+            allocate(
+                JvmHeapObject(
+                    className = "java/lang/invoke/MethodHandle",
+                    payload = JvmMethodHandlePayload(
+                        referenceKind = referenceKind,
+                        referenceIndex = referenceIndex,
+                    ),
                 ),
             )
         }

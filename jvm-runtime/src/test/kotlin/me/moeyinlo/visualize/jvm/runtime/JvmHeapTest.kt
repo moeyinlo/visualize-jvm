@@ -99,4 +99,45 @@ class JvmHeapTest {
             heap.get(distinct),
         )
     }
+
+    @Test
+    fun `heap interns method handle objects by symbolic reference`() {
+        val heap = JvmHeap()
+
+        val first = heap.internMethodHandle(
+            referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+            referenceIndex = 7,
+        )
+        val second = heap.internMethodHandle(
+            referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+            referenceIndex = 7,
+        )
+        val distinct = heap.internMethodHandle(
+            referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+            referenceIndex = 7,
+        )
+
+        assertEquals(first, second)
+        assertNotEquals(first, distinct)
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodHandle",
+                payload = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 7,
+                ),
+            ),
+            heap.get(first),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodHandle",
+                payload = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+                    referenceIndex = 7,
+                ),
+            ),
+            heap.get(distinct),
+        )
+    }
 }
