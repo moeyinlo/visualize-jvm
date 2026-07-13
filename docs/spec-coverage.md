@@ -590,6 +590,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Loads execution | `iload` and `iload_0..iload_3` load int values from the runtime local variable array onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads execution | `wide iload` loads int values from a two-byte local variable index onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads execution | `lload` and `lload_0..lload_3` load long values from the runtime local variable array onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Loads execution | `wide lload` loads long values from a two-byte local variable index onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads execution | `fload` and `fload_0..fload_3` load float values from the runtime local variable array onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads execution | `dload` and `dload_0..dload_3` load double values from the runtime local variable array onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads execution | `aload` and `aload_0..aload_3` load reference values, including `null`, from the runtime local variable array onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
