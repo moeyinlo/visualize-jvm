@@ -182,6 +182,7 @@ object JvmInterpreter {
         when (val modifiedOpcode = instruction.modifiedWideOpcode()) {
             0x15 -> executeIntLoad(instruction, operandStack, localVariables)
             0x16 -> executeLongLoad(instruction, operandStack, localVariables)
+            0x17 -> executeFloatLoad(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported wide-modified instruction ${OpcodeTable.metadata(modifiedOpcode).mnemonic} " +
                     "(${modifiedOpcode.hexByte()}) at offset ${instruction.offset}",
