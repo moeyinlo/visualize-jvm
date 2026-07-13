@@ -544,6 +544,27 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `wide fstore pops float values into a two byte local variable index`() {
+        val locals = JvmLocalVariables(maxLocals = 259)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0D.toByte(),
+                0xC4.toByte(),
+                0x38.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmFloatValue(2.0f), locals.load(258))
+    }
+
+    @Test
     fun `dstore instructions pop double values into local variables`() {
         val locals = JvmLocalVariables(maxLocals = 4)
 
