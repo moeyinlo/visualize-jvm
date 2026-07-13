@@ -98,6 +98,9 @@ object JvmInterpreter {
             0x39,
             in 0x47..0x4A,
             -> executeDoubleStore(instruction, operandStack, localVariables)
+            0x3A,
+            in 0x4B..0x4E,
+            -> executeReferenceStore(instruction, operandStack, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -245,6 +248,22 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} operand at offset " +
                     "${instruction.offset}: expected JvmDoubleValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        localVariables.store(index, value)
+    }
+
+    private fun executeReferenceStore(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        localVariables: JvmLocalVariables,
+    ) {
+        val index = instruction.localVariableIndex()
+        val value = operandStack.pop()
+        if (value !is JvmReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmReferenceValue but was ${value.javaClass.simpleName}",
             )
         }
         localVariables.store(index, value)
@@ -410,6 +429,7 @@ object JvmInterpreter {
             0x37,
             0x38,
             0x39,
+            0x3A,
             -> operands[0]
             0xC4 -> (operands[1] shl 8) or operands[2]
             in 0x1A..0x1D -> metadata.opcode - 0x1A
@@ -421,6 +441,7 @@ object JvmInterpreter {
             in 0x3F..0x42 -> metadata.opcode - 0x3F
             in 0x43..0x46 -> metadata.opcode - 0x43
             in 0x47..0x4A -> metadata.opcode - 0x47
+            in 0x4B..0x4E -> metadata.opcode - 0x4B
             else -> error("Instruction ${metadata.mnemonic} does not use a local variable index")
         }
 

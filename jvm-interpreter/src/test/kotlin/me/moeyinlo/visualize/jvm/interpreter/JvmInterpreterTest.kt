@@ -524,6 +524,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `astore instructions pop reference values into local variables`() {
+        val heap = JvmHeap()
+        val locals = JvmLocalVariables(maxLocals = 3)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x4B.toByte(),
+                0x01.toByte(),
+                0x3A.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantStringEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("stored", "stored".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(heap.internString("stored"), locals.load(0))
+        assertEquals(JvmNullValue, locals.load(2))
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
