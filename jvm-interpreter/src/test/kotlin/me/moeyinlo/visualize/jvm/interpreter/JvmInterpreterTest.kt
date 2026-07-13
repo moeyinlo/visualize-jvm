@@ -255,6 +255,32 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fload instructions push float local variables onto the operand stack`() {
+        val locals = JvmLocalVariables(maxLocals = 3)
+        locals.store(1, JvmFloatValue(1.25f))
+        locals.store(2, JvmFloatValue(-2.5f))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x17.toByte(),
+                0x02.toByte(),
+                0x23.toByte(),
+            ),
+            maxStack = 2,
+            localVariables = locals,
+        )
+
+        assertEquals(
+            listOf(
+                JvmFloatValue(-2.5f),
+                JvmFloatValue(1.25f),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
