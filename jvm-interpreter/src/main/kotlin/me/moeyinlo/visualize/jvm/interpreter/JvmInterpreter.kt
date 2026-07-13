@@ -73,6 +73,9 @@ object JvmInterpreter {
             0x15,
             in 0x1A..0x1D,
             -> executeIntLoad(instruction, operandStack, localVariables)
+            0x16,
+            in 0x1E..0x21,
+            -> executeLongLoad(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
                     "(${instruction.metadata.opcode.hexByte()}) at offset ${instruction.offset}",
@@ -91,6 +94,22 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} local variable $index at offset " +
                     "${instruction.offset}: expected JvmIntValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        operandStack.push(value)
+    }
+
+    private fun executeLongLoad(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        localVariables: JvmLocalVariables,
+    ) {
+        val index = instruction.localVariableIndex()
+        val value = localVariables.load(index)
+        if (value !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} local variable $index at offset " +
+                    "${instruction.offset}: expected JvmLongValue but was ${value.javaClass.simpleName}",
             )
         }
         operandStack.push(value)
@@ -229,8 +248,11 @@ object JvmInterpreter {
 
     private fun DecodedInstruction.localVariableIndex(): Int =
         when (metadata.opcode) {
-            0x15 -> operands[0]
+            0x15,
+            0x16,
+            -> operands[0]
             in 0x1A..0x1D -> metadata.opcode - 0x1A
+            in 0x1E..0x21 -> metadata.opcode - 0x1E
             else -> error("Instruction ${metadata.mnemonic} does not use a local variable index")
         }
 
