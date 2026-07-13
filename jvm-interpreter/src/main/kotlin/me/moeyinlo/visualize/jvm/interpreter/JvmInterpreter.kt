@@ -86,6 +86,7 @@ object JvmInterpreter {
             0x19,
             in 0x2A..0x2D,
             -> executeReferenceLoad(instruction, operandStack, localVariables)
+            0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
                     "(${instruction.metadata.opcode.hexByte()}) at offset ${instruction.offset}",
@@ -171,6 +172,20 @@ object JvmInterpreter {
             )
         }
         operandStack.push(value)
+    }
+
+    private fun executeWide(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        localVariables: JvmLocalVariables,
+    ) {
+        when (val modifiedOpcode = instruction.modifiedWideOpcode()) {
+            0x15 -> executeIntLoad(instruction, operandStack, localVariables)
+            else -> throw JvmUnsupportedInstructionException(
+                "Unsupported wide-modified instruction ${OpcodeTable.metadata(modifiedOpcode).mnemonic} " +
+                    "(${modifiedOpcode.hexByte()}) at offset ${instruction.offset}",
+            )
+        }
     }
 
     private fun executeLdc(
@@ -312,6 +327,7 @@ object JvmInterpreter {
             0x18,
             0x19,
             -> operands[0]
+            0xC4 -> (operands[1] shl 8) or operands[2]
             in 0x1A..0x1D -> metadata.opcode - 0x1A
             in 0x1E..0x21 -> metadata.opcode - 0x1E
             in 0x22..0x25 -> metadata.opcode - 0x22
@@ -319,6 +335,8 @@ object JvmInterpreter {
             in 0x2A..0x2D -> metadata.opcode - 0x2A
             else -> error("Instruction ${metadata.mnemonic} does not use a local variable index")
         }
+
+    private fun DecodedInstruction.modifiedWideOpcode(): Int = operands[0]
 
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"
 

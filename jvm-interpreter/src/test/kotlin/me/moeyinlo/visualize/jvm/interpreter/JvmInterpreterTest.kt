@@ -229,6 +229,26 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `wide iload pushes int local variables from a two byte index`() {
+        val locals = JvmLocalVariables(maxLocals = 260)
+        locals.store(258, JvmIntValue(1234))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xC4.toByte(),
+                0x15.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(JvmIntValue(1234)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `lload instructions push long local variables onto the operand stack`() {
         val locals = JvmLocalVariables(maxLocals = 4)
         locals.store(0, JvmLongValue(4L))
