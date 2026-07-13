@@ -301,6 +301,7 @@ object JvmInterpreter {
             0x38 -> executeFloatStore(instruction, operandStack, localVariables)
             0x39 -> executeDoubleStore(instruction, operandStack, localVariables)
             0x3A -> executeReferenceStore(instruction, operandStack, localVariables)
+            0x84 -> executeIncrement(instruction, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported wide-modified instruction ${OpcodeTable.metadata(modifiedOpcode).mnemonic} " +
                     "(${modifiedOpcode.hexByte()}) at offset ${instruction.offset}",
@@ -470,6 +471,7 @@ object JvmInterpreter {
     private fun DecodedInstruction.incrementConstant(): Int =
         when (metadata.opcode) {
             0x84 -> operands[1].toByte().toInt()
+            0xC4 -> ((operands[3] shl 8) or operands[4]).toShort().toInt()
             else -> error("Instruction ${metadata.mnemonic} does not use an increment constant")
         }
 

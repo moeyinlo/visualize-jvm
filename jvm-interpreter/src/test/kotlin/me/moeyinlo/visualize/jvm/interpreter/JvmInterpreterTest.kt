@@ -680,6 +680,29 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `wide iinc increments int local variables by a two byte index and signed short constant`() {
+        val locals = JvmLocalVariables(maxLocals = 260)
+        locals.store(258, JvmIntValue(1_000))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xC4.toByte(),
+                0x84.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+                0xFF.toByte(),
+                0x38.toByte(),
+            ),
+            maxStack = 0,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmIntValue(800), locals.load(258))
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
