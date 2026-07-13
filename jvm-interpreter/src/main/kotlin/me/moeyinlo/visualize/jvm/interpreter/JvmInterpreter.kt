@@ -101,6 +101,7 @@ object JvmInterpreter {
             0x3A,
             in 0x4B..0x4E,
             -> executeReferenceStore(instruction, operandStack, localVariables)
+            0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -269,6 +270,21 @@ object JvmInterpreter {
         localVariables.store(index, value)
     }
 
+    private fun executeIncrement(
+        instruction: DecodedInstruction,
+        localVariables: JvmLocalVariables,
+    ) {
+        val index = instruction.localVariableIndex()
+        val value = localVariables.load(index)
+        if (value !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} local variable $index at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        localVariables.store(index, JvmIntValue(value.value + instruction.incrementConstant()))
+    }
+
     private fun executeWide(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -435,6 +451,7 @@ object JvmInterpreter {
             0x38,
             0x39,
             0x3A,
+            0x84,
             -> operands[0]
             0xC4 -> (operands[1] shl 8) or operands[2]
             in 0x1A..0x1D -> metadata.opcode - 0x1A
@@ -448,6 +465,12 @@ object JvmInterpreter {
             in 0x47..0x4A -> metadata.opcode - 0x47
             in 0x4B..0x4E -> metadata.opcode - 0x4B
             else -> error("Instruction ${metadata.mnemonic} does not use a local variable index")
+        }
+
+    private fun DecodedInstruction.incrementConstant(): Int =
+        when (metadata.opcode) {
+            0x84 -> operands[1].toByte().toInt()
+            else -> error("Instruction ${metadata.mnemonic} does not use an increment constant")
         }
 
     private fun DecodedInstruction.modifiedWideOpcode(): Int = operands[0]
