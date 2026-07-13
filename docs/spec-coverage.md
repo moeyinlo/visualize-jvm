@@ -596,6 +596,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Loads execution | `dload` and `dload_0..dload_3` load double values from the runtime local variable array onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads execution | `wide dload` loads double values from a two-byte local variable index onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Loads execution | `aload` and `aload_0..aload_3` load reference values, including `null`, from the runtime local variable array onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Loads execution | `wide aload` loads reference values from a two-byte local variable index onto the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Array loads | `iaload`, `laload`, `faload`, `daload`, `aaload`, `baload`, `caload`, `saload` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Stores | `istore`, `lstore`, `fstore`, `dstore`, `astore`, `_0.._3` forms | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Array stores | `iastore`, `lastore`, `fastore`, `dastore`, `aastore`, `bastore`, `castore`, `sastore` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |

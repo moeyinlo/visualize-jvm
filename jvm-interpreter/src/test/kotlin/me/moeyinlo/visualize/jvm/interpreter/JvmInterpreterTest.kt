@@ -414,6 +414,27 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `wide aload pushes reference local variables from a two byte index`() {
+        val locals = JvmLocalVariables(maxLocals = 259)
+        val reference = JvmObjectReferenceValue(JvmReferenceId(258))
+        locals.store(258, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xC4.toByte(),
+                0x19.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
