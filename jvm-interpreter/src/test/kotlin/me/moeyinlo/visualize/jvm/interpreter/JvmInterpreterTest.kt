@@ -5,11 +5,15 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
@@ -17,6 +21,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -360,6 +366,54 @@ class JvmInterpreterTest {
             JvmHeapObject(
                 className = "java/lang/invoke/MethodType",
                 payload = JvmMethodTypePayload("(Ljava/lang/String;)I"),
+            ),
+            heap.get(reference),
+        )
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldc reuses guest method handle constants with identical symbolic references`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x07.toByte(),
+                0x12.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                    ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("valueOf", "valueOf".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(nameIndex = ConstantPoolIndex(3), descriptorIndex = ConstantPoolIndex(4)),
+                    ConstantMethodRefEntry(classIndex = ConstantPoolIndex(2), nameAndTypeIndex = ConstantPoolIndex(5)),
+                    ConstantMethodHandleEntry(
+                        referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                        referenceIndex = ConstantPoolIndex(6),
+                    ),
+                    ConstantMethodHandleEntry(
+                        referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                        referenceIndex = ConstantPoolIndex(6),
+                    ),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference, reference), result.operandStack.toList())
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodHandle",
+                payload = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 6,
+                ),
             ),
             heap.get(reference),
         )

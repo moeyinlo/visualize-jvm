@@ -2,20 +2,27 @@ package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
+import me.moeyinlo.visualize.jvm.classfile.ConstantPoolEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
 
@@ -102,6 +109,29 @@ object JvmInterpreter {
             }
             is ConstantFloatEntry -> operandStack.push(JvmFloatValue(entry.value))
             is ConstantIntegerEntry -> operandStack.push(JvmIntValue(entry.value))
+            is ConstantMethodHandleEntry -> {
+                val referencedEntry = try {
+                    constantPool[entry.referenceIndex]
+                } catch (exception: ConstantPoolFormatException) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_MethodHandle reference_index ${entry.referenceIndex} " +
+                            "at offset ${instruction.offset}: ${exception.message}",
+                    )
+                }
+                if (!entry.referenceKind.matches(referencedEntry)) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_MethodHandle reference_index ${entry.referenceIndex} at offset " +
+                            "${instruction.offset}: reference_kind ${entry.referenceKind} cannot target " +
+                            referencedEntry.javaClass.simpleName,
+                    )
+                }
+                operandStack.push(
+                    heap.internMethodHandle(
+                        referenceKind = entry.referenceKind.toRuntimeReferenceKind(),
+                        referenceIndex = entry.referenceIndex.value,
+                    ),
+                )
+            }
             is ConstantMethodTypeEntry -> {
                 val descriptorEntry = try {
                     constantPool[entry.descriptorIndex]
@@ -176,4 +206,36 @@ object JvmInterpreter {
         }
 
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"
+
+    private fun MethodHandleReferenceKind.matches(entry: ConstantPoolEntry): Boolean =
+        when (this) {
+            MethodHandleReferenceKind.GetField,
+            MethodHandleReferenceKind.GetStatic,
+            MethodHandleReferenceKind.PutField,
+            MethodHandleReferenceKind.PutStatic,
+            -> entry is ConstantFieldRefEntry
+
+            MethodHandleReferenceKind.InvokeVirtual,
+            MethodHandleReferenceKind.NewInvokeSpecial,
+            -> entry is ConstantMethodRefEntry
+
+            MethodHandleReferenceKind.InvokeStatic,
+            MethodHandleReferenceKind.InvokeSpecial,
+            -> entry is ConstantMethodRefEntry || entry is ConstantInterfaceMethodRefEntry
+
+            MethodHandleReferenceKind.InvokeInterface -> entry is ConstantInterfaceMethodRefEntry
+        }
+
+    private fun MethodHandleReferenceKind.toRuntimeReferenceKind(): JvmMethodHandleReferenceKind =
+        when (this) {
+            MethodHandleReferenceKind.GetField -> JvmMethodHandleReferenceKind.GetField
+            MethodHandleReferenceKind.GetStatic -> JvmMethodHandleReferenceKind.GetStatic
+            MethodHandleReferenceKind.PutField -> JvmMethodHandleReferenceKind.PutField
+            MethodHandleReferenceKind.PutStatic -> JvmMethodHandleReferenceKind.PutStatic
+            MethodHandleReferenceKind.InvokeVirtual -> JvmMethodHandleReferenceKind.InvokeVirtual
+            MethodHandleReferenceKind.InvokeStatic -> JvmMethodHandleReferenceKind.InvokeStatic
+            MethodHandleReferenceKind.InvokeSpecial -> JvmMethodHandleReferenceKind.InvokeSpecial
+            MethodHandleReferenceKind.NewInvokeSpecial -> JvmMethodHandleReferenceKind.NewInvokeSpecial
+            MethodHandleReferenceKind.InvokeInterface -> JvmMethodHandleReferenceKind.InvokeInterface
+        }
 }
