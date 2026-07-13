@@ -307,6 +307,33 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aload instructions push reference local variables onto the operand stack`() {
+        val locals = JvmLocalVariables(maxLocals = 3)
+        val reference = JvmObjectReferenceValue(JvmReferenceId(3))
+        locals.store(0, reference)
+        locals.store(2, JvmNullValue)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x19.toByte(),
+                0x02.toByte(),
+                0x2A.toByte(),
+            ),
+            maxStack = 2,
+            localVariables = locals,
+        )
+
+        assertEquals(
+            listOf(
+                JvmNullValue,
+                reference,
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
