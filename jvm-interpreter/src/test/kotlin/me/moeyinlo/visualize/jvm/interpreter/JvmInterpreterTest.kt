@@ -1055,6 +1055,115 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fadd adds the top two float operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0C.toByte(),
+                0x0D.toByte(),
+                0x62.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmFloatValue(3.0f)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fadd follows NaN and infinity addition rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0C.toByte(),
+                0x62.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x62.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x62.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(Float.NEGATIVE_INFINITY),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(Float.POSITIVE_INFINITY, values[2])
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fadd follows signed zero addition rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0B.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x62.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x62.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x62.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(-0.0f),
+                    ConstantFloatEntry(1.0f),
+                    ConstantFloatEntry(-1.0f),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(0x00000000, values[0].toRawBits())
+        assertEquals(Int.MIN_VALUE, values[1].toRawBits())
+        assertEquals(0x00000000, values[2].toRawBits())
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fadd overflows to signed infinity without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x62.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmFloatValue(Float.POSITIVE_INFINITY)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
