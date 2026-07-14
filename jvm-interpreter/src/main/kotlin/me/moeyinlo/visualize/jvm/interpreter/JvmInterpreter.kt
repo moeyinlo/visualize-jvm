@@ -102,6 +102,7 @@ object JvmInterpreter {
             in 0x4B..0x4E,
             -> executeReferenceStore(instruction, operandStack, localVariables)
             0x57 -> executePop(instruction, operandStack)
+            0x58 -> executePop2(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -282,6 +283,36 @@ object JvmInterpreter {
                     "${instruction.offset}: expected category 1 value but was category ${value.category.slotWidth}",
             )
         }
+        operandStack.pop()
+    }
+
+    private fun executePop2(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val values = operandStack.toList()
+        val top = values.lastOrNull()
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: operand stack is empty",
+            )
+        if (top.category.slotWidth == 2) {
+            operandStack.pop()
+            return
+        }
+
+        val next = values.dropLast(1).lastOrNull()
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected two category 1 values but found one",
+            )
+        if (next.category.slotWidth != 1) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected two category 1 values or one category 2 value",
+            )
+        }
+        operandStack.pop()
         operandStack.pop()
     }
 
