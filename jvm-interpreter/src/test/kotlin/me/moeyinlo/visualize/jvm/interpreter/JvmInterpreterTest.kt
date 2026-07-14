@@ -982,6 +982,42 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `iadd adds the top two int operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x05.toByte(),
+                0x06.toByte(),
+                0x60.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `iadd wraps signed int overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x04.toByte(),
+                0x60.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(Int.MIN_VALUE)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
@@ -1377,11 +1413,11 @@ class JvmInterpreterTest {
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
-                code = byteArrayOf(0x60.toByte()),
-                maxStack = 1,
+                code = byteArrayOf(0x2E.toByte()),
+                maxStack = 0,
             )
         }
 
-        assertEquals("Unsupported instruction iadd (0x60) at offset 0", exception.message)
+        assertEquals("Unsupported instruction iaload (0x2e) at offset 0", exception.message)
     }
 }
