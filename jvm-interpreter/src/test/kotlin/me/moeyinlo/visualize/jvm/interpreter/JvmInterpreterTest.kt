@@ -884,6 +884,89 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `dup2_x2 duplicates the top two category one operand stack values four values down`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0x05.toByte(),
+                0x06.toByte(),
+                0x07.toByte(),
+                0x5E.toByte(),
+            ),
+            maxStack = 6,
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(3),
+                JvmIntValue(4),
+                JvmIntValue(1),
+                JvmIntValue(2),
+                JvmIntValue(3),
+                JvmIntValue(4),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dup2_x2 duplicates the top category two operand stack value over two category one values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0x05.toByte(),
+                0x0A.toByte(),
+                0x5E.toByte(),
+            ),
+            maxStack = 6,
+        )
+
+        assertEquals(
+            listOf(JvmLongValue(1), JvmIntValue(1), JvmIntValue(2), JvmLongValue(1)),
+            result.operandStack.toList(),
+        )
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dup2_x2 duplicates the top two category one operand stack values over category two`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0A.toByte(),
+                0x04.toByte(),
+                0x05.toByte(),
+                0x5E.toByte(),
+            ),
+            maxStack = 6,
+        )
+
+        assertEquals(
+            listOf(JvmIntValue(1), JvmIntValue(2), JvmLongValue(1), JvmIntValue(1), JvmIntValue(2)),
+            result.operandStack.toList(),
+        )
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dup2_x2 duplicates the top category two operand stack value over category two`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x09.toByte(),
+                0x0A.toByte(),
+                0x5E.toByte(),
+            ),
+            maxStack = 6,
+        )
+
+        assertEquals(
+            listOf(JvmLongValue(1), JvmLongValue(0), JvmLongValue(1)),
+            result.operandStack.toList(),
+        )
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
