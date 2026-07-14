@@ -1018,6 +1018,43 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ladd adds the top two long operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0A.toByte(),
+                0x0A.toByte(),
+                0x61.toByte(),
+            ),
+            maxStack = 4,
+        )
+
+        assertEquals(listOf(JvmLongValue(2L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ladd wraps signed long overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x0A.toByte(),
+                0x61.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(Long.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(Long.MIN_VALUE)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
