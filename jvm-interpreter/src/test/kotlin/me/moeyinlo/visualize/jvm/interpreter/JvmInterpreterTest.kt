@@ -703,6 +703,21 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `pop removes the top category one operand stack value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0x05.toByte(),
+                0x57.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
