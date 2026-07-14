@@ -107,6 +107,7 @@ object JvmInterpreter {
             0x5A -> executeDupX1(instruction, operandStack)
             0x5B -> executeDupX2(instruction, operandStack)
             0x5C -> executeDup2(instruction, operandStack)
+            0x5D -> executeDup2X1(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -450,6 +451,61 @@ object JvmInterpreter {
         operandStack.pop()
         operandStack.push(value2)
         operandStack.push(value1)
+        operandStack.push(value2)
+        operandStack.push(value1)
+    }
+
+    private fun executeDup2X1(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val values = operandStack.toList()
+        val value1 = values.lastOrNull()
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: operand stack is empty",
+            )
+        val value2 = values.dropLast(1).lastOrNull()
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected category 2 value over category 1 value " +
+                    "or three category 1 values",
+            )
+
+        if (value1.category.slotWidth == 2) {
+            if (value2.category.slotWidth != 1) {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                        "${instruction.offset}: expected category 2 value over category 1 value",
+                )
+            }
+            operandStack.pop()
+            operandStack.pop()
+            operandStack.push(value1)
+            operandStack.push(value2)
+            operandStack.push(value1)
+            return
+        }
+
+        val value3 = values.dropLast(2).lastOrNull()
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected three category 1 values",
+            )
+        if (value1.category.slotWidth != 1 || value2.category.slotWidth != 1 || value3.category.slotWidth != 1) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected category 2 value over category 1 value " +
+                    "or three category 1 values",
+            )
+        }
+
+        operandStack.pop()
+        operandStack.pop()
+        operandStack.pop()
+        operandStack.push(value2)
+        operandStack.push(value1)
+        operandStack.push(value3)
         operandStack.push(value2)
         operandStack.push(value1)
     }
