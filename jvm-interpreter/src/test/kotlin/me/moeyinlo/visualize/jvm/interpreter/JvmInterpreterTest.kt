@@ -815,6 +815,38 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `dup2 duplicates the top two category one operand stack values in original order`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0x05.toByte(),
+                0x5C.toByte(),
+            ),
+            maxStack = 4,
+        )
+
+        assertEquals(
+            listOf(JvmIntValue(1), JvmIntValue(2), JvmIntValue(1), JvmIntValue(2)),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dup2 duplicates the top category two operand stack value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0A.toByte(),
+                0x5C.toByte(),
+            ),
+            maxStack = 4,
+        )
+
+        assertEquals(listOf(JvmLongValue(1), JvmLongValue(1)), result.operandStack.toList())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

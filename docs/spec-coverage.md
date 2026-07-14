@@ -616,6 +616,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Stack execution | `dup` duplicates the top category-1 runtime operand stack value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Stack execution | `dup_x1` duplicates the top category-1 runtime operand stack value and inserts it two category-1 values down | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Stack execution | `dup_x2` duplicates the top category-1 runtime operand stack value across all JVMS category-1/category-2 forms | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Stack execution | `dup2` duplicates either the top category-2 runtime operand stack value or the top two category-1 runtime operand stack values | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Integer and long math | `iadd`, `ladd`, `isub`, `lsub`, `imul`, `lmul`, `idiv`, `ldiv`, `irem`, `lrem`, `ineg`, `lneg`, shifts, bitwise ops | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Float and double math | `fadd`, `dadd`, `fsub`, `dsub`, `fmul`, `dmul`, `fdiv`, `ddiv`, `frem`, `drem`, `fneg`, `dneg` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Increment | `iinc` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
