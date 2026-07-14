@@ -103,6 +103,7 @@ object JvmInterpreter {
             -> executeReferenceStore(instruction, operandStack, localVariables)
             0x57 -> executePop(instruction, operandStack)
             0x58 -> executePop2(instruction, operandStack)
+            0x59 -> executeDup(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -314,6 +315,20 @@ object JvmInterpreter {
         }
         operandStack.pop()
         operandStack.pop()
+    }
+
+    private fun executeDup(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value = operandStack.peek()
+        if (value.category.slotWidth != 1) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected category 1 value but was category ${value.category.slotWidth}",
+            )
+        }
+        operandStack.push(value)
     }
 
     private fun executeIncrement(
