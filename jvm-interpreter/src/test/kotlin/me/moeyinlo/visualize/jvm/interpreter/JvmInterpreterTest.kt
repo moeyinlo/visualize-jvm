@@ -1923,6 +1923,23 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ixor computes the bitwise exclusive or of the top two int values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x5A.toByte(),
+                0x10.toByte(),
+                0x3C.toByte(),
+                0x82.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(0x66)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

@@ -149,6 +149,7 @@ object JvmInterpreter {
             0x7F -> executeLongAnd(instruction, operandStack)
             0x80 -> executeIntOr(instruction, operandStack)
             0x81 -> executeLongOr(instruction, operandStack)
+            0x82 -> executeIntXor(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -920,6 +921,28 @@ object JvmInterpreter {
         }
 
         operandStack.push(JvmIntValue(value1.value or value2.value))
+    }
+
+    private fun executeIntXor(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value2 = operandStack.pop()
+        if (value2 !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${value2.javaClass.simpleName}",
+            )
+        }
+        val value1 = operandStack.pop()
+        if (value1 !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${value1.javaClass.simpleName}",
+            )
+        }
+
+        operandStack.push(JvmIntValue(value1.value xor value2.value))
     }
 
     private fun executeLongAdd(
