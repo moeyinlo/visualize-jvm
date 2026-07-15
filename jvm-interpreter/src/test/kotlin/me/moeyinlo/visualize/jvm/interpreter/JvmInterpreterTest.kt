@@ -1881,6 +1881,23 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ior computes the bitwise or of the top two int values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x50.toByte(),
+                0x10.toByte(),
+                0x0F.toByte(),
+                0x80.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(0x5F)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
