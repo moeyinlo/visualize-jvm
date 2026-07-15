@@ -674,6 +674,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Conversion execution | `d2i` converts the top double runtime operand stack value to an int with NaN-to-zero, saturation, and truncation-toward-zero behavior | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Conversion execution | `d2l` converts the top double runtime operand stack value to a long with NaN-to-zero, saturation, and truncation-toward-zero behavior | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Conversion execution | `d2f` converts the top double runtime operand stack value to a float with IEEE 754 rounding, overflow, and NaN behavior | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Conversion execution | `i2b` truncates the top int runtime operand stack value to 8 bits, sign-extends it, and pushes the int result | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Comparisons | `lcmp`, `fcmpl`, `fcmpg`, `dcmpl`, `dcmpg` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Branches | `ifeq`, `ifne`, `iflt`, `ifge`, `ifgt`, `ifle`, `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |

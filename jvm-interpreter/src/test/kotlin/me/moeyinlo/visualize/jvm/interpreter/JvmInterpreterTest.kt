@@ -2379,6 +2379,42 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `i2b converts the top int operand stack value into a sign-extended byte int`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x11.toByte(),
+                0x00.toByte(),
+                0x7F.toByte(),
+                0x91.toByte(),
+                0x11.toByte(),
+                0x00.toByte(),
+                0x80.toByte(),
+                0x91.toByte(),
+                0x11.toByte(),
+                0x00.toByte(),
+                0xFF.toByte(),
+                0x91.toByte(),
+                0x11.toByte(),
+                0xFF.toByte(),
+                0x7F.toByte(),
+                0x91.toByte(),
+            ),
+            maxStack = 4,
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(127),
+                JvmIntValue(-128),
+                JvmIntValue(-1),
+                JvmIntValue(127),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
