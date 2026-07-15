@@ -71,6 +71,7 @@ object JvmInterpreter {
                 0xA5 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
                 0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
                 0xA7 -> instruction.branchTargetOffset()
+                0xAA -> executeTableSwitch(instruction, operandStack)
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
                 0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
                 0xC8 -> instruction.wideBranchTargetOffset()
@@ -1981,6 +1982,32 @@ object JvmInterpreter {
         }
     }
 
+    private fun executeTableSwitch(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ): Int {
+        val key = operandStack.pop()
+        if (key !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${key.javaClass.simpleName}",
+            )
+        }
+
+        val padding = instruction.switchPadding()
+        val defaultOffset = instruction.readSignedOperandInt(padding)
+        val low = instruction.readSignedOperandInt(padding + Int.SIZE_BYTES)
+        val high = instruction.readSignedOperandInt(padding + Int.SIZE_BYTES * 2)
+        val jumpOffset = if (key.value in low..high) {
+            instruction.readSignedOperandInt(
+                padding + TABLESWITCH_HEADER_BYTES + (key.value - low) * Int.SIZE_BYTES,
+            )
+        } else {
+            defaultOffset
+        }
+        return instruction.offset + jumpOffset
+    }
+
     private fun executeWide(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -2177,12 +2204,15 @@ object JvmInterpreter {
         offset + ((operands[0] shl 8) or operands[1]).toShort().toInt()
 
     private fun DecodedInstruction.wideBranchTargetOffset(): Int =
-        offset + (
-            (operands[0] shl 24) or
-                (operands[1] shl 16) or
-                (operands[2] shl 8) or
-                operands[3]
-            )
+        offset + readSignedOperandInt(0)
+
+    private fun DecodedInstruction.switchPadding(): Int = (4 - ((offset + 1) % 4)) % 4
+
+    private fun DecodedInstruction.readSignedOperandInt(index: Int): Int =
+        (operands[index] shl 24) or
+            (operands[index + 1] shl 16) or
+            (operands[index + 2] shl 8) or
+            operands[index + 3]
 
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"
 
@@ -2217,4 +2247,6 @@ object JvmInterpreter {
             MethodHandleReferenceKind.NewInvokeSpecial -> JvmMethodHandleReferenceKind.NewInvokeSpecial
             MethodHandleReferenceKind.InvokeInterface -> JvmMethodHandleReferenceKind.InvokeInterface
         }
+
+    private const val TABLESWITCH_HEADER_BYTES = Int.SIZE_BYTES * 3
 }

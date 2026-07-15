@@ -3348,6 +3348,85 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `tableswitch branches by key and uses the default offset for out of range values`() {
+        val matchingCase = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0xAA.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x1B.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x17.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x1B.toByte(),
+                0x05.toByte(),
+                0xA7.toByte(),
+                0x00.toByte(),
+                0x04.toByte(),
+                0x06.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+        )
+        val defaultCase = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x03.toByte(),
+                0xAA.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x1B.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x17.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x1B.toByte(),
+                0x05.toByte(),
+                0xA7.toByte(),
+                0x00.toByte(),
+                0x04.toByte(),
+                0x06.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(JvmIntValue(2)), matchingCase.operandStack.toList())
+        assertEquals(1, matchingCase.operandStack.slotDepth)
+        assertEquals(listOf(JvmIntValue(3)), defaultCase.operandStack.toList())
+        assertEquals(1, defaultCase.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
