@@ -2030,6 +2030,110 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `frem divides the next float operand stack value by the top value and pushes the remainder`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0D.toByte(),
+                0x72.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(7.0f),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmFloatValue(1.0f)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `frem uses truncating fmod semantics and keeps the dividend sign`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0D.toByte(),
+                0x72.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x0D.toByte(),
+                0x72.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x12.toByte(),
+                0x04.toByte(),
+                0x72.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(-7.0f),
+                    ConstantFloatEntry(7.0f),
+                    ConstantFloatEntry(5.5f),
+                    ConstantFloatEntry(2.0f),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(JvmFloatValue(-1.0f), JvmFloatValue(1.0f), JvmFloatValue(1.5f)),
+            result.operandStack.toList(),
+        )
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `frem follows NaN infinity zero divisor and signed zero rules without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0C.toByte(),
+                0x72.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x0C.toByte(),
+                0x72.toByte(),
+                0x0C.toByte(),
+                0x0B.toByte(),
+                0x72.toByte(),
+                0x0C.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x72.toByte(),
+                0x0B.toByte(),
+                0x0C.toByte(),
+                0x72.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x0C.toByte(),
+                0x72.toByte(),
+            ),
+            maxStack = 7,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(-0.0f),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(true, values[2].isNaN())
+        assertEquals(1.0f, values[3])
+        assertEquals(0x00000000, values[4].toRawBits())
+        assertEquals(Int.MIN_VALUE, values[5].toRawBits())
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `dadd adds the top two double operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
