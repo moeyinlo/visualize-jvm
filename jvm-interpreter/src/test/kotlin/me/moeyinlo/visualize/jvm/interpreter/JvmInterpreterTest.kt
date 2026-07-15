@@ -1786,6 +1786,27 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `iushr logically shifts int values right by the low five shift bits`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0xF8.toByte(),
+                0x04.toByte(),
+                0x7C.toByte(),
+                0x10.toByte(),
+                0x10.toByte(),
+                0x10.toByte(),
+                0x20.toByte(),
+                0x7C.toByte(),
+            ),
+            maxStack = 3,
+        )
+
+        assertEquals(listOf(JvmIntValue(2_147_483_644), JvmIntValue(16)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
