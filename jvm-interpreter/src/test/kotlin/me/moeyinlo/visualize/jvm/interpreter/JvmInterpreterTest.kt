@@ -1296,6 +1296,106 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldiv divides the next long operand stack value by the top value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x6D.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(7L),
+                    ConstantLongEntry(2L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(3L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldiv rounds long quotients toward zero`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x6D.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x6D.toByte(),
+            ),
+            maxStack = 6,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(-7L),
+                    ConstantLongEntry(2L),
+                    ConstantLongEntry(7L),
+                    ConstantLongEntry(-2L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(-3L), JvmLongValue(-3L)), result.operandStack.toList())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldiv returns the dividend for minimum long divided by negative one`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x6D.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(Long.MIN_VALUE),
+                    ConstantLongEntry(-1L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(Long.MIN_VALUE)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldiv throws ArithmeticException when the divisor is zero`() {
+        val exception = assertFailsWith<ArithmeticException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x0A.toByte(),
+                    0x09.toByte(),
+                    0x6D.toByte(),
+                ),
+                maxStack = 4,
+            )
+        }
+
+        assertEquals("ldiv at offset 2: division by zero", exception.message)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
