@@ -1608,6 +1608,53 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `lneg negates the top long operand stack value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x75.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x75.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(7L),
+                    ConstantLongEntry(-7L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(-7L), JvmLongValue(7L)), result.operandStack.toList())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `lneg leaves minimum long unchanged on overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x75.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(Long.MIN_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(Long.MIN_VALUE)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
