@@ -683,7 +683,8 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Comparison execution | `fcmpg` compares the top two float runtime operand stack values and pushes `1` when either operand is NaN | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Comparison execution | `dcmpl` compares the top two double runtime operand stack values and pushes `-1` when either operand is NaN | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Comparison execution | `dcmpg` compares the top two double runtime operand stack values and pushes `1` when either operand is NaN | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
-| Branches | `ifeq`, `ifne`, `iflt`, `ifge`, `ifgt`, `ifle`, `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Branches | `ifeq` pops the top int runtime operand stack value, branches on zero using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Branches | `ifne`, `iflt`, `ifge`, `ifgt`, `ifle`, `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Legacy subroutines | `jsr`, `jsr_w`, `ret`, `returnAddress` handling | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Returns | `ireturn`, `lreturn`, `freturn`, `dreturn`, `areturn`, `return` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |

@@ -48,8 +48,29 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
     ): JvmExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
-        BytecodeDecoder.decode(code).forEach { instruction ->
-            executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
+        val instructions = BytecodeDecoder.decode(code)
+        val instructionIndexByOffset = instructions
+            .mapIndexed { index, instruction -> instruction.offset to index }
+            .toMap()
+        var instructionIndex = 0
+        while (instructionIndex < instructions.size) {
+            val instruction = instructions[instructionIndex]
+            val branchTargetOffset = when (instruction.metadata.opcode) {
+                0x99 -> executeIfEqual(instruction, operandStack)
+                else -> {
+                    executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
+                    null
+                }
+            }
+            instructionIndex = if (branchTargetOffset == null) {
+                instructionIndex + 1
+            } else {
+                instructionIndexByOffset[branchTargetOffset]
+                    ?: throw JvmUnsupportedInstructionException(
+                        "Invalid ${instruction.metadata.mnemonic} branch target $branchTargetOffset " +
+                            "at offset ${instruction.offset}: target is not an instruction offset",
+                    )
+            }
         }
         return JvmExecutionResult(operandStack = operandStack)
     }
@@ -1859,6 +1880,25 @@ object JvmInterpreter {
         operandStack.push(JvmIntValue(result))
     }
 
+    private fun executeIfEqual(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ): Int? {
+        val value = operandStack.pop()
+        if (value !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${value.javaClass.simpleName}",
+            )
+        }
+
+        return if (value.value == 0) {
+            instruction.branchTargetOffset()
+        } else {
+            null
+        }
+    }
+
     private fun executeWide(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -2050,6 +2090,9 @@ object JvmInterpreter {
         }
 
     private fun DecodedInstruction.modifiedWideOpcode(): Int = operands[0]
+
+    private fun DecodedInstruction.branchTargetOffset(): Int =
+        offset + ((operands[0] shl 8) or operands[1]).toShort().toInt()
 
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"
 
