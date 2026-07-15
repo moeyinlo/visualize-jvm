@@ -686,7 +686,8 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Branches | `ifeq` pops the top int runtime operand stack value, branches on zero using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `ifne` pops the top int runtime operand stack value, branches on non-zero using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `iflt` pops the top int runtime operand stack value, branches when it is less than zero using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
-| Branches | `ifge`, `ifgt`, `ifle`, `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Branches | `ifge` pops the top int runtime operand stack value, branches when it is greater than or equal to zero using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Branches | `ifgt`, `ifle`, `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Legacy subroutines | `jsr`, `jsr_w`, `ret`, `returnAddress` handling | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Returns | `ireturn`, `lreturn`, `freturn`, `dreturn`, `areturn`, `return` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
