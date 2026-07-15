@@ -1723,6 +1723,139 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fdiv divides the next float operand stack value by the top value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0D.toByte(),
+                0x6E.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(7.0f),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmFloatValue(3.5f)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fdiv follows NaN infinity and division by zero rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0C.toByte(),
+                0x6E.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x6E.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x6E.toByte(),
+                0x0C.toByte(),
+                0x0B.toByte(),
+                0x6E.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x0B.toByte(),
+                0x6E.toByte(),
+            ),
+            maxStack = 6,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(-1.0f),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(Float.NEGATIVE_INFINITY, values[2])
+        assertEquals(Float.POSITIVE_INFINITY, values[3])
+        assertEquals(Float.NEGATIVE_INFINITY, values[4])
+        assertEquals(5, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fdiv follows signed zero division rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0C.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x6E.toByte(),
+                0x0C.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x6E.toByte(),
+                0x0B.toByte(),
+                0x0C.toByte(),
+                0x6E.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x0C.toByte(),
+                0x6E.toByte(),
+            ),
+            maxStack = 5,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(Float.NEGATIVE_INFINITY),
+                    ConstantFloatEntry(-0.0f),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(0x00000000, values[0].toRawBits())
+        assertEquals(Int.MIN_VALUE, values[1].toRawBits())
+        assertEquals(0x00000000, values[2].toRawBits())
+        assertEquals(Int.MIN_VALUE, values[3].toRawBits())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fdiv overflows and underflows to signed results without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x6E.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x0D.toByte(),
+                0x6E.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.MAX_VALUE),
+                    ConstantFloatEntry(Float.MIN_VALUE),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(Float.POSITIVE_INFINITY, values[0])
+        assertEquals(0x00000000, values[1].toRawBits())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `dadd adds the top two double operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
