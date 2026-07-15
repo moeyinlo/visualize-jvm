@@ -94,7 +94,7 @@ class JvmInterpreterTest {
                 0x09.toByte(),
                 0x0A.toByte(),
             ),
-            maxStack = 4,
+            maxStack = 5,
         )
 
         assertEquals(
@@ -214,7 +214,7 @@ class JvmInterpreterTest {
                 0x02.toByte(),
                 0x1A.toByte(),
             ),
-            maxStack = 2,
+            maxStack = 3,
             localVariables = locals,
         )
 
@@ -1427,6 +1427,119 @@ class JvmInterpreterTest {
                 listOf(
                     ConstantFloatEntry(Float.MAX_VALUE),
                     ConstantFloatEntry(-Float.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmFloatValue(Float.POSITIVE_INFINITY)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fmul multiplies the top two float operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0D.toByte(),
+                0x6A.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(3.0f),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmFloatValue(6.0f)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fmul follows NaN and infinity multiplication rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0C.toByte(),
+                0x6A.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x0B.toByte(),
+                0x6A.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x6A.toByte(),
+                0x12.toByte(),
+                0x04.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x6A.toByte(),
+            ),
+            maxStack = 5,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(-1.0f),
+                    ConstantFloatEntry(Float.NEGATIVE_INFINITY),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(Float.NEGATIVE_INFINITY, values[2])
+        assertEquals(Float.POSITIVE_INFINITY, values[3])
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fmul follows signed zero multiplication rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0B.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x6A.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x6A.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(-1.0f),
+                    ConstantFloatEntry(-0.0f),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(Int.MIN_VALUE, values[0].toRawBits())
+        assertEquals(0x00000000, values[1].toRawBits())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fmul overflows to signed infinity without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0D.toByte(),
+                0x6A.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.MAX_VALUE),
                 ),
             ),
         )
