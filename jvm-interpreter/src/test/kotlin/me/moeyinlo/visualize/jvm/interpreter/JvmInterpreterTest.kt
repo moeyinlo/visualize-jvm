@@ -2676,6 +2676,66 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `dcmpg compares double operand stack values and returns one for NaN`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x98.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x98.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x09.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x0B.toByte(),
+                0x98.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x0D.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x0F.toByte(),
+                0x98.toByte(),
+            ),
+            maxStack = 7,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(2.0),
+                    ConstantDoubleEntry(1.0),
+                    ConstantDoubleEntry(1.0),
+                    ConstantDoubleEntry(1.0),
+                    ConstantDoubleEntry(1.0),
+                    ConstantDoubleEntry(2.0),
+                    ConstantDoubleEntry(Double.NaN),
+                    ConstantDoubleEntry(1.0),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(1),
+                JvmIntValue(0),
+                JvmIntValue(-1),
+                JvmIntValue(1),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
