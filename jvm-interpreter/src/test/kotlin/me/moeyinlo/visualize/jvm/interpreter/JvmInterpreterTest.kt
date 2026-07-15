@@ -1655,6 +1655,46 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ishl shifts int values left by the low five shift bits`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0x05.toByte(),
+                0x78.toByte(),
+                0x04.toByte(),
+                0x10.toByte(),
+                0x20.toByte(),
+                0x78.toByte(),
+            ),
+            maxStack = 3,
+        )
+
+        assertEquals(listOf(JvmIntValue(4), JvmIntValue(1)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ishl wraps shifted int overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x04.toByte(),
+                0x78.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(-2)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
