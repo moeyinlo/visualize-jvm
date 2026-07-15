@@ -2578,6 +2578,44 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fcmpg compares float operand stack values and returns one for NaN`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0D.toByte(),
+                0x0C.toByte(),
+                0x96.toByte(),
+                0x0C.toByte(),
+                0x0C.toByte(),
+                0x96.toByte(),
+                0x0C.toByte(),
+                0x0D.toByte(),
+                0x96.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0C.toByte(),
+                0x96.toByte(),
+            ),
+            maxStack = 5,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(1),
+                JvmIntValue(0),
+                JvmIntValue(-1),
+                JvmIntValue(1),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
