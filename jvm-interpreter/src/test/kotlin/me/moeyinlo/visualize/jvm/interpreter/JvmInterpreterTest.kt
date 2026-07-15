@@ -1172,6 +1172,56 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `lmul multiplies the top two long operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x69.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(3L),
+                    ConstantLongEntry(2L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(6L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `lmul wraps signed long overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x69.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(Long.MAX_VALUE),
+                    ConstantLongEntry(2L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(-2L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
