@@ -58,6 +58,7 @@ object JvmInterpreter {
             val branchTargetOffset = when (instruction.metadata.opcode) {
                 0x99 -> executeIntBranch(instruction, operandStack) { value -> value == 0 }
                 0x9A -> executeIntBranch(instruction, operandStack) { value -> value != 0 }
+                0x9B -> executeIntBranch(instruction, operandStack) { value -> value < 0 }
                 else -> {
                     executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
                     null
