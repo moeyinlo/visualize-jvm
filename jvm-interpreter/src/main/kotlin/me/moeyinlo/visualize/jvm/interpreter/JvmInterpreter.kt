@@ -62,6 +62,7 @@ object JvmInterpreter {
                 0x9C -> executeIntBranch(instruction, operandStack) { value -> value >= 0 }
                 0x9D -> executeIntBranch(instruction, operandStack) { value -> value > 0 }
                 0x9E -> executeIntBranch(instruction, operandStack) { value -> value <= 0 }
+                0x9F -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
                 else -> {
                     executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
                     null
@@ -1899,6 +1900,28 @@ object JvmInterpreter {
         }
 
         return if (shouldBranch(value.value)) {
+            instruction.branchTargetOffset()
+        } else {
+            null
+        }
+    }
+
+    private fun executeIntCompareBranch(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        shouldBranch: (Int, Int) -> Boolean,
+    ): Int? {
+        val value2 = operandStack.pop()
+        val value1 = operandStack.pop()
+        if (value1 !is JvmIntValue || value2 !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operands at offset " +
+                    "${instruction.offset}: expected two JvmIntValue operands but found " +
+                    "${value1.javaClass.simpleName} and ${value2.javaClass.simpleName}",
+            )
+        }
+
+        return if (shouldBranch(value1.value, value2.value)) {
             instruction.branchTargetOffset()
         } else {
             null
