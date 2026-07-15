@@ -1965,6 +1965,32 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `i2l sign extends the top int operand stack value into a long`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0xFF.toByte(),
+                0x85.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x85.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(JvmLongValue(-1L), JvmLongValue(Int.MAX_VALUE.toLong())),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
