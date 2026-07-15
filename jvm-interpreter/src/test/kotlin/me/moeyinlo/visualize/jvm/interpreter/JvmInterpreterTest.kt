@@ -2960,6 +2960,72 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `dneg negates finite double operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0F.toByte(),
+                0x77.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x77.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(-3.5),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmDoubleValue(-1.0), JvmDoubleValue(3.5)), result.operandStack.toList())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dneg handles NaN infinity and signed zero without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x77.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x77.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x77.toByte(),
+                0x0E.toByte(),
+                0x77.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x77.toByte(),
+            ),
+            maxStack = 10,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(Double.NaN),
+                    ConstantDoubleEntry(Double.POSITIVE_INFINITY),
+                    ConstantDoubleEntry(Double.NEGATIVE_INFINITY),
+                    ConstantDoubleEntry(-0.0),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmDoubleValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(Double.NEGATIVE_INFINITY, values[1])
+        assertEquals(Double.POSITIVE_INFINITY, values[2])
+        assertEquals(Long.MIN_VALUE, values[3].toRawBits())
+        assertEquals(0x0000000000000000L, values[4].toRawBits())
+        assertEquals(10, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

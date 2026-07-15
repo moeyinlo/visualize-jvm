@@ -138,6 +138,7 @@ object JvmInterpreter {
             0x74 -> executeIntNeg(instruction, operandStack)
             0x75 -> executeLongNeg(instruction, operandStack)
             0x76 -> executeFloatNeg(instruction, operandStack)
+            0x77 -> executeDoubleNeg(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -1171,6 +1172,21 @@ object JvmInterpreter {
         }
 
         operandStack.push(JvmDoubleValue(value1.value % value2.value))
+    }
+
+    private fun executeDoubleNeg(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value = operandStack.pop()
+        if (value !is JvmDoubleValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmDoubleValue but was ${value.javaClass.simpleName}",
+            )
+        }
+
+        operandStack.push(JvmDoubleValue(-value.value))
     }
 
     private fun executeIncrement(
