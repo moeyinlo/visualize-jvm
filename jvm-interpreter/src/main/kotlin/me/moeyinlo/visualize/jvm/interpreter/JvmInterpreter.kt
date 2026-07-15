@@ -56,7 +56,8 @@ object JvmInterpreter {
         while (instructionIndex < instructions.size) {
             val instruction = instructions[instructionIndex]
             val branchTargetOffset = when (instruction.metadata.opcode) {
-                0x99 -> executeIfEqual(instruction, operandStack)
+                0x99 -> executeIntBranch(instruction, operandStack) { value -> value == 0 }
+                0x9A -> executeIntBranch(instruction, operandStack) { value -> value != 0 }
                 else -> {
                     executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
                     null
@@ -1880,9 +1881,10 @@ object JvmInterpreter {
         operandStack.push(JvmIntValue(result))
     }
 
-    private fun executeIfEqual(
+    private fun executeIntBranch(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
+        shouldBranch: (Int) -> Boolean,
     ): Int? {
         val value = operandStack.pop()
         if (value !is JvmIntValue) {
@@ -1892,7 +1894,7 @@ object JvmInterpreter {
             )
         }
 
-        return if (value.value == 0) {
+        return if (shouldBranch(value.value)) {
             instruction.branchTargetOffset()
         } else {
             null

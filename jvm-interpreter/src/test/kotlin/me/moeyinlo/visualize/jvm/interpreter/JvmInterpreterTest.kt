@@ -2769,6 +2769,39 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ifne branches when int operand is not zero and falls through otherwise`() {
+        val taken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0x9A.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x04.toByte(),
+            ),
+            maxStack = 1,
+        )
+        val notTaken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x03.toByte(),
+                0x9A.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x05.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), taken.operandStack.toList())
+        assertEquals(1, taken.operandStack.slotDepth)
+        assertEquals(listOf(JvmIntValue(2)), notTaken.operandStack.toList())
+        assertEquals(1, notTaken.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
