@@ -170,6 +170,7 @@ object JvmInterpreter {
             0x94 -> executeLongCompare(instruction, operandStack)
             0x95 -> executeFloatCompareLess(instruction, operandStack)
             0x96 -> executeFloatCompareGreater(instruction, operandStack)
+            0x97 -> executeDoubleCompareLess(instruction, operandStack)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -1794,6 +1795,34 @@ object JvmInterpreter {
 
         val result = when {
             value1.value.isNaN() || value2.value.isNaN() -> 1
+            value1.value > value2.value -> 1
+            value1.value == value2.value -> 0
+            else -> -1
+        }
+        operandStack.push(JvmIntValue(result))
+    }
+
+    private fun executeDoubleCompareLess(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value2 = operandStack.pop()
+        if (value2 !is JvmDoubleValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmDoubleValue but was ${value2.javaClass.simpleName}",
+            )
+        }
+        val value1 = operandStack.pop()
+        if (value1 !is JvmDoubleValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmDoubleValue but was ${value1.javaClass.simpleName}",
+            )
+        }
+
+        val result = when {
+            value1.value.isNaN() || value2.value.isNaN() -> -1
             value1.value > value2.value -> 1
             value1.value == value2.value -> 0
             else -> -1
