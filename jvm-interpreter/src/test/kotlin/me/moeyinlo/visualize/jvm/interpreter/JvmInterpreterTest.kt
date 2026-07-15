@@ -2124,6 +2124,51 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `f2i converts the top float operand stack value into an int`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x8B.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x8B.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x8B.toByte(),
+                0x12.toByte(),
+                0x04.toByte(),
+                0x8B.toByte(),
+                0x12.toByte(),
+                0x05.toByte(),
+                0x8B.toByte(),
+            ),
+            maxStack = 5,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(Float.NEGATIVE_INFINITY),
+                    ConstantFloatEntry(3.75f),
+                    ConstantFloatEntry(-3.75f),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(0),
+                JvmIntValue(Int.MAX_VALUE),
+                JvmIntValue(Int.MIN_VALUE),
+                JvmIntValue(3),
+                JvmIntValue(-3),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(5, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
