@@ -1807,6 +1807,38 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `lushr logically shifts long values right by the low six shift bits`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x04.toByte(),
+                0x7D.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x10.toByte(),
+                0x40.toByte(),
+                0x7D.toByte(),
+            ),
+            maxStack = 5,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(-8L),
+                    ConstantLongEntry(16L),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(JvmLongValue(9_223_372_036_854_775_804L), JvmLongValue(16L)),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
