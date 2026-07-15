@@ -695,6 +695,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Branches | `if_icmpge` pops the top two int runtime operand stack values, branches when the first value is greater than or equal to the second using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `if_icmpgt` pops the top two int runtime operand stack values, branches when the first value is greater than the second using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `if_icmple` pops the top two int runtime operand stack values, branches when the first value is less than or equal to the second using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Branches | `if_acmpeq` pops the top two reference runtime operand stack values, branches when they are equal using VM reference identity, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Legacy subroutines | `jsr`, `jsr_w`, `ret`, `returnAddress` handling | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
