@@ -627,6 +627,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Long math execution | `lsub` subtracts the top long runtime operand stack value from the next value with 64-bit two's-complement overflow wrapping and no overflow exception | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Float and double math | `fadd`, `dadd`, `fsub`, `dsub`, `fmul`, `dmul`, `fdiv`, `ddiv`, `frem`, `drem`, `fneg`, `dneg` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Float math execution | `fadd` adds two float runtime operand stack values with IEEE 754 NaN, infinity, signed-zero, overflow, and no-runtime-exception behavior | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Float math execution | `fsub` subtracts the top float runtime operand stack value from the next value with IEEE 754 NaN, infinity, signed-zero, overflow, and no-runtime-exception behavior | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Double math execution | `dadd` adds two double runtime operand stack values with IEEE 754 NaN, infinity, signed-zero, overflow, and no-runtime-exception behavior | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Increment | `iinc` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Increment execution | `iinc` increments an int runtime local variable by a signed byte constant without touching the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

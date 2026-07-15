@@ -1245,6 +1245,111 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fsub subtracts the top float operand stack value from the next value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0D.toByte(),
+                0x0C.toByte(),
+                0x66.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmFloatValue(1.0f)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fsub follows NaN and infinity subtraction rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0C.toByte(),
+                0x66.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x66.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x66.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(Float.NEGATIVE_INFINITY),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(Float.POSITIVE_INFINITY, values[2])
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fsub follows signed zero subtraction rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0B.toByte(),
+                0x0B.toByte(),
+                0x66.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x0B.toByte(),
+                0x66.toByte(),
+                0x0B.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x66.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(-0.0f),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(0x00000000, values[0].toRawBits())
+        assertEquals(Int.MIN_VALUE, values[1].toRawBits())
+        assertEquals(0x00000000, values[2].toRawBits())
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fsub overflows to signed infinity without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x66.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.MAX_VALUE),
+                    ConstantFloatEntry(-Float.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmFloatValue(Float.POSITIVE_INFINITY)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `dadd adds the top two double operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
