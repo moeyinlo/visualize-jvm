@@ -1018,6 +1018,43 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `isub subtracts the top int operand stack value from the next value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x07.toByte(),
+                0x05.toByte(),
+                0x64.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `isub wraps signed int overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x04.toByte(),
+                0x64.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MIN_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(Int.MAX_VALUE)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ladd adds the top two long operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
