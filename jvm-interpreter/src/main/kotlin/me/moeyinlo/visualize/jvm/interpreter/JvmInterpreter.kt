@@ -70,6 +70,7 @@ object JvmInterpreter {
                 0xA4 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 <= value2 }
                 0xA5 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
                 0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
+                0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
                 else -> {
                     executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
                     null
@@ -1951,6 +1952,26 @@ object JvmInterpreter {
         }
 
         return if (shouldBranch(value1, value2)) {
+            instruction.branchTargetOffset()
+        } else {
+            null
+        }
+    }
+
+    private fun executeReferenceBranch(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        shouldBranch: (JvmReferenceValue) -> Boolean,
+    ): Int? {
+        val value = operandStack.pop()
+        if (value !is JvmReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmReferenceValue but was ${value.javaClass.simpleName}",
+            )
+        }
+
+        return if (shouldBranch(value)) {
             instruction.branchTargetOffset()
         } else {
             null

@@ -3236,6 +3236,43 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ifnull branches when the reference operand is null and falls through otherwise`() {
+        val taken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x01.toByte(),
+                0xC6.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x04.toByte(),
+            ),
+            maxStack = 1,
+        )
+
+        val notTakenLocals = JvmLocalVariables(maxLocals = 1)
+        notTakenLocals.store(0, JvmObjectReferenceValue(JvmReferenceId(1)))
+        val notTaken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC6.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x05.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = notTakenLocals,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), taken.operandStack.toList())
+        assertEquals(1, taken.operandStack.slotDepth)
+        assertEquals(listOf(JvmIntValue(2)), notTaken.operandStack.toList())
+        assertEquals(1, notTaken.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
