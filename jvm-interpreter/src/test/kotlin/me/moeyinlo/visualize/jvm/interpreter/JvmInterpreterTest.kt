@@ -1695,6 +1695,47 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `lshl shifts long values left by the low six shift bits`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0A.toByte(),
+                0x05.toByte(),
+                0x79.toByte(),
+                0x0A.toByte(),
+                0x10.toByte(),
+                0x40.toByte(),
+                0x79.toByte(),
+            ),
+            maxStack = 5,
+        )
+
+        assertEquals(listOf(JvmLongValue(4L), JvmLongValue(1L)), result.operandStack.toList())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `lshl wraps shifted long overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x04.toByte(),
+                0x79.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(Long.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(-2L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

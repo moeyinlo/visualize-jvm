@@ -140,6 +140,7 @@ object JvmInterpreter {
             0x76 -> executeFloatNeg(instruction, operandStack)
             0x77 -> executeDoubleNeg(instruction, operandStack)
             0x78 -> executeIntShiftLeft(instruction, operandStack)
+            0x79 -> executeLongShiftLeft(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -960,6 +961,28 @@ object JvmInterpreter {
         }
 
         operandStack.push(JvmLongValue(-value.value))
+    }
+
+    private fun executeLongShiftLeft(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value2 = operandStack.pop()
+        if (value2 !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${value2.javaClass.simpleName}",
+            )
+        }
+        val value1 = operandStack.pop()
+        if (value1 !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmLongValue but was ${value1.javaClass.simpleName}",
+            )
+        }
+
+        operandStack.push(JvmLongValue(value1.value shl (value2.value and 0x3F)))
     }
 
     private fun executeFloatAdd(
