@@ -1164,6 +1164,127 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `dadd adds the top two double operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0F.toByte(),
+                0x0F.toByte(),
+                0x63.toByte(),
+            ),
+            maxStack = 4,
+        )
+
+        assertEquals(listOf(JvmDoubleValue(2.0)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dadd follows NaN and infinity addition rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x0F.toByte(),
+                0x63.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x63.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x63.toByte(),
+            ),
+            maxStack = 8,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(Double.NaN),
+                    ConstantDoubleEntry(Double.POSITIVE_INFINITY),
+                    ConstantDoubleEntry(Double.NEGATIVE_INFINITY),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmDoubleValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(Double.POSITIVE_INFINITY, values[2])
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dadd follows signed zero addition rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0E.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x63.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x63.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x63.toByte(),
+            ),
+            maxStack = 8,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(-0.0),
+                    ConstantDoubleEntry(1.0),
+                    ConstantDoubleEntry(-1.0),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmDoubleValue).value }
+        assertEquals(0x0000000000000000L, values[0].toRawBits())
+        assertEquals(Long.MIN_VALUE, values[1].toRawBits())
+        assertEquals(0x0000000000000000L, values[2].toRawBits())
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dadd overflows to signed infinity without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x63.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(Double.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmDoubleValue(Double.POSITIVE_INFINITY)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
