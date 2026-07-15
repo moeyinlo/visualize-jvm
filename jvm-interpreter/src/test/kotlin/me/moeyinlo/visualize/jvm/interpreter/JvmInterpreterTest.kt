@@ -1165,6 +1165,80 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `irem divides the next int operand stack value by the top value and pushes the remainder`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x07.toByte(),
+                0x05.toByte(),
+                0x70.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `irem keeps the remainder sign aligned with the dividend`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0xF9.toByte(),
+                0x05.toByte(),
+                0x70.toByte(),
+                0x10.toByte(),
+                0x07.toByte(),
+                0x10.toByte(),
+                0xFE.toByte(),
+                0x70.toByte(),
+            ),
+            maxStack = 3,
+        )
+
+        assertEquals(listOf(JvmIntValue(-1), JvmIntValue(1)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `irem returns zero for minimum int divided by negative one`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+                0x70.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MIN_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `irem throws ArithmeticException when the divisor is zero`() {
+        val exception = assertFailsWith<ArithmeticException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x04.toByte(),
+                    0x03.toByte(),
+                    0x70.toByte(),
+                ),
+                maxStack = 2,
+            )
+        }
+
+        assertEquals("irem at offset 2: division by zero", exception.message)
+    }
+
+    @Test
     fun `ladd adds the top two long operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
