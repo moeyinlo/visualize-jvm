@@ -1239,6 +1239,44 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ineg negates the top int operand stack value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x07.toByte(),
+                0x74.toByte(),
+                0x10.toByte(),
+                0xF9.toByte(),
+                0x74.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(-7), JvmIntValue(7)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ineg leaves minimum int unchanged on overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x74.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MIN_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(Int.MIN_VALUE)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ladd adds the top two long operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
