@@ -1470,6 +1470,106 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `lrem divides the next long operand stack value by the top value and pushes the remainder`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x71.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(7L),
+                    ConstantLongEntry(2L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(1L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `lrem keeps the remainder sign aligned with the dividend`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x71.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x71.toByte(),
+            ),
+            maxStack = 6,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(-7L),
+                    ConstantLongEntry(2L),
+                    ConstantLongEntry(7L),
+                    ConstantLongEntry(-2L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(-1L), JvmLongValue(1L)), result.operandStack.toList())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `lrem returns zero for minimum long divided by negative one`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x71.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(Long.MIN_VALUE),
+                    ConstantLongEntry(-1L),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(0L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `lrem throws ArithmeticException when the divisor is zero`() {
+        val exception = assertFailsWith<ArithmeticException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x0A.toByte(),
+                    0x09.toByte(),
+                    0x71.toByte(),
+                ),
+                maxStack = 4,
+            )
+        }
+
+        assertEquals("lrem at offset 2: division by zero", exception.message)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
