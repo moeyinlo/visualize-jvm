@@ -69,6 +69,7 @@ object JvmInterpreter {
                 0xA3 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 > value2 }
                 0xA4 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 <= value2 }
                 0xA5 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
+                0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
                 else -> {
                     executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
                     null

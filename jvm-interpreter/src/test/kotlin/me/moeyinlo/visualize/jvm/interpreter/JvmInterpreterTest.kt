@@ -3191,6 +3191,51 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `if_acmpne branches when two reference operands are not equal and falls through otherwise`() {
+        val takenLocals = JvmLocalVariables(maxLocals = 2)
+        takenLocals.store(0, JvmObjectReferenceValue(JvmReferenceId(1)))
+        takenLocals.store(1, JvmObjectReferenceValue(JvmReferenceId(2)))
+        val taken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x2B.toByte(),
+                0xA6.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x04.toByte(),
+            ),
+            maxStack = 2,
+            localVariables = takenLocals,
+        )
+
+        val sameReference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val notTakenLocals = JvmLocalVariables(maxLocals = 2)
+        notTakenLocals.store(0, sameReference)
+        notTakenLocals.store(1, sameReference)
+        val notTaken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x2B.toByte(),
+                0xA6.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x05.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 2,
+            localVariables = notTakenLocals,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), taken.operandStack.toList())
+        assertEquals(1, taken.operandStack.slotDepth)
+        assertEquals(listOf(JvmIntValue(2)), notTaken.operandStack.toList())
+        assertEquals(1, notTaken.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
