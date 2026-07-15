@@ -1991,6 +1991,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `i2f converts the top int operand stack value into a float`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0xFF.toByte(),
+                0x86.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x86.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MAX_VALUE),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(-1.0f, values[0])
+        assertEquals(0x4F00_0000, values[1].toRawBits())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
