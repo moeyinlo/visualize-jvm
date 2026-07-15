@@ -70,6 +70,7 @@ object JvmInterpreter {
                 0xA4 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 <= value2 }
                 0xA5 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
                 0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
+                0xA7 -> instruction.branchTargetOffset()
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
                 0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
                 else -> {

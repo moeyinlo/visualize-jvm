@@ -3310,6 +3310,24 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `goto branches unconditionally using a signed short offset`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xA7.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x04.toByte(),
+            ),
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
