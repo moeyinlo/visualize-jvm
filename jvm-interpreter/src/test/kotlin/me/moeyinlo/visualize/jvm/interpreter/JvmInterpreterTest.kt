@@ -2415,6 +2415,41 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `i2c converts the top int operand stack value into a zero-extended char int`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x92.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x92.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x92.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(-1),
+                    ConstantIntegerEntry(0x1_0000),
+                    ConstantIntegerEntry(65),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(0xFFFF),
+                JvmIntValue(0),
+                JvmIntValue(65),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
