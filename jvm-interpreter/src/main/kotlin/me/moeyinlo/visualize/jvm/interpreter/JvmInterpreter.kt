@@ -157,6 +157,7 @@ object JvmInterpreter {
             0x87 -> executeIntToDouble(instruction, operandStack)
             0x88 -> executeLongToInt(instruction, operandStack)
             0x89 -> executeLongToFloat(instruction, operandStack)
+            0x8A -> executeLongToDouble(instruction, operandStack)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -1558,6 +1559,21 @@ object JvmInterpreter {
         }
 
         operandStack.push(JvmFloatValue(value.value.toFloat()))
+    }
+
+    private fun executeLongToDouble(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value = operandStack.pop()
+        if (value !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmLongValue but was ${value.javaClass.simpleName}",
+            )
+        }
+
+        operandStack.push(JvmDoubleValue(value.value.toDouble()))
     }
 
     private fun executeWide(
