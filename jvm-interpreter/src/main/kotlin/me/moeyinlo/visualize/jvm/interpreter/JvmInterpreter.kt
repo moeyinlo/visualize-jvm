@@ -130,6 +130,7 @@ object JvmInterpreter {
             0x6C -> executeIntDiv(instruction, operandStack)
             0x6D -> executeLongDiv(instruction, operandStack)
             0x6E -> executeFloatDiv(instruction, operandStack)
+            0x6F -> executeDoubleDiv(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -996,6 +997,28 @@ object JvmInterpreter {
         }
 
         operandStack.push(JvmDoubleValue(value1.value * value2.value))
+    }
+
+    private fun executeDoubleDiv(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value2 = operandStack.pop()
+        if (value2 !is JvmDoubleValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmDoubleValue but was ${value2.javaClass.simpleName}",
+            )
+        }
+        val value1 = operandStack.pop()
+        if (value1 !is JvmDoubleValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmDoubleValue but was ${value1.javaClass.simpleName}",
+            )
+        }
+
+        operandStack.push(JvmDoubleValue(value1.value / value2.value))
     }
 
     private fun executeIncrement(
