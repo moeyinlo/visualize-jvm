@@ -3111,6 +3111,41 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `if_icmple branches when the next int operand is less than or equal to the top int operand and falls through otherwise`() {
+        val taken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0x04.toByte(),
+                0xA4.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x04.toByte(),
+            ),
+            maxStack = 2,
+        )
+        val notTaken = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x05.toByte(),
+                0x04.toByte(),
+                0xA4.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x05.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), taken.operandStack.toList())
+        assertEquals(1, taken.operandStack.slotDepth)
+        assertEquals(listOf(JvmIntValue(2)), notTaken.operandStack.toList())
+        assertEquals(1, notTaken.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
