@@ -29,6 +29,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
+import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -3511,6 +3512,24 @@ class JvmInterpreterTest {
         assertEquals(1, matchingCase.operandStack.slotDepth)
         assertEquals(listOf(JvmIntValue(3)), defaultCase.operandStack.toList())
         assertEquals(1, defaultCase.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `jsr pushes the return address and branches using a signed short offset`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xA8.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(JvmReturnAddressValue(3)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
     }
 
     @Test

@@ -28,6 +28,14 @@ data class JvmObjectReferenceValue(val referenceId: JvmReferenceId) : JvmReferen
     override val category: JvmValueCategory = JvmValueCategory.Category1
 }
 
+data class JvmReturnAddressValue(val address: Int) : JvmValue {
+    init {
+        require(address >= 0) { "return address must be non-negative: $address" }
+    }
+
+    override val category: JvmValueCategory = JvmValueCategory.Category1
+}
+
 data class JvmBooleanValue(val value: Boolean) : JvmPrimitiveValue {
     override val category: JvmValueCategory = JvmValueCategory.Category1
 }

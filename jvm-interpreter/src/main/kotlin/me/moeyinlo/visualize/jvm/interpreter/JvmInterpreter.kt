@@ -27,6 +27,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
@@ -71,6 +72,7 @@ object JvmInterpreter {
                 0xA5 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
                 0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
                 0xA7 -> instruction.branchTargetOffset()
+                0xA8 -> executeSubroutineBranch(instruction, operandStack)
                 0xAA -> executeTableSwitch(instruction, operandStack)
                 0xAB -> executeLookupSwitch(instruction, operandStack)
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
@@ -2036,6 +2038,14 @@ object JvmInterpreter {
         return instruction.offset + defaultOffset
     }
 
+    private fun executeSubroutineBranch(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ): Int {
+        operandStack.push(JvmReturnAddressValue(instruction.nextInstructionOffset()))
+        return instruction.branchTargetOffset()
+    }
+
     private fun executeWide(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -2227,6 +2237,8 @@ object JvmInterpreter {
         }
 
     private fun DecodedInstruction.modifiedWideOpcode(): Int = operands[0]
+
+    private fun DecodedInstruction.nextInstructionOffset(): Int = offset + 1 + operands.size
 
     private fun DecodedInstruction.branchTargetOffset(): Int =
         offset + ((operands[0] shl 8) or operands[1]).toShort().toInt()
