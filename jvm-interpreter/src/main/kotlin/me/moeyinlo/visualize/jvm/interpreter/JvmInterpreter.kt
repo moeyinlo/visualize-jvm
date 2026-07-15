@@ -167,6 +167,7 @@ object JvmInterpreter {
             0x91 -> executeIntToByte(instruction, operandStack)
             0x92 -> executeIntToChar(instruction, operandStack)
             0x93 -> executeIntToShort(instruction, operandStack)
+            0x94 -> executeLongCompare(instruction, operandStack)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -1718,6 +1719,28 @@ object JvmInterpreter {
         }
 
         operandStack.push(JvmIntValue(value.value.toShort().toInt()))
+    }
+
+    private fun executeLongCompare(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value2 = operandStack.pop()
+        if (value2 !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmLongValue but was ${value2.javaClass.simpleName}",
+            )
+        }
+        val value1 = operandStack.pop()
+        if (value1 !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmLongValue but was ${value1.javaClass.simpleName}",
+            )
+        }
+
+        operandStack.push(JvmIntValue(value1.value.compareTo(value2.value)))
     }
 
     private fun executeWide(

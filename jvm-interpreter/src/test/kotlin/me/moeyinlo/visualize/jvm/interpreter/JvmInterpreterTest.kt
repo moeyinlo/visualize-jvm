@@ -2490,6 +2490,56 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `lcmp compares the top two long operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x94.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x94.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x09.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x0B.toByte(),
+                0x94.toByte(),
+            ),
+            maxStack = 6,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(5L),
+                    ConstantLongEntry(3L),
+                    ConstantLongEntry(3L),
+                    ConstantLongEntry(5L),
+                    ConstantLongEntry(Long.MIN_VALUE),
+                    ConstantLongEntry(Long.MIN_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                JvmIntValue(1),
+                JvmIntValue(-1),
+                JvmIntValue(0),
+            ),
+            result.operandStack.toList(),
+        )
+        assertEquals(3, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
