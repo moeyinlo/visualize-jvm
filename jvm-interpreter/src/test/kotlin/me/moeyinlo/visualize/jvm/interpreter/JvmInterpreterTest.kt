@@ -1055,6 +1055,42 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `imul multiplies the top two int operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x05.toByte(),
+                0x06.toByte(),
+                0x68.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(6)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `imul wraps signed int overflow without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x05.toByte(),
+                0x68.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(-2)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ladd adds the top two long operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
