@@ -73,6 +73,7 @@ object JvmInterpreter {
                 0xA7 -> instruction.branchTargetOffset()
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
                 0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
+                0xC8 -> instruction.wideBranchTargetOffset()
                 else -> {
                     executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
                     null
@@ -2174,6 +2175,14 @@ object JvmInterpreter {
 
     private fun DecodedInstruction.branchTargetOffset(): Int =
         offset + ((operands[0] shl 8) or operands[1]).toShort().toInt()
+
+    private fun DecodedInstruction.wideBranchTargetOffset(): Int =
+        offset + (
+            (operands[0] shl 24) or
+                (operands[1] shl 16) or
+                (operands[2] shl 8) or
+                operands[3]
+            )
 
     private fun Int.hexByte(): String = "0x${toString(16).padStart(2, '0')}"
 
