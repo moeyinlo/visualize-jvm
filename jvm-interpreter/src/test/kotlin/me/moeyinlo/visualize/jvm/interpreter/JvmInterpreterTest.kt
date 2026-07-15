@@ -2042,6 +2042,32 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `l2i truncates the top long operand stack value into an int`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x88.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x88.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(0x1_0000_0000L),
+                    ConstantLongEntry(Long.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(0), JvmIntValue(-1)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
