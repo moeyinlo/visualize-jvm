@@ -2016,6 +2016,32 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `i2d converts the top int operand stack value into a double`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0xFF.toByte(),
+                0x87.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x87.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MAX_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(JvmDoubleValue(-1.0), JvmDoubleValue(Int.MAX_VALUE.toDouble())),
+            result.operandStack.toList(),
+        )
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
