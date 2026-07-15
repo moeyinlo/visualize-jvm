@@ -72,6 +72,7 @@ object JvmInterpreter {
                 0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
                 0xA7 -> instruction.branchTargetOffset()
                 0xAA -> executeTableSwitch(instruction, operandStack)
+                0xAB -> executeLookupSwitch(instruction, operandStack)
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
                 0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
                 0xC8 -> instruction.wideBranchTargetOffset()
@@ -2008,6 +2009,33 @@ object JvmInterpreter {
         return instruction.offset + jumpOffset
     }
 
+    private fun executeLookupSwitch(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ): Int {
+        val key = operandStack.pop()
+        if (key !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${key.javaClass.simpleName}",
+            )
+        }
+
+        val padding = instruction.switchPadding()
+        val defaultOffset = instruction.readSignedOperandInt(padding)
+        val pairCount = instruction.readSignedOperandInt(padding + Int.SIZE_BYTES)
+        var pairOffset = padding + LOOKUPSWITCH_HEADER_BYTES
+        repeat(pairCount) {
+            val match = instruction.readSignedOperandInt(pairOffset)
+            val jumpOffset = instruction.readSignedOperandInt(pairOffset + Int.SIZE_BYTES)
+            if (key.value == match) {
+                return instruction.offset + jumpOffset
+            }
+            pairOffset += LOOKUPSWITCH_PAIR_BYTES
+        }
+        return instruction.offset + defaultOffset
+    }
+
     private fun executeWide(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -2249,4 +2277,6 @@ object JvmInterpreter {
         }
 
     private const val TABLESWITCH_HEADER_BYTES = Int.SIZE_BYTES * 3
+    private const val LOOKUPSWITCH_HEADER_BYTES = Int.SIZE_BYTES * 2
+    private const val LOOKUPSWITCH_PAIR_BYTES = Int.SIZE_BYTES * 2
 }

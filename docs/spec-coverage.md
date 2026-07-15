@@ -703,6 +703,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Branches | `goto_w` branches unconditionally using a signed 32-bit offset | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Switches | `tableswitch` pops the top int key, accounts for 4-byte alignment padding, chooses a matching jump offset for `low..high`, and uses default otherwise | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
+| Switches | `lookupswitch` pops the top int key, accounts for 4-byte alignment padding, scans sorted match-offset pairs, and uses default when no key matches | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Legacy subroutines | `jsr`, `jsr_w`, `ret`, `returnAddress` handling | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Returns | `ireturn`, `lreturn`, `freturn`, `dreturn`, `areturn`, `return` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
