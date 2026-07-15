@@ -137,6 +137,7 @@ object JvmInterpreter {
             0x73 -> executeDoubleRem(instruction, operandStack)
             0x74 -> executeIntNeg(instruction, operandStack)
             0x75 -> executeLongNeg(instruction, operandStack)
+            0x76 -> executeFloatNeg(instruction, operandStack)
             0x84 -> executeIncrement(instruction, localVariables)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -1045,6 +1046,21 @@ object JvmInterpreter {
         }
 
         operandStack.push(JvmFloatValue(value1.value % value2.value))
+    }
+
+    private fun executeFloatNeg(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ) {
+        val value = operandStack.pop()
+        if (value !is JvmFloatValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} operand at offset " +
+                    "${instruction.offset}: expected JvmFloatValue but was ${value.javaClass.simpleName}",
+            )
+        }
+
+        operandStack.push(JvmFloatValue(-value.value))
     }
 
     private fun executeDoubleAdd(

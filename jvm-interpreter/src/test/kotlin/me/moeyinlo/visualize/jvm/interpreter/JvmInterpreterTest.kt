@@ -2219,6 +2219,67 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fneg negates finite float operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0D.toByte(),
+                0x76.toByte(),
+                0x12.toByte(),
+                0x01.toByte(),
+                0x76.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(-3.5f),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmFloatValue(-2.0f), JvmFloatValue(3.5f)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `fneg handles NaN infinity and signed zero without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x76.toByte(),
+                0x12.toByte(),
+                0x02.toByte(),
+                0x76.toByte(),
+                0x12.toByte(),
+                0x03.toByte(),
+                0x76.toByte(),
+                0x0B.toByte(),
+                0x76.toByte(),
+                0x12.toByte(),
+                0x04.toByte(),
+                0x76.toByte(),
+            ),
+            maxStack = 5,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFloatEntry(Float.NaN),
+                    ConstantFloatEntry(Float.POSITIVE_INFINITY),
+                    ConstantFloatEntry(Float.NEGATIVE_INFINITY),
+                    ConstantFloatEntry(-0.0f),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmFloatValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(Float.NEGATIVE_INFINITY, values[1])
+        assertEquals(Float.POSITIVE_INFINITY, values[2])
+        assertEquals(Int.MIN_VALUE, values[3].toRawBits())
+        assertEquals(0x00000000, values[4].toRawBits())
+        assertEquals(5, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `dadd adds the top two double operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
