@@ -1791,6 +1791,171 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `dmul multiplies the top two double operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x6B.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(3.0),
+                    ConstantDoubleEntry(2.0),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmDoubleValue(6.0)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dmul follows NaN and infinity multiplication rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x0F.toByte(),
+                0x6B.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x0E.toByte(),
+                0x6B.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x6B.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x6B.toByte(),
+            ),
+            maxStack = 10,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(Double.NaN),
+                    ConstantDoubleEntry(Double.POSITIVE_INFINITY),
+                    ConstantDoubleEntry(-1.0),
+                    ConstantDoubleEntry(Double.NEGATIVE_INFINITY),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmDoubleValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(Double.NEGATIVE_INFINITY, values[2])
+        assertEquals(Double.POSITIVE_INFINITY, values[3])
+        assertEquals(8, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dmul follows signed zero multiplication rules`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0E.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x6B.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x6B.toByte(),
+            ),
+            maxStack = 6,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(-1.0),
+                    ConstantDoubleEntry(-0.0),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmDoubleValue).value }
+        assertEquals(Long.MIN_VALUE, values[0].toRawBits())
+        assertEquals(0x0000000000000000L, values[1].toRawBits())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dmul overflows to signed infinity without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x6B.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(Double.MAX_VALUE),
+                    ConstantDoubleEntry(2.0),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmDoubleValue(Double.POSITIVE_INFINITY)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `dmul underflows to signed zero without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x6B.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x6B.toByte(),
+            ),
+            maxStack = 6,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(Double.MIN_VALUE),
+                    ConstantDoubleEntry(0.5),
+                    ConstantDoubleEntry(-Double.MIN_VALUE),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmDoubleValue).value }
+        assertEquals(0x0000000000000000L, values[0].toRawBits())
+        assertEquals(Long.MIN_VALUE, values[1].toRawBits())
+        assertEquals(4, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
