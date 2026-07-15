@@ -1856,6 +1856,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `land computes the bitwise and of the top two long values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x7F.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantLongEntry(0x0F0FL),
+                    ConstantLongEntry(0x00FFL),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(0x000FL)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
