@@ -2693,6 +2693,127 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `drem divides the next double operand stack value by the top value and pushes the remainder`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x73.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(7.0),
+                    ConstantDoubleEntry(2.0),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmDoubleValue(1.0)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `drem uses truncating fmod semantics and keeps the dividend sign`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x73.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x73.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x09.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x73.toByte(),
+            ),
+            maxStack = 8,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(-7.0),
+                    ConstantDoubleEntry(2.0),
+                    ConstantDoubleEntry(7.0),
+                    ConstantDoubleEntry(-2.0),
+                    ConstantDoubleEntry(5.5),
+                ),
+            ),
+        )
+
+        assertEquals(
+            listOf(JvmDoubleValue(-1.0), JvmDoubleValue(1.0), JvmDoubleValue(1.5)),
+            result.operandStack.toList(),
+        )
+        assertEquals(6, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `drem follows NaN infinity zero divisor and signed zero rules without throwing`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x0F.toByte(),
+                0x73.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x0F.toByte(),
+                0x73.toByte(),
+                0x0F.toByte(),
+                0x0E.toByte(),
+                0x73.toByte(),
+                0x0F.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x73.toByte(),
+                0x0E.toByte(),
+                0x0F.toByte(),
+                0x73.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x05.toByte(),
+                0x0F.toByte(),
+                0x73.toByte(),
+            ),
+            maxStack = 14,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantDoubleEntry(Double.NaN),
+                    ConstantDoubleEntry(Double.POSITIVE_INFINITY),
+                    ConstantDoubleEntry(-0.0),
+                ),
+            ),
+        )
+
+        val values = result.operandStack.toList().map { (it as JvmDoubleValue).value }
+        assertEquals(true, values[0].isNaN())
+        assertEquals(true, values[1].isNaN())
+        assertEquals(true, values[2].isNaN())
+        assertEquals(1.0, values[3])
+        assertEquals(0x0000000000000000L, values[4].toRawBits())
+        assertEquals(Long.MIN_VALUE, values[5].toRawBits())
+        assertEquals(12, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `ldc pushes integer constants from the runtime constant pool`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
