@@ -1091,6 +1091,80 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `idiv divides the next int operand stack value by the top value`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x07.toByte(),
+                0x05.toByte(),
+                0x6C.toByte(),
+            ),
+            maxStack = 2,
+        )
+
+        assertEquals(listOf(JvmIntValue(3)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `idiv rounds integer quotients toward zero`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0xF9.toByte(),
+                0x05.toByte(),
+                0x6C.toByte(),
+                0x10.toByte(),
+                0x07.toByte(),
+                0x10.toByte(),
+                0xFE.toByte(),
+                0x6C.toByte(),
+            ),
+            maxStack = 3,
+        )
+
+        assertEquals(listOf(JvmIntValue(-3), JvmIntValue(-3)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `idiv returns the dividend for minimum int divided by negative one`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+                0x6C.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantIntegerEntry(Int.MIN_VALUE),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(Int.MIN_VALUE)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `idiv throws ArithmeticException when the divisor is zero`() {
+        val exception = assertFailsWith<ArithmeticException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x04.toByte(),
+                    0x03.toByte(),
+                    0x6C.toByte(),
+                ),
+                maxStack = 2,
+            )
+        }
+
+        assertEquals("idiv at offset 2: division by zero", exception.message)
+    }
+
+    @Test
     fun `ladd adds the top two long operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
