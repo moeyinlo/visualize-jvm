@@ -2287,6 +2287,7 @@ object JvmInterpreter {
 
         val reference = when (val atype = instruction.operands[0]) {
             4 -> heap.allocateBooleanArray(count.value)
+            5 -> heap.allocateCharArray(count.value)
             8 -> heap.allocateByteArray(count.value)
             10 -> heap.allocateIntArray(count.value)
             else -> throw JvmUnsupportedInstructionException(
