@@ -2286,6 +2286,7 @@ object JvmInterpreter {
         }
 
         val reference = when (val atype = instruction.operands[0]) {
+            4 -> heap.allocateBooleanArray(count.value)
             10 -> heap.allocateIntArray(count.value)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ${instruction.metadata.mnemonic} atype $atype at offset ${instruction.offset}",

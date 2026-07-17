@@ -13,6 +13,8 @@ data class JvmStringPayload(val value: String) : JvmHeapPayload
 
 data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
 
+data class JvmBooleanArrayPayload(val elements: MutableList<Boolean>) : JvmHeapPayload
+
 data class JvmIntArrayPayload(val elements: MutableList<Int>) : JvmHeapPayload
 
 data class JvmMethodTypePayload(val descriptor: String) : JvmHeapPayload
@@ -51,6 +53,17 @@ class JvmHeap {
         require(className.isNotBlank()) { "class name must not be blank" }
 
         return allocate(JvmHeapObject(className))
+    }
+
+    fun allocateBooleanArray(length: Int): JvmObjectReferenceValue {
+        require(length >= 0) { "array length must be non-negative: $length" }
+
+        return allocate(
+            JvmHeapObject(
+                className = "[Z",
+                payload = JvmBooleanArrayPayload(MutableList(length) { false }),
+            ),
+        )
     }
 
     fun allocateIntArray(length: Int): JvmObjectReferenceValue {
