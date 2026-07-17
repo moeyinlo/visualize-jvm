@@ -13,6 +13,8 @@ data class JvmStringPayload(val value: String) : JvmHeapPayload
 
 data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
 
+data class JvmIntArrayPayload(val elements: MutableList<Int>) : JvmHeapPayload
+
 data class JvmMethodTypePayload(val descriptor: String) : JvmHeapPayload
 
 enum class JvmMethodHandleReferenceKind {
@@ -49,6 +51,17 @@ class JvmHeap {
         require(className.isNotBlank()) { "class name must not be blank" }
 
         return allocate(JvmHeapObject(className))
+    }
+
+    fun allocateIntArray(length: Int): JvmObjectReferenceValue {
+        require(length >= 0) { "array length must be non-negative: $length" }
+
+        return allocate(
+            JvmHeapObject(
+                className = "[I",
+                payload = JvmIntArrayPayload(MutableList(length) { 0 }),
+            ),
+        )
     }
 
     fun allocateString(value: String): JvmObjectReferenceValue = allocate(

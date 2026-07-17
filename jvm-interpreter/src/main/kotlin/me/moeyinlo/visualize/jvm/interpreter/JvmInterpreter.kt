@@ -217,6 +217,7 @@ object JvmInterpreter {
             0x96 -> executeFloatCompareGreater(instruction, operandStack)
             0x97 -> executeDoubleCompareLess(instruction, operandStack)
             0x98 -> executeDoubleCompareGreater(instruction, operandStack)
+            0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -2269,6 +2270,28 @@ object JvmInterpreter {
         }
 
         operandStack.push(heap.allocateObject(nameEntry.value))
+    }
+
+    private fun executeNewArray(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+    ) {
+        val count = operandStack.pop()
+        if (count !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} count at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${count.javaClass.simpleName}",
+            )
+        }
+
+        val reference = when (val atype = instruction.operands[0]) {
+            10 -> heap.allocateIntArray(count.value)
+            else -> throw JvmUnsupportedInstructionException(
+                "Unsupported ${instruction.metadata.mnemonic} atype $atype at offset ${instruction.offset}",
+            )
+        }
+        operandStack.push(reference)
     }
 
     private fun DecodedInstruction.constantPoolIndex(): ConstantPoolIndex =
