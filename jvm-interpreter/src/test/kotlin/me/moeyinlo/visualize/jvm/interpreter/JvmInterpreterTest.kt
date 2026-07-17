@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
@@ -3669,6 +3670,28 @@ class JvmInterpreterTest {
         assertEquals("[Z", array.className)
         val payload = array.payload as JvmBooleanArrayPayload
         assertEquals(listOf(false, false, false), payload.elements)
+    }
+
+    @Test
+    fun `newarray allocates a byte array with default zero values`() {
+        val heap = JvmHeap()
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xBC.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val array = heap.get(reference)
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+        assertEquals("[B", array.className)
+        val payload = array.payload as JvmByteArrayPayload
+        assertEquals(listOf(0.toByte(), 0.toByte(), 0.toByte()), payload.elements)
     }
 
     @Test
