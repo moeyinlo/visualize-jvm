@@ -3533,6 +3533,26 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `jsr_w pushes the return address and branches using a signed int offset`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xC9.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(JvmReturnAddressValue(5)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

@@ -706,6 +706,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Switches | `lookupswitch` pops the top int key, accounts for 4-byte alignment padding, scans sorted match-offset pairs, and uses default when no key matches | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Legacy subroutines | `jsr` pushes the next instruction offset as a category-1 `returnAddress` value and branches using a signed 16-bit offset | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Legacy subroutines | `jsr_w` pushes the next instruction offset as a category-1 `returnAddress` value and branches using a signed 32-bit offset | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Legacy subroutines | `jsr`, `jsr_w`, `ret`, `returnAddress` handling | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Returns | `ireturn`, `lreturn`, `freturn`, `dreturn`, `areturn`, `return` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Field access | `getstatic`, `putstatic`, `getfield`, `putfield` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |

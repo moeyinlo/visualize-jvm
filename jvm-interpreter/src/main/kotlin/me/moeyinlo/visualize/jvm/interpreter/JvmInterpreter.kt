@@ -78,6 +78,7 @@ object JvmInterpreter {
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
                 0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
                 0xC8 -> instruction.wideBranchTargetOffset()
+                0xC9 -> executeWideSubroutineBranch(instruction, operandStack)
                 else -> {
                     executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
                     null
@@ -2044,6 +2045,14 @@ object JvmInterpreter {
     ): Int {
         operandStack.push(JvmReturnAddressValue(instruction.nextInstructionOffset()))
         return instruction.branchTargetOffset()
+    }
+
+    private fun executeWideSubroutineBranch(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ): Int {
+        operandStack.push(JvmReturnAddressValue(instruction.nextInstructionOffset()))
+        return instruction.wideBranchTargetOffset()
     }
 
     private fun executeWide(
