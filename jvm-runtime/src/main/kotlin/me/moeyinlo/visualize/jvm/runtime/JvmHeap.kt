@@ -21,6 +21,8 @@ data class JvmCharArrayPayload(val elements: MutableList<Char>) : JvmHeapPayload
 
 data class JvmIntArrayPayload(val elements: MutableList<Int>) : JvmHeapPayload
 
+data class JvmShortArrayPayload(val elements: MutableList<Short>) : JvmHeapPayload
+
 data class JvmMethodTypePayload(val descriptor: String) : JvmHeapPayload
 
 enum class JvmMethodHandleReferenceKind {
@@ -99,6 +101,17 @@ class JvmHeap {
             JvmHeapObject(
                 className = "[I",
                 payload = JvmIntArrayPayload(MutableList(length) { 0 }),
+            ),
+        )
+    }
+
+    fun allocateShortArray(length: Int): JvmObjectReferenceValue {
+        require(length >= 0) { "array length must be non-negative: $length" }
+
+        return allocate(
+            JvmHeapObject(
+                className = "[S",
+                payload = JvmShortArrayPayload(MutableList(length) { 0.toShort() }),
             ),
         )
     }

@@ -34,6 +34,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
+import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -3715,6 +3716,28 @@ class JvmInterpreterTest {
         assertEquals("[C", array.className)
         val payload = array.payload as JvmCharArrayPayload
         assertEquals(listOf('\u0000', '\u0000', '\u0000'), payload.elements)
+    }
+
+    @Test
+    fun `newarray allocates a short array with default zero values`() {
+        val heap = JvmHeap()
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xBC.toByte(),
+                0x09.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val array = heap.get(reference)
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+        assertEquals("[S", array.className)
+        val payload = array.payload as JvmShortArrayPayload
+        assertEquals(listOf(0.toShort(), 0.toShort(), 0.toShort()), payload.elements)
     }
 
     @Test
