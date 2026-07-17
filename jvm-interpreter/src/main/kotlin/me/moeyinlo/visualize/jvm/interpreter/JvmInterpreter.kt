@@ -73,6 +73,7 @@ object JvmInterpreter {
                 0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
                 0xA7 -> instruction.branchTargetOffset()
                 0xA8 -> executeSubroutineBranch(instruction, operandStack)
+                0xA9 -> executeSubroutineReturn(instruction, localVariables)
                 0xAA -> executeTableSwitch(instruction, operandStack)
                 0xAB -> executeLookupSwitch(instruction, operandStack)
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
@@ -2055,6 +2056,21 @@ object JvmInterpreter {
         return instruction.wideBranchTargetOffset()
     }
 
+    private fun executeSubroutineReturn(
+        instruction: DecodedInstruction,
+        localVariables: JvmLocalVariables,
+    ): Int {
+        val index = instruction.localVariableIndex()
+        val returnAddress = localVariables.load(index)
+        if (returnAddress !is JvmReturnAddressValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} local variable $index at offset " +
+                    "${instruction.offset}: expected JvmReturnAddressValue but was ${returnAddress.javaClass.simpleName}",
+            )
+        }
+        return returnAddress.address
+    }
+
     private fun executeWide(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -2223,6 +2239,7 @@ object JvmInterpreter {
             0x39,
             0x3A,
             0x84,
+            0xA9,
             -> operands[0]
             0xC4 -> (operands[1] shl 8) or operands[2]
             in 0x1A..0x1D -> metadata.opcode - 0x1A

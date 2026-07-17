@@ -3553,6 +3553,29 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ret branches to the returnAddress stored in a local variable`() {
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, JvmReturnAddressValue(4))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xA9.toByte(),
+                0x00.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x10.toByte(),
+                0x07.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = localVariables,
+        )
+
+        assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
