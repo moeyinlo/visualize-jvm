@@ -16,6 +16,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
@@ -3738,6 +3739,28 @@ class JvmInterpreterTest {
         assertEquals("[S", array.className)
         val payload = array.payload as JvmShortArrayPayload
         assertEquals(listOf(0.toShort(), 0.toShort(), 0.toShort()), payload.elements)
+    }
+
+    @Test
+    fun `newarray allocates a float array with default positive zero values`() {
+        val heap = JvmHeap()
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xBC.toByte(),
+                0x06.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val array = heap.get(reference)
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+        assertEquals("[F", array.className)
+        val payload = array.payload as JvmFloatArrayPayload
+        assertEquals(listOf(0.0f, 0.0f, 0.0f), payload.elements)
     }
 
     @Test

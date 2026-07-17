@@ -19,6 +19,8 @@ data class JvmByteArrayPayload(val elements: MutableList<Byte>) : JvmHeapPayload
 
 data class JvmCharArrayPayload(val elements: MutableList<Char>) : JvmHeapPayload
 
+data class JvmFloatArrayPayload(val elements: MutableList<Float>) : JvmHeapPayload
+
 data class JvmIntArrayPayload(val elements: MutableList<Int>) : JvmHeapPayload
 
 data class JvmShortArrayPayload(val elements: MutableList<Short>) : JvmHeapPayload
@@ -90,6 +92,17 @@ class JvmHeap {
             JvmHeapObject(
                 className = "[C",
                 payload = JvmCharArrayPayload(MutableList(length) { '\u0000' }),
+            ),
+        )
+    }
+
+    fun allocateFloatArray(length: Int): JvmObjectReferenceValue {
+        require(length >= 0) { "array length must be non-negative: $length" }
+
+        return allocate(
+            JvmHeapObject(
+                className = "[F",
+                payload = JvmFloatArrayPayload(MutableList(length) { 0.0f }),
             ),
         )
     }
