@@ -76,6 +76,7 @@ object JvmInterpreter {
                 0xA9 -> executeSubroutineReturn(instruction, localVariables)
                 0xAA -> executeTableSwitch(instruction, operandStack)
                 0xAB -> executeLookupSwitch(instruction, operandStack)
+                0xC4 -> executeWideOrSubroutineReturn(instruction, operandStack, localVariables)
                 0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
                 0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
                 0xC8 -> instruction.wideBranchTargetOffset()
@@ -2069,6 +2070,18 @@ object JvmInterpreter {
             )
         }
         return returnAddress.address
+    }
+
+    private fun executeWideOrSubroutineReturn(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        localVariables: JvmLocalVariables,
+    ): Int? {
+        if (instruction.modifiedWideOpcode() == 0xA9) {
+            return executeSubroutineReturn(instruction, localVariables)
+        }
+        executeWide(instruction, operandStack, localVariables)
+        return null
     }
 
     private fun executeWide(

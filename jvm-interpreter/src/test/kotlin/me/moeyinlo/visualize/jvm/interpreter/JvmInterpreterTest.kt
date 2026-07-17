@@ -3576,6 +3576,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `wide ret branches using an unsigned short local variable index`() {
+        val localVariables = JvmLocalVariables(maxLocals = 259)
+        localVariables.store(258, JvmReturnAddressValue(6))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xC4.toByte(),
+                0xA9.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+                0x10.toByte(),
+                0x07.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            localVariables = localVariables,
+        )
+
+        assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
