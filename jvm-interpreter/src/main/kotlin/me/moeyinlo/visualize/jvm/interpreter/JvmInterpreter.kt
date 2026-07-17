@@ -217,6 +217,7 @@ object JvmInterpreter {
             0x96 -> executeFloatCompareGreater(instruction, operandStack)
             0x97 -> executeDoubleCompareLess(instruction, operandStack)
             0x98 -> executeDoubleCompareGreater(instruction, operandStack)
+            0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -2230,11 +2231,52 @@ object JvmInterpreter {
         }
     }
 
+    private fun executeNew(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+    ) {
+        val index = instruction.constantPoolIndex()
+        val entry = try {
+            constantPool[index]
+        } catch (exception: ConstantPoolFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid new constant_pool index $index at offset ${instruction.offset}: ${exception.message}",
+            )
+        }
+        if (entry !is ConstantClassEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid new constant $index at offset ${instruction.offset}: expected ConstantClassEntry but was " +
+                    entry.javaClass.simpleName,
+            )
+        }
+
+        val nameEntry = try {
+            constantPool[entry.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid new CONSTANT_Class name_index ${entry.nameIndex} " +
+                    "at offset ${instruction.offset}: ${exception.message}",
+            )
+        }
+        if (nameEntry !is ConstantUtf8Entry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid new CONSTANT_Class name_index ${entry.nameIndex} at offset " +
+                    "${instruction.offset}: expected ConstantUtf8Entry but was " +
+                    nameEntry.javaClass.simpleName,
+            )
+        }
+
+        operandStack.push(heap.allocateObject(nameEntry.value))
+    }
+
     private fun DecodedInstruction.constantPoolIndex(): ConstantPoolIndex =
         when (metadata.opcode) {
             0x12 -> ConstantPoolIndex(operands[0])
             0x13,
             0x14,
+            0xBB,
             -> ConstantPoolIndex((operands[0] shl 8) or operands[1])
             else -> error("Instruction ${metadata.mnemonic} does not use a constant_pool index")
         }

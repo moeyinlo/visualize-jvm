@@ -3601,6 +3601,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new allocates an object for a CONSTANT_Class reference`() {
+        val heap = JvmHeap()
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBB.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+        assertEquals("example/Foo", heap.get(reference).className)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
