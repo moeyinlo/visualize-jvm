@@ -34,6 +34,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
+import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
@@ -2376,6 +2377,7 @@ object JvmInterpreter {
             is JvmCharArrayPayload -> payload.elements.size
             is JvmIntArrayPayload -> payload.elements.size
             is JvmReferenceArrayPayload -> payload.elements.size
+            is JvmShortArrayPayload -> payload.elements.size
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ${instruction.metadata.mnemonic} payload ${payload.javaClass.simpleName} " +
                     "at offset ${instruction.offset}",
