@@ -3810,6 +3810,23 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `newarray throws guest NegativeArraySizeException for a negative count`() {
+        val exception = assertFailsWith<JvmNegativeArraySizeException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x02.toByte(),
+                    0xBC.toByte(),
+                    0x0A.toByte(),
+                ),
+                maxStack = 1,
+            )
+        }
+
+        assertEquals("java/lang/NegativeArraySizeException", exception.guestClassName)
+        assertEquals("-1", exception.message)
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

@@ -40,6 +40,11 @@ class JvmArithmeticException(
     message: String,
 ) : ArithmeticException(message)
 
+class JvmNegativeArraySizeException(
+    val guestClassName: String,
+    message: String,
+) : NegativeArraySizeException(message)
+
 object JvmInterpreter {
     fun execute(
         code: ByteArray,
@@ -2282,6 +2287,12 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} count at offset " +
                     "${instruction.offset}: expected JvmIntValue but was ${count.javaClass.simpleName}",
+            )
+        }
+        if (count.value < 0) {
+            throw JvmNegativeArraySizeException(
+                guestClassName = "java/lang/NegativeArraySizeException",
+                message = count.value.toString(),
             )
         }
 

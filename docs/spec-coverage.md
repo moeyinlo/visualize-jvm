@@ -721,6 +721,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `newarray` with `atype=T_FLOAT` pops an int count and allocates a zero-initialized guest `float[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_INT` pops an int count and allocates a zero-initialized guest `int[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_LONG` pops an int count and allocates a zero-initialized guest `long[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `newarray` throws guest `NegativeArraySizeException` when the popped count is negative | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_SHORT` pops an int count and allocates a zero-initialized guest `short[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `new`, `newarray`, `anewarray`, `arraylength`, `multianewarray` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Type checks | `checkcast`, `instanceof` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
