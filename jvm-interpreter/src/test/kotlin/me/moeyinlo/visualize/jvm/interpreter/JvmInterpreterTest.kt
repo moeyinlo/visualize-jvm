@@ -4071,6 +4071,32 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `iastore stores an int into an int array`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateIntArray(3)
+        val payload = heap.get(reference).payload as JvmIntArrayPayload
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0x10.toByte(),
+                0x2A.toByte(),
+                0x4F.toByte(),
+            ),
+            maxStack = 3,
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(42, payload.elements[1])
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(

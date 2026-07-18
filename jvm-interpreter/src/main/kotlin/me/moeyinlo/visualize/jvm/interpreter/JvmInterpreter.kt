@@ -179,6 +179,7 @@ object JvmInterpreter {
             0x3A,
             in 0x4B..0x4E,
             -> executeReferenceStore(instruction, operandStack, localVariables)
+            0x4F -> executeIntArrayStore(instruction, operandStack, heap)
             0x57 -> executePop(instruction, operandStack)
             0x58 -> executePop2(instruction, operandStack)
             0x59 -> executeDup(instruction, operandStack)
@@ -666,6 +667,44 @@ object JvmInterpreter {
             )
         }
         localVariables.store(index, value)
+    }
+
+    private fun executeIntArrayStore(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+    ) {
+        val value = operandStack.pop()
+        val index = operandStack.pop()
+        val arrayReference = operandStack.pop()
+        if (value !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} value at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        if (index !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} index at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${index.javaClass.simpleName}",
+            )
+        }
+        if (arrayReference !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    arrayReference.javaClass.simpleName,
+            )
+        }
+
+        val payload = heap.get(arrayReference).payload
+        if (payload !is JvmIntArrayPayload) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmIntArrayPayload but was ${payload.javaClass.simpleName}",
+            )
+        }
+        payload.elements[index.value] = value.value
     }
 
     private fun executePop(
