@@ -4603,6 +4603,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fastore throws guest ArrayIndexOutOfBoundsException for out of range index`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateFloatArray(3)
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmArrayIndexOutOfBoundsException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x06.toByte(),
+                    0x0D.toByte(),
+                    0x51.toByte(),
+                ),
+                maxStack = 3,
+                heap = heap,
+                localVariables = locals,
+            )
+        }
+
+        assertEquals("java/lang/ArrayIndexOutOfBoundsException", exception.guestClassName)
+        assertEquals("fastore index 3 out of bounds for length 3", exception.message)
+    }
+
+    @Test
     fun `dastore stores a double into a double array`() {
         val heap = JvmHeap()
         val reference = heap.allocateDoubleArray(3)
