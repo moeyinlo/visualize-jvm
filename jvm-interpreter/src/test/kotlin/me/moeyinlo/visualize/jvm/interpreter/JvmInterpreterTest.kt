@@ -4334,6 +4334,30 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `caload throws guest ArrayIndexOutOfBoundsException for out of range index`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateCharArray(3)
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmArrayIndexOutOfBoundsException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x06.toByte(),
+                    0x34.toByte(),
+                ),
+                maxStack = 2,
+                heap = heap,
+                localVariables = locals,
+            )
+        }
+
+        assertEquals("java/lang/ArrayIndexOutOfBoundsException", exception.guestClassName)
+        assertEquals("caload index 3 out of bounds for length 3", exception.message)
+    }
+
+    @Test
     fun `saload loads a short from a short array as an int`() {
         val heap = JvmHeap()
         val reference = heap.allocateShortArray(3)

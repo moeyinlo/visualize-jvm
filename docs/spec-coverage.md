@@ -747,6 +747,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `baload` throws guest `ArrayIndexOutOfBoundsException` for an out-of-range `boolean[]` index | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `caload` pops an int index and guest `char[]` reference, then pushes the selected char element zero-extended to int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `caload` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `caload` throws guest `ArrayIndexOutOfBoundsException` for an out-of-range int index | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `saload` pops an int index and guest `short[]` reference, then pushes the selected short element sign-extended to int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `iastore` pops an int value, int index, and guest `int[]` reference, then stores the value into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `lastore` pops a long value, int index, and guest `long[]` reference, then stores the value into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
