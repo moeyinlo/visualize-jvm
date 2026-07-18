@@ -3950,6 +3950,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aaload loads a reference from a reference array`() {
+        val heap = JvmHeap()
+        val arrayReference = heap.allocateReferenceArray("example/Foo", 3)
+        val objectReference = heap.allocateObject("example/Foo")
+        val payload = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        payload.elements[1] = objectReference
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, arrayReference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0x32.toByte(),
+            ),
+            maxStack = 2,
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(objectReference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
@@ -5887,11 +5912,11 @@ class JvmInterpreterTest {
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
-                code = byteArrayOf(0x32.toByte()),
+                code = byteArrayOf(0x33.toByte()),
                 maxStack = 0,
             )
         }
 
-        assertEquals("Unsupported instruction aaload (0x32) at offset 0", exception.message)
+        assertEquals("Unsupported instruction baload (0x33) at offset 0", exception.message)
     }
 }
