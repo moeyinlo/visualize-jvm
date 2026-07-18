@@ -20,11 +20,13 @@ import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
+import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
@@ -225,6 +227,7 @@ object JvmInterpreter {
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
+            0xBE -> executeArrayLength(instruction, operandStack, heap)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -2347,6 +2350,30 @@ object JvmInterpreter {
             )
         }
         operandStack.push(reference)
+    }
+
+    private fun executeArrayLength(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+    ) {
+        val arrayReference = operandStack.pop()
+        if (arrayReference !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    arrayReference.javaClass.simpleName,
+            )
+        }
+
+        val payload = heap.get(arrayReference).payload
+        if (payload !is JvmIntArrayPayload) {
+            throw JvmUnsupportedInstructionException(
+                "Unsupported ${instruction.metadata.mnemonic} payload ${payload.javaClass.simpleName} " +
+                    "at offset ${instruction.offset}",
+            )
+        }
+        operandStack.push(JvmIntValue(payload.elements.size))
     }
 
     private fun DecodedInstruction.constantPoolIndex(): ConstantPoolIndex =
