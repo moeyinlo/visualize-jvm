@@ -3926,6 +3926,30 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `daload loads a double from a double array`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateDoubleArray(3)
+        val payload = heap.get(reference).payload as JvmDoubleArrayPayload
+        payload.elements[1] = -0.25
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0x31.toByte(),
+            ),
+            maxStack = 2,
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(JvmDoubleValue(-0.25)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
@@ -5863,11 +5887,11 @@ class JvmInterpreterTest {
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
-                code = byteArrayOf(0x31.toByte()),
+                code = byteArrayOf(0x32.toByte()),
                 maxStack = 0,
             )
         }
 
-        assertEquals("Unsupported instruction daload (0x31) at offset 0", exception.message)
+        assertEquals("Unsupported instruction aaload (0x32) at offset 0", exception.message)
     }
 }
