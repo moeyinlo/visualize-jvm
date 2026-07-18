@@ -55,6 +55,11 @@ class JvmNegativeArraySizeException(
     message: String,
 ) : NegativeArraySizeException(message)
 
+class JvmNullPointerException(
+    val guestClassName: String,
+    message: String,
+) : NullPointerException(message)
+
 object JvmInterpreter {
     fun execute(
         code: ByteArray,
@@ -2366,6 +2371,12 @@ object JvmInterpreter {
         heap: JvmHeap,
     ) {
         val arrayReference = operandStack.pop()
+        if (arrayReference == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "arraylength on null arrayref",
+            )
+        }
         if (arrayReference !is JvmObjectReferenceValue) {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +

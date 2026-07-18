@@ -3838,6 +3838,22 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `arraylength throws guest NullPointerException for null arrayref`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0xBE.toByte(),
+                ),
+                maxStack = 1,
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("arraylength on null arrayref", exception.message)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
