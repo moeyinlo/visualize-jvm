@@ -722,6 +722,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `arraylength` pops a guest `float[]` reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `arraylength` pops a guest `short[]` reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `arraylength` pops a guest `int[]` reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `arraylength` pops a guest `long[]` reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `arraylength` pops a guest reference array reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BOOLEAN` pops an int count and allocates a zero-initialized guest `boolean[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BYTE` pops an int count and allocates a zero-initialized guest `byte[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

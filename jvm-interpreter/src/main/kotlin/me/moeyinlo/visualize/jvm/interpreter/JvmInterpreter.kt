@@ -28,6 +28,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
+import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
@@ -2380,6 +2381,7 @@ object JvmInterpreter {
             is JvmDoubleArrayPayload -> payload.elements.size
             is JvmFloatArrayPayload -> payload.elements.size
             is JvmIntArrayPayload -> payload.elements.size
+            is JvmLongArrayPayload -> payload.elements.size
             is JvmReferenceArrayPayload -> payload.elements.size
             is JvmShortArrayPayload -> payload.elements.size
             else -> throw JvmUnsupportedInstructionException(
