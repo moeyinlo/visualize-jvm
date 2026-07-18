@@ -2289,6 +2289,7 @@ object JvmInterpreter {
             4 -> heap.allocateBooleanArray(count.value)
             5 -> heap.allocateCharArray(count.value)
             6 -> heap.allocateFloatArray(count.value)
+            7 -> heap.allocateDoubleArray(count.value)
             8 -> heap.allocateByteArray(count.value)
             9 -> heap.allocateShortArray(count.value)
             10 -> heap.allocateIntArray(count.value)

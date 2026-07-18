@@ -15,6 +15,8 @@ data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
 
 data class JvmBooleanArrayPayload(val elements: MutableList<Boolean>) : JvmHeapPayload
 
+data class JvmDoubleArrayPayload(val elements: MutableList<Double>) : JvmHeapPayload
+
 data class JvmByteArrayPayload(val elements: MutableList<Byte>) : JvmHeapPayload
 
 data class JvmCharArrayPayload(val elements: MutableList<Char>) : JvmHeapPayload
@@ -70,6 +72,17 @@ class JvmHeap {
             JvmHeapObject(
                 className = "[Z",
                 payload = JvmBooleanArrayPayload(MutableList(length) { false }),
+            ),
+        )
+    }
+
+    fun allocateDoubleArray(length: Int): JvmObjectReferenceValue {
+        require(length >= 0) { "array length must be non-negative: $length" }
+
+        return allocate(
+            JvmHeapObject(
+                className = "[D",
+                payload = JvmDoubleArrayPayload(MutableList(length) { 0.0 }),
             ),
         )
     }

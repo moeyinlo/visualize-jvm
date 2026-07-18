@@ -717,6 +717,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `newarray` with `atype=T_BOOLEAN` pops an int count and allocates a zero-initialized guest `boolean[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BYTE` pops an int count and allocates a zero-initialized guest `byte[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_CHAR` pops an int count and allocates a zero-initialized guest `char[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `newarray` with `atype=T_DOUBLE` pops an int count and allocates a zero-initialized guest `double[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_FLOAT` pops an int count and allocates a zero-initialized guest `float[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_INT` pops an int count and allocates a zero-initialized guest `int[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_SHORT` pops an int count and allocates a zero-initialized guest `short[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
