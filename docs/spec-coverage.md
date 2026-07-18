@@ -758,6 +758,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `lastore` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `lastore` throws guest `ArrayIndexOutOfBoundsException` for an out-of-range int index | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `fastore` pops a float value, int index, and guest `float[]` reference, then stores the value into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `fastore` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `dastore` pops a double value, int index, and guest `double[]` reference, then stores the value into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `aastore` pops a reference value, int index, and guest reference-array reference, then stores the value into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `bastore` pops an int value, int index, and guest `byte[]` reference, then stores the value narrowed to byte into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

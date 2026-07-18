@@ -4585,6 +4585,24 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `fastore throws guest NullPointerException for null arrayref`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x0D.toByte(),
+                    0x51.toByte(),
+                ),
+                maxStack = 3,
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("fastore on null arrayref", exception.message)
+    }
+
+    @Test
     fun `dastore stores a double into a double array`() {
         val heap = JvmHeap()
         val reference = heap.allocateDoubleArray(3)
