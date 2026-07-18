@@ -727,6 +727,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `arraylength` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `iaload` pops an int index and guest `int[]` reference, then pushes the selected int element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `laload` pops an int index and guest `long[]` reference, then pushes the selected long element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `faload` pops an int index and guest `float[]` reference, then pushes the selected float element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BOOLEAN` pops an int count and allocates a zero-initialized guest `boolean[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BYTE` pops an int count and allocates a zero-initialized guest `byte[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_CHAR` pops an int count and allocates a zero-initialized guest `char[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
