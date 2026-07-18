@@ -4653,6 +4653,24 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `dastore throws guest NullPointerException for null arrayref`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x0F.toByte(),
+                    0x52.toByte(),
+                ),
+                maxStack = 4,
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("dastore on null arrayref", exception.message)
+    }
+
+    @Test
     fun `aastore stores a reference into a reference array`() {
         val heap = JvmHeap()
         val arrayReference = heap.allocateReferenceArray("java/lang/Object", 3)
