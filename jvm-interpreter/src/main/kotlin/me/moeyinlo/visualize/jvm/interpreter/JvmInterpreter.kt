@@ -816,6 +816,12 @@ object JvmInterpreter {
                     "${instruction.offset}: expected JvmIntValue but was ${index.javaClass.simpleName}",
             )
         }
+        if (arrayReference == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "${instruction.metadata.mnemonic} on null arrayref",
+            )
+        }
         if (arrayReference !is JvmObjectReferenceValue) {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
