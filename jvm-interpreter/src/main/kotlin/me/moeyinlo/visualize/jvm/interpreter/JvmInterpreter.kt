@@ -17,6 +17,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
@@ -2368,6 +2369,7 @@ object JvmInterpreter {
         }
 
         val length = when (val payload = heap.get(arrayReference).payload) {
+            is JvmBooleanArrayPayload -> payload.elements.size
             is JvmIntArrayPayload -> payload.elements.size
             is JvmReferenceArrayPayload -> payload.elements.size
             else -> throw JvmUnsupportedInstructionException(

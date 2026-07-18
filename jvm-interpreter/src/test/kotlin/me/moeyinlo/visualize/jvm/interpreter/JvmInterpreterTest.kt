@@ -3726,6 +3726,22 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `arraylength returns the length of a boolean array`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xBC.toByte(),
+                0x04.toByte(),
+                0xBE.toByte(),
+            ),
+            maxStack = 1,
+        )
+
+        assertEquals(listOf(JvmIntValue(3)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
