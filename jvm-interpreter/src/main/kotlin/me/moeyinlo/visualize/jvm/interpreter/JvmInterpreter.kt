@@ -512,13 +512,16 @@ object JvmInterpreter {
         }
 
         val payload = heap.get(arrayReference).payload
-        if (payload !is JvmByteArrayPayload) {
-            throw JvmUnsupportedInstructionException(
+        val value = when (payload) {
+            is JvmByteArrayPayload -> payload.elements[index.value].toInt()
+            is JvmBooleanArrayPayload -> if (payload.elements[index.value]) 1 else 0
+            else -> throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
-                    "${instruction.offset}: expected JvmByteArrayPayload but was ${payload.javaClass.simpleName}",
+                    "${instruction.offset}: expected JvmByteArrayPayload or JvmBooleanArrayPayload but was " +
+                    payload.javaClass.simpleName,
             )
         }
-        operandStack.push(JvmIntValue(payload.elements[index.value].toInt()))
+        operandStack.push(JvmIntValue(value))
     }
 
     private fun executeIntStore(
