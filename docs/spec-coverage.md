@@ -733,6 +733,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `baload` pops an int index and guest `byte[]` reference, then pushes the selected byte element sign-extended to int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `baload` pops an int index and guest `boolean[]` reference, then pushes the selected boolean element as int `0` or `1` | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `caload` pops an int index and guest `char[]` reference, then pushes the selected char element zero-extended to int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `saload` pops an int index and guest `short[]` reference, then pushes the selected short element sign-extended to int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BOOLEAN` pops an int count and allocates a zero-initialized guest `boolean[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BYTE` pops an int count and allocates a zero-initialized guest `byte[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_CHAR` pops an int count and allocates a zero-initialized guest `char[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

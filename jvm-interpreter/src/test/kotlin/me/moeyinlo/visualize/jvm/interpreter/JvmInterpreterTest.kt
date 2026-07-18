@@ -4047,6 +4047,30 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `saload loads a short from a short array as an int`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateShortArray(3)
+        val payload = heap.get(reference).payload as JvmShortArrayPayload
+        payload.elements[1] = (-1234).toShort()
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0x35.toByte(),
+            ),
+            maxStack = 2,
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(JvmIntValue(-1234)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
@@ -5984,11 +6008,11 @@ class JvmInterpreterTest {
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
-                code = byteArrayOf(0x35.toByte()),
+                code = byteArrayOf(0xAC.toByte()),
                 maxStack = 0,
             )
         }
 
-        assertEquals("Unsupported instruction saload (0x35) at offset 0", exception.message)
+        assertEquals("Unsupported instruction ireturn (0xac) at offset 0", exception.message)
     }
 }
