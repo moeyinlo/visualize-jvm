@@ -893,13 +893,15 @@ object JvmInterpreter {
         }
 
         val payload = heap.get(arrayReference).payload
-        if (payload !is JvmByteArrayPayload) {
-            throw JvmUnsupportedInstructionException(
+        when (payload) {
+            is JvmByteArrayPayload -> payload.elements[index.value] = value.value.toByte()
+            is JvmBooleanArrayPayload -> payload.elements[index.value] = value.value != 0
+            else -> throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
-                    "${instruction.offset}: expected JvmByteArrayPayload but was ${payload.javaClass.simpleName}",
+                    "${instruction.offset}: expected JvmByteArrayPayload or JvmBooleanArrayPayload but was " +
+                    payload.javaClass.simpleName,
             )
         }
-        payload.elements[index.value] = value.value.toByte()
     }
 
     private fun executePop(
