@@ -599,7 +599,16 @@ object JvmInterpreter {
 
         val payload = heap.get(arrayReference).payload
         val value = when (payload) {
-            is JvmByteArrayPayload -> payload.elements[index.value].toInt()
+            is JvmByteArrayPayload -> {
+                if (index.value !in payload.elements.indices) {
+                    throw JvmArrayIndexOutOfBoundsException(
+                        guestClassName = "java/lang/ArrayIndexOutOfBoundsException",
+                        message = "${instruction.metadata.mnemonic} index ${index.value} out of bounds for length " +
+                            payload.elements.size,
+                    )
+                }
+                payload.elements[index.value].toInt()
+            }
             is JvmBooleanArrayPayload -> if (payload.elements[index.value]) 1 else 0
             else -> throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
