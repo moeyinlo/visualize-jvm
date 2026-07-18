@@ -180,6 +180,7 @@ object JvmInterpreter {
             in 0x4B..0x4E,
             -> executeReferenceStore(instruction, operandStack, localVariables)
             0x4F -> executeIntArrayStore(instruction, operandStack, heap)
+            0x50 -> executeLongArrayStore(instruction, operandStack, heap)
             0x57 -> executePop(instruction, operandStack)
             0x58 -> executePop2(instruction, operandStack)
             0x59 -> executeDup(instruction, operandStack)
@@ -702,6 +703,44 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
                     "${instruction.offset}: expected JvmIntArrayPayload but was ${payload.javaClass.simpleName}",
+            )
+        }
+        payload.elements[index.value] = value.value
+    }
+
+    private fun executeLongArrayStore(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+    ) {
+        val value = operandStack.pop()
+        val index = operandStack.pop()
+        val arrayReference = operandStack.pop()
+        if (value !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} value at offset " +
+                    "${instruction.offset}: expected JvmLongValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        if (index !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} index at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${index.javaClass.simpleName}",
+            )
+        }
+        if (arrayReference !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    arrayReference.javaClass.simpleName,
+            )
+        }
+
+        val payload = heap.get(arrayReference).payload
+        if (payload !is JvmLongArrayPayload) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmLongArrayPayload but was ${payload.javaClass.simpleName}",
             )
         }
         payload.elements[index.value] = value.value
