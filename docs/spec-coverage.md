@@ -768,6 +768,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `aastore` throws guest `ArrayIndexOutOfBoundsException` for an out-of-range int index | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `bastore` pops an int value, int index, and guest `byte[]` reference, then stores the value narrowed to byte into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `bastore` pops an int value, int index, and guest `boolean[]` reference, then stores the value as a boolean into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `bastore` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `castore` pops an int value, int index, and guest `char[]` reference, then stores the low unsigned 16 bits as a char into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `sastore` pops an int value, int index, and guest `short[]` reference, then stores the value narrowed to short into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BOOLEAN` pops an int count and allocates a zero-initialized guest `boolean[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

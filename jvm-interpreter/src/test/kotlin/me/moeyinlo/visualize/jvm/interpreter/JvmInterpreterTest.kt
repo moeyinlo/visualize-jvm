@@ -4818,6 +4818,24 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `bastore throws guest NullPointerException for null arrayref`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x03.toByte(),
+                    0x54.toByte(),
+                ),
+                maxStack = 3,
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("bastore on null arrayref", exception.message)
+    }
+
+    @Test
     fun `castore stores an int value into a char array as a char`() {
         val heap = JvmHeap()
         val reference = heap.allocateCharArray(3)
