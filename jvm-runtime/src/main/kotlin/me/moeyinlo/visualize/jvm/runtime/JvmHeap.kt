@@ -25,6 +25,8 @@ data class JvmFloatArrayPayload(val elements: MutableList<Float>) : JvmHeapPaylo
 
 data class JvmIntArrayPayload(val elements: MutableList<Int>) : JvmHeapPayload
 
+data class JvmLongArrayPayload(val elements: MutableList<Long>) : JvmHeapPayload
+
 data class JvmShortArrayPayload(val elements: MutableList<Short>) : JvmHeapPayload
 
 data class JvmMethodTypePayload(val descriptor: String) : JvmHeapPayload
@@ -127,6 +129,17 @@ class JvmHeap {
             JvmHeapObject(
                 className = "[I",
                 payload = JvmIntArrayPayload(MutableList(length) { 0 }),
+            ),
+        )
+    }
+
+    fun allocateLongArray(length: Int): JvmObjectReferenceValue {
+        require(length >= 0) { "array length must be non-negative: $length" }
+
+        return allocate(
+            JvmHeapObject(
+                className = "[J",
+                payload = JvmLongArrayPayload(MutableList(length) { 0L }),
             ),
         )
     }

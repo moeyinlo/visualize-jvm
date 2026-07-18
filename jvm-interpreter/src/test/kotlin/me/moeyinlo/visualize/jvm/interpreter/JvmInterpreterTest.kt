@@ -27,6 +27,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
+import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
@@ -3784,6 +3785,28 @@ class JvmInterpreterTest {
         assertEquals("[D", array.className)
         val payload = array.payload as JvmDoubleArrayPayload
         assertEquals(listOf(0.0, 0.0, 0.0), payload.elements)
+    }
+
+    @Test
+    fun `newarray allocates a long array with default zero values`() {
+        val heap = JvmHeap()
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xBC.toByte(),
+                0x0B.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val array = heap.get(reference)
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+        assertEquals("[J", array.className)
+        val payload = array.payload as JvmLongArrayPayload
+        assertEquals(listOf(0L, 0L, 0L), payload.elements)
     }
 
     @Test

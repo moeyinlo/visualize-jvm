@@ -2293,6 +2293,7 @@ object JvmInterpreter {
             8 -> heap.allocateByteArray(count.value)
             9 -> heap.allocateShortArray(count.value)
             10 -> heap.allocateIntArray(count.value)
+            11 -> heap.allocateLongArray(count.value)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ${instruction.metadata.mnemonic} atype $atype at offset ${instruction.offset}",
             )
