@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
@@ -2376,6 +2377,7 @@ object JvmInterpreter {
             is JvmBooleanArrayPayload -> payload.elements.size
             is JvmByteArrayPayload -> payload.elements.size
             is JvmCharArrayPayload -> payload.elements.size
+            is JvmDoubleArrayPayload -> payload.elements.size
             is JvmFloatArrayPayload -> payload.elements.size
             is JvmIntArrayPayload -> payload.elements.size
             is JvmReferenceArrayPayload -> payload.elements.size
