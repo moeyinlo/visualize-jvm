@@ -183,6 +183,7 @@ object JvmInterpreter {
             0x50 -> executeLongArrayStore(instruction, operandStack, heap)
             0x51 -> executeFloatArrayStore(instruction, operandStack, heap)
             0x52 -> executeDoubleArrayStore(instruction, operandStack, heap)
+            0x53 -> executeReferenceArrayStore(instruction, operandStack, heap)
             0x57 -> executePop(instruction, operandStack)
             0x58 -> executePop2(instruction, operandStack)
             0x59 -> executeDup(instruction, operandStack)
@@ -822,6 +823,44 @@ object JvmInterpreter {
             )
         }
         payload.elements[index.value] = value.value
+    }
+
+    private fun executeReferenceArrayStore(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+    ) {
+        val value = operandStack.pop()
+        val index = operandStack.pop()
+        val arrayReference = operandStack.pop()
+        if (value !is JvmReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} value at offset " +
+                    "${instruction.offset}: expected JvmReferenceValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        if (index !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} index at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${index.javaClass.simpleName}",
+            )
+        }
+        if (arrayReference !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    arrayReference.javaClass.simpleName,
+            )
+        }
+
+        val payload = heap.get(arrayReference).payload
+        if (payload !is JvmReferenceArrayPayload) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmReferenceArrayPayload but was ${payload.javaClass.simpleName}",
+            )
+        }
+        payload.elements[index.value] = value
     }
 
     private fun executePop(

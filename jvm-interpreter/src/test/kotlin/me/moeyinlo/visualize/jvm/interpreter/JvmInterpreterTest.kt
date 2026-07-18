@@ -4172,6 +4172,33 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aastore stores a reference into a reference array`() {
+        val heap = JvmHeap()
+        val arrayReference = heap.allocateReferenceArray("java/lang/Object", 3)
+        val valueReference = heap.allocateObject("java/lang/Object")
+        val payload = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, arrayReference)
+        locals.store(1, valueReference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0x2B.toByte(),
+                0x53.toByte(),
+            ),
+            maxStack = 3,
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(valueReference, payload.elements[1])
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
