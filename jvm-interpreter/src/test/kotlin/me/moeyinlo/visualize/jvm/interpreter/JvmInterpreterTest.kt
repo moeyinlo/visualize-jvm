@@ -3703,6 +3703,29 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `arraylength returns the length of a reference array`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xBD.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+                0xBE.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(3)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(

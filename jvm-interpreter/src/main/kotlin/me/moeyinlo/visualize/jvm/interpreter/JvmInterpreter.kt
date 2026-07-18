@@ -28,6 +28,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 
@@ -2366,14 +2367,15 @@ object JvmInterpreter {
             )
         }
 
-        val payload = heap.get(arrayReference).payload
-        if (payload !is JvmIntArrayPayload) {
-            throw JvmUnsupportedInstructionException(
+        val length = when (val payload = heap.get(arrayReference).payload) {
+            is JvmIntArrayPayload -> payload.elements.size
+            is JvmReferenceArrayPayload -> payload.elements.size
+            else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ${instruction.metadata.mnemonic} payload ${payload.javaClass.simpleName} " +
                     "at offset ${instruction.offset}",
             )
         }
-        operandStack.push(JvmIntValue(payload.elements.size))
+        operandStack.push(JvmIntValue(length))
     }
 
     private fun DecodedInstruction.constantPoolIndex(): ConstantPoolIndex =

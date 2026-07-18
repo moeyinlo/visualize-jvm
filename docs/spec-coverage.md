@@ -716,6 +716,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `new` resolves a `CONSTANT_Class` name and allocates a guest heap object reference for that class | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `anewarray` resolves an object `CONSTANT_Class`, pops an int count, and allocates a null-initialized guest reference array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `arraylength` pops a guest `int[]` reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `arraylength` pops a guest reference array reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BOOLEAN` pops an int count and allocates a zero-initialized guest `boolean[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_BYTE` pops an int count and allocates a zero-initialized guest `byte[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `newarray` with `atype=T_CHAR` pops an int count and allocates a zero-initialized guest `char[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
