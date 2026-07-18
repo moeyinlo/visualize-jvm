@@ -4139,6 +4139,23 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aaload throws guest NullPointerException for null arrayref`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x32.toByte(),
+                ),
+                maxStack = 2,
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("aaload on null arrayref", exception.message)
+    }
+
+    @Test
     fun `baload loads a byte from a byte array as an int`() {
         val heap = JvmHeap()
         val reference = heap.allocateByteArray(3)

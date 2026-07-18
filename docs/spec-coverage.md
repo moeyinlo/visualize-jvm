@@ -738,6 +738,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `daload` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `daload` throws guest `ArrayIndexOutOfBoundsException` for an out-of-range int index | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `aaload` pops an int index and guest reference array, then pushes the selected reference element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `aaload` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `baload` pops an int index and guest `byte[]` reference, then pushes the selected byte element sign-extended to int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `baload` pops an int index and guest `boolean[]` reference, then pushes the selected boolean element as int `0` or `1` | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `caload` pops an int index and guest `char[]` reference, then pushes the selected char element zero-extended to int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
