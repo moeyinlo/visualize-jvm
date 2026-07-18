@@ -4741,6 +4741,33 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aastore throws guest ArrayIndexOutOfBoundsException for out of range index`() {
+        val heap = JvmHeap()
+        val arrayReference = heap.allocateReferenceArray("java/lang/Object", 3)
+        val valueReference = heap.allocateObject("java/lang/Object")
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, arrayReference)
+        locals.store(1, valueReference)
+
+        val exception = assertFailsWith<JvmArrayIndexOutOfBoundsException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x06.toByte(),
+                    0x2B.toByte(),
+                    0x53.toByte(),
+                ),
+                maxStack = 3,
+                heap = heap,
+                localVariables = locals,
+            )
+        }
+
+        assertEquals("java/lang/ArrayIndexOutOfBoundsException", exception.guestClassName)
+        assertEquals("aastore index 3 out of bounds for length 3", exception.message)
+    }
+
+    @Test
     fun `bastore stores an int value into a byte array as a byte`() {
         val heap = JvmHeap()
         val reference = heap.allocateByteArray(3)

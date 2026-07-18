@@ -1041,6 +1041,13 @@ object JvmInterpreter {
                     "${instruction.offset}: expected JvmReferenceArrayPayload but was ${payload.javaClass.simpleName}",
             )
         }
+        if (index.value !in payload.elements.indices) {
+            throw JvmArrayIndexOutOfBoundsException(
+                guestClassName = "java/lang/ArrayIndexOutOfBoundsException",
+                message = "${instruction.metadata.mnemonic} index ${index.value} out of bounds for length " +
+                    payload.elements.size,
+            )
+        }
         payload.elements[index.value] = value
     }
 
