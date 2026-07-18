@@ -3878,6 +3878,30 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `laload loads a long from a long array`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateLongArray(3)
+        val payload = heap.get(reference).payload as JvmLongArrayPayload
+        payload.elements[1] = 9_876_543_210L
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0x2F.toByte(),
+            ),
+            maxStack = 2,
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(JvmLongValue(9_876_543_210L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
@@ -5815,11 +5839,11 @@ class JvmInterpreterTest {
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
-                code = byteArrayOf(0x2F.toByte()),
+                code = byteArrayOf(0x30.toByte()),
                 maxStack = 0,
             )
         }
 
-        assertEquals("Unsupported instruction laload (0x2f) at offset 0", exception.message)
+        assertEquals("Unsupported instruction faload (0x30) at offset 0", exception.message)
     }
 }
