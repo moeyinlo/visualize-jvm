@@ -48,6 +48,8 @@ data class JvmMethodHandlePayload(
     val referenceIndex: Int,
 ) : JvmHeapPayload
 
+data class JvmReferenceArrayPayload(val elements: MutableList<JvmReferenceValue>) : JvmHeapPayload
+
 private data class JvmMethodHandleKey(
     val referenceKind: JvmMethodHandleReferenceKind,
     val referenceIndex: Int,
@@ -140,6 +142,23 @@ class JvmHeap {
             JvmHeapObject(
                 className = "[J",
                 payload = JvmLongArrayPayload(MutableList(length) { 0L }),
+            ),
+        )
+    }
+
+    fun allocateReferenceArray(componentClassName: String, length: Int): JvmObjectReferenceValue {
+        require(componentClassName.isNotBlank()) { "array component class name must not be blank" }
+        require(length >= 0) { "array length must be non-negative: $length" }
+
+        val arrayClassName = if (componentClassName.startsWith("[")) {
+            "[$componentClassName"
+        } else {
+            "[L$componentClassName;"
+        }
+        return allocate(
+            JvmHeapObject(
+                className = arrayClassName,
+                payload = JvmReferenceArrayPayload(MutableList(length) { JvmNullValue }),
             ),
         )
     }

@@ -224,6 +224,7 @@ object JvmInterpreter {
             0x98 -> executeDoubleCompareGreater(instruction, operandStack)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
+            0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -2243,17 +2244,53 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         heap: JvmHeap,
     ) {
+        operandStack.push(heap.allocateObject(resolveConstantClassName(instruction, constantPool)))
+    }
+
+    private fun executeANewArray(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+    ) {
+        val count = operandStack.pop()
+        if (count !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} count at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${count.javaClass.simpleName}",
+            )
+        }
+        if (count.value < 0) {
+            throw JvmNegativeArraySizeException(
+                guestClassName = "java/lang/NegativeArraySizeException",
+                message = count.value.toString(),
+            )
+        }
+
+        operandStack.push(
+            heap.allocateReferenceArray(
+                componentClassName = resolveConstantClassName(instruction, constantPool),
+                length = count.value,
+            ),
+        )
+    }
+
+    private fun resolveConstantClassName(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+    ): String {
         val index = instruction.constantPoolIndex()
+        val mnemonic = instruction.metadata.mnemonic
         val entry = try {
             constantPool[index]
         } catch (exception: ConstantPoolFormatException) {
             throw JvmUnsupportedInstructionException(
-                "Invalid new constant_pool index $index at offset ${instruction.offset}: ${exception.message}",
+                "Invalid $mnemonic constant_pool index $index at offset ${instruction.offset}: ${exception.message}",
             )
         }
         if (entry !is ConstantClassEntry) {
             throw JvmUnsupportedInstructionException(
-                "Invalid new constant $index at offset ${instruction.offset}: expected ConstantClassEntry but was " +
+                "Invalid $mnemonic constant $index at offset ${instruction.offset}: expected ConstantClassEntry but was " +
                     entry.javaClass.simpleName,
             )
         }
@@ -2262,19 +2299,19 @@ object JvmInterpreter {
             constantPool[entry.nameIndex]
         } catch (exception: ConstantPoolFormatException) {
             throw JvmUnsupportedInstructionException(
-                "Invalid new CONSTANT_Class name_index ${entry.nameIndex} " +
+                "Invalid $mnemonic CONSTANT_Class name_index ${entry.nameIndex} " +
                     "at offset ${instruction.offset}: ${exception.message}",
             )
         }
         if (nameEntry !is ConstantUtf8Entry) {
             throw JvmUnsupportedInstructionException(
-                "Invalid new CONSTANT_Class name_index ${entry.nameIndex} at offset " +
+                "Invalid $mnemonic CONSTANT_Class name_index ${entry.nameIndex} at offset " +
                     "${instruction.offset}: expected ConstantUtf8Entry but was " +
                     nameEntry.javaClass.simpleName,
             )
         }
 
-        operandStack.push(heap.allocateObject(nameEntry.value))
+        return nameEntry.value
     }
 
     private fun executeNewArray(
@@ -2318,6 +2355,7 @@ object JvmInterpreter {
             0x13,
             0x14,
             0xBB,
+            0xBD,
             -> ConstantPoolIndex((operands[0] shl 8) or operands[1])
             else -> error("Instruction ${metadata.mnemonic} does not use a constant_pool index")
         }

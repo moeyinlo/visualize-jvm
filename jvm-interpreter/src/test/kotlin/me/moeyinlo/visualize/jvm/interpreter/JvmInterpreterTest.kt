@@ -35,7 +35,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
@@ -3631,6 +3633,35 @@ class JvmInterpreterTest {
         assertEquals(listOf(reference), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
         assertEquals("example/Foo", heap.get(reference).className)
+    }
+
+    @Test
+    fun `anewarray allocates a reference array with default null values`() {
+        val heap = JvmHeap()
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xBD.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val array = heap.get(reference)
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+        assertEquals("[Lexample/Foo;", array.className)
+        val payload = array.payload as JvmReferenceArrayPayload
+        assertEquals(listOf<JvmReferenceValue>(JvmNullValue, JvmNullValue, JvmNullValue), payload.elements)
     }
 
     @Test
