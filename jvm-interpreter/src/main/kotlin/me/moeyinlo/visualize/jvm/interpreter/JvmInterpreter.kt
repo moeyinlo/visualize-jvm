@@ -182,6 +182,7 @@ object JvmInterpreter {
             0x4F -> executeIntArrayStore(instruction, operandStack, heap)
             0x50 -> executeLongArrayStore(instruction, operandStack, heap)
             0x51 -> executeFloatArrayStore(instruction, operandStack, heap)
+            0x52 -> executeDoubleArrayStore(instruction, operandStack, heap)
             0x57 -> executePop(instruction, operandStack)
             0x58 -> executePop2(instruction, operandStack)
             0x59 -> executeDup(instruction, operandStack)
@@ -780,6 +781,44 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
                     "${instruction.offset}: expected JvmFloatArrayPayload but was ${payload.javaClass.simpleName}",
+            )
+        }
+        payload.elements[index.value] = value.value
+    }
+
+    private fun executeDoubleArrayStore(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+    ) {
+        val value = operandStack.pop()
+        val index = operandStack.pop()
+        val arrayReference = operandStack.pop()
+        if (value !is JvmDoubleValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} value at offset " +
+                    "${instruction.offset}: expected JvmDoubleValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        if (index !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} index at offset " +
+                    "${instruction.offset}: expected JvmIntValue but was ${index.javaClass.simpleName}",
+            )
+        }
+        if (arrayReference !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    arrayReference.javaClass.simpleName,
+            )
+        }
+
+        val payload = heap.get(arrayReference).payload
+        if (payload !is JvmDoubleArrayPayload) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
+                    "${instruction.offset}: expected JvmDoubleArrayPayload but was ${payload.javaClass.simpleName}",
             )
         }
         payload.elements[index.value] = value.value
