@@ -5000,6 +5000,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `sastore throws guest ArrayIndexOutOfBoundsException for out of range int index`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateShortArray(3)
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmArrayIndexOutOfBoundsException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x06.toByte(),
+                    0x03.toByte(),
+                    0x56.toByte(),
+                ),
+                maxStack = 3,
+                heap = heap,
+                localVariables = locals,
+            )
+        }
+
+        assertEquals("java/lang/ArrayIndexOutOfBoundsException", exception.guestClassName)
+        assertEquals("sastore index 3 out of bounds for length 3", exception.message)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
