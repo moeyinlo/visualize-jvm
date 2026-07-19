@@ -10,6 +10,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
@@ -25,6 +26,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
@@ -39,6 +41,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
@@ -84,6 +87,7 @@ object JvmInterpreter {
         heap: JvmHeap = JvmHeap(),
         localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
         classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
+        staticFields: JvmStaticFields = JvmStaticFields(),
     ): JvmExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
@@ -119,7 +123,15 @@ object JvmInterpreter {
                 0xC8 -> instruction.wideBranchTargetOffset()
                 0xC9 -> executeWideSubroutineBranch(instruction, operandStack)
                 else -> {
-                    executeInstruction(instruction, operandStack, constantPool, heap, localVariables, classHierarchy)
+                    executeInstruction(
+                        instruction,
+                        operandStack,
+                        constantPool,
+                        heap,
+                        localVariables,
+                        classHierarchy,
+                        staticFields,
+                    )
                     null
                 }
             }
@@ -143,6 +155,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         localVariables: JvmLocalVariables,
         classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -271,6 +284,7 @@ object JvmInterpreter {
             0x96 -> executeFloatCompareGreater(instruction, operandStack)
             0x97 -> executeDoubleCompareLess(instruction, operandStack)
             0x98 -> executeDoubleCompareGreater(instruction, operandStack)
+            0xB2 -> executeGetStatic(instruction, operandStack, constantPool, staticFields)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -3163,6 +3177,15 @@ object JvmInterpreter {
         operandStack.push(JvmIntValue(0))
     }
 
+    private fun executeGetStatic(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        staticFields: JvmStaticFields,
+    ) {
+        operandStack.push(staticFields.get(resolveConstantFieldReference(instruction, constantPool)))
+    }
+
     private fun executeNew(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -3238,6 +3261,101 @@ object JvmInterpreter {
 
         return nameEntry.value
     }
+
+    private fun resolveConstantFieldReference(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+    ): JvmFieldReference {
+        val index = instruction.constantPoolIndex()
+        val entry = constantPoolEntry(instruction, constantPool, index, "constant")
+        if (entry !is ConstantFieldRefEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} constant $index at offset ${instruction.offset}: " +
+                    "expected ConstantFieldRefEntry but was ${entry.javaClass.simpleName}",
+            )
+        }
+
+        val classEntry = constantPoolEntry(
+            instruction,
+            constantPool,
+            entry.classIndex,
+            "CONSTANT_Fieldref class_index",
+        )
+        if (classEntry !is ConstantClassEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} CONSTANT_Fieldref class_index ${entry.classIndex} " +
+                    "at offset ${instruction.offset}: expected ConstantClassEntry but was " +
+                    classEntry.javaClass.simpleName,
+            )
+        }
+        val ownerClassName = utf8ConstantValue(
+            instruction,
+            constantPool,
+            classEntry.nameIndex,
+            "CONSTANT_Class name_index",
+        )
+
+        val nameAndTypeEntry = constantPoolEntry(
+            instruction,
+            constantPool,
+            entry.nameAndTypeIndex,
+            "CONSTANT_Fieldref name_and_type_index",
+        )
+        if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} CONSTANT_Fieldref name_and_type_index " +
+                    "${entry.nameAndTypeIndex} at offset ${instruction.offset}: " +
+                    "expected ConstantNameAndTypeEntry but was ${nameAndTypeEntry.javaClass.simpleName}",
+            )
+        }
+
+        return JvmFieldReference(
+            ownerClassName = ownerClassName,
+            name = utf8ConstantValue(
+                instruction,
+                constantPool,
+                nameAndTypeEntry.nameIndex,
+                "CONSTANT_NameAndType name_index",
+            ),
+            descriptor = utf8ConstantValue(
+                instruction,
+                constantPool,
+                nameAndTypeEntry.descriptorIndex,
+                "CONSTANT_NameAndType descriptor_index",
+            ),
+        )
+    }
+
+    private fun utf8ConstantValue(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        role: String,
+    ): String {
+        val entry = constantPoolEntry(instruction, constantPool, index, role)
+        if (entry !is ConstantUtf8Entry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} $role $index at offset ${instruction.offset}: " +
+                    "expected ConstantUtf8Entry but was ${entry.javaClass.simpleName}",
+            )
+        }
+        return entry.value
+    }
+
+    private fun constantPoolEntry(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        role: String,
+    ): ConstantPoolEntry =
+        try {
+            constantPool[index]
+        } catch (exception: ConstantPoolFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} $role $index at offset ${instruction.offset}: " +
+                    exception.message,
+            )
+        }
 
     private fun executeNewArray(
         instruction: DecodedInstruction,
@@ -3317,6 +3435,7 @@ object JvmInterpreter {
             0x12 -> ConstantPoolIndex(operands[0])
             0x13,
             0x14,
+            0xB2,
             0xBB,
             0xBD,
             0xC0,

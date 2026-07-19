@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
@@ -21,6 +22,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
@@ -42,6 +44,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -5074,6 +5077,42 @@ class JvmInterpreterTest {
         )
 
         assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `getstatic pushes prepared int static field value`() {
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "counter",
+                descriptor = "I",
+            ),
+            JvmIntValue(7),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+        )
+
+        assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
     }
 
