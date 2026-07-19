@@ -19,6 +19,9 @@ class JvmClassHierarchy(
         if (sourceClassName.isArrayClassName() && targetClassName == "java/lang/Cloneable") {
             return true
         }
+        if (sourceClassName.isArrayClassName() && targetClassName == "java/io/Serializable") {
+            return true
+        }
         if (sourceClassName.isReferenceArrayClassName() && targetClassName.isReferenceArrayClassName()) {
             return isAssignable(
                 sourceClassName.referenceArrayComponentClassName(),
