@@ -4982,6 +4982,24 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `sastore throws guest NullPointerException for null arrayref`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x03.toByte(),
+                    0x56.toByte(),
+                ),
+                maxStack = 3,
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("sastore on null arrayref", exception.message)
+    }
+
+    @Test
     fun `newarray allocates a boolean array with default false values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
