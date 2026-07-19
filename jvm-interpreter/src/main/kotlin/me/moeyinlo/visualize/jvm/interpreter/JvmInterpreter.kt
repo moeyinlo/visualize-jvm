@@ -3160,9 +3160,7 @@ object JvmInterpreter {
             operandStack.push(JvmIntValue(1))
             return
         }
-        throw JvmUnsupportedInstructionException(
-            "Unsupported non-null ${instruction.metadata.mnemonic} to $targetClassName at offset ${instruction.offset}",
-        )
+        operandStack.push(JvmIntValue(0))
     }
 
     private fun executeNew(
