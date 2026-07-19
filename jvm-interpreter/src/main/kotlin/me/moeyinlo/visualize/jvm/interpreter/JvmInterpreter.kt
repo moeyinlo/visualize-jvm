@@ -290,6 +290,7 @@ object JvmInterpreter {
             0xB2 -> executeGetStatic(instruction, operandStack, constantPool, staticFields)
             0xB3 -> executePutStatic(instruction, operandStack, constantPool, staticFields)
             0xB4 -> executeGetField(instruction, operandStack, constantPool, heap)
+            0xB5 -> executePutField(instruction, operandStack, constantPool, heap)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -3232,6 +3233,32 @@ object JvmInterpreter {
         operandStack.push(value)
     }
 
+    private fun executePutField(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+    ) {
+        val value = operandStack.pop()
+        val objectref = operandStack.pop()
+        if (objectref == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "${instruction.metadata.mnemonic} on null objectref",
+            )
+        }
+        if (objectref !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} objectref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    objectref.javaClass.simpleName,
+            )
+        }
+        val field = resolveConstantFieldReference(instruction, constantPool)
+        requireFieldValue(instruction, field, value)
+        heap.putInstanceField(objectref, field, value)
+    }
+
     private fun requireFieldValue(
         instruction: DecodedInstruction,
         field: JvmFieldReference,
@@ -3509,6 +3536,7 @@ object JvmInterpreter {
             0xB2,
             0xB3,
             0xB4,
+            0xB5,
             0xBB,
             0xBD,
             0xC0,
