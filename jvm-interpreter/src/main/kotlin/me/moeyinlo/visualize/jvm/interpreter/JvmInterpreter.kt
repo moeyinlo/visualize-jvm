@@ -285,6 +285,7 @@ object JvmInterpreter {
             0x97 -> executeDoubleCompareLess(instruction, operandStack)
             0x98 -> executeDoubleCompareGreater(instruction, operandStack)
             0xB2 -> executeGetStatic(instruction, operandStack, constantPool, staticFields)
+            0xB3 -> executePutStatic(instruction, operandStack, constantPool, staticFields)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -3186,6 +3187,15 @@ object JvmInterpreter {
         operandStack.push(staticFields.get(resolveConstantFieldReference(instruction, constantPool)))
     }
 
+    private fun executePutStatic(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        staticFields: JvmStaticFields,
+    ) {
+        staticFields.put(resolveConstantFieldReference(instruction, constantPool), operandStack.pop())
+    }
+
     private fun executeNew(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -3436,6 +3446,7 @@ object JvmInterpreter {
             0x13,
             0x14,
             0xB2,
+            0xB3,
             0xBB,
             0xBD,
             0xC0,
