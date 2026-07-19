@@ -4998,6 +4998,28 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `instanceof pushes zero for null reference`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x01.toByte(),
+                0xC1.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `bastore stores an int value into a byte array as a byte`() {
         val heap = JvmHeap()
         val reference = heap.allocateByteArray(3)
