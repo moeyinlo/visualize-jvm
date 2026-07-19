@@ -270,6 +270,7 @@ object JvmInterpreter {
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
             0xBE -> executeArrayLength(instruction, operandStack, heap)
+            0xC0 -> executeCheckCast(instruction, operandStack, constantPool)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -3101,6 +3102,27 @@ object JvmInterpreter {
         }
     }
 
+    private fun executeCheckCast(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+    ) {
+        val targetClassName = resolveConstantClassName(instruction, constantPool)
+        val value = operandStack.peek()
+        if (value !is JvmReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} objectref at offset " +
+                    "${instruction.offset}: expected JvmReferenceValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        if (value == JvmNullValue) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Unsupported non-null ${instruction.metadata.mnemonic} to $targetClassName at offset ${instruction.offset}",
+        )
+    }
+
     private fun executeNew(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -3257,6 +3279,7 @@ object JvmInterpreter {
             0x14,
             0xBB,
             0xBD,
+            0xC0,
             -> ConstantPoolIndex((operands[0] shl 8) or operands[1])
             else -> error("Instruction ${metadata.mnemonic} does not use a constant_pool index")
         }
