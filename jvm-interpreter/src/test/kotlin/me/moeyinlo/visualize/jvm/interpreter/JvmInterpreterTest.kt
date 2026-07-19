@@ -5117,6 +5117,46 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic rejects prepared value that does not match field descriptor`() {
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "counter",
+                descriptor = "I",
+            ),
+            JvmLongValue(7L),
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                staticFields = staticFields,
+            )
+        }
+
+        assertEquals(
+            "Invalid getstatic value for Example.counter:I at offset 0: expected I but was JvmLongValue",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `putstatic stores int value into prepared static fields`() {
         val staticFields = JvmStaticFields()
         val field = JvmFieldReference(

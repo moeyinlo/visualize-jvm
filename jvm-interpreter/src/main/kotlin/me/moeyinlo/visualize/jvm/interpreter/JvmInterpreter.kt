@@ -42,6 +42,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
@@ -80,6 +81,8 @@ class JvmClassCastException(
 ) : ClassCastException(message)
 
 object JvmInterpreter {
+    private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
+
     fun execute(
         code: ByteArray,
         maxStack: Int,
@@ -3184,7 +3187,10 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         staticFields: JvmStaticFields,
     ) {
-        operandStack.push(staticFields.get(resolveConstantFieldReference(instruction, constantPool)))
+        val field = resolveConstantFieldReference(instruction, constantPool)
+        val value = staticFields.get(field)
+        requireFieldValue(instruction, field, value)
+        operandStack.push(value)
     }
 
     private fun executePutStatic(
@@ -3195,6 +3201,31 @@ object JvmInterpreter {
     ) {
         staticFields.put(resolveConstantFieldReference(instruction, constantPool), operandStack.pop())
     }
+
+    private fun requireFieldValue(
+        instruction: DecodedInstruction,
+        field: JvmFieldReference,
+        value: JvmValue,
+    ) {
+        if (value.matchesFieldDescriptor(field.descriptor)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid ${instruction.metadata.mnemonic} value for " +
+                "${field.ownerClassName}.${field.name}:${field.descriptor} at offset ${instruction.offset}: " +
+                "expected ${field.descriptor} but was ${value.javaClass.simpleName}",
+        )
+    }
+
+    private fun JvmValue.matchesFieldDescriptor(descriptor: String): Boolean =
+        when {
+            descriptor in intLikeFieldDescriptors -> this is JvmIntValue
+            descriptor == "F" -> this is JvmFloatValue
+            descriptor == "J" -> this is JvmLongValue
+            descriptor == "D" -> this is JvmDoubleValue
+            descriptor.startsWith("L") || descriptor.startsWith("[") -> this is JvmReferenceValue
+            else -> false
+        }
 
     private fun executeNew(
         instruction: DecodedInstruction,
