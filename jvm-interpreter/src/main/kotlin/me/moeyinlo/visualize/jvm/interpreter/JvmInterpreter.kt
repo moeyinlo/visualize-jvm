@@ -3199,7 +3199,10 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         staticFields: JvmStaticFields,
     ) {
-        staticFields.put(resolveConstantFieldReference(instruction, constantPool), operandStack.pop())
+        val field = resolveConstantFieldReference(instruction, constantPool)
+        val value = operandStack.pop()
+        requireFieldValue(instruction, field, value)
+        staticFields.put(field, value)
     }
 
     private fun requireFieldValue(
