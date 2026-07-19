@@ -4938,6 +4938,35 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `checkcast leaves assignable object reference on operand stack`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("java/lang/String")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC0.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `bastore stores an int value into a byte array as a byte`() {
         val heap = JvmHeap()
         val reference = heap.allocateByteArray(3)
