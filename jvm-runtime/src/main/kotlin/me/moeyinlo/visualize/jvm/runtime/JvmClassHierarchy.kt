@@ -16,6 +16,12 @@ class JvmClassHierarchy(
         if (sourceClassName == targetClassName || targetClassName == "java/lang/Object") {
             return true
         }
+        if (sourceClassName.isReferenceArrayClassName() && targetClassName.isReferenceArrayClassName()) {
+            return isAssignable(
+                sourceClassName.referenceArrayComponentClassName(),
+                targetClassName.referenceArrayComponentClassName(),
+            )
+        }
 
         val sourceClass = classesByName[sourceClassName] ?: return false
         val superclassName = sourceClass.superclassName
@@ -26,6 +32,16 @@ class JvmClassHierarchy(
             isAssignable(interfaceName, targetClassName)
         }
     }
+
+    private fun String.isReferenceArrayClassName(): Boolean =
+        startsWith("[L") && endsWith(";") || startsWith("[[")
+
+    private fun String.referenceArrayComponentClassName(): String =
+        if (startsWith("[L") && endsWith(";")) {
+            substring(2, length - 1)
+        } else {
+            substring(1)
+        }
 
     companion object {
         val Empty: JvmClassHierarchy = JvmClassHierarchy()

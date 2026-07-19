@@ -4835,6 +4835,33 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aastore stores covariant reference array into reference array`() {
+        val heap = JvmHeap()
+        val arrayReference = heap.allocateReferenceArray("[Ljava/lang/Object;", 1)
+        val valueReference = heap.allocateReferenceArray("java/lang/String", 1)
+        val payload = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, arrayReference)
+        locals.store(1, valueReference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x03.toByte(),
+                0x2B.toByte(),
+                0x53.toByte(),
+            ),
+            maxStack = 3,
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(valueReference, payload.elements[0])
+    }
+
+    @Test
     fun `bastore stores an int value into a byte array as a byte`() {
         val heap = JvmHeap()
         val reference = heap.allocateByteArray(3)
