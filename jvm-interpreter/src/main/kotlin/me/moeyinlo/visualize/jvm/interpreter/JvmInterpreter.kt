@@ -71,6 +71,11 @@ class JvmArrayStoreException(
     message: String,
 ) : ArrayStoreException(message)
 
+class JvmClassCastException(
+    val guestClassName: String,
+    message: String,
+) : ClassCastException(message)
+
 object JvmInterpreter {
     fun execute(
         code: ByteArray,
@@ -3124,8 +3129,9 @@ object JvmInterpreter {
         if (classHierarchy.isAssignable(sourceClassName = valueClassName, targetClassName = targetClassName)) {
             return
         }
-        throw JvmUnsupportedInstructionException(
-            "Unsupported non-null ${instruction.metadata.mnemonic} to $targetClassName at offset ${instruction.offset}",
+        throw JvmClassCastException(
+            guestClassName = "java/lang/ClassCastException",
+            message = "$valueClassName cannot be cast to $targetClassName",
         )
     }
 

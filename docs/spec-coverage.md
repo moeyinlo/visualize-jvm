@@ -773,6 +773,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `aastore` accepts an array object value for a `java/io/Serializable` reference-array component | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `checkcast` resolves its target class and leaves a null object reference unchanged on the operand stack | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `checkcast` leaves an assignable non-null object reference unchanged on the operand stack | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Object and arrays | `checkcast` throws guest `ClassCastException` when a non-null object reference is not assignable to the target type | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `bastore` pops an int value, int index, and guest `byte[]` reference, then stores the value narrowed to byte into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `bastore` pops an int value, int index, and guest `boolean[]` reference, then stores the value as a boolean into the selected element | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `bastore` throws guest `NullPointerException` for a null array reference | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
