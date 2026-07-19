@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
@@ -77,6 +78,7 @@ object JvmInterpreter {
         constantPool: ConstantPool = ConstantPool.fromEntries(emptyList()),
         heap: JvmHeap = JvmHeap(),
         localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
+        classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
     ): JvmExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
@@ -112,7 +114,7 @@ object JvmInterpreter {
                 0xC8 -> instruction.wideBranchTargetOffset()
                 0xC9 -> executeWideSubroutineBranch(instruction, operandStack)
                 else -> {
-                    executeInstruction(instruction, operandStack, constantPool, heap, localVariables)
+                    executeInstruction(instruction, operandStack, constantPool, heap, localVariables, classHierarchy)
                     null
                 }
             }
@@ -135,6 +137,7 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         heap: JvmHeap,
         localVariables: JvmLocalVariables,
+        classHierarchy: JvmClassHierarchy,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -193,7 +196,7 @@ object JvmInterpreter {
             0x50 -> executeLongArrayStore(instruction, operandStack, heap)
             0x51 -> executeFloatArrayStore(instruction, operandStack, heap)
             0x52 -> executeDoubleArrayStore(instruction, operandStack, heap)
-            0x53 -> executeReferenceArrayStore(instruction, operandStack, heap)
+            0x53 -> executeReferenceArrayStore(instruction, operandStack, heap, classHierarchy)
             0x54 -> executeByteArrayStore(instruction, operandStack, heap)
             0x55 -> executeCharArrayStore(instruction, operandStack, heap)
             0x56 -> executeShortArrayStore(instruction, operandStack, heap)
@@ -1009,6 +1012,7 @@ object JvmInterpreter {
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
         heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
     ) {
         val value = operandStack.pop()
         val index = operandStack.pop()
@@ -1054,7 +1058,7 @@ object JvmInterpreter {
                     payload.elements.size,
             )
         }
-        if (!isReferenceAssignableToArrayComponent(value, arrayObject.className, heap)) {
+        if (!isReferenceAssignableToArrayComponent(value, arrayObject.className, heap, classHierarchy)) {
             val valueClassName = heap.get(value as JvmObjectReferenceValue).className
             throw JvmArrayStoreException(
                 guestClassName = "java/lang/ArrayStoreException",
@@ -1068,6 +1072,7 @@ object JvmInterpreter {
         value: JvmReferenceValue,
         arrayClassName: String,
         heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
     ): Boolean {
         if (value == JvmNullValue) {
             return true
@@ -1075,7 +1080,7 @@ object JvmInterpreter {
 
         val componentClassName = referenceArrayComponentClassName(arrayClassName)
         val valueClassName = heap.get(value as JvmObjectReferenceValue).className
-        return componentClassName == "java/lang/Object" || componentClassName == valueClassName
+        return classHierarchy.isAssignable(sourceClassName = valueClassName, targetClassName = componentClassName)
     }
 
     private fun referenceArrayComponentClassName(arrayClassName: String): String =

@@ -17,6 +17,8 @@ import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
+import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
@@ -4795,6 +4797,41 @@ class JvmInterpreterTest {
             "aastore cannot store java/lang/String into [Ljava/lang/Integer;",
             exception.message,
         )
+    }
+
+    @Test
+    fun `aastore stores subclass object into superclass reference array`() {
+        val heap = JvmHeap()
+        val arrayReference = heap.allocateReferenceArray("java/lang/Number", 1)
+        val valueReference = heap.allocateObject("java/lang/Integer")
+        val payload = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, arrayReference)
+        locals.store(1, valueReference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x03.toByte(),
+                0x2B.toByte(),
+                0x53.toByte(),
+            ),
+            maxStack = 3,
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "java/lang/Integer",
+                        superclassName = "java/lang/Number",
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(valueReference, payload.elements[0])
     }
 
     @Test
