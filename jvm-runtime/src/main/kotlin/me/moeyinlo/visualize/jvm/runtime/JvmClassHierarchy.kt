@@ -16,6 +16,9 @@ class JvmClassHierarchy(
         if (sourceClassName == targetClassName || targetClassName == "java/lang/Object") {
             return true
         }
+        if (sourceClassName.isArrayClassName() && targetClassName == "java/lang/Cloneable") {
+            return true
+        }
         if (sourceClassName.isReferenceArrayClassName() && targetClassName.isReferenceArrayClassName()) {
             return isAssignable(
                 sourceClassName.referenceArrayComponentClassName(),
@@ -32,6 +35,8 @@ class JvmClassHierarchy(
             isAssignable(interfaceName, targetClassName)
         }
     }
+
+    private fun String.isArrayClassName(): Boolean = startsWith("[")
 
     private fun String.isReferenceArrayClassName(): Boolean =
         startsWith("[L") && endsWith(";") || startsWith("[[")
