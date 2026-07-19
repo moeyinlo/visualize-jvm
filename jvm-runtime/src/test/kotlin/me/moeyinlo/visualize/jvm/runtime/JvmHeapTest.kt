@@ -20,6 +20,24 @@ class JvmHeapTest {
     }
 
     @Test
+    fun `heap stores instance fields per object reference`() {
+        val heap = JvmHeap()
+        val first = heap.allocateObject("Example")
+        val second = heap.allocateObject("Example")
+        val field = JvmFieldReference(
+            ownerClassName = "Example",
+            name = "counter",
+            descriptor = "I",
+        )
+
+        heap.putInstanceField(first, field, JvmIntValue(3))
+        heap.putInstanceField(second, field, JvmIntValue(5))
+
+        assertEquals(JvmIntValue(3), heap.getInstanceField(first, field))
+        assertEquals(JvmIntValue(5), heap.getInstanceField(second, field))
+    }
+
+    @Test
     fun `heap allocates string objects with guest payloads`() {
         val heap = JvmHeap()
 

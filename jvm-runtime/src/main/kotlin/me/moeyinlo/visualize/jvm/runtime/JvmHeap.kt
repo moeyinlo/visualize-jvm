@@ -57,6 +57,7 @@ private data class JvmMethodHandleKey(
 
 class JvmHeap {
     private val objects = linkedMapOf<JvmReferenceId, JvmHeapObject>()
+    private val instanceFields = linkedMapOf<JvmReferenceId, MutableMap<JvmFieldReference, JvmValue>>()
     private val internedStrings = linkedMapOf<String, JvmObjectReferenceValue>()
     private val classMirrors = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodTypes = linkedMapOf<String, JvmObjectReferenceValue>()
@@ -233,6 +234,17 @@ class JvmHeap {
     fun get(reference: JvmObjectReferenceValue): JvmHeapObject =
         objects[reference.referenceId]
             ?: throw JvmHeapAccessException("Unknown heap reference ${reference.referenceId}")
+
+    fun putInstanceField(reference: JvmObjectReferenceValue, field: JvmFieldReference, value: JvmValue) {
+        get(reference)
+        instanceFields.getOrPut(reference.referenceId) { linkedMapOf() }[field] = value
+    }
+
+    fun getInstanceField(reference: JvmObjectReferenceValue, field: JvmFieldReference): JvmValue {
+        get(reference)
+        return instanceFields[reference.referenceId]?.get(field)
+            ?: throw JvmHeapAccessException("Instance field $field has no value on ${reference.referenceId}")
+    }
 
     private fun allocate(heapObject: JvmHeapObject): JvmObjectReferenceValue {
         val referenceId = JvmReferenceId(nextReferenceId)
