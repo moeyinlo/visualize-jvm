@@ -4861,6 +4861,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `bastore throws guest ArrayIndexOutOfBoundsException for out of range boolean array index`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateBooleanArray(3)
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmArrayIndexOutOfBoundsException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x06.toByte(),
+                    0x03.toByte(),
+                    0x54.toByte(),
+                ),
+                maxStack = 3,
+                heap = heap,
+                localVariables = locals,
+            )
+        }
+
+        assertEquals("java/lang/ArrayIndexOutOfBoundsException", exception.guestClassName)
+        assertEquals("bastore index 3 out of bounds for length 3", exception.message)
+    }
+
+    @Test
     fun `castore stores an int value into a char array as a char`() {
         val heap = JvmHeap()
         val reference = heap.allocateCharArray(3)

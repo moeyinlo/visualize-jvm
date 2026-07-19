@@ -1097,7 +1097,16 @@ object JvmInterpreter {
                 }
                 payload.elements[index.value] = value.value.toByte()
             }
-            is JvmBooleanArrayPayload -> payload.elements[index.value] = value.value != 0
+            is JvmBooleanArrayPayload -> {
+                if (index.value !in payload.elements.indices) {
+                    throw JvmArrayIndexOutOfBoundsException(
+                        guestClassName = "java/lang/ArrayIndexOutOfBoundsException",
+                        message = "${instruction.metadata.mnemonic} index ${index.value} out of bounds for length " +
+                            payload.elements.size,
+                    )
+                }
+                payload.elements[index.value] = value.value != 0
+            }
             else -> throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
                     "${instruction.offset}: expected JvmByteArrayPayload or JvmBooleanArrayPayload but was " +
