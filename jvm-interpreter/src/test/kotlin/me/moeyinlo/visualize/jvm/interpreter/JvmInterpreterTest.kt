@@ -5020,6 +5020,35 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `instanceof pushes one for assignable object reference`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("java/lang/String")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC1.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(JvmIntValue(1)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `bastore stores an int value into a byte array as a byte`() {
         val heap = JvmHeap()
         val reference = heap.allocateByteArray(3)

@@ -276,7 +276,7 @@ object JvmInterpreter {
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
             0xBE -> executeArrayLength(instruction, operandStack, heap)
             0xC0 -> executeCheckCast(instruction, operandStack, constantPool, heap, classHierarchy)
-            0xC1 -> executeInstanceOf(instruction, operandStack, constantPool)
+            0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -3140,6 +3140,8 @@ object JvmInterpreter {
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
     ) {
         val targetClassName = resolveConstantClassName(instruction, constantPool)
         val value = operandStack.pop()
@@ -3151,6 +3153,11 @@ object JvmInterpreter {
         }
         if (value == JvmNullValue) {
             operandStack.push(JvmIntValue(0))
+            return
+        }
+        val valueClassName = heap.get(value as JvmObjectReferenceValue).className
+        if (classHierarchy.isAssignable(sourceClassName = valueClassName, targetClassName = targetClassName)) {
+            operandStack.push(JvmIntValue(1))
             return
         }
         throw JvmUnsupportedInstructionException(
