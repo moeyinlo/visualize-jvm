@@ -4768,6 +4768,36 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aastore throws guest ArrayStoreException for incompatible object element`() {
+        val heap = JvmHeap()
+        val arrayReference = heap.allocateReferenceArray("java/lang/Integer", 1)
+        val valueReference = heap.allocateObject("java/lang/String")
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, arrayReference)
+        locals.store(1, valueReference)
+
+        val exception = assertFailsWith<JvmArrayStoreException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x03.toByte(),
+                    0x2B.toByte(),
+                    0x53.toByte(),
+                ),
+                maxStack = 3,
+                heap = heap,
+                localVariables = locals,
+            )
+        }
+
+        assertEquals("java/lang/ArrayStoreException", exception.guestClassName)
+        assertEquals(
+            "aastore cannot store java/lang/String into [Ljava/lang/Integer;",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `bastore stores an int value into a byte array as a byte`() {
         val heap = JvmHeap()
         val reference = heap.allocateByteArray(3)

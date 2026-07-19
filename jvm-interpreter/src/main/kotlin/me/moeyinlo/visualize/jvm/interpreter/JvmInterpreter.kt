@@ -65,6 +65,11 @@ class JvmNullPointerException(
     message: String,
 ) : NullPointerException(message)
 
+class JvmArrayStoreException(
+    val guestClassName: String,
+    message: String,
+) : ArrayStoreException(message)
+
 object JvmInterpreter {
     fun execute(
         code: ByteArray,
@@ -1034,7 +1039,8 @@ object JvmInterpreter {
             )
         }
 
-        val payload = heap.get(arrayReference).payload
+        val arrayObject = heap.get(arrayReference)
+        val payload = arrayObject.payload
         if (payload !is JvmReferenceArrayPayload) {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} arrayref at offset " +
@@ -1048,8 +1054,36 @@ object JvmInterpreter {
                     payload.elements.size,
             )
         }
+        if (!isReferenceAssignableToArrayComponent(value, arrayObject.className, heap)) {
+            val valueClassName = heap.get(value as JvmObjectReferenceValue).className
+            throw JvmArrayStoreException(
+                guestClassName = "java/lang/ArrayStoreException",
+                message = "${instruction.metadata.mnemonic} cannot store $valueClassName into ${arrayObject.className}",
+            )
+        }
         payload.elements[index.value] = value
     }
+
+    private fun isReferenceAssignableToArrayComponent(
+        value: JvmReferenceValue,
+        arrayClassName: String,
+        heap: JvmHeap,
+    ): Boolean {
+        if (value == JvmNullValue) {
+            return true
+        }
+
+        val componentClassName = referenceArrayComponentClassName(arrayClassName)
+        val valueClassName = heap.get(value as JvmObjectReferenceValue).className
+        return componentClassName == "java/lang/Object" || componentClassName == valueClassName
+    }
+
+    private fun referenceArrayComponentClassName(arrayClassName: String): String =
+        if (arrayClassName.startsWith("[L") && arrayClassName.endsWith(";")) {
+            arrayClassName.substring(2, arrayClassName.length - 1)
+        } else {
+            arrayClassName.substring(1)
+        }
 
     private fun executeByteArrayStore(
         instruction: DecodedInstruction,
