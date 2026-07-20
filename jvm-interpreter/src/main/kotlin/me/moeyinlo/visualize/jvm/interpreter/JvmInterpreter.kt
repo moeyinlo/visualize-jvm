@@ -3263,7 +3263,7 @@ object JvmInterpreter {
                     objectref.javaClass.simpleName,
             )
         }
-        val field = resolveConstantFieldReference(instruction, constantPool)
+        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
         heap.putInstanceField(objectref, field, value)
