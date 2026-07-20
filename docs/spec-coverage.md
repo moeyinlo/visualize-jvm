@@ -721,6 +721,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | Heap stores instance field values per object reference and symbolic field identity | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | Field access | `getfield` resolves a `CONSTANT_Fieldref`, pops a non-null object reference, and pushes an int instance field value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` reads an unwritten int instance field as the JVM default zero value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `getfield` rejects an object reference field value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` resolves a `CONSTANT_Fieldref`, pops an int value and non-null object reference, and stores the instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` rejects an object reference value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Invocation | `invokevirtual`, `invokespecial`, `invokestatic`, `invokeinterface`, `invokedynamic` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
