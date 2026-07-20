@@ -309,7 +309,15 @@ object JvmInterpreter {
                 classHierarchy,
                 currentClassName,
             )
-            0xB3 -> executePutStatic(instruction, operandStack, constantPool, staticFields, heap, classHierarchy)
+            0xB3 -> executePutStatic(
+                instruction,
+                operandStack,
+                constantPool,
+                staticFields,
+                heap,
+                classHierarchy,
+                currentClassName,
+            )
             0xB4 -> executeGetField(instruction, operandStack, constantPool, heap, classHierarchy)
             0xB5 -> executePutField(instruction, operandStack, constantPool, heap, classHierarchy)
             0xBC -> executeNewArray(instruction, operandStack, heap)
@@ -3230,9 +3238,11 @@ object JvmInterpreter {
         staticFields: JvmStaticFields,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        currentClassName: String?,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
+        requireAccessibleField(resolvedField, currentClassName)
         val field = resolvedField.reference
         val value = operandStack.pop()
         requireFieldValue(instruction, field, value)
