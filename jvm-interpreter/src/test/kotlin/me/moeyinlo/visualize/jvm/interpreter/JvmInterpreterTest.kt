@@ -5899,6 +5899,46 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putfield stores null into reference instance field`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Example")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val field = JvmFieldReference(
+            ownerClassName = "Example",
+            name = "value",
+            descriptor = "Ljava/lang/String;",
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x01.toByte(),
+                0xB5.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                    ConstantUtf8Entry("Ljava/lang/String;", "Ljava/lang/String;".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmNullValue, heap.getInstanceField(receiver, field))
+    }
+
+    @Test
     fun `putfield stores object reference assignable to declared field class`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Example")
