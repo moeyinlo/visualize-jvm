@@ -5441,6 +5441,41 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putstatic stores null into reference static field`() {
+        val staticFields = JvmStaticFields()
+        val field = JvmFieldReference(
+            ownerClassName = "Example",
+            name = "value",
+            descriptor = "Ljava/lang/String;",
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x01.toByte(),
+                0xB3.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                    ConstantUtf8Entry("Ljava/lang/String;", "Ljava/lang/String;".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmNullValue, staticFields.get(field))
+    }
+
+    @Test
     fun `putstatic stores object reference assignable to declared field class`() {
         val heap = JvmHeap()
         val value = heap.allocateObject("example/StringChild")
