@@ -290,7 +290,7 @@ object JvmInterpreter {
             0xB2 -> executeGetStatic(instruction, operandStack, constantPool, staticFields)
             0xB3 -> executePutStatic(instruction, operandStack, constantPool, staticFields)
             0xB4 -> executeGetField(instruction, operandStack, constantPool, heap)
-            0xB5 -> executePutField(instruction, operandStack, constantPool, heap)
+            0xB5 -> executePutField(instruction, operandStack, constantPool, heap, classHierarchy)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -3238,6 +3238,7 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
         heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
     ) {
         val value = operandStack.pop()
         val objectref = operandStack.pop()
@@ -3256,6 +3257,7 @@ object JvmInterpreter {
         }
         val field = resolveConstantFieldReference(instruction, constantPool)
         requireFieldValue(instruction, field, value)
+        requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
         heap.putInstanceField(objectref, field, value)
     }
 
@@ -3282,6 +3284,39 @@ object JvmInterpreter {
             descriptor == "D" -> this is JvmDoubleValue
             descriptor.startsWith("L") || descriptor.startsWith("[") -> this is JvmReferenceValue
             else -> false
+        }
+
+    private fun requireReferenceFieldAssignable(
+        instruction: DecodedInstruction,
+        field: JvmFieldReference,
+        value: JvmValue,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+    ) {
+        if (!field.descriptor.isReferenceDescriptor() || value == JvmNullValue) {
+            return
+        }
+        val reference = value as JvmObjectReferenceValue
+        val sourceClassName = heap.get(reference).className
+        val targetClassName = field.descriptor.referenceDescriptorClassName()
+        if (classHierarchy.isAssignable(sourceClassName, targetClassName)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid ${instruction.metadata.mnemonic} value for " +
+                "${field.ownerClassName}.${field.name}:${field.descriptor} at offset ${instruction.offset}: " +
+                "$sourceClassName is not assignable to $targetClassName",
+        )
+    }
+
+    private fun String.isReferenceDescriptor(): Boolean =
+        startsWith("L") && endsWith(";") || startsWith("[")
+
+    private fun String.referenceDescriptorClassName(): String =
+        if (startsWith("L") && endsWith(";")) {
+            substring(1, length - 1)
+        } else {
+            this
         }
 
     private fun executeNew(
