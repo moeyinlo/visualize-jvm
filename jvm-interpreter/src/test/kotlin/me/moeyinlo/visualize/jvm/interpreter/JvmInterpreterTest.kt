@@ -5117,6 +5117,42 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic pushes prepared long static field value as category two`() {
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "wide",
+                descriptor = "J",
+            ),
+            JvmLongValue(7L),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("wide", "wide".encodeToByteArray()),
+                    ConstantUtf8Entry("J", "J".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+        )
+
+        assertEquals(listOf(JvmLongValue(7L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `getstatic pushes default zero for unwritten int static field`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

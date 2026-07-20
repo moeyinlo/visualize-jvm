@@ -714,6 +714,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `getstatic`, `putstatic`, `getfield`, `putfield` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Field access | Static fields are addressed by declaring owner, field name, and descriptor in runtime storage | `jvm-runtime` | `JvmStaticFieldsTest` | IMPLEMENTED |
 | Field access | `getstatic` resolves a `CONSTANT_Fieldref` and pushes a prepared int static field value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `getstatic` pushes a prepared category-2 long static field value and accounts for two operand-stack slots | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getstatic` reads an unwritten int static field as the JVM default zero value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getstatic` rejects a prepared static field value that does not match its field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getstatic` rejects an object reference field value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
