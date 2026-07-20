@@ -733,6 +733,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `getstatic` rejects an object reference field value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putstatic` resolves a `CONSTANT_Fieldref`, pops an int value, and stores it in static fields | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putstatic` uses field resolution to write the actual declaring superclass static field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `putstatic` throws guest `IncompatibleClassChangeError` when the resolved field is not static | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putstatic` pops a category-2 long value, accounts for two operand-stack slots, and stores it in static fields | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putstatic` rejects a value that does not match its field descriptor before storing it | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putstatic` stores null into a reference static field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
