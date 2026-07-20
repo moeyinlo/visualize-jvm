@@ -746,6 +746,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | Heap stores instance field values per object reference and symbolic field identity | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | Field access | `getfield` resolves a `CONSTANT_Fieldref`, pops a non-null object reference, and pushes an int instance field value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` uses field resolution to read the actual declaring superclass instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `getfield` throws guest `IncompatibleClassChangeError` when the resolved field is static | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` pushes a category-2 long instance field value and accounts for two operand-stack slots | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` reads an unwritten int instance field as the JVM default zero value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` reads an unwritten reference instance field as the JVM default null value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

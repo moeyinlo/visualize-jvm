@@ -3243,7 +3243,9 @@ object JvmInterpreter {
                     objectref.javaClass.simpleName,
             )
         }
-        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy).reference
+        val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        requireInstanceField(instruction, resolvedField)
+        val field = resolvedField.reference
         val value = heap.getInstanceField(objectref, field)
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
@@ -3427,6 +3429,21 @@ object JvmInterpreter {
         throw JvmIncompatibleClassChangeError(
             guestClassName = "java/lang/IncompatibleClassChangeError",
             message = "Expected static field " +
+                "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor} " +
+                "for ${instruction.metadata.mnemonic}",
+        )
+    }
+
+    private fun requireInstanceField(
+        instruction: DecodedInstruction,
+        field: RuntimeResolvedField,
+    ) {
+        if (field.isStatic != true) {
+            return
+        }
+        throw JvmIncompatibleClassChangeError(
+            guestClassName = "java/lang/IncompatibleClassChangeError",
+            message = "Expected instance field " +
                 "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor} " +
                 "for ${instruction.metadata.mnemonic}",
         )
