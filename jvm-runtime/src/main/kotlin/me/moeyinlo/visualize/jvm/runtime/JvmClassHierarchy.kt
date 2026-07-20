@@ -60,16 +60,24 @@ class JvmClassHierarchy(
     ): JvmResolvedField {
         val ownerClass = classesByName[ownerClassName]
             ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor: class not found")
-        val field = ownerClass.fields.firstOrNull { field ->
-            field.name == name && field.descriptor == descriptor
-        } ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor")
-        return JvmResolvedField(
-            ownerClassName = ownerClass.internalName,
-            name = field.name,
-            descriptor = field.descriptor,
-            isStatic = field.isStatic,
-        )
+        return ownerClass.findDeclaredField(name, descriptor)
+            ?: ownerClass.interfaceNames
+                .asSequence()
+                .mapNotNull { interfaceName -> classesByName[interfaceName]?.findDeclaredField(name, descriptor) }
+                .firstOrNull()
+            ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor")
     }
+
+    private fun JvmClassDefinition.findDeclaredField(name: String, descriptor: String): JvmResolvedField? =
+        fields.firstOrNull { field -> field.name == name && field.descriptor == descriptor }
+            ?.let { field ->
+                JvmResolvedField(
+                    ownerClassName = internalName,
+                    name = field.name,
+                    descriptor = field.descriptor,
+                    isStatic = field.isStatic,
+                )
+            }
 
     private fun String.isArrayClassName(): Boolean = startsWith("[")
 

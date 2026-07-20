@@ -30,4 +30,34 @@ class JvmFieldResolutionTest {
             ),
         )
     }
+
+    @Test
+    fun `field resolution finds a field declared by a direct superinterface`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("ExampleInterface"),
+                ),
+                JvmClassDefinition(
+                    internalName = "ExampleInterface",
+                    fields = listOf(JvmFieldDefinition(name = "flag", descriptor = "Z", isStatic = true)),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedField(
+                ownerClassName = "ExampleInterface",
+                name = "flag",
+                descriptor = "Z",
+                isStatic = true,
+            ),
+            hierarchy.resolveField(
+                ownerClassName = "Example",
+                name = "flag",
+                descriptor = "Z",
+            ),
+        )
+    }
 }
