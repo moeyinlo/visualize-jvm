@@ -243,18 +243,8 @@ class JvmHeap {
     fun getInstanceField(reference: JvmObjectReferenceValue, field: JvmFieldReference): JvmValue {
         get(reference)
         return instanceFields[reference.referenceId]?.get(field)
-            ?: field.defaultValue()
+            ?: field.defaultFieldValue()
     }
-
-    private fun JvmFieldReference.defaultValue(): JvmValue =
-        when {
-            descriptor in intLikeFieldDescriptors -> JvmIntValue(0)
-            descriptor == "F" -> JvmFloatValue(0.0f)
-            descriptor == "J" -> JvmLongValue(0L)
-            descriptor == "D" -> JvmDoubleValue(0.0)
-            descriptor.startsWith("L") || descriptor.startsWith("[") -> JvmNullValue
-            else -> throw JvmHeapAccessException("Field $this has no supported default value")
-        }
 
     private fun allocate(heapObject: JvmHeapObject): JvmObjectReferenceValue {
         val referenceId = JvmReferenceId(nextReferenceId)
@@ -265,5 +255,3 @@ class JvmHeap {
 }
 
 class JvmHeapAccessException(message: String) : IllegalStateException(message)
-
-private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
