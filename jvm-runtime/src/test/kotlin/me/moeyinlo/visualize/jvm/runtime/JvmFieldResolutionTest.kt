@@ -60,4 +60,38 @@ class JvmFieldResolutionTest {
             ),
         )
     }
+
+    @Test
+    fun `field resolution recursively searches indirect superinterfaces`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("ChildInterface"),
+                ),
+                JvmClassDefinition(
+                    internalName = "ChildInterface",
+                    interfaceNames = listOf("ParentInterface"),
+                ),
+                JvmClassDefinition(
+                    internalName = "ParentInterface",
+                    fields = listOf(JvmFieldDefinition(name = "name", descriptor = "Ljava/lang/String;", isStatic = true)),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedField(
+                ownerClassName = "ParentInterface",
+                name = "name",
+                descriptor = "Ljava/lang/String;",
+                isStatic = true,
+            ),
+            hierarchy.resolveField(
+                ownerClassName = "Example",
+                name = "name",
+                descriptor = "Ljava/lang/String;",
+            ),
+        )
+    }
 }

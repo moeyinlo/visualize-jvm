@@ -61,10 +61,7 @@ class JvmClassHierarchy(
         val ownerClass = classesByName[ownerClassName]
             ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor: class not found")
         return ownerClass.findDeclaredField(name, descriptor)
-            ?: ownerClass.interfaceNames
-                .asSequence()
-                .mapNotNull { interfaceName -> classesByName[interfaceName]?.findDeclaredField(name, descriptor) }
-                .firstOrNull()
+            ?: findInterfaceField(ownerClass.interfaceNames, name, descriptor)
             ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor")
     }
 
@@ -78,6 +75,23 @@ class JvmClassHierarchy(
                     isStatic = field.isStatic,
                 )
             }
+
+    private fun findInterfaceField(
+        interfaceNames: List<String>,
+        name: String,
+        descriptor: String,
+        visited: MutableSet<String> = linkedSetOf(),
+    ): JvmResolvedField? {
+        for (interfaceName in interfaceNames) {
+            if (!visited.add(interfaceName)) {
+                continue
+            }
+            val interfaceClass = classesByName[interfaceName] ?: continue
+            interfaceClass.findDeclaredField(name, descriptor)?.let { resolved -> return resolved }
+            findInterfaceField(interfaceClass.interfaceNames, name, descriptor, visited)?.let { resolved -> return resolved }
+        }
+        return null
+    }
 
     private fun String.isArrayClassName(): Boolean = startsWith("[")
 
