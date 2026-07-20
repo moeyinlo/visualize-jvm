@@ -62,6 +62,7 @@ class JvmClassHierarchy(
             ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor: class not found")
         return ownerClass.findDeclaredField(name, descriptor)
             ?: findInterfaceField(ownerClass.interfaceNames, name, descriptor)
+            ?: findSuperclassField(ownerClass.superclassName, name, descriptor)
             ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor")
     }
 
@@ -91,6 +92,20 @@ class JvmClassHierarchy(
             findInterfaceField(interfaceClass.interfaceNames, name, descriptor, visited)?.let { resolved -> return resolved }
         }
         return null
+    }
+
+    private fun findSuperclassField(
+        superclassName: String?,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedField? {
+        if (superclassName == null) {
+            return null
+        }
+        val superclass = classesByName[superclassName] ?: return null
+        return superclass.findDeclaredField(name, descriptor)
+            ?: findInterfaceField(superclass.interfaceNames, name, descriptor)
+            ?: findSuperclassField(superclass.superclassName, name, descriptor)
     }
 
     private fun String.isArrayClassName(): Boolean = startsWith("[")

@@ -94,4 +94,38 @@ class JvmFieldResolutionTest {
             ),
         )
     }
+
+    @Test
+    fun `field resolution searches the superclass chain after superinterfaces`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    superclassName = "Parent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    superclassName = "Grandparent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Grandparent",
+                    fields = listOf(JvmFieldDefinition(name = "answer", descriptor = "I", isStatic = false)),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedField(
+                ownerClassName = "Grandparent",
+                name = "answer",
+                descriptor = "I",
+                isStatic = false,
+            ),
+            hierarchy.resolveField(
+                ownerClassName = "Example",
+                name = "answer",
+                descriptor = "I",
+            ),
+        )
+    }
 }
