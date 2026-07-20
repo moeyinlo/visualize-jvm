@@ -549,6 +549,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.4.2 | Preparation | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.1 | Class and interface resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.2 | Field resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.2 | Field resolution finds fields declared directly by the referenced class | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |
 | 5.4.3.3 | Method resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.4 | Interface method resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.5 | Method type and method handle resolution | `jvm-runtime` | TBD | PENDING |

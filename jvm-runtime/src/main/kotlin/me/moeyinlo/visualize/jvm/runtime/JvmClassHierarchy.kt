@@ -4,6 +4,20 @@ data class JvmClassDefinition(
     val internalName: String,
     val superclassName: String? = null,
     val interfaceNames: List<String> = emptyList(),
+    val fields: List<JvmFieldDefinition> = emptyList(),
+)
+
+data class JvmFieldDefinition(
+    val name: String,
+    val descriptor: String,
+    val isStatic: Boolean,
+)
+
+data class JvmResolvedField(
+    val ownerClassName: String,
+    val name: String,
+    val descriptor: String,
+    val isStatic: Boolean,
 )
 
 class JvmClassHierarchy(
@@ -39,6 +53,24 @@ class JvmClassHierarchy(
         }
     }
 
+    fun resolveField(
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedField {
+        val ownerClass = classesByName[ownerClassName]
+            ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor: class not found")
+        val field = ownerClass.fields.firstOrNull { field ->
+            field.name == name && field.descriptor == descriptor
+        } ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor")
+        return JvmResolvedField(
+            ownerClassName = ownerClass.internalName,
+            name = field.name,
+            descriptor = field.descriptor,
+            isStatic = field.isStatic,
+        )
+    }
+
     private fun String.isArrayClassName(): Boolean = startsWith("[")
 
     private fun String.isReferenceArrayClassName(): Boolean =
@@ -55,3 +87,5 @@ class JvmClassHierarchy(
         val Empty: JvmClassHierarchy = JvmClassHierarchy()
     }
 }
+
+class JvmFieldResolutionException(message: String) : IllegalStateException(message)
