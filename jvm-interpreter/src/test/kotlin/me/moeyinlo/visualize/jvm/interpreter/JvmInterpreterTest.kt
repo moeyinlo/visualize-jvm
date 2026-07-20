@@ -5288,6 +5288,51 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic pushes array reference assignable to declared array field descriptor`() {
+        val heap = JvmHeap()
+        val value = heap.allocateReferenceArray("example/StringChild", 1)
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "values",
+                descriptor = "[Ljava/lang/String;",
+            ),
+            value,
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("values", "values".encodeToByteArray()),
+                    ConstantUtf8Entry("[Ljava/lang/String;", "[Ljava/lang/String;".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition("java/lang/String", superclassName = "java/lang/Object"),
+                    JvmClassDefinition("example/StringChild", superclassName = "java/lang/String"),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(value), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `getstatic rejects object reference that is not assignable to declared field class`() {
         val heap = JvmHeap()
         val incompatibleValue = heap.allocateObject("java/lang/Object")
