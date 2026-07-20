@@ -728,6 +728,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `getfield` reads an unwritten int instance field as the JVM default zero value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` rejects an object reference field value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` resolves a `CONSTANT_Fieldref`, pops an int value and non-null object reference, and stores the instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `putfield` pops a category-2 long value plus object reference and stores it in the instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` rejects an object reference value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Invocation | `invokevirtual`, `invokespecial`, `invokestatic`, `invokeinterface`, `invokedynamic` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Object and arrays | `new` resolves a `CONSTANT_Class` name and allocates a guest heap object reference for that class | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
