@@ -3206,7 +3206,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
     ) {
-        val field = resolveConstantFieldReference(instruction, constantPool)
+        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         val value = operandStack.pop()
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)

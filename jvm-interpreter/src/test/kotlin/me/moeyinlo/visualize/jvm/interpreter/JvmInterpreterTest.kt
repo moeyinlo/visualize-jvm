@@ -5581,6 +5581,51 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putstatic writes superclass field after resolving symbolic field reference`() {
+        val staticFields = JvmStaticFields()
+        val resolvedField = JvmFieldReference(
+            ownerClassName = "Parent",
+            name = "counter",
+            descriptor = "I",
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x0C.toByte(),
+                0xB3.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition("Example", superclassName = "Parent"),
+                    JvmClassDefinition(
+                        internalName = "Parent",
+                        fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmIntValue(12), staticFields.get(resolvedField))
+    }
+
+    @Test
     fun `putstatic stores category two long value into prepared static fields`() {
         val staticFields = JvmStaticFields()
         val field = JvmFieldReference(
