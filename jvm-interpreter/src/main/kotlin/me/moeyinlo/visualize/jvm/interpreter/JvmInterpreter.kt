@@ -85,6 +85,11 @@ class JvmIncompatibleClassChangeError(
     message: String,
 ) : IncompatibleClassChangeError(message)
 
+class JvmIllegalAccessError(
+    val guestClassName: String,
+    message: String,
+) : IllegalAccessError(message)
+
 object JvmInterpreter {
     private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
 
@@ -96,6 +101,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
         classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
         staticFields: JvmStaticFields = JvmStaticFields(),
+        currentClassName: String? = null,
     ): JvmExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
@@ -139,6 +145,7 @@ object JvmInterpreter {
                         localVariables,
                         classHierarchy,
                         staticFields,
+                        currentClassName,
                     )
                     null
                 }
@@ -164,6 +171,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        currentClassName: String?,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -292,7 +300,15 @@ object JvmInterpreter {
             0x96 -> executeFloatCompareGreater(instruction, operandStack)
             0x97 -> executeDoubleCompareLess(instruction, operandStack)
             0x98 -> executeDoubleCompareGreater(instruction, operandStack)
-            0xB2 -> executeGetStatic(instruction, operandStack, constantPool, staticFields, heap, classHierarchy)
+            0xB2 -> executeGetStatic(
+                instruction,
+                operandStack,
+                constantPool,
+                staticFields,
+                heap,
+                classHierarchy,
+                currentClassName,
+            )
             0xB3 -> executePutStatic(instruction, operandStack, constantPool, staticFields, heap, classHierarchy)
             0xB4 -> executeGetField(instruction, operandStack, constantPool, heap, classHierarchy)
             0xB5 -> executePutField(instruction, operandStack, constantPool, heap, classHierarchy)
@@ -3195,9 +3211,11 @@ object JvmInterpreter {
         staticFields: JvmStaticFields,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        currentClassName: String?,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
+        requireAccessibleField(resolvedField, currentClassName)
         val field = resolvedField.reference
         val value = staticFields.get(field)
         requireFieldValue(instruction, field, value)
@@ -3419,7 +3437,22 @@ object JvmInterpreter {
     private data class RuntimeResolvedField(
         val reference: JvmFieldReference,
         val isStatic: Boolean?,
+        val isPrivate: Boolean = false,
     )
+
+    private fun requireAccessibleField(
+        field: RuntimeResolvedField,
+        currentClassName: String?,
+    ) {
+        if (!field.isPrivate || currentClassName == null || currentClassName == field.reference.ownerClassName) {
+            return
+        }
+        throw JvmIllegalAccessError(
+            guestClassName = "java/lang/IllegalAccessError",
+            message = "Class $currentClassName cannot access private field " +
+                "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor}",
+        )
+    }
 
     private fun requireStaticField(
         instruction: DecodedInstruction,
@@ -3472,6 +3505,7 @@ object JvmInterpreter {
                 descriptor = resolvedField.descriptor,
             ),
             isStatic = resolvedField.isStatic,
+            isPrivate = resolvedField.isPrivate,
         )
     }
 

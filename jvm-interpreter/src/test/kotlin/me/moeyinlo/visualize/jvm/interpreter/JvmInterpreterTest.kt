@@ -5199,6 +5199,50 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic throws guest IllegalAccessError for private fields from another class`() {
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Owner",
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "secret",
+                                    descriptor = "I",
+                                    isStatic = true,
+                                    isPrivate = true,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("Caller"),
+                    ),
+                ),
+                currentClassName = "Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class Caller cannot access private field Owner.secret:I", exception.message)
+    }
+
+    @Test
     fun `getstatic throws guest NoClassDefFoundError when field owner class is missing`() {
         val exception = assertFailsWith<JvmNoClassDefFoundError> {
             JvmInterpreter.execute(

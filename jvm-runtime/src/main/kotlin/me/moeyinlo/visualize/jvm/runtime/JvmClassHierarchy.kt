@@ -11,6 +11,7 @@ data class JvmFieldDefinition(
     val name: String,
     val descriptor: String,
     val isStatic: Boolean,
+    val isPrivate: Boolean = false,
 )
 
 data class JvmResolvedField(
@@ -18,6 +19,7 @@ data class JvmResolvedField(
     val name: String,
     val descriptor: String,
     val isStatic: Boolean,
+    val isPrivate: Boolean = false,
 )
 
 class JvmClassHierarchy(
@@ -85,6 +87,7 @@ class JvmClassHierarchy(
                     name = field.name,
                     descriptor = field.descriptor,
                     isStatic = field.isStatic,
+                    isPrivate = field.isPrivate,
                 )
             }
 

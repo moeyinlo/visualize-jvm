@@ -722,6 +722,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `getstatic` resolves a `CONSTANT_Fieldref` and pushes a prepared int static field value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getstatic` uses field resolution to read the actual declaring superclass static field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getstatic` throws guest `IncompatibleClassChangeError` when the resolved field is not static | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access, 5.4.4 | `getstatic` throws guest `IllegalAccessError` when the current class accesses another class private static field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest.getstatic throws guest IllegalAccessError for private fields from another class` | IMPLEMENTED |
 | Field access | `getstatic` pushes a prepared category-2 long static field value and accounts for two operand-stack slots | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getstatic` reads an unwritten int static field as the JVM default zero value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getstatic` reads an unwritten reference static field as the JVM default null value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
