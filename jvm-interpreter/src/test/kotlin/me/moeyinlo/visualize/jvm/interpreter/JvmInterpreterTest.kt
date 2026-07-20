@@ -5303,6 +5303,41 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putstatic stores category two long value into prepared static fields`() {
+        val staticFields = JvmStaticFields()
+        val field = JvmFieldReference(
+            ownerClassName = "Example",
+            name = "wide",
+            descriptor = "J",
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0A.toByte(),
+                0xB3.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("wide", "wide".encodeToByteArray()),
+                    ConstantUtf8Entry("J", "J".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmLongValue(1L), staticFields.get(field))
+    }
+
+    @Test
     fun `putstatic rejects value that does not match field descriptor`() {
         val staticFields = JvmStaticFields()
 
