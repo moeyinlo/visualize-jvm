@@ -5182,6 +5182,55 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic rejects object reference that is not assignable to declared field class`() {
+        val heap = JvmHeap()
+        val incompatibleValue = heap.allocateObject("java/lang/Object")
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "Ljava/lang/String;",
+            ),
+            incompatibleValue,
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("Ljava/lang/String;", "Ljava/lang/String;".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                staticFields = staticFields,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition("java/lang/String", superclassName = "java/lang/Object"),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid getstatic value for Example.value:Ljava/lang/String; at offset 0: " +
+                "java/lang/Object is not assignable to java/lang/String",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `putstatic stores int value into prepared static fields`() {
         val staticFields = JvmStaticFields()
         val field = JvmFieldReference(
