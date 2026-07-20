@@ -6232,6 +6232,49 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getfield pushes array reference assignable to declared Serializable field descriptor`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Example")
+        val value = heap.allocateReferenceArray("java/lang/String", 1)
+        heap.putInstanceField(
+            receiver,
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "Ljava/io/Serializable;",
+            ),
+            value,
+        )
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB4.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                    ConstantUtf8Entry("Ljava/io/Serializable;", "Ljava/io/Serializable;".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+        )
+
+        assertEquals(listOf(value), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `getfield rejects object reference that is not assignable to declared field class`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Example")

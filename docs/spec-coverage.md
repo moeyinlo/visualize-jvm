@@ -743,6 +743,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `getfield` pushes an array reference field value assignable to the declared array field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` pushes an array reference field value assignable to `java/lang/Object` declared as an object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` pushes an array reference field value assignable to `java/lang/Cloneable` declared as an object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `getfield` pushes an array reference field value assignable to `java/io/Serializable` declared as an object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` rejects an object reference field value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` resolves a `CONSTANT_Fieldref`, pops an int value and non-null object reference, and stores the instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` pops a category-2 long value plus object reference and stores it in the instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
