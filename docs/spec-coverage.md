@@ -759,6 +759,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `getfield` rejects an object reference field value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` resolves a `CONSTANT_Fieldref`, pops an int value and non-null object reference, and stores the instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` uses field resolution to write the actual declaring superclass instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `putfield` throws guest `IncompatibleClassChangeError` when the resolved field is static | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` pops a category-2 long value plus object reference and stores it in the instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` stores null into a reference instance field | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` stores an object reference value assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

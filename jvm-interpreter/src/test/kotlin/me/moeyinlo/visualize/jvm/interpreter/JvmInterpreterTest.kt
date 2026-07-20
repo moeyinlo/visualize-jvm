@@ -6703,6 +6703,50 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putfield throws guest IncompatibleClassChangeError for static fields`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("Example")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmIncompatibleClassChangeError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x04.toByte(),
+                    0xB5.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
+        assertEquals("Expected instance field Example.counter:I for putfield", exception.message)
+    }
+
+    @Test
     fun `putfield stores category two long value into object instance field`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("Example")
