@@ -754,6 +754,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `putfield` stores an array reference value assignable to `java/lang/Object` declared as an object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` stores an array reference value assignable to `java/lang/Cloneable` declared as an object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` stores an array reference value assignable to `java/io/Serializable` declared as an object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `putfield` throws a guest `NullPointerException` when objectref is null after popping the field value | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putfield` rejects an object reference value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Invocation | `invokevirtual`, `invokespecial`, `invokestatic`, `invokeinterface`, `invokedynamic` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Object and arrays | `new` resolves a `CONSTANT_Class` name and allocates a guest heap object reference for that class | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
