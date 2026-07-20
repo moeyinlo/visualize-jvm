@@ -3191,7 +3191,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
     ) {
-        val field = resolveConstantFieldReference(instruction, constantPool)
+        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         val value = staticFields.get(field)
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
@@ -3401,6 +3401,27 @@ object JvmInterpreter {
         }
 
         return nameEntry.value
+    }
+
+    private fun resolveRuntimeFieldReference(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+    ): JvmFieldReference {
+        val symbolicField = resolveConstantFieldReference(instruction, constantPool)
+        if (!classHierarchy.hasClass(symbolicField.ownerClassName)) {
+            return symbolicField
+        }
+        val resolvedField = classHierarchy.resolveField(
+            ownerClassName = symbolicField.ownerClassName,
+            name = symbolicField.name,
+            descriptor = symbolicField.descriptor,
+        )
+        return JvmFieldReference(
+            ownerClassName = resolvedField.ownerClassName,
+            name = resolvedField.name,
+            descriptor = resolvedField.descriptor,
+        )
     }
 
     private fun resolveConstantFieldReference(

@@ -22,6 +22,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
@@ -5113,6 +5114,51 @@ class JvmInterpreterTest {
         )
 
         assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `getstatic reads superclass field after resolving symbolic field reference`() {
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Parent",
+                name = "counter",
+                descriptor = "I",
+            ),
+            JvmIntValue(11),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition("Example", superclassName = "Parent"),
+                    JvmClassDefinition(
+                        internalName = "Parent",
+                        fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(11)), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
     }
 

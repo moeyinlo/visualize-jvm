@@ -26,6 +26,8 @@ class JvmClassHierarchy(
     private val classesByName: Map<String, JvmClassDefinition> =
         classes.associateBy { definition -> definition.internalName }
 
+    fun hasClass(internalName: String): Boolean = internalName in classesByName
+
     fun isAssignable(sourceClassName: String, targetClassName: String): Boolean {
         if (sourceClassName == targetClassName || targetClassName == "java/lang/Object") {
             return true
