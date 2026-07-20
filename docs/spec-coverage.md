@@ -718,6 +718,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `getstatic` rejects a prepared static field value that does not match its field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putstatic` resolves a `CONSTANT_Fieldref`, pops an int value, and stores it in static fields | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `putstatic` rejects a value that does not match its field descriptor before storing it | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
+| Field access | `putstatic` rejects an object reference value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | Heap stores instance field values per object reference and symbolic field identity | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | Field access | `getfield` resolves a `CONSTANT_Fieldref`, pops a non-null object reference, and pushes an int instance field value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Field access | `getfield` reads an unwritten int instance field as the JVM default zero value | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
