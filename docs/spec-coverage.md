@@ -548,6 +548,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.4.1 | Verification during linking | `jvm-verifier`, `jvm-runtime` | TBD | PENDING |
 | 5.4.2 | Preparation | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.1 | Class and interface resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.1, 5.4.3.2 | Field reference resolution throws guest `NoClassDefFoundError` when the referenced owner class cannot be resolved in strict class-resolution mode | `jvm-runtime`, `jvm-interpreter` | `JvmInterpreterTest.getstatic throws guest NoClassDefFoundError when field owner class is missing` | IMPLEMENTED |
 | 5.4.3.2 | Field resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.2 | Field resolution finds fields declared directly by the referenced class | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |
 | 5.4.3.2 | Field resolution searches direct superinterfaces before superclass lookup | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |

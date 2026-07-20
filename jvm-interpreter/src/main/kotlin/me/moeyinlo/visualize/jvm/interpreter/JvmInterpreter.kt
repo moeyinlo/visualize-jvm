@@ -3457,7 +3457,7 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
     ): RuntimeResolvedField {
         val symbolicField = resolveConstantFieldReference(instruction, constantPool)
-        if (!classHierarchy.hasClass(symbolicField.ownerClassName)) {
+        if (!classHierarchy.requiresResolvedClasses() && !classHierarchy.hasClass(symbolicField.ownerClassName)) {
             return RuntimeResolvedField(reference = symbolicField, isStatic = null)
         }
         val resolvedField = classHierarchy.resolveField(

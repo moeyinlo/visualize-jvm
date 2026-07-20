@@ -22,9 +22,12 @@ data class JvmResolvedField(
 
 class JvmClassHierarchy(
     classes: Iterable<JvmClassDefinition> = emptyList(),
+    private val strictClassResolution: Boolean = false,
 ) {
     private val classesByName: Map<String, JvmClassDefinition> =
         classes.associateBy { definition -> definition.internalName }
+
+    fun requiresResolvedClasses(): Boolean = strictClassResolution
 
     fun hasClass(internalName: String): Boolean = internalName in classesByName
 
@@ -61,7 +64,10 @@ class JvmClassHierarchy(
         descriptor: String,
     ): JvmResolvedField {
         val ownerClass = classesByName[ownerClassName]
-            ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor: class not found")
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = ownerClassName,
+            )
         return ownerClass.findDeclaredField(name, descriptor)
             ?: findInterfaceField(ownerClass.interfaceNames, name, descriptor)
             ?: findSuperclassField(ownerClass.superclassName, name, descriptor)
@@ -130,7 +136,10 @@ class JvmClassHierarchy(
     }
 }
 
-class JvmFieldResolutionException(message: String) : IllegalStateException(message)
+class JvmNoClassDefFoundError(
+    val guestClassName: String,
+    message: String,
+) : NoClassDefFoundError(message)
 
 class JvmNoSuchFieldError(
     val guestClassName: String,

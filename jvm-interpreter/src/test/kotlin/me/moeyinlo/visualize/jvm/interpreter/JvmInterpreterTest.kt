@@ -37,6 +37,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
+import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
@@ -5195,6 +5196,39 @@ class JvmInterpreterTest {
 
         assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
         assertEquals("Expected static field Example.counter:I for getstatic", exception.message)
+    }
+
+    @Test
+    fun `getstatic throws guest NoClassDefFoundError when field owner class is missing`() {
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Missing", "Missing".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition("Other"),
+                    ),
+                    strictClassResolution = true,
+                ),
+            )
+        }
+
+        assertEquals("Missing", exception.message)
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
     }
 
     @Test
