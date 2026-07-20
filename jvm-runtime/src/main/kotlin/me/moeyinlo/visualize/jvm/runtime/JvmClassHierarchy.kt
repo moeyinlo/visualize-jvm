@@ -63,7 +63,10 @@ class JvmClassHierarchy(
         return ownerClass.findDeclaredField(name, descriptor)
             ?: findInterfaceField(ownerClass.interfaceNames, name, descriptor)
             ?: findSuperclassField(ownerClass.superclassName, name, descriptor)
-            ?: throw JvmFieldResolutionException("Cannot resolve field $ownerClassName.$name:$descriptor")
+            ?: throw JvmNoSuchFieldError(
+                guestClassName = "java/lang/NoSuchFieldError",
+                message = "$ownerClassName.$name:$descriptor",
+            )
     }
 
     private fun JvmClassDefinition.findDeclaredField(name: String, descriptor: String): JvmResolvedField? =
@@ -126,3 +129,8 @@ class JvmClassHierarchy(
 }
 
 class JvmFieldResolutionException(message: String) : IllegalStateException(message)
+
+class JvmNoSuchFieldError(
+    val guestClassName: String,
+    message: String,
+) : NoSuchFieldError(message)

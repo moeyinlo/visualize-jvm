@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.runtime
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class JvmFieldResolutionTest {
     @Test
@@ -127,5 +128,25 @@ class JvmFieldResolutionTest {
                 descriptor = "I",
             ),
         )
+    }
+
+    @Test
+    fun `field resolution throws guest NoSuchFieldError when lookup misses`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(internalName = "Example"),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmNoSuchFieldError> {
+            hierarchy.resolveField(
+                ownerClassName = "Example",
+                name = "missing",
+                descriptor = "I",
+            )
+        }
+
+        assertEquals("java/lang/NoSuchFieldError", exception.guestClassName)
+        assertEquals("Example.missing:I", exception.message)
     }
 }
