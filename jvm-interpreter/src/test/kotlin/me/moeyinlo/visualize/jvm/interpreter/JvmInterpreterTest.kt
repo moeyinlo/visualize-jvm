@@ -5163,6 +5163,41 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic throws guest IncompatibleClassChangeError for instance fields`() {
+        val exception = assertFailsWith<JvmIncompatibleClassChangeError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = false)),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
+        assertEquals("Expected static field Example.counter:I for getstatic", exception.message)
+    }
+
+    @Test
     fun `getstatic pushes prepared long static field value as category two`() {
         val staticFields = JvmStaticFields()
         staticFields.put(

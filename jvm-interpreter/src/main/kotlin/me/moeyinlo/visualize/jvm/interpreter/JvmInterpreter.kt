@@ -80,6 +80,11 @@ class JvmClassCastException(
     message: String,
 ) : ClassCastException(message)
 
+class JvmIncompatibleClassChangeError(
+    val guestClassName: String,
+    message: String,
+) : IncompatibleClassChangeError(message)
+
 object JvmInterpreter {
     private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
 
@@ -3191,7 +3196,9 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
     ) {
-        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        requireStaticField(instruction, resolvedField)
+        val field = resolvedField.reference
         val value = staticFields.get(field)
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
@@ -3206,7 +3213,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
     ) {
-        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy).reference
         val value = operandStack.pop()
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
@@ -3234,7 +3241,7 @@ object JvmInterpreter {
                     objectref.javaClass.simpleName,
             )
         }
-        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy).reference
         val value = heap.getInstanceField(objectref, field)
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
@@ -3263,7 +3270,7 @@ object JvmInterpreter {
                     objectref.javaClass.simpleName,
             )
         }
-        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        val field = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy).reference
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
         heap.putInstanceField(objectref, field, value)
@@ -3403,24 +3410,47 @@ object JvmInterpreter {
         return nameEntry.value
     }
 
+    private data class RuntimeResolvedField(
+        val reference: JvmFieldReference,
+        val isStatic: Boolean?,
+    )
+
+    private fun requireStaticField(
+        instruction: DecodedInstruction,
+        field: RuntimeResolvedField,
+    ) {
+        if (field.isStatic != false) {
+            return
+        }
+        throw JvmIncompatibleClassChangeError(
+            guestClassName = "java/lang/IncompatibleClassChangeError",
+            message = "Expected static field " +
+                "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor} " +
+                "for ${instruction.metadata.mnemonic}",
+        )
+    }
+
     private fun resolveRuntimeFieldReference(
         instruction: DecodedInstruction,
         constantPool: ConstantPool,
         classHierarchy: JvmClassHierarchy,
-    ): JvmFieldReference {
+    ): RuntimeResolvedField {
         val symbolicField = resolveConstantFieldReference(instruction, constantPool)
         if (!classHierarchy.hasClass(symbolicField.ownerClassName)) {
-            return symbolicField
+            return RuntimeResolvedField(reference = symbolicField, isStatic = null)
         }
         val resolvedField = classHierarchy.resolveField(
             ownerClassName = symbolicField.ownerClassName,
             name = symbolicField.name,
             descriptor = symbolicField.descriptor,
         )
-        return JvmFieldReference(
-            ownerClassName = resolvedField.ownerClassName,
-            name = resolvedField.name,
-            descriptor = resolvedField.descriptor,
+        return RuntimeResolvedField(
+            reference = JvmFieldReference(
+                ownerClassName = resolvedField.ownerClassName,
+                name = resolvedField.name,
+                descriptor = resolvedField.descriptor,
+            ),
+            isStatic = resolvedField.isStatic,
         )
     }
 
