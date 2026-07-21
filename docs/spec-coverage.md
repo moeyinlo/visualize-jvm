@@ -46,6 +46,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.9.1 | Instance initialization methods | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | 2.9.2 | Class initialization methods | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.9.3 | Signature polymorphic methods | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.11.10 | Guest monitor ownership state tracks object monitor owner thread and reentrant hold count | `jvm-runtime` | `JvmMonitorStateTest` | IMPLEMENTED |
 | 2.10 | Exceptions | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.11 | Instruction set summary | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | 2.12 | Class libraries interface assumptions | `jvm-host`, `jvm-native`, `jvm-jni` | TBD | PENDING |
