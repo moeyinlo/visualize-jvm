@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
+import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -3408,6 +3409,28 @@ class JvmSimulatedJniEnvironmentTest {
         assertFailsWith<JvmJniFieldAccessException> {
             environment.setStaticShortField(classHandle, fieldHandle, -5678)
         }
+    }
+
+    @Test
+    fun `NewStringUTF allocates a guest java lang String and returns a local handle`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+
+        val stringHandle = environment.newStringUtf("hello, \u4e16\u754c")
+
+        val stringReference = handles.resolveObject(stringHandle)
+        val stringObject = heap.get(stringReference)
+        assertEquals("java/lang/String", stringObject.className)
+        assertEquals(JvmStringPayload("hello, \u4e16\u754c"), stringObject.payload)
     }
 
 }

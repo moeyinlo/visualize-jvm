@@ -130,6 +130,9 @@ class JvmSimulatedJniEnvironment(
         return handles.newFieldIdHandle(field)
     }
 
+    fun newStringUtf(value: String): JvmJniHandleId =
+        handles.newObjectHandle(heap.allocateString(value))
+
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
