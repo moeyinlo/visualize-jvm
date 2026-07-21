@@ -102,3 +102,23 @@ class JvmNativeMethodRegistry(
             JvmNativeMethodRegistry(simulatedJni = entries.toMap())
     }
 }
+
+object JvmVmIntrinsics {
+    private val ObjectGetClassKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "getClass",
+        descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+    )
+
+    private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Object.getClass intrinsic requires a receiver")
+        val receiverClassName = context.heap.get(receiver).className
+        context.heap.internClassMirror(receiverClassName)
+    }
+
+    val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
+        ObjectGetClassKey to ObjectGetClass,
+    )
+}
