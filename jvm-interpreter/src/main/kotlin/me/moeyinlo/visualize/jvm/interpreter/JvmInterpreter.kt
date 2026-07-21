@@ -3385,7 +3385,7 @@ object JvmInterpreter {
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
-        requireAccessibleMethod(resolvedMethod, currentClassName)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
         val methodCode = resolvedMethod.code
             ?: throw JvmUnsupportedInstructionException(
                 "Resolved static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
@@ -3858,6 +3858,7 @@ object JvmInterpreter {
     private fun requireAccessibleMethod(
         method: JvmResolvedMethod,
         currentClassName: String?,
+        classHierarchy: JvmClassHierarchy,
     ) {
         if (method.isPrivate && currentClassName != null && currentClassName != method.ownerClassName) {
             throw JvmIllegalAccessError(
@@ -3874,6 +3875,18 @@ object JvmInterpreter {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
                 message = "Class $currentClassName cannot access package-private method " +
+                    "${method.ownerClassName}.${method.name}:${method.descriptor}",
+            )
+        }
+        if (
+            method.isProtected &&
+            currentClassName != null &&
+            currentClassName.runtimePackageName() != method.ownerClassName.runtimePackageName() &&
+            !classHierarchy.isAssignable(currentClassName, method.ownerClassName)
+        ) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access protected method " +
                     "${method.ownerClassName}.${method.name}:${method.descriptor}",
             )
         }
