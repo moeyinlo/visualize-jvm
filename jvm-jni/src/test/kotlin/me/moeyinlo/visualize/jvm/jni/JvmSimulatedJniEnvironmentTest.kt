@@ -3658,4 +3658,45 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `ReleaseStringChars accepts copied UTF-16 buffers for guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(heap.allocateString("JVM"))
+        val chars = environment.getStringChars(stringHandle)
+
+        environment.releaseStringChars(stringHandle, chars)
+
+        assertContentEquals(charArrayOf('J', 'V', 'M'), chars)
+    }
+
+    @Test
+    fun `ReleaseStringChars rejects non string guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+
+        assertFailsWith<JvmJniStringAccessException> {
+            environment.releaseStringChars(objectHandle, charArrayOf('x'))
+        }
+    }
+
 }
