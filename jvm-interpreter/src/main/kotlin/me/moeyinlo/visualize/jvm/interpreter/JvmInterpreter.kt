@@ -3517,6 +3517,7 @@ object JvmInterpreter {
             )
         }
         requireConstructorReceiverUninitialized(resolvedMethod, objectref, heap)
+        requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
 
         calleeLocals.store(0, objectref)
@@ -4004,6 +4005,20 @@ object JvmInterpreter {
         }
         throw JvmUnsupportedInstructionException(
             "Constructor ${method.ownerClassName}.${method.name}:${method.descriptor} receiver is already initialized",
+        )
+    }
+
+    private fun requireNonConstructorReceiverInitialized(
+        method: JvmResolvedMethod,
+        objectref: JvmObjectReferenceValue,
+        heap: JvmHeap,
+    ) {
+        if (method.name == "<init>" || heap.isInitialized(objectref)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Cannot invoke special method ${method.ownerClassName}.${method.name}:${method.descriptor} " +
+                "on uninitialized receiver",
         )
     }
 
