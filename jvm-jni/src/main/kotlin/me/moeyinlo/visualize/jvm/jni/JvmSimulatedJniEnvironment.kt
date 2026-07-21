@@ -307,6 +307,12 @@ class JvmSimulatedJniEnvironment(
     fun newDoubleArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateDoubleArray(length))
 
+    fun getDoubleArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): DoubleArray {
+        val array = resolveDoubleArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, length)
+        return array.elements.subList(start, start + length).toDoubleArray()
+    }
+
     fun newObjectArray(
         length: Int,
         elementClassHandle: JvmJniHandleId,
@@ -1239,6 +1245,15 @@ class JvmSimulatedJniEnvironment(
         return heapObject.payload as? JvmFloatArrayPayload
             ?: throw JvmJniArrayAccessException(
                 "JNI float array helper requires float array payload, got ${heapObject.className}",
+            )
+    }
+
+    private fun resolveDoubleArray(arrayHandle: JvmJniHandleId): JvmDoubleArrayPayload {
+        val reference = handles.resolveObject(arrayHandle)
+        val heapObject = heap.get(reference)
+        return heapObject.payload as? JvmDoubleArrayPayload
+            ?: throw JvmJniArrayAccessException(
+                "JNI double array helper requires double array payload, got ${heapObject.className}",
             )
     }
 
