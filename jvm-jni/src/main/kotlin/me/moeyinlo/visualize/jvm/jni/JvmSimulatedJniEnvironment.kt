@@ -245,6 +245,14 @@ class JvmSimulatedJniEnvironment(
         return array.elements.subList(start, start + length).toShortArray()
     }
 
+    fun setShortArrayRegion(arrayHandle: JvmJniHandleId, start: Int, values: ShortArray) {
+        val array = resolveShortArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, values.size)
+        values.forEachIndexed { offset, value ->
+            array.elements[start + offset] = value
+        }
+    }
+
     fun newIntArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateIntArray(length))
 

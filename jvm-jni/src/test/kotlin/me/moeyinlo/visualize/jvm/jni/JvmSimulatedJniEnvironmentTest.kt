@@ -4336,6 +4336,51 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `setShortArrayRegion writes a native short buffer into a guest array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newShortArray(5)
+
+        environment.setShortArrayRegion(
+            arrayHandle,
+            start = 1,
+            values = shortArrayOf((-123).toShort(), 0.toShort(), 456.toShort()),
+        )
+
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmShortArrayPayload
+        assertEquals(
+            mutableListOf(0.toShort(), (-123).toShort(), 0.toShort(), 456.toShort(), 0.toShort()),
+            payload.elements,
+        )
+    }
+
+    @Test
+    fun `setShortArrayRegion rejects non short arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val wrongArrayHandle = environment.newIntArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setShortArrayRegion(wrongArrayHandle, start = 0, values = shortArrayOf())
+        }
+
+        val arrayHandle = environment.newShortArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setShortArrayRegion(arrayHandle, start = 2, values = shortArrayOf((-123).toShort(), 0.toShort(), 456.toShort()))
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
