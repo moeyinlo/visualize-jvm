@@ -3866,6 +3866,17 @@ object JvmInterpreter {
                     "${method.ownerClassName}.${method.name}:${method.descriptor}",
             )
         }
+        if (
+            method.isPackagePrivate &&
+            currentClassName != null &&
+            currentClassName.runtimePackageName() != method.ownerClassName.runtimePackageName()
+        ) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access package-private method " +
+                    "${method.ownerClassName}.${method.name}:${method.descriptor}",
+            )
+        }
     }
 
     private fun resolveRuntimeMethodReference(
