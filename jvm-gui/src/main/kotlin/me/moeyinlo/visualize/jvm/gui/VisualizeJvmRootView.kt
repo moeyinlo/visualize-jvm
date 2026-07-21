@@ -16,12 +16,13 @@ class VisualizeJvmRootView(
     val localVariablesView: LocalVariablesView = LocalVariablesView()
     val operandStackView: OperandStackView = OperandStackView()
     val classLoadingEventsView: ClassLoadingEventsView = ClassLoadingEventsView()
+    val linkingEventsView: LinkingEventsView = LinkingEventsView()
 
     init {
         top = VBox(debuggerControlBar, constantPoolView)
         left = projectClasspathPanel
         center = VBox(classTreeView, currentFrameView, localVariablesView, operandStackView)
-        right = VBox(memberListView, classLoadingEventsView)
+        right = VBox(memberListView, classLoadingEventsView, linkingEventsView)
         bottom = bytecodeInstructionView
     }
 }
