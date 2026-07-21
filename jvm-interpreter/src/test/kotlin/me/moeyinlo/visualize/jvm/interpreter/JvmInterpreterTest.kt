@@ -11596,6 +11596,62 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic prefers native intrinsics over simulated JNI bindings`() {
+        val key = JvmNativeMethodKey(
+            ownerClassName = "Example",
+            name = "nativeValue",
+            descriptor = "()I",
+            isStatic = true,
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeValue",
+                                descriptor = "()I",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry(
+                intrinsics = mapOf(
+                    key to JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(8) },
+                ),
+                simulatedJni = mapOf(
+                    key to JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(2) },
+                ),
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(8)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokestatic resolves static interface methods from interface method references`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
