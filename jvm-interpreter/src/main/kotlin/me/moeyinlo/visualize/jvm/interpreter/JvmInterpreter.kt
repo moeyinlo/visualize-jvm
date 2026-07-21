@@ -3237,7 +3237,7 @@ object JvmInterpreter {
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName)
+        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
         val field = resolvedField.reference
         val value = staticFields.get(field)
         requireFieldValue(instruction, field, value)
@@ -3256,7 +3256,7 @@ object JvmInterpreter {
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName)
+        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
         val field = resolvedField.reference
         val value = operandStack.pop()
         requireFieldValue(instruction, field, value)
@@ -3288,7 +3288,7 @@ object JvmInterpreter {
         }
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireInstanceField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName)
+        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
         val field = resolvedField.reference
         val value = heap.getInstanceField(objectref, field)
         requireFieldValue(instruction, field, value)
@@ -3321,7 +3321,7 @@ object JvmInterpreter {
         }
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireInstanceField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName)
+        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
         val field = resolvedField.reference
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
@@ -3467,11 +3467,13 @@ object JvmInterpreter {
         val isStatic: Boolean?,
         val isPrivate: Boolean = false,
         val isPackagePrivate: Boolean = false,
+        val isProtected: Boolean = false,
     )
 
     private fun requireAccessibleField(
         field: RuntimeResolvedField,
         currentClassName: String?,
+        classHierarchy: JvmClassHierarchy,
     ) {
         if (field.isPrivate && currentClassName != null && currentClassName != field.reference.ownerClassName) {
             throw JvmIllegalAccessError(
@@ -3488,6 +3490,18 @@ object JvmInterpreter {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
                 message = "Class $currentClassName cannot access package-private field " +
+                    "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor}",
+            )
+        }
+        if (
+            field.isProtected &&
+            currentClassName != null &&
+            currentClassName.runtimePackageName() != field.reference.ownerClassName.runtimePackageName() &&
+            !classHierarchy.isAssignable(currentClassName, field.reference.ownerClassName)
+        ) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access protected field " +
                     "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor}",
             )
         }
@@ -3554,6 +3568,7 @@ object JvmInterpreter {
             isStatic = resolvedField.isStatic,
             isPrivate = resolvedField.isPrivate,
             isPackagePrivate = resolvedField.isPackagePrivate,
+            isProtected = resolvedField.isProtected,
         )
     }
 
