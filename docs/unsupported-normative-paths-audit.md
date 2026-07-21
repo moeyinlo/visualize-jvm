@@ -5,8 +5,8 @@ This audit is derived from `docs/spec-coverage.md` after the Phase 20 documentat
 ## Ledger status summary
 
 - DIFFERENTIAL: 1
-- IMPLEMENTED: 1027
-- PENDING: 94
+- IMPLEMENTED: 1028
+- PENDING: 93
 
 ## Pending rows by section
 
@@ -14,7 +14,6 @@ This audit is derived from `docs/spec-coverage.md` after the Phase 20 documentat
 - Chapter 4 - Class File Format: 14 pending row(s)
 - Chapter 5 - Loading, Linking, and Initializing: 22 pending row(s)
 - Chapters 6 and 7 - Instruction Set and Opcode Mnemonics: 23 pending row(s)
-- Documentation and Audit Coverage: 1 pending row(s)
 - Project-Specific Native and Host Coverage: 5 pending row(s)
 
 ## Highest-priority pending normative paths
@@ -80,4 +79,4 @@ These are the first pending rows in ledger order and should be converted into im
 
 ## Audit conclusion
 
-The project is not at final JVMS completion yet. Unsupported paths are now explicitly visible in the ledger and summarized here. Step 331 may validate the repository state, but the final gate remains conditional on driving every non-`N/A` row to at least `IMPLEMENTED` and every external-comparison row to `DIFFERENTIAL`.
+The project is not at final JVMS completion yet. Unsupported paths are now explicitly visible in the ledger and summarized here. Final validation proves the current repository state builds and tests, but the overall JVM final gate remains conditional on driving every non-`N/A` row to at least `IMPLEMENTED` and every external-comparison row to `DIFFERENTIAL`.
