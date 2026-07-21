@@ -3,6 +3,8 @@ package me.moeyinlo.visualize.jvm.interpreter
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -35,6 +37,8 @@ data class JvmNativeMethodContext(
     val classHierarchy: JvmClassHierarchy,
     val staticFields: JvmStaticFields,
     val currentClassName: String?,
+    val monitors: JvmMonitorState = JvmMonitorState(),
+    val currentThreadId: String = "main",
     internal val callStaticMethodHandler: (
         ownerClassName: String,
         name: String,
@@ -123,6 +127,36 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Object;",
         isStatic = false,
     )
+    private val ObjectWaitKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "wait",
+        descriptor = "()V",
+        isStatic = false,
+    )
+    private val ObjectWaitLongKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "wait",
+        descriptor = "(J)V",
+        isStatic = false,
+    )
+    private val ObjectWaitLongIntKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "wait",
+        descriptor = "(JI)V",
+        isStatic = false,
+    )
+    private val ObjectNotifyKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "notify",
+        descriptor = "()V",
+        isStatic = false,
+    )
+    private val ObjectNotifyAllKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "notifyAll",
+        descriptor = "()V",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -149,10 +183,62 @@ object JvmVmIntrinsics {
         }
         context.heap.shallowClone(receiver)
     }
+    private val ObjectWait = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Object.wait intrinsic requires a receiver")
+        validateWaitArguments(invocation.arguments)
+        context.heap.get(receiver)
+        context.monitors.waitForNotification(receiver, context.currentThreadId)
+        null
+    }
+    private val ObjectNotify = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Object.notify intrinsic requires a receiver")
+        require(invocation.arguments.isEmpty()) { "Object.notify intrinsic expects no arguments" }
+        context.heap.get(receiver)
+        context.monitors.notifyOne(receiver, context.currentThreadId)
+        null
+    }
+    private val ObjectNotifyAll = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Object.notifyAll intrinsic requires a receiver")
+        require(invocation.arguments.isEmpty()) { "Object.notifyAll intrinsic expects no arguments" }
+        context.heap.get(receiver)
+        context.monitors.notifyAll(receiver, context.currentThreadId)
+        null
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
         ObjectHashCodeKey to ObjectHashCode,
         ObjectCloneKey to ObjectClone,
+        ObjectWaitKey to ObjectWait,
+        ObjectWaitLongKey to ObjectWait,
+        ObjectWaitLongIntKey to ObjectWait,
+        ObjectNotifyKey to ObjectNotify,
+        ObjectNotifyAllKey to ObjectNotifyAll,
     )
+
+    private fun validateWaitArguments(arguments: List<JvmValue>) {
+        when (arguments.size) {
+            0 -> Unit
+            1 -> {
+                val timeoutMillis = (arguments[0] as? JvmLongValue)?.value
+                    ?: throw JvmUnsupportedInstructionException("Object.wait(J)V expects a long timeout")
+                if (timeoutMillis < 0L) {
+                    throw JvmUnsupportedInstructionException("Object.wait timeout must be non-negative")
+                }
+            }
+            2 -> {
+                val timeoutMillis = (arguments[0] as? JvmLongValue)?.value
+                    ?: throw JvmUnsupportedInstructionException("Object.wait(JI)V expects a long timeout")
+                val nanos = (arguments[1] as? JvmIntValue)?.value
+                    ?: throw JvmUnsupportedInstructionException("Object.wait(JI)V expects int nanos")
+                if (timeoutMillis < 0L || nanos !in 0..999_999) {
+                    throw JvmUnsupportedInstructionException("Object.wait timeout or nanos is out of range")
+                }
+            }
+            else -> throw JvmUnsupportedInstructionException("Object.wait intrinsic received too many arguments")
+        }
+    }
 }

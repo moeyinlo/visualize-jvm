@@ -7,6 +7,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -198,6 +200,94 @@ class JvmVmIntrinsicsTest {
         }
     }
 
+    @Test
+    fun `Object wait intrinsic releases the receiver monitor and records the current thread as waiting`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val receiver = heap.allocateObject("Example")
+        monitors.enter(receiver, threadId = "main")
+        monitors.enter(receiver, threadId = "main")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectWaitLongMethod())
+            ?: error("Object.wait intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+            monitors = monitors,
+            currentThreadId = "main",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = listOf(JvmLongValue(0L))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(0, monitors.holdCount(receiver, threadId = "main"))
+        assertEquals(listOf("main"), monitors.waitingThreads(receiver))
+    }
+
+    @Test
+    fun `Object notify intrinsic wakes one waiting thread from the receiver monitor`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val receiver = heap.allocateObject("Example")
+        monitors.enter(receiver, threadId = "first")
+        monitors.waitForNotification(receiver, threadId = "first")
+        monitors.enter(receiver, threadId = "second")
+        monitors.waitForNotification(receiver, threadId = "second")
+        monitors.enter(receiver, threadId = "owner")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectNotifyMethod())
+            ?: error("Object.notify intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+            monitors = monitors,
+            currentThreadId = "owner",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(listOf("second"), monitors.waitingThreads(receiver))
+    }
+
+    @Test
+    fun `Object notifyAll intrinsic wakes every waiting thread from the receiver monitor`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val receiver = heap.allocateObject("Example")
+        monitors.enter(receiver, threadId = "first")
+        monitors.waitForNotification(receiver, threadId = "first")
+        monitors.enter(receiver, threadId = "second")
+        monitors.waitForNotification(receiver, threadId = "second")
+        monitors.enter(receiver, threadId = "owner")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectNotifyAllMethod())
+            ?: error("Object.notifyAll intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+            monitors = monitors,
+            currentThreadId = "owner",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(emptyList(), monitors.waitingThreads(receiver))
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -218,6 +308,30 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Object",
         name = "clone",
         descriptor = "()Ljava/lang/Object;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun objectWaitLongMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Object",
+        name = "wait",
+        descriptor = "(J)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun objectNotifyMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Object",
+        name = "notify",
+        descriptor = "()V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun objectNotifyAllMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Object",
+        name = "notifyAll",
+        descriptor = "()V",
         isStatic = false,
         isNative = true,
     )
