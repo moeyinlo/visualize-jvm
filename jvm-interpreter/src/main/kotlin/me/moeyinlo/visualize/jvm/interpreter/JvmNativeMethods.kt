@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -110,6 +111,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ObjectHashCodeKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "hashCode",
+        descriptor = "()I",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -117,8 +124,15 @@ object JvmVmIntrinsics {
         val receiverClassName = context.heap.get(receiver).className
         context.heap.internClassMirror(receiverClassName)
     }
+    private val ObjectHashCode = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Object.hashCode intrinsic requires a receiver")
+        context.heap.get(receiver)
+        JvmIntValue(receiver.referenceId.value)
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
+        ObjectHashCodeKey to ObjectHashCode,
     )
 }
