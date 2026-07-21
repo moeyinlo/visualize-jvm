@@ -12806,6 +12806,65 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual allows protected superclass methods from subclasses in another package`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("other/Sub")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("guarded", "guarded".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "guarded",
+                                descriptor = "()I",
+                                isStatic = false,
+                                isProtected = true,
+                                code = byteArrayOf(
+                                    0x05.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "other/Sub",
+                        superclassName = "pkg/Owner",
+                    ),
+                ),
+            ),
+            currentClassName = "other/Sub",
+        )
+
+        assertEquals(listOf(JvmIntValue(2)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokespecial executes no argument int returning instance method`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")
