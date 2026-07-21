@@ -225,6 +225,20 @@ class JvmSimulatedJniEnvironment(
     fun getByteArrayElements(arrayHandle: JvmJniHandleId): ByteArray =
         resolveByteArray(arrayHandle).elements.toByteArray()
 
+    fun releaseByteArrayElements(
+        arrayHandle: JvmJniHandleId,
+        elements: ByteArray,
+        mode: JvmJniArrayReleaseMode = JvmJniArrayReleaseMode.CopyBackAndRelease,
+    ) {
+        val array = resolveByteArray(arrayHandle)
+        requireArrayElementsBufferSize(array.elements.size, elements.size)
+        if (mode != JvmJniArrayReleaseMode.Abort) {
+            elements.forEachIndexed { index, value ->
+                array.elements[index] = value
+            }
+        }
+    }
+
     fun getByteArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): ByteArray {
         val array = resolveByteArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
