@@ -1205,4 +1205,73 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `SetDoubleField writes a guest double instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "precise",
+                                descriptor = "D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "precise", "D")
+
+        environment.setDoubleField(objectHandle, fieldHandle, 6.5)
+
+        assertEquals(
+            JvmDoubleValue(6.5),
+            heap.getInstanceField(
+                objectReference,
+                JvmFieldReference(ownerClassName = "Example", name = "precise", descriptor = "D"),
+            ),
+        )
+    }
+
+    @Test
+    fun `SetDoubleField rejects non double guest field handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "ratio",
+                                descriptor = "F",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "ratio", "F")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.setDoubleField(objectHandle, fieldHandle, 6.5)
+        }
+    }
+
 }
