@@ -211,6 +211,14 @@ class JvmSimulatedJniEnvironment(
         return array.elements.subList(start, start + length).toByteArray()
     }
 
+    fun setByteArrayRegion(arrayHandle: JvmJniHandleId, start: Int, values: ByteArray) {
+        val array = resolveByteArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, values.size)
+        values.forEachIndexed { offset, value ->
+            array.elements[start + offset] = value
+        }
+    }
+
     fun newCharArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateCharArray(length))
 
