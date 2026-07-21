@@ -11652,6 +11652,65 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic executes native intrinsics with callee owner context`() {
+        val heap = JvmHeap()
+        val staticFields = JvmStaticFields()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeValue",
+                                descriptor = "()I",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey(
+                    ownerClassName = "Example",
+                    name = "nativeValue",
+                    descriptor = "()I",
+                    isStatic = true,
+                ) to JvmNativeMethodIntrinsic { context, _ ->
+                    assertEquals("Example", context.currentClassName)
+                    assertTrue(context.heap === heap)
+                    assertTrue(context.staticFields === staticFields)
+                    JvmIntValue(5)
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokestatic resolves static interface methods from interface method references`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

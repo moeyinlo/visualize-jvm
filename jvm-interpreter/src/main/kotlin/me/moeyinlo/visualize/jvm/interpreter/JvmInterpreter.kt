@@ -3450,7 +3450,7 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
                 nativeMethods = nativeMethods,
-                currentClassName = currentClassName,
+                currentClassName = resolvedMethod.ownerClassName,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
