@@ -303,4 +303,22 @@ class JvmPanamaDowncallBackendTest {
         assertEquals(objectReference, JvmNativeDowncallReturn.ObjectHandle(objectHandle).toGuestValue(environment))
         assertEquals(JvmNullValue, JvmNativeDowncallReturn.ObjectHandle(null).toGuestValue(environment))
     }
+
+    @Test
+    fun `Panama backend propagates native thrown guest exceptions`() {
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val throwableReference = heap.allocateObject("java/lang/IllegalStateException")
+        val throwableHandle = environment.handles.newObjectHandle(throwableReference)
+
+        val thrown = assertFailsWith<JvmNativeGuestException> {
+            JvmNativeDowncallReturn.ThrownGuestException(throwableHandle).toGuestValue(environment)
+        }
+
+        assertEquals(throwableReference, thrown.throwable)
+    }
 }

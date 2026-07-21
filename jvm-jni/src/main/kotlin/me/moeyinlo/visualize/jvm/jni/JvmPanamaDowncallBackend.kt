@@ -69,6 +69,7 @@ sealed interface JvmNativeDowncallReturn {
     data class FloatPrimitive(val value: Float) : JvmNativeDowncallReturn
     data class DoublePrimitive(val value: Double) : JvmNativeDowncallReturn
     data class ObjectHandle(val handle: JvmJniHandleId?) : JvmNativeDowncallReturn
+    data class ThrownGuestException(val throwableHandle: JvmJniHandleId) : JvmNativeDowncallReturn
 }
 
 fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment): JvmValue? =
@@ -83,7 +84,13 @@ fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment
         is JvmNativeDowncallReturn.FloatPrimitive -> JvmFloatValue(value)
         is JvmNativeDowncallReturn.DoublePrimitive -> JvmDoubleValue(value)
         is JvmNativeDowncallReturn.ObjectHandle -> handle?.let(environment.handles::resolveObject) ?: JvmNullValue
+        is JvmNativeDowncallReturn.ThrownGuestException ->
+            throw JvmNativeGuestException(environment.handles.resolveObject(throwableHandle))
     }
+
+class JvmNativeGuestException(val throwable: JvmObjectReferenceValue) : RuntimeException(
+    "Native downcall threw guest exception reference ${throwable.referenceId.value}",
+)
 
 fun JvmNativeDowncallTarget.prepareInvocation(
     environment: JvmSimulatedJniEnvironment,
