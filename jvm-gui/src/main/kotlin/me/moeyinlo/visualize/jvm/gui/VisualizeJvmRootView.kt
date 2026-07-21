@@ -12,11 +12,12 @@ class VisualizeJvmRootView(
     val bytecodeInstructionView: BytecodeInstructionView = BytecodeInstructionView()
     val constantPoolView: ConstantPoolView = ConstantPoolView()
     val debuggerControlBar: DebuggerControlBar = DebuggerControlBar()
+    val currentFrameView: CurrentFrameView = CurrentFrameView()
 
     init {
         top = VBox(debuggerControlBar, constantPoolView)
         left = projectClasspathPanel
-        center = classTreeView
+        center = VBox(classTreeView, currentFrameView)
         right = memberListView
         bottom = bytecodeInstructionView
     }
