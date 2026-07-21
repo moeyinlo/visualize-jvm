@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
@@ -3819,6 +3820,35 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<IllegalArgumentException> {
             environment.newBooleanArray(-1)
+        }
+    }
+
+    @Test
+    fun `NewByteArray allocates a zero filled guest byte array`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+
+        val arrayHandle = environment.newByteArray(3)
+
+        val arrayObject = heap.get(handles.resolveObject(arrayHandle))
+        assertEquals("[B", arrayObject.className)
+        assertEquals(
+            JvmByteArrayPayload(mutableListOf(0.toByte(), 0.toByte(), 0.toByte())),
+            arrayObject.payload,
+        )
+    }
+
+    @Test
+    fun `NewByteArray rejects negative lengths`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        assertFailsWith<IllegalArgumentException> {
+            environment.newByteArray(-1)
         }
     }
 
