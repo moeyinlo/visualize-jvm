@@ -57,4 +57,34 @@ class JvmPanamaDowncallBackendTest {
             backend.resolveSymbol(library, "Java_pkg_NativeApi_missing")
         }
     }
+
+    @Test
+    fun `Panama backend binds optional JNI_OnLoad symbols`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = emptyList(),
+        )
+        val backend = JvmPanamaDowncallBackend(
+            symbolLookup = JvmNativeSymbolLookup { path, symbolName ->
+                if (path == library.path && symbolName == "JNI_OnLoad") {
+                    JvmNativeSymbolAddress(symbolName, 0x4567L)
+                } else {
+                    null
+                }
+            },
+        )
+        val missingOnLoadBackend = JvmPanamaDowncallBackend(symbolLookup = JvmNativeSymbolLookup { _, _ -> null })
+
+        assertEquals(
+            JvmNativeDowncallTarget(
+                library = library,
+                guestMethod = null,
+                symbolName = "JNI_OnLoad",
+                address = 0x4567L,
+            ),
+            backend.bindOnLoad(library),
+        )
+        assertEquals(null, missingOnLoadBackend.bindOnLoad(library))
+    }
 }

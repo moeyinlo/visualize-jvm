@@ -44,6 +44,16 @@ class JvmPanamaDowncallBackend(
         )
     }
 
+    fun bindOnLoad(library: JvmNativeLibraryDescriptor): JvmNativeDowncallTarget? {
+        val address = symbolLookup.find(library.path, library.onLoadSymbol) ?: return null
+        return JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = null,
+            symbolName = address.symbolName,
+            address = address.address,
+        )
+    }
+
     fun resolveSymbol(
         library: JvmNativeLibraryDescriptor,
         symbolName: String,
