@@ -153,6 +153,10 @@ class JvmSimulatedJniEnvironment(
     fun getStringUtfChars(stringHandle: JvmJniHandleId): ByteArray =
         encodeModifiedUtf8(resolveStringValue(stringHandle))
 
+    fun releaseStringUtfChars(stringHandle: JvmJniHandleId, chars: ByteArray) {
+        resolveStringValue(stringHandle)
+    }
+
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)

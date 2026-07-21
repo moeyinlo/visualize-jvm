@@ -1029,6 +1029,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `GetStringChars` returns copied UTF-16 code units for guest `java/lang/String` handles and rejects non-string object handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetStringChars*` | IMPLEMENTED |
 | Simulated JNI | `GetStringUTFChars` returns copied modified UTF-8 bytes for guest `java/lang/String` handles and rejects non-string object handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetStringUTFChars*` | IMPLEMENTED |
 | Simulated JNI | `ReleaseStringChars` validates guest `java/lang/String` handles and releases copied UTF-16 buffers as a simulated no-op | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.ReleaseStringChars*` | IMPLEMENTED |
+| Simulated JNI | `ReleaseStringUTFChars` validates guest `java/lang/String` handles and releases copied modified UTF-8 buffers as a simulated no-op | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.ReleaseStringUTFChars*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 
