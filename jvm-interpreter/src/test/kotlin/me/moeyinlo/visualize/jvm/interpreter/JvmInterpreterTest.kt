@@ -12066,6 +12066,55 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual throws guest NullPointerException for null objectref`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0xB6.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "()I",
+                                    isStatic = false,
+                                    code = byteArrayOf(
+                                        0x06.toByte(),
+                                        0xAC.toByte(),
+                                    ),
+                                    maxStack = 1,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                currentClassName = "Caller",
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("Cannot invoke virtual method Owner.value:()I on null object reference", exception.message)
+    }
+
+    @Test
     fun `invokespecial executes no argument int returning instance method`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")
