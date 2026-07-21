@@ -239,6 +239,12 @@ class JvmSimulatedJniEnvironment(
     fun newShortArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateShortArray(length))
 
+    fun getShortArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): ShortArray {
+        val array = resolveShortArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, length)
+        return array.elements.subList(start, start + length).toShortArray()
+    }
+
     fun newIntArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateIntArray(length))
 
@@ -1147,6 +1153,15 @@ class JvmSimulatedJniEnvironment(
         return heapObject.payload as? JvmCharArrayPayload
             ?: throw JvmJniArrayAccessException(
                 "JNI char array helper requires char array payload, got ${heapObject.className}",
+            )
+    }
+
+    private fun resolveShortArray(arrayHandle: JvmJniHandleId): JvmShortArrayPayload {
+        val reference = handles.resolveObject(arrayHandle)
+        val heapObject = heap.get(reference)
+        return heapObject.payload as? JvmShortArrayPayload
+            ?: throw JvmJniArrayAccessException(
+                "JNI short array helper requires short array payload, got ${heapObject.className}",
             )
     }
 

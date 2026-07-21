@@ -4294,6 +4294,48 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `getShortArrayRegion returns a copied guest short array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newShortArray(5)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmShortArrayPayload
+        payload.elements[1] = (-123).toShort()
+        payload.elements[3] = 456.toShort()
+
+        val result = environment.getShortArrayRegion(arrayHandle, start = 1, length = 3)
+
+        assertContentEquals(shortArrayOf((-123).toShort(), 0.toShort(), 456.toShort()), result)
+        result[0] = 999.toShort()
+        assertEquals((-123).toShort(), payload.elements[1])
+    }
+
+    @Test
+    fun `getShortArrayRegion rejects non short arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val wrongArrayHandle = environment.newIntArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getShortArrayRegion(wrongArrayHandle, start = 0, length = 1)
+        }
+
+        val arrayHandle = environment.newShortArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getShortArrayRegion(arrayHandle, start = 2, length = 2)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
