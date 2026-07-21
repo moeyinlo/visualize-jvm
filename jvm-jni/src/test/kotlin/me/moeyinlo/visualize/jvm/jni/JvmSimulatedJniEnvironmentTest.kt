@@ -4555,6 +4555,48 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetFloatArrayRegion returns a copied guest float array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newFloatArray(5)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmFloatArrayPayload
+        payload.elements[1] = -1.5f
+        payload.elements[3] = 2.25f
+
+        val result = environment.getFloatArrayRegion(arrayHandle, start = 1, length = 3)
+
+        assertContentEquals(floatArrayOf(-1.5f, 0.0f, 2.25f), result)
+        result[0] = 99.0f
+        assertEquals(-1.5f, payload.elements[1])
+    }
+
+    @Test
+    fun `GetFloatArrayRegion rejects non float arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val wrongArrayHandle = environment.newIntArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getFloatArrayRegion(wrongArrayHandle, start = 0, length = 1)
+        }
+
+        val arrayHandle = environment.newFloatArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getFloatArrayRegion(arrayHandle, start = 2, length = 2)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
