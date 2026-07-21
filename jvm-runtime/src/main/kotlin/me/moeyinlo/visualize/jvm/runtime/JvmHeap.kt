@@ -14,6 +14,15 @@ data class JvmStringPayload(val value: String) : JvmHeapPayload
 
 data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
 
+data class JvmStackTraceFrame(
+    val declaringClass: String,
+    val methodName: String,
+    val fileName: String?,
+    val lineNumber: Int?,
+)
+
+data class JvmThrowablePayload(val stackTrace: List<JvmStackTraceFrame>) : JvmHeapPayload
+
 data class JvmBooleanArrayPayload(val elements: MutableList<Boolean>) : JvmHeapPayload
 
 data class JvmDoubleArrayPayload(val elements: MutableList<Double>) : JvmHeapPayload
@@ -254,6 +263,15 @@ class JvmHeap {
         return clonedReference
     }
 
+    fun recordThrowableStackTrace(
+        reference: JvmObjectReferenceValue,
+        stackTrace: List<JvmStackTraceFrame>,
+    ): JvmObjectReferenceValue {
+        val heapObject = get(reference)
+        objects[reference.referenceId] = heapObject.copy(payload = JvmThrowablePayload(stackTrace.toList()))
+        return reference
+    }
+
     fun get(reference: JvmObjectReferenceValue): JvmHeapObject =
         objects[reference.referenceId]
             ?: throw JvmHeapAccessException("Unknown heap reference ${reference.referenceId}")
@@ -303,4 +321,5 @@ private fun JvmHeapPayload.shallowClonePayload(): JvmHeapPayload =
         is JvmReferenceArrayPayload -> JvmReferenceArrayPayload(elements.toMutableList())
         is JvmShortArrayPayload -> JvmShortArrayPayload(elements.toMutableList())
         is JvmStringPayload -> copy()
+        is JvmThrowablePayload -> copy(stackTrace = stackTrace.toList())
     }

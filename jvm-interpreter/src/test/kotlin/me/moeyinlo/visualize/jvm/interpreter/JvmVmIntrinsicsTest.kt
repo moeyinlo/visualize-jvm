@@ -14,7 +14,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -550,6 +552,40 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmNullValue, objectSuperclass)
         assertEquals(JvmNullValue, primitiveSuperclass)
     }
+
+    @Test
+    fun `Throwable fillInStackTrace intrinsic records context stack trace and returns receiver`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("java/lang/Throwable")
+        val frame = JvmStackTraceFrame(
+            declaringClass = "pkg/Example",
+            methodName = "call",
+            fileName = "Example.java",
+            lineNumber = 42,
+        )
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(throwableFillInStackTraceMethod())
+            ?: error("Throwable.fillInStackTrace intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Throwable", superclassName = "java/lang/Object"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Throwable",
+            stackTraceProvider = { listOf(frame) },
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = listOf(JvmIntValue(0))),
+        )
+
+        assertEquals(receiver, result)
+        assertEquals(JvmThrowablePayload(listOf(frame)), heap.get(receiver).payload)
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -629,6 +665,7 @@ class JvmVmIntrinsicsTest {
         isStatic = true,
         isNative = true,
     )
+
     private fun classInitClassNameMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Class",
         name = "initClassName",
@@ -665,6 +702,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "getSuperclass",
         descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun throwableFillInStackTraceMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Throwable",
+        name = "fillInStackTrace",
+        descriptor = "(I)Ljava/lang/Throwable;",
         isStatic = false,
         isNative = true,
     )

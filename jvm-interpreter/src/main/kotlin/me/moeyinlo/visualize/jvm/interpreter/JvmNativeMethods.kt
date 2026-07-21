@@ -19,6 +19,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
@@ -53,6 +54,7 @@ data class JvmNativeMethodContext(
     val currentThreadId: String = "main",
     val currentTimeMillisProvider: () -> Long = System::currentTimeMillis,
     val nanoTimeProvider: () -> Long = System::nanoTime,
+    val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },
     internal val callStaticMethodHandler: (
         ownerClassName: String,
         name: String,
@@ -225,6 +227,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ThrowableFillInStackTraceKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Throwable",
+        name = "fillInStackTrace",
+        descriptor = "(I)Ljava/lang/Throwable;",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -343,6 +351,22 @@ object JvmVmIntrinsics {
                 ?: JvmNullValue
         }
     }
+    private val ThrowableFillInStackTrace = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Throwable.fillInStackTrace intrinsic requires a receiver")
+        if (invocation.arguments.size != 1 || invocation.arguments.single() !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException("Throwable.fillInStackTrace expects one int argument")
+        }
+        val receiverClassName = context.heap.get(receiver).className
+        if (receiverClassName != "java/lang/Throwable" &&
+            !context.classHierarchy.isAssignable(receiverClassName, "java/lang/Throwable")
+        ) {
+            throw JvmUnsupportedInstructionException(
+                "Throwable.fillInStackTrace requires Throwable receiver, got $receiverClassName",
+            )
+        }
+        context.heap.recordThrowableStackTrace(receiver, context.stackTraceProvider())
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -362,6 +386,7 @@ object JvmVmIntrinsics {
         ClassIsPrimitiveKey to ClassIsPrimitive,
         ClassIsInterfaceKey to ClassIsInterface,
         ClassGetSuperclassKey to ClassGetSuperclass,
+        ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
     )
 
     private val PrimitiveClassNames = setOf(
