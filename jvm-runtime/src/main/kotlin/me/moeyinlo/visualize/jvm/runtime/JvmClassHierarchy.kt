@@ -5,6 +5,7 @@ data class JvmClassDefinition(
     val superclassName: String? = null,
     val interfaceNames: List<String> = emptyList(),
     val fields: List<JvmFieldDefinition> = emptyList(),
+    val methods: List<JvmMethodDefinition> = emptyList(),
 )
 
 data class JvmFieldDefinition(
@@ -24,6 +25,19 @@ data class JvmResolvedField(
     val isPrivate: Boolean = false,
     val isPackagePrivate: Boolean = false,
     val isProtected: Boolean = false,
+)
+
+data class JvmMethodDefinition(
+    val name: String,
+    val descriptor: String,
+    val isStatic: Boolean,
+)
+
+data class JvmResolvedMethod(
+    val ownerClassName: String,
+    val name: String,
+    val descriptor: String,
+    val isStatic: Boolean,
 )
 
 class JvmClassHierarchy(
@@ -83,6 +97,23 @@ class JvmClassHierarchy(
             )
     }
 
+    fun resolveMethod(
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod {
+        val ownerClass = classesByName[ownerClassName]
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = ownerClassName,
+            )
+        return ownerClass.findDeclaredMethod(name, descriptor)
+            ?: throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$ownerClassName.$name:$descriptor",
+            )
+    }
+
     private fun JvmClassDefinition.findDeclaredField(name: String, descriptor: String): JvmResolvedField? =
         fields.firstOrNull { field -> field.name == name && field.descriptor == descriptor }
             ?.let { field ->
@@ -94,6 +125,17 @@ class JvmClassHierarchy(
                     isPrivate = field.isPrivate,
                     isPackagePrivate = field.isPackagePrivate,
                     isProtected = field.isProtected,
+                )
+            }
+
+    private fun JvmClassDefinition.findDeclaredMethod(name: String, descriptor: String): JvmResolvedMethod? =
+        methods.firstOrNull { method -> method.name == name && method.descriptor == descriptor }
+            ?.let { method ->
+                JvmResolvedMethod(
+                    ownerClassName = internalName,
+                    name = method.name,
+                    descriptor = method.descriptor,
+                    isStatic = method.isStatic,
                 )
             }
 
@@ -154,3 +196,8 @@ class JvmNoSuchFieldError(
     val guestClassName: String,
     message: String,
 ) : NoSuchFieldError(message)
+
+class JvmNoSuchMethodError(
+    val guestClassName: String,
+    message: String,
+) : NoSuchMethodError(message)
