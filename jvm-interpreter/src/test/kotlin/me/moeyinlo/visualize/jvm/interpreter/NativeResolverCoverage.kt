@@ -1,0 +1,80 @@
+package me.moeyinlo.visualize.jvm.interpreter
+
+enum class NativeResolverCoverageStatus {
+    Implemented,
+    PartiallyImplemented,
+    NotYetImplemented,
+}
+
+data class NativeResolverCoverageEntry(
+    val rule: String,
+    val specSection: String,
+    val currentComponent: String,
+    val status: NativeResolverCoverageStatus,
+    val coveringTestClass: String? = null,
+)
+
+object NativeResolverCoverage {
+    val entries: List<NativeResolverCoverageEntry> = listOf(
+        NativeResolverCoverageEntry(
+            rule = "native method key identity",
+            specSection = "JVMS 5.4.3 Resolution",
+            currentComponent = "JvmNativeMethodKey.from includes owner, name, descriptor, and staticness",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmInterpreterTest",
+        ),
+        NativeResolverCoverageEntry(
+            rule = "VM intrinsic lookup before simulated JNI",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmNativeMethodRegistry.resolve checks intrinsics before simulatedJni",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmInterpreterTest",
+        ),
+        NativeResolverCoverageEntry(
+            rule = "simulated JNI fallback lookup",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmNativeMethodRegistry.resolve falls back to simulatedJni when no intrinsic is bound",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmInterpreterTest",
+        ),
+        NativeResolverCoverageEntry(
+            rule = "unresolved native method error",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmInterpreter throws guest UnsatisfiedLinkError for unbound native invocation",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmInterpreterTest",
+        ),
+        NativeResolverCoverageEntry(
+            rule = "JNI short and long symbol candidates",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmNativeSymbolNameResolver",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmNativeSymbolNameResolverTest",
+        ),
+        NativeResolverCoverageEntry(
+            rule = "native library export lookup",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmNativeLibraryDescriptor.exportFor",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmNativeLibraryDescriptorTest",
+        ),
+        NativeResolverCoverageEntry(
+            rule = "native library loading lifecycle",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "No runtime System.loadLibrary/load/native library table lifecycle yet",
+            status = NativeResolverCoverageStatus.NotYetImplemented,
+        ),
+        NativeResolverCoverageEntry(
+            rule = "JNI_OnLoad registration",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "Library descriptors name JNI_OnLoad, but runtime invocation/registration is not implemented",
+            status = NativeResolverCoverageStatus.NotYetImplemented,
+        ),
+        NativeResolverCoverageEntry(
+            rule = "automatic descriptor-to-library binding",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "Native registry is explicit; no loader-driven descriptor-to-export resolver yet",
+            status = NativeResolverCoverageStatus.NotYetImplemented,
+        ),
+    )
+}
