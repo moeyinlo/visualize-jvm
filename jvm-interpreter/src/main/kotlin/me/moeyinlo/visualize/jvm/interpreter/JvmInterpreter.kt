@@ -3515,6 +3515,7 @@ object JvmInterpreter {
                     "$receiverClassName is not assignable to ${resolvedMethod.ownerClassName}",
             )
         }
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
 
         calleeLocals.store(0, objectref)
         var localIndex = 1
@@ -3982,6 +3983,7 @@ object JvmInterpreter {
         method: JvmResolvedMethod,
         currentClassName: String?,
         classHierarchy: JvmClassHierarchy,
+        receiverClassName: String? = null,
     ) {
         if (method.isPrivate && currentClassName != null && currentClassName != method.ownerClassName) {
             throw JvmIllegalAccessError(
@@ -4011,6 +4013,20 @@ object JvmInterpreter {
                 guestClassName = "java/lang/IllegalAccessError",
                 message = "Class $currentClassName cannot access protected method " +
                     "${method.ownerClassName}.${method.name}:${method.descriptor}",
+            )
+        }
+        if (
+            method.isProtected &&
+            currentClassName != null &&
+            receiverClassName != null &&
+            currentClassName.runtimePackageName() != method.ownerClassName.runtimePackageName() &&
+            classHierarchy.isAssignable(currentClassName, method.ownerClassName) &&
+            !classHierarchy.isAssignable(receiverClassName, currentClassName)
+        ) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access protected method " +
+                    "${method.ownerClassName}.${method.name}:${method.descriptor} on receiver $receiverClassName",
             )
         }
     }
