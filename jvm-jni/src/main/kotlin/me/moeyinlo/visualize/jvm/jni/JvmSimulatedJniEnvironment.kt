@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
@@ -286,6 +287,31 @@ class JvmSimulatedJniEnvironment(
             ),
             JvmDoubleValue(value),
         )
+    }
+
+    fun getBooleanField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Boolean {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "Z" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetBooleanField requires an instance boolean field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = heap.getInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return when (value) {
+            is JvmBooleanValue -> value.value
+            is JvmIntValue -> value.value != 0
+            else -> throw JvmJniFieldAccessException(
+                "GetBooleanField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
     }
 
     fun getObjectField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): JvmJniHandleId? {
