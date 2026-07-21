@@ -426,6 +426,9 @@ class JvmSimulatedJniEnvironment(
     fun newDoubleArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateDoubleArray(length))
 
+    fun getDoubleArrayElements(arrayHandle: JvmJniHandleId): DoubleArray =
+        resolveDoubleArray(arrayHandle).elements.toDoubleArray()
+
     fun getDoubleArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): DoubleArray {
         val array = resolveDoubleArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)

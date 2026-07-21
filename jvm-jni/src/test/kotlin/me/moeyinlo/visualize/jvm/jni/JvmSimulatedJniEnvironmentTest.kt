@@ -5380,6 +5380,37 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetDoubleArrayElements returns a copied guest double array buffer`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newDoubleArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmDoubleArrayPayload
+        payload.elements[0] = -1.5
+        payload.elements[2] = 2.25
+
+        val result = environment.getDoubleArrayElements(arrayHandle)
+
+        assertContentEquals(doubleArrayOf(-1.5, 0.0, 2.25), result)
+        result[0] = 99.0
+        assertEquals(-1.5, payload.elements[0])
+    }
+
+    @Test
+    fun `GetDoubleArrayElements rejects non double arrays`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newFloatArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getDoubleArrayElements(wrongArrayHandle)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
