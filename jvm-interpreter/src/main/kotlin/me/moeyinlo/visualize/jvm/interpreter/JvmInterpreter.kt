@@ -3476,6 +3476,7 @@ object JvmInterpreter {
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
+        requireVirtualMethodName(resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
@@ -4157,6 +4158,15 @@ object JvmInterpreter {
         throw JvmUnsupportedInstructionException(
             "Constructor ${method.ownerClassName}.${method.name}:${method.descriptor} " +
                 "cannot initialize receiver $receiverClassName outside constructor context for $receiverClassName",
+        )
+    }
+
+    private fun requireVirtualMethodName(method: JvmResolvedMethod) {
+        if (method.name != "<init>" && method.name != "<clinit>") {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Method ${method.ownerClassName}.${method.name}:${method.descriptor} cannot be invoked with invokevirtual",
         )
     }
 
