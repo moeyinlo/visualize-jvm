@@ -13,6 +13,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
@@ -3909,6 +3910,35 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<IllegalArgumentException> {
             environment.newShortArray(-1)
+        }
+    }
+
+    @Test
+    fun `NewIntArray allocates a zero filled guest int array`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+
+        val arrayHandle = environment.newIntArray(3)
+
+        val arrayObject = heap.get(handles.resolveObject(arrayHandle))
+        assertEquals("[I", arrayObject.className)
+        assertEquals(
+            JvmIntArrayPayload(mutableListOf(0, 0, 0)),
+            arrayObject.payload,
+        )
+    }
+
+    @Test
+    fun `NewIntArray rejects negative lengths`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        assertFailsWith<IllegalArgumentException> {
+            environment.newIntArray(-1)
         }
     }
 
