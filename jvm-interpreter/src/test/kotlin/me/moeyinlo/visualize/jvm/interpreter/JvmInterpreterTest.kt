@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
@@ -11107,6 +11108,51 @@ class JvmInterpreterTest {
 
         assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
         assertEquals("Missing", exception.message)
+    }
+
+    @Test
+    fun `invokestatic resolves static interface methods from interface method references`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("ExampleInterface", "ExampleInterface".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "ExampleInterface",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "answer",
+                                descriptor = "()I",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x05.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(2)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
     }
 
     @Test

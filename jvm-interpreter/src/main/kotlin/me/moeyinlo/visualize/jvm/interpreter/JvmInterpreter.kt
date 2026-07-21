@@ -3877,22 +3877,29 @@ object JvmInterpreter {
     ): SymbolicMethodReference {
         val index = instruction.constantPoolIndex()
         val entry = constantPoolEntry(instruction, constantPool, index, "constant")
-        if (entry !is ConstantMethodRefEntry) {
-            throw JvmUnsupportedInstructionException(
+        val classIndex = when (entry) {
+            is ConstantMethodRefEntry -> entry.classIndex
+            is ConstantInterfaceMethodRefEntry -> entry.classIndex
+            else -> throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} constant $index at offset ${instruction.offset}: " +
-                    "expected ConstantMethodRefEntry but was ${entry.javaClass.simpleName}",
+                    "expected ConstantMethodRefEntry or ConstantInterfaceMethodRefEntry but was " +
+                    entry.javaClass.simpleName,
             )
+        }
+        val nameAndTypeIndex = when (entry) {
+            is ConstantMethodRefEntry -> entry.nameAndTypeIndex
+            is ConstantInterfaceMethodRefEntry -> entry.nameAndTypeIndex
         }
 
         val classEntry = constantPoolEntry(
             instruction,
             constantPool,
-            entry.classIndex,
+            classIndex,
             "CONSTANT_Methodref class_index",
         )
         if (classEntry !is ConstantClassEntry) {
             throw JvmUnsupportedInstructionException(
-                "Invalid ${instruction.metadata.mnemonic} CONSTANT_Methodref class_index ${entry.classIndex} " +
+                "Invalid ${instruction.metadata.mnemonic} CONSTANT_Methodref class_index $classIndex " +
                     "at offset ${instruction.offset}: expected ConstantClassEntry but was " +
                     classEntry.javaClass.simpleName,
             )
@@ -3907,13 +3914,13 @@ object JvmInterpreter {
         val nameAndTypeEntry = constantPoolEntry(
             instruction,
             constantPool,
-            entry.nameAndTypeIndex,
+            nameAndTypeIndex,
             "CONSTANT_Methodref name_and_type_index",
         )
         if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} CONSTANT_Methodref name_and_type_index " +
-                    "${entry.nameAndTypeIndex} at offset ${instruction.offset}: " +
+                    "$nameAndTypeIndex at offset ${instruction.offset}: " +
                     "expected ConstantNameAndTypeEntry but was ${nameAndTypeEntry.javaClass.simpleName}",
             )
         }
