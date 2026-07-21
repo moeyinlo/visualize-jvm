@@ -10849,6 +10849,47 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic throws guest IncompatibleClassChangeError for instance methods`() {
+        val exception = assertFailsWith<JvmIncompatibleClassChangeError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB8.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "answer",
+                                    descriptor = "()I",
+                                    isStatic = false,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
+        assertEquals("Expected static method Example.answer:()I for invokestatic", exception.message)
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
