@@ -2,10 +2,13 @@ package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
+import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
+import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -248,6 +251,69 @@ class JvmSimulatedJniEnvironmentTest {
         val result = environment.isInstanceOf(null, classHandle)
 
         assertEquals(true, result)
+    }
+
+    @Test
+    fun `GetFieldID returns a field handle for loaded instance guest fields`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+
+        val fieldHandle = environment.getFieldId(classHandle, "value", "I")
+
+        assertEquals(
+            JvmResolvedField(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "I",
+                isStatic = false,
+            ),
+            handles.resolveFieldId(fieldHandle),
+        )
+    }
+
+    @Test
+    fun `GetFieldID throws guest NoSuchFieldError for missing or static fields`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "staticOnly",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val classHandle = environment.findClass("Example")
+
+        assertFailsWith<JvmNoSuchFieldError> {
+            environment.getFieldId(classHandle, "missing", "I")
+        }
+        assertFailsWith<JvmNoSuchFieldError> {
+            environment.getFieldId(classHandle, "staticOnly", "I")
+        }
     }
 
 }

@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.jni
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
+import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 
 class JvmSimulatedJniEnvironment(
@@ -74,5 +75,25 @@ class JvmSimulatedJniEnvironment(
         val sourceClassName = heap.get(reference).className
         val targetClassName = handles.resolveClass(classHandle)
         return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
+    }
+
+    fun getFieldId(
+        classHandle: JvmJniHandleId,
+        name: String,
+        descriptor: String,
+    ): JvmJniHandleId {
+        val className = handles.resolveClass(classHandle)
+        val field = classHierarchy.resolveField(
+            ownerClassName = className,
+            name = name,
+            descriptor = descriptor,
+        )
+        if (field.isStatic) {
+            throw JvmNoSuchFieldError(
+                guestClassName = "java/lang/NoSuchFieldError",
+                message = "$className.$name:$descriptor",
+            )
+        }
+        return handles.newFieldIdHandle(field)
     }
 }
