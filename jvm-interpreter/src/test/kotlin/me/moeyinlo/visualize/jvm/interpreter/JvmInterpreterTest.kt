@@ -12695,6 +12695,61 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual throws guest IllegalAccessError for protected methods from non subclass in another package`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB6.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("guarded", "guarded".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "guarded",
+                                    descriptor = "()V",
+                                    isStatic = false,
+                                    isProtected = true,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(internalName = "other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access protected method pkg/Owner.guarded:()V", exception.message)
+    }
+
+    @Test
     fun `invokespecial executes no argument int returning instance method`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")
