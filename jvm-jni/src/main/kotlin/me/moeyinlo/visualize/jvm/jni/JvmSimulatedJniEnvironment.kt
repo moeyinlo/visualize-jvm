@@ -673,6 +673,33 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun setStaticObjectField(
+        classHandle: JvmJniHandleId,
+        fieldIdHandle: JvmJniHandleId,
+        valueHandle: JvmJniHandleId?,
+    ) {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (!field.descriptor.isReferenceFieldDescriptor() || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetStaticObjectField requires a static reference field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = if (valueHandle == null) {
+            JvmNullValue
+        } else {
+            handles.resolveObject(valueHandle)
+        }
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            value,
+        )
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
