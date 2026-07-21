@@ -1,9 +1,14 @@
 package me.moeyinlo.visualize.jvm.jni
 
+import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 
 class JvmPanamaDowncallBackendTest {
     @Test
@@ -140,5 +145,38 @@ class JvmPanamaDowncallBackendTest {
             ),
             targets,
         )
+    }
+
+    @Test
+    fun `Panama backend prepares native export invocations with simulated JNIEnv first`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "call",
+            methodDescriptor = "(I)J",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_call__I",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(export),
+        )
+        val target = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x3333L,
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = JvmHeap(),
+            staticFields = JvmStaticFields(),
+        )
+
+        val invocation = target.prepareInvocation(environment, listOf(JvmIntValue(7)))
+
+        assertEquals(target, invocation.target)
+        assertSame(environment, (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJniEnv).environment)
+        assertEquals(JvmNativeDowncallArgument.GuestValue(JvmIntValue(7)), invocation.arguments[1])
     }
 }

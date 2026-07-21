@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.jni
 
+import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import java.nio.file.Path
 
 data class JvmNativeSymbolAddress(
@@ -26,6 +27,28 @@ data class JvmNativeDowncallTarget(
         require(symbolName.isNotBlank()) { "native downcall symbol name must not be blank" }
         require(address != 0L) { "native downcall address must be non-zero" }
     }
+}
+
+data class JvmNativeDowncallInvocation(
+    val target: JvmNativeDowncallTarget,
+    val arguments: List<JvmNativeDowncallArgument>,
+)
+
+sealed interface JvmNativeDowncallArgument {
+    data class SimulatedJniEnv(val environment: JvmSimulatedJniEnvironment) : JvmNativeDowncallArgument
+    data class GuestValue(val value: JvmValue) : JvmNativeDowncallArgument
+}
+
+fun JvmNativeDowncallTarget.prepareInvocation(
+    environment: JvmSimulatedJniEnvironment,
+    guestArguments: List<JvmValue> = emptyList(),
+): JvmNativeDowncallInvocation {
+    require(guestMethod != null) { "JNI export invocation requires a guest method target" }
+    return JvmNativeDowncallInvocation(
+        target = this,
+        arguments = listOf(JvmNativeDowncallArgument.SimulatedJniEnv(environment)) +
+            guestArguments.map(JvmNativeDowncallArgument::GuestValue),
+    )
 }
 
 class JvmPanamaDowncallBackend(
