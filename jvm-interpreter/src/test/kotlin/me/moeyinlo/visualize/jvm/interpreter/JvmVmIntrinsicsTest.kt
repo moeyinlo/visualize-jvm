@@ -9,7 +9,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
+import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import kotlin.test.Test
@@ -288,6 +290,99 @@ class JvmVmIntrinsicsTest {
         assertEquals(emptyList(), monitors.waitingThreads(receiver))
     }
 
+    @Test
+    fun `System arraycopy intrinsic copies primitive arrays with overlap semantics`() {
+        val heap = JvmHeap()
+        val array = heap.allocateIntArray(5)
+        val payload = heap.get(array).payload as JvmIntArrayPayload
+        payload.elements[0] = 1
+        payload.elements[1] = 2
+        payload.elements[2] = 3
+        payload.elements[3] = 4
+        payload.elements[4] = 5
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemArraycopyMethod())
+            ?: error("System.arraycopy intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                receiver = null,
+                arguments = listOf(array, JvmIntValue(0), array, JvmIntValue(1), JvmIntValue(3)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(mutableListOf(1, 1, 2, 3, 5), payload.elements)
+    }
+
+    @Test
+    fun `System arraycopy intrinsic copies assignable reference array elements`() {
+        val heap = JvmHeap()
+        val child = heap.allocateObject("Child")
+        val source = heap.allocateReferenceArray("Child", 2)
+        val target = heap.allocateReferenceArray("Base", 2)
+        val sourcePayload = heap.get(source).payload as JvmReferenceArrayPayload
+        sourcePayload.elements[0] = child
+        sourcePayload.elements[1] = JvmNullValue
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemArraycopyMethod())
+            ?: error("System.arraycopy intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Base"),
+                    JvmClassDefinition(internalName = "Child", superclassName = "Base"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                receiver = null,
+                arguments = listOf(source, JvmIntValue(0), target, JvmIntValue(0), JvmIntValue(2)),
+            ),
+        )
+
+        assertEquals(
+            JvmReferenceArrayPayload(mutableListOf(child, JvmNullValue)),
+            heap.get(target).payload,
+        )
+    }
+
+    @Test
+    fun `System arraycopy intrinsic rejects mismatched primitive array types`() {
+        val heap = JvmHeap()
+        val source = heap.allocateIntArray(1)
+        val target = heap.allocateLongArray(1)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemArraycopyMethod())
+            ?: error("System.arraycopy intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(
+                context,
+                JvmNativeMethodInvocation(
+                    receiver = null,
+                    arguments = listOf(source, JvmIntValue(0), target, JvmIntValue(0), JvmIntValue(1)),
+                ),
+            )
+        }
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -333,6 +428,14 @@ class JvmVmIntrinsicsTest {
         name = "notifyAll",
         descriptor = "()V",
         isStatic = false,
+        isNative = true,
+    )
+
+    private fun systemArraycopyMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "arraycopy",
+        descriptor = "(Ljava/lang/Object;ILjava/lang/Object;II)V",
+        isStatic = true,
         isNative = true,
     )
 }

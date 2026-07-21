@@ -1,12 +1,23 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
+import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
+import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
@@ -157,6 +168,12 @@ object JvmVmIntrinsics {
         descriptor = "()V",
         isStatic = false,
     )
+    private val SystemArraycopyKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "arraycopy",
+        descriptor = "(Ljava/lang/Object;ILjava/lang/Object;II)V",
+        isStatic = true,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -207,6 +224,23 @@ object JvmVmIntrinsics {
         context.monitors.notifyAll(receiver, context.currentThreadId)
         null
     }
+    private val SystemArraycopy = JvmNativeMethodIntrinsic { context, invocation ->
+        val arguments = parseArraycopyArguments(invocation.arguments)
+        val sourceObject = context.heap.get(arguments.source)
+        val targetObject = context.heap.get(arguments.target)
+        copyArrayPayload(
+            classHierarchy = context.classHierarchy,
+            sourceClassName = sourceObject.className,
+            sourcePayload = sourceObject.payload,
+            sourcePosition = arguments.sourcePosition,
+            targetClassName = targetObject.className,
+            targetPayload = targetObject.payload,
+            targetPosition = arguments.targetPosition,
+            length = arguments.length,
+            heap = context.heap,
+        )
+        null
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -217,6 +251,7 @@ object JvmVmIntrinsics {
         ObjectWaitLongIntKey to ObjectWait,
         ObjectNotifyKey to ObjectNotify,
         ObjectNotifyAllKey to ObjectNotifyAll,
+        SystemArraycopyKey to SystemArraycopy,
     )
 
     private fun validateWaitArguments(arguments: List<JvmValue>) {
@@ -241,4 +276,198 @@ object JvmVmIntrinsics {
             else -> throw JvmUnsupportedInstructionException("Object.wait intrinsic received too many arguments")
         }
     }
+
+    private fun parseArraycopyArguments(arguments: List<JvmValue>): ArraycopyArguments {
+        if (arguments.size != 5) {
+            throw JvmUnsupportedInstructionException("System.arraycopy expects five arguments")
+        }
+        val source = arguments[0] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("System.arraycopy source must be a non-null object reference")
+        val sourcePosition = (arguments[1] as? JvmIntValue)?.value
+            ?: throw JvmUnsupportedInstructionException("System.arraycopy source position must be int")
+        val target = arguments[2] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("System.arraycopy target must be a non-null object reference")
+        val targetPosition = (arguments[3] as? JvmIntValue)?.value
+            ?: throw JvmUnsupportedInstructionException("System.arraycopy target position must be int")
+        val length = (arguments[4] as? JvmIntValue)?.value
+            ?: throw JvmUnsupportedInstructionException("System.arraycopy length must be int")
+        if (sourcePosition < 0 || targetPosition < 0 || length < 0) {
+            throw JvmUnsupportedInstructionException("System.arraycopy positions and length must be non-negative")
+        }
+        return ArraycopyArguments(
+            source = source,
+            sourcePosition = sourcePosition,
+            target = target,
+            targetPosition = targetPosition,
+            length = length,
+        )
+    }
+
+    private fun copyArrayPayload(
+        classHierarchy: JvmClassHierarchy,
+        sourceClassName: String,
+        sourcePayload: Any,
+        sourcePosition: Int,
+        targetClassName: String,
+        targetPayload: Any,
+        targetPosition: Int,
+        length: Int,
+        heap: JvmHeap,
+    ) {
+        when (sourcePayload) {
+            is JvmBooleanArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmBooleanArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmByteArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmByteArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmCharArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmCharArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmShortArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmShortArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmIntArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmIntArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmLongArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmLongArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmFloatArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmFloatArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmDoubleArrayPayload -> copyMatchingPrimitiveArray(
+                sourcePayload.elements,
+                (targetPayload as? JvmDoubleArrayPayload)?.elements,
+                sourcePosition,
+                targetPosition,
+                length,
+            )
+            is JvmReferenceArrayPayload -> {
+                val targetReferenceArray = targetPayload as? JvmReferenceArrayPayload
+                    ?: throw JvmUnsupportedInstructionException("System.arraycopy cannot mix reference and primitive arrays")
+                copyReferenceArray(
+                    classHierarchy = classHierarchy,
+                    sourceElements = sourcePayload.elements,
+                    sourcePosition = sourcePosition,
+                    targetClassName = targetClassName,
+                    targetElements = targetReferenceArray.elements,
+                    targetPosition = targetPosition,
+                    length = length,
+                    heap = heap,
+                )
+            }
+            else -> throw JvmUnsupportedInstructionException(
+                "System.arraycopy source must be an array, got $sourceClassName",
+            )
+        }
+    }
+
+    private fun <T> copyMatchingPrimitiveArray(
+        sourceElements: MutableList<T>,
+        targetElements: MutableList<T>?,
+        sourcePosition: Int,
+        targetPosition: Int,
+        length: Int,
+    ) {
+        if (targetElements == null) {
+            throw JvmUnsupportedInstructionException("System.arraycopy primitive array types must match")
+        }
+        copyElements(sourceElements, sourcePosition, targetElements, targetPosition, length)
+    }
+
+    private fun copyReferenceArray(
+        classHierarchy: JvmClassHierarchy,
+        sourceElements: MutableList<JvmReferenceValue>,
+        sourcePosition: Int,
+        targetClassName: String,
+        targetElements: MutableList<JvmReferenceValue>,
+        targetPosition: Int,
+        length: Int,
+        heap: JvmHeap,
+    ) {
+        requireArrayRange(sourceElements.size, sourcePosition, length)
+        requireArrayRange(targetElements.size, targetPosition, length)
+        val targetComponentClassName = targetClassName.referenceArrayComponentClassName()
+        val snapshot = sourceElements.subList(sourcePosition, sourcePosition + length).toList()
+        snapshot.forEach { value ->
+            if (value is JvmObjectReferenceValue) {
+                val valueClassName = heap.get(value).className
+                if (!classHierarchy.isAssignable(valueClassName, targetComponentClassName)) {
+                    throw JvmUnsupportedInstructionException(
+                        "System.arraycopy value $valueClassName is not assignable to $targetComponentClassName",
+                    )
+                }
+            }
+        }
+        snapshot.forEachIndexed { offset, value ->
+            targetElements[targetPosition + offset] = value
+        }
+    }
+
+    private fun <T> copyElements(
+        sourceElements: MutableList<T>,
+        sourcePosition: Int,
+        targetElements: MutableList<T>,
+        targetPosition: Int,
+        length: Int,
+    ) {
+        requireArrayRange(sourceElements.size, sourcePosition, length)
+        requireArrayRange(targetElements.size, targetPosition, length)
+        val snapshot = sourceElements.subList(sourcePosition, sourcePosition + length).toList()
+        snapshot.forEachIndexed { offset, value ->
+            targetElements[targetPosition + offset] = value
+        }
+    }
+
+    private fun requireArrayRange(arrayLength: Int, start: Int, length: Int) {
+        if (start > arrayLength - length) {
+            throw JvmUnsupportedInstructionException(
+                "System.arraycopy range start=$start length=$length is out of bounds for array length $arrayLength",
+            )
+        }
+    }
+
+    private fun String.referenceArrayComponentClassName(): String =
+        when {
+            startsWith("[L") && endsWith(";") -> substring(startIndex = 2, endIndex = length - 1)
+            startsWith("[[") -> substring(startIndex = 1)
+            else -> throw JvmUnsupportedInstructionException("System.arraycopy target must be a reference array")
+        }
+
+    private data class ArraycopyArguments(
+        val source: JvmObjectReferenceValue,
+        val sourcePosition: Int,
+        val target: JvmObjectReferenceValue,
+        val targetPosition: Int,
+        val length: Int,
+    )
 }
