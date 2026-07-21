@@ -188,4 +188,66 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals("Example", handles.resolveClass(classHandle))
     }
 
+    @Test
+    fun `IsInstanceOf returns true when a guest object is assignable to the target class`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Base"),
+                    JvmClassDefinition(internalName = "Example", superclassName = "Base"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Base")
+
+        val result = environment.isInstanceOf(objectHandle, classHandle)
+
+        assertEquals(true, result)
+    }
+
+    @Test
+    fun `IsInstanceOf returns false when a guest object is not assignable to the target class`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(internalName = "Unrelated"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Unrelated")
+
+        val result = environment.isInstanceOf(objectHandle, classHandle)
+
+        assertEquals(false, result)
+    }
+
+    @Test
+    fun `IsInstanceOf returns true for null guest object handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+
+        val result = environment.isInstanceOf(null, classHandle)
+
+        assertEquals(true, result)
+    }
+
 }

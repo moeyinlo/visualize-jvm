@@ -65,4 +65,14 @@ class JvmSimulatedJniEnvironment(
         val className = heap.get(reference).className
         return handles.newClassHandle(className)
     }
+
+    fun isInstanceOf(objectHandle: JvmJniHandleId?, classHandle: JvmJniHandleId): Boolean {
+        if (objectHandle == null) {
+            return true
+        }
+        val reference = handles.resolveObject(objectHandle)
+        val sourceClassName = heap.get(reference).className
+        val targetClassName = handles.resolveClass(classHandle)
+        return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
+    }
 }
