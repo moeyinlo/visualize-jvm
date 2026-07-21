@@ -11300,6 +11300,54 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic allows package private methods from the same package`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("shared", "shared".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "shared",
+                                descriptor = "()I",
+                                isStatic = true,
+                                isPackagePrivate = true,
+                                code = byteArrayOf(
+                                    0x07.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "pkg/Caller"),
+                ),
+            ),
+            currentClassName = "pkg/Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(4)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
