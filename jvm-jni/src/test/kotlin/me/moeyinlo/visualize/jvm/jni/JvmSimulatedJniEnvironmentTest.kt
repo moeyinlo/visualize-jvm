@@ -4729,6 +4729,37 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetBooleanArrayElements returns a copied guest boolean array buffer`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newBooleanArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmBooleanArrayPayload
+        payload.elements[0] = true
+        payload.elements[2] = true
+
+        val result = environment.getBooleanArrayElements(arrayHandle)
+
+        assertContentEquals(booleanArrayOf(true, false, true), result)
+        result[0] = false
+        assertEquals(true, payload.elements[0])
+    }
+
+    @Test
+    fun `GetBooleanArrayElements rejects non boolean arrays`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newByteArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getBooleanArrayElements(wrongArrayHandle)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

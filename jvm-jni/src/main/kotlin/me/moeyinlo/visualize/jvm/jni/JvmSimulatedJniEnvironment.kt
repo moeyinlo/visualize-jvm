@@ -188,6 +188,9 @@ class JvmSimulatedJniEnvironment(
     fun newBooleanArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateBooleanArray(length))
 
+    fun getBooleanArrayElements(arrayHandle: JvmJniHandleId): BooleanArray =
+        resolveBooleanArray(arrayHandle).elements.toBooleanArray()
+
     fun getBooleanArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): BooleanArray {
         val array = resolveBooleanArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
