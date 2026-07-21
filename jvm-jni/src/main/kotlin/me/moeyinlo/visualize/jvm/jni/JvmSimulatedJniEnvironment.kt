@@ -7,6 +7,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
+import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
+import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
@@ -159,6 +161,34 @@ class JvmSimulatedJniEnvironment(
             JvmIntValue(value),
         )
     }
+
+    fun getObjectField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): JvmJniHandleId? {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (!field.descriptor.isReferenceFieldDescriptor() || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetObjectField requires an instance reference field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = heap.getInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return when (value) {
+            JvmNullValue -> null
+            is JvmObjectReferenceValue -> handles.newObjectHandle(value)
+            else -> throw JvmJniFieldAccessException(
+                "GetObjectField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+    }
 }
 
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
+
+private fun String.isReferenceFieldDescriptor(): Boolean =
+    startsWith("L") || startsWith("[")

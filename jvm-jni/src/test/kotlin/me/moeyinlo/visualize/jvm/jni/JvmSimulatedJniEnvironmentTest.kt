@@ -549,4 +549,110 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetObjectField reads a stored guest object instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "child",
+                                descriptor = "LChild;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val childReference = heap.allocateObject("Child")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "child", "LChild;")
+        heap.putInstanceField(
+            objectReference,
+            JvmFieldReference(ownerClassName = "Example", name = "child", descriptor = "LChild;"),
+            childReference,
+        )
+
+        val resultHandle = environment.getObjectField(objectHandle, fieldHandle)
+
+        assertEquals(childReference, handles.resolveObject(resultHandle!!))
+    }
+
+    @Test
+    fun `GetObjectField returns null for an unwritten guest object instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "child",
+                                descriptor = "LChild;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "child", "LChild;")
+
+        val resultHandle = environment.getObjectField(objectHandle, fieldHandle)
+
+        assertEquals(null, resultHandle)
+    }
+
+    @Test
+    fun `GetObjectField rejects non reference guest field handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "value", "I")
+        heap.putInstanceField(
+            handles.resolveObject(objectHandle),
+            JvmFieldReference(ownerClassName = "Example", name = "value", descriptor = "I"),
+            JvmIntValue(1),
+        )
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getObjectField(objectHandle, fieldHandle)
+        }
+    }
+
 }
