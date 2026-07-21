@@ -67,6 +67,33 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `method resolution does not inherit instance initialization methods from superclasses`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    superclassName = "Parent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    methods = listOf(JvmMethodDefinition(name = "<init>", descriptor = "()V", isStatic = false)),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmNoSuchMethodError> {
+            hierarchy.resolveMethod(
+                ownerClassName = "Example",
+                name = "<init>",
+                descriptor = "()V",
+            )
+        }
+
+        assertEquals("java/lang/NoSuchMethodError", exception.guestClassName)
+        assertEquals("Example.<init>:()V", exception.message)
+    }
+
+    @Test
     fun `method resolution throws guest NoSuchMethodError when lookup misses`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

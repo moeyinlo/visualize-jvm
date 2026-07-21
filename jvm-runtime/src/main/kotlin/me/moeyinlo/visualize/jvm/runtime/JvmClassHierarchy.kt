@@ -119,12 +119,14 @@ class JvmClassHierarchy(
                 guestClassName = "java/lang/NoClassDefFoundError",
                 message = ownerClassName,
             )
-        return ownerClass.findDeclaredMethod(name, descriptor)
-            ?: findSuperclassMethod(ownerClass.superclassName, name, descriptor)
-            ?: throw JvmNoSuchMethodError(
-                guestClassName = "java/lang/NoSuchMethodError",
-                message = "$ownerClassName.$name:$descriptor",
-            )
+        ownerClass.findDeclaredMethod(name, descriptor)?.let { method -> return method }
+        if (name != "<init>") {
+            findSuperclassMethod(ownerClass.superclassName, name, descriptor)?.let { method -> return method }
+        }
+        throw JvmNoSuchMethodError(
+            guestClassName = "java/lang/NoSuchMethodError",
+            message = "$ownerClassName.$name:$descriptor",
+        )
     }
 
     private fun JvmClassDefinition.findDeclaredField(name: String, descriptor: String): JvmResolvedField? =
