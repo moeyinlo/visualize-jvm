@@ -279,4 +279,28 @@ class JvmPanamaDowncallBackendTest {
         assertEquals(objectReference, environment.handles.resolveObject(objectHandle.handle!!))
         assertEquals(JvmNativeDowncallArgument.ObjectHandle(null), invocation.arguments[2])
     }
+
+    @Test
+    fun `Panama backend marshals JNI return values back into guest values`() {
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val objectReference = heap.allocateObject("java/lang/Object")
+        val objectHandle = environment.handles.newObjectHandle(objectReference)
+
+        assertEquals(null, JvmNativeDowncallReturn.Void.toGuestValue(environment))
+        assertEquals(JvmBooleanValue(true), JvmNativeDowncallReturn.BooleanPrimitive(true).toGuestValue(environment))
+        assertEquals(JvmByteValue(-8), JvmNativeDowncallReturn.BytePrimitive(-8).toGuestValue(environment))
+        assertEquals(JvmCharValue('R'.code), JvmNativeDowncallReturn.CharPrimitive('R'.code).toGuestValue(environment))
+        assertEquals(JvmShortValue(32000), JvmNativeDowncallReturn.ShortPrimitive(32000).toGuestValue(environment))
+        assertEquals(JvmIntValue(1234), JvmNativeDowncallReturn.IntPrimitive(1234).toGuestValue(environment))
+        assertEquals(JvmLongValue(5678L), JvmNativeDowncallReturn.LongPrimitive(5678L).toGuestValue(environment))
+        assertEquals(JvmFloatValue(3.25f), JvmNativeDowncallReturn.FloatPrimitive(3.25f).toGuestValue(environment))
+        assertEquals(JvmDoubleValue(6.5), JvmNativeDowncallReturn.DoublePrimitive(6.5).toGuestValue(environment))
+        assertEquals(objectReference, JvmNativeDowncallReturn.ObjectHandle(objectHandle).toGuestValue(environment))
+        assertEquals(JvmNullValue, JvmNativeDowncallReturn.ObjectHandle(null).toGuestValue(environment))
+    }
 }

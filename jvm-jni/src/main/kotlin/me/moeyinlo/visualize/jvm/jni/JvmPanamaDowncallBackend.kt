@@ -58,6 +58,33 @@ sealed interface JvmNativeDowncallArgument {
     data class GuestValue(val value: JvmValue) : JvmNativeDowncallArgument
 }
 
+sealed interface JvmNativeDowncallReturn {
+    data object Void : JvmNativeDowncallReturn
+    data class BooleanPrimitive(val value: Boolean) : JvmNativeDowncallReturn
+    data class BytePrimitive(val value: Int) : JvmNativeDowncallReturn
+    data class CharPrimitive(val value: Int) : JvmNativeDowncallReturn
+    data class ShortPrimitive(val value: Int) : JvmNativeDowncallReturn
+    data class IntPrimitive(val value: Int) : JvmNativeDowncallReturn
+    data class LongPrimitive(val value: Long) : JvmNativeDowncallReturn
+    data class FloatPrimitive(val value: Float) : JvmNativeDowncallReturn
+    data class DoublePrimitive(val value: Double) : JvmNativeDowncallReturn
+    data class ObjectHandle(val handle: JvmJniHandleId?) : JvmNativeDowncallReturn
+}
+
+fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment): JvmValue? =
+    when (this) {
+        JvmNativeDowncallReturn.Void -> null
+        is JvmNativeDowncallReturn.BooleanPrimitive -> JvmBooleanValue(value)
+        is JvmNativeDowncallReturn.BytePrimitive -> JvmByteValue(value)
+        is JvmNativeDowncallReturn.CharPrimitive -> JvmCharValue(value)
+        is JvmNativeDowncallReturn.ShortPrimitive -> JvmShortValue(value)
+        is JvmNativeDowncallReturn.IntPrimitive -> JvmIntValue(value)
+        is JvmNativeDowncallReturn.LongPrimitive -> JvmLongValue(value)
+        is JvmNativeDowncallReturn.FloatPrimitive -> JvmFloatValue(value)
+        is JvmNativeDowncallReturn.DoublePrimitive -> JvmDoubleValue(value)
+        is JvmNativeDowncallReturn.ObjectHandle -> handle?.let(environment.handles::resolveObject) ?: JvmNullValue
+    }
+
 fun JvmNativeDowncallTarget.prepareInvocation(
     environment: JvmSimulatedJniEnvironment,
     guestArguments: List<JvmValue> = emptyList(),
