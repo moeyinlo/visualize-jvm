@@ -1,0 +1,68 @@
+package me.moeyinlo.visualize.jvm.jni
+
+import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
+import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
+import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
+class JvmJniHandleTableTest {
+    @Test
+    fun `local handle table stores and resolves object class method and field handles`() {
+        val table = JvmJniHandleTable()
+        val objectReference = JvmObjectReferenceValue(JvmReferenceId(7))
+        val method = JvmResolvedMethod(
+            ownerClassName = "Example",
+            name = "value",
+            descriptor = "()I",
+            isStatic = false,
+        )
+        val field = JvmResolvedField(
+            ownerClassName = "Example",
+            name = "counter",
+            descriptor = "I",
+            isStatic = false,
+        )
+
+        val objectHandle = table.newObjectHandle(objectReference)
+        val classHandle = table.newClassHandle("Example")
+        val methodHandle = table.newMethodIdHandle(method)
+        val fieldHandle = table.newFieldIdHandle(field)
+
+        assertEquals(objectReference, table.resolveObject(objectHandle))
+        assertEquals("Example", table.resolveClass(classHandle))
+        assertEquals(method, table.resolveMethodId(methodHandle))
+        assertEquals(field, table.resolveFieldId(fieldHandle))
+    }
+
+    @Test
+    fun `local handle table rejects cross kind handle resolution`() {
+        val table = JvmJniHandleTable()
+        val objectHandle = table.newObjectHandle(JvmObjectReferenceValue(JvmReferenceId(9)))
+
+        assertFailsWith<JvmJniHandleTypeException> {
+            table.resolveMethodId(objectHandle)
+        }
+    }
+
+    @Test
+    fun `deleted local handles cannot be resolved again`() {
+        val table = JvmJniHandleTable()
+        val fieldHandle = table.newFieldIdHandle(
+            JvmResolvedField(
+                ownerClassName = "Example",
+                name = "counter",
+                descriptor = "I",
+                isStatic = false,
+            ),
+        )
+
+        table.deleteLocal(fieldHandle)
+
+        assertFailsWith<JvmJniInvalidHandleException> {
+            table.resolveFieldId(fieldHandle)
+        }
+    }
+}
