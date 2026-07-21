@@ -11082,6 +11082,34 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic throws guest NoClassDefFoundError when method owner class is missing`() {
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB8.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Missing", "Missing".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("method", "method".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy.Empty,
+            )
+        }
+
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
+        assertEquals("Missing", exception.message)
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
