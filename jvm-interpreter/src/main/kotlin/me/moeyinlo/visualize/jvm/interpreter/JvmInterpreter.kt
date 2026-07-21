@@ -369,6 +369,15 @@ object JvmInterpreter {
                 classHierarchy,
                 currentClassName,
             )
+            0xB7 -> executeInvokeSpecial(
+                instruction,
+                operandStack,
+                constantPool,
+                heap,
+                classHierarchy,
+                staticFields,
+                currentClassName,
+            )
             0xB8 -> executeInvokeStatic(
                 instruction,
                 operandStack,
@@ -3447,6 +3456,105 @@ object JvmInterpreter {
         operandStack.push(returnValue)
     }
 
+    private fun executeInvokeSpecial(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        currentClassName: String?,
+    ) {
+        val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
+        requireInstanceMethod(instruction, resolvedMethod)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        val methodCode = resolvedMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved instance method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} has no Code attribute for invokespecial",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
+        val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
+        val arguments = argumentDescriptors
+            .asReversed()
+            .map { descriptor ->
+                val value = operandStack.pop()
+                requireMethodArgumentValue(instruction, resolvedMethod, descriptor, value)
+                requireReferenceMethodArgumentAssignable(
+                    instruction,
+                    resolvedMethod,
+                    descriptor,
+                    value,
+                    heap,
+                    classHierarchy,
+                )
+                value
+            }
+            .asReversed()
+        val objectref = operandStack.pop()
+        if (objectref == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "Cannot invoke special method " +
+                    "${resolvedMethod.ownerClassName}.${resolvedMethod.name}:${resolvedMethod.descriptor} " +
+                    "on null object reference",
+            )
+        }
+        if (objectref !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokespecial receiver for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} at offset ${instruction.offset}: expected reference but was " +
+                    objectref.javaClass.simpleName,
+            )
+        }
+        val receiverClassName = heap.get(objectref).className
+        if (!classHierarchy.isAssignable(receiverClassName, resolvedMethod.ownerClassName)) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokespecial receiver for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} at offset ${instruction.offset}: " +
+                    "$receiverClassName is not assignable to ${resolvedMethod.ownerClassName}",
+            )
+        }
+
+        calleeLocals.store(0, objectref)
+        var localIndex = 1
+        for (argument in arguments) {
+            calleeLocals.store(localIndex, argument)
+            localIndex += argument.category.slotWidth
+        }
+
+        val frameResult = executeFrame(
+            code = methodCode,
+            maxStack = resolvedMethod.maxStack,
+            constantPool = constantPool,
+            heap = heap,
+            localVariables = calleeLocals,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            currentClassName = resolvedMethod.ownerClassName,
+            allowReturn = true,
+        )
+        val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
+        if (returnDescriptor == "V") {
+            if (frameResult.returnValue != null) {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid invokespecial return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                        "${resolvedMethod.descriptor}: expected void but returned " +
+                        frameResult.returnValue.javaClass.simpleName,
+                )
+            }
+            return
+        }
+        val returnValue = frameResult.returnValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Instance method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} completed without returning a value",
+            )
+        requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
+        requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
+        operandStack.push(returnValue)
+    }
+
     private fun executeReturnInstruction(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -3852,7 +3960,22 @@ object JvmInterpreter {
             message = "Expected static method " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor} " +
                 "for ${instruction.metadata.mnemonic}",
-            )
+        )
+    }
+
+    private fun requireInstanceMethod(
+        instruction: DecodedInstruction,
+        method: JvmResolvedMethod,
+    ) {
+        if (!method.isStatic) {
+            return
+        }
+        throw JvmIncompatibleClassChangeError(
+            guestClassName = "java/lang/IncompatibleClassChangeError",
+            message = "Expected instance method " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor} " +
+                "for ${instruction.metadata.mnemonic}",
+        )
     }
 
     private fun requireAccessibleMethod(
@@ -4217,6 +4340,7 @@ object JvmInterpreter {
             0xB3,
             0xB4,
             0xB5,
+            0xB7,
             0xB8,
             0xBB,
             0xBD,
