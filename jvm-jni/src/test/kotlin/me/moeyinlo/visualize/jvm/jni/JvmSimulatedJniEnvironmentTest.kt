@@ -5908,4 +5908,62 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(0, monitors.holdCount(objectReference, "blocked-thread"))
     }
 
+    @Test
+    fun `MonitorExit decrements and releases guest monitor ownership`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val monitors = JvmMonitorState()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "jni-thread",
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        environment.monitorEnter(objectHandle)
+        environment.monitorEnter(objectHandle)
+
+        assertEquals(1, environment.monitorExit(objectHandle))
+        assertEquals(1, monitors.holdCount(objectReference, "jni-thread"))
+
+        assertEquals(0, environment.monitorExit(objectHandle))
+        assertEquals(0, monitors.holdCount(objectReference, "jni-thread"))
+    }
+
+    @Test
+    fun `MonitorExit rejects unowned monitors and monitors owned by another simulated JNI thread`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val monitors = JvmMonitorState()
+        val ownerEnvironment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "owner-thread",
+        )
+        val blockedEnvironment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "blocked-thread",
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        assertFailsWith<JvmMonitorOwnershipException> {
+            ownerEnvironment.monitorExit(objectHandle)
+        }
+
+        ownerEnvironment.monitorEnter(objectHandle)
+
+        assertFailsWith<JvmMonitorOwnershipException> {
+            blockedEnvironment.monitorExit(objectHandle)
+        }
+        assertEquals(1, monitors.holdCount(objectReference, "owner-thread"))
+    }
+
 }

@@ -1078,6 +1078,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `GetObjectArrayRegion` copies nullable guest reference array ranges into local object handles and rejects primitive arrays or invalid ranges | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetObjectArrayRegion*` | IMPLEMENTED |
 | Simulated JNI | `SetObjectArrayRegion` writes nullable local handles into guest reference array ranges and rejects primitive arrays, invalid ranges, or non-assignable values | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.SetObjectArrayRegion*` | IMPLEMENTED |
 | Simulated JNI | `MonitorEnter` resolves guest object handles and records reentrant ownership in guest monitor state for the current simulated JNI thread | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.MonitorEnter*` | IMPLEMENTED |
+| Simulated JNI | `MonitorExit` resolves guest object handles and decrements or releases ownership in guest monitor state for the current simulated JNI thread | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.MonitorExit*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 

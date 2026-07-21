@@ -174,6 +174,11 @@ class JvmSimulatedJniEnvironment(
         return monitors.enter(reference, currentThreadId)
     }
 
+    fun monitorExit(objectHandle: JvmJniHandleId): Int {
+        val reference = handles.resolveObject(objectHandle)
+        return monitors.exit(reference, currentThreadId)
+    }
+
     fun getArrayLength(arrayHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(arrayHandle)
         val heapObject = heap.get(reference)
