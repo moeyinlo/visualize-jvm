@@ -1032,6 +1032,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `ReleaseStringUTFChars` validates guest `java/lang/String` handles and releases copied modified UTF-8 buffers as a simulated no-op | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.ReleaseStringUTFChars*` | IMPLEMENTED |
 | Simulated JNI | `GetArrayLength` returns primitive and reference guest array lengths and rejects non-array object handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetArrayLength*` | IMPLEMENTED |
 | Simulated JNI | `NewObjectArray` allocates guest reference arrays with null or assignable initial elements | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.NewObjectArray*` | IMPLEMENTED |
+| Simulated JNI | `GetObjectArrayElement` reads nullable guest reference array elements into local object handles and rejects primitive arrays or out-of-bounds indexes | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetObjectArrayElement*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 

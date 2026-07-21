@@ -3868,4 +3868,85 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetObjectArrayElement returns null for guest null array slots`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("java/lang/String")
+        val arrayHandle = environment.newObjectArray(1, classHandle, null)
+
+        val result = environment.getObjectArrayElement(arrayHandle, 0)
+
+        assertEquals(null, result)
+    }
+
+    @Test
+    fun `GetObjectArrayElement returns a local handle for guest reference array slots`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("java/lang/String")
+        val initialReference = heap.allocateString("value")
+        val initialHandle = handles.newObjectHandle(initialReference)
+        val arrayHandle = environment.newObjectArray(1, classHandle, initialHandle)
+
+        val result = environment.getObjectArrayElement(arrayHandle, 0)
+
+        assertEquals(initialReference, handles.resolveObject(result!!))
+    }
+
+    @Test
+    fun `GetObjectArrayElement rejects primitive guest arrays`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = handles.newObjectHandle(heap.allocateIntArray(1))
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getObjectArrayElement(arrayHandle, 0)
+        }
+    }
+
+    @Test
+    fun `GetObjectArrayElement rejects out of bounds indexes`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("java/lang/String")
+        val arrayHandle = environment.newObjectArray(1, classHandle, null)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getObjectArrayElement(arrayHandle, 1)
+        }
+    }
+
 }

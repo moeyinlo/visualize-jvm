@@ -211,6 +211,16 @@ class JvmSimulatedJniEnvironment(
         return handles.newObjectHandle(arrayReference)
     }
 
+    fun getObjectArrayElement(arrayHandle: JvmJniHandleId, index: Int): JvmJniHandleId? {
+        val array = resolveReferenceArray(arrayHandle)
+        val element = array.elements.getOrNull(index)
+            ?: throw JvmJniArrayAccessException("JNI array index $index is out of bounds")
+        return when (element) {
+            JvmNullValue -> null
+            is JvmObjectReferenceValue -> handles.newObjectHandle(element)
+        }
+    }
+
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
@@ -977,6 +987,15 @@ class JvmSimulatedJniEnvironment(
             ),
             value,
         )
+    }
+
+    private fun resolveReferenceArray(arrayHandle: JvmJniHandleId): JvmReferenceArrayPayload {
+        val reference = handles.resolveObject(arrayHandle)
+        val heapObject = heap.get(reference)
+        return heapObject.payload as? JvmReferenceArrayPayload
+            ?: throw JvmJniArrayAccessException(
+                "JNI object array helper requires reference array payload, got ${heapObject.className}",
+            )
     }
 
     private fun encodeModifiedUtf8(value: String): ByteArray {
