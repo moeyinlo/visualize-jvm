@@ -11671,6 +11671,82 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `simulated JNI bindings can upcall interpreted instance guest methods`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeOwner")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "NativeOwner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeValue",
+                                descriptor = "()I",
+                                isStatic = false,
+                                isNative = true,
+                            ),
+                            JvmMethodDefinition(
+                                name = "value",
+                                descriptor = "()I",
+                                isStatic = false,
+                                code = byteArrayOf(
+                                    0x08.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.fromSimulatedJni(
+                JvmNativeMethodKey(
+                    ownerClassName = "NativeOwner",
+                    name = "nativeValue",
+                    descriptor = "()I",
+                    isStatic = false,
+                ) to JvmNativeMethodIntrinsic { context, invocation ->
+                    context.callInstanceMethod(
+                        receiver = invocation.receiver!!,
+                        ownerClassName = "NativeOwner",
+                        name = "value",
+                        descriptor = "()I",
+                        arguments = emptyList(),
+                    )
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokestatic prefers native intrinsics over simulated JNI bindings`() {
         val key = JvmNativeMethodKey(
             ownerClassName = "Example",

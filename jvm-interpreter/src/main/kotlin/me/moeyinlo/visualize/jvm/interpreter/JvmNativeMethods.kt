@@ -44,6 +44,17 @@ data class JvmNativeMethodContext(
             "Native method context cannot upcall static method $ownerClassName.$name:$descriptor",
         )
     },
+    internal val callInstanceMethodHandler: (
+        receiver: JvmObjectReferenceValue,
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+        arguments: List<JvmValue>,
+    ) -> JvmValue? = { _, ownerClassName, name, descriptor, _ ->
+        throw JvmUnsupportedInstructionException(
+            "Native method context cannot upcall instance method $ownerClassName.$name:$descriptor",
+        )
+    },
 ) {
     fun callStaticMethod(
         ownerClassName: String,
@@ -52,6 +63,15 @@ data class JvmNativeMethodContext(
         arguments: List<JvmValue>,
     ): JvmValue? =
         callStaticMethodHandler(ownerClassName, name, descriptor, arguments)
+
+    fun callInstanceMethod(
+        receiver: JvmObjectReferenceValue,
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+        arguments: List<JvmValue>,
+    ): JvmValue? =
+        callInstanceMethodHandler(receiver, ownerClassName, name, descriptor, arguments)
 }
 
 fun interface JvmNativeMethodIntrinsic {

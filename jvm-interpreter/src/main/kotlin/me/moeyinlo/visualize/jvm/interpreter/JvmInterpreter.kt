@@ -3846,6 +3846,20 @@ object JvmInterpreter {
                         currentClassName = currentClassName,
                     )
                 },
+                callInstanceMethodHandler = { upcallReceiver, ownerClassName, name, descriptor, upcallArguments ->
+                    executeInstanceMethodUpcall(
+                        receiver = upcallReceiver,
+                        ownerClassName = ownerClassName,
+                        name = name,
+                        descriptor = descriptor,
+                        arguments = upcallArguments,
+                        heap = heap,
+                        classHierarchy = classHierarchy,
+                        staticFields = staticFields,
+                        nativeMethods = nativeMethods,
+                        currentClassName = currentClassName,
+                    )
+                },
             ),
             invocation = JvmNativeMethodInvocation(
                 receiver = receiver,
@@ -3881,8 +3895,9 @@ object JvmInterpreter {
             )
         }
         for ((argument, argumentDescriptor) in arguments.zip(argumentDescriptors)) {
-            requireStaticUpcallArgumentValue(resolvedMethod, argumentDescriptor, argument)
-            requireStaticUpcallReferenceArgumentAssignable(
+            requireUpcallArgumentValue("simulated JNI static upcall", resolvedMethod, argumentDescriptor, argument)
+            requireUpcallReferenceArgumentAssignable(
+                upcallKind = "simulated JNI static upcall",
                 method = resolvedMethod,
                 descriptor = argumentDescriptor,
                 value = argument,
@@ -3914,7 +3929,108 @@ object JvmInterpreter {
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
         )
-        return requireStaticUpcallReturnValue(resolvedMethod, frameResult.returnValue, heap, classHierarchy)
+        return requireUpcallReturnValue(
+            upcallKind = "simulated JNI static upcall",
+            method = resolvedMethod,
+            returnValue = frameResult.returnValue,
+            heap = heap,
+            classHierarchy = classHierarchy,
+        )
+    }
+
+    private fun executeInstanceMethodUpcall(
+        receiver: JvmObjectReferenceValue,
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+        arguments: List<JvmValue>,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        currentClassName: String?,
+    ): JvmValue? {
+        val resolvedMethod = classHierarchy.resolveMethod(
+            ownerClassName = ownerClassName,
+            name = name,
+            descriptor = descriptor,
+        )
+        requireInstanceUpcallMethod(resolvedMethod)
+        requireVirtualMethodName(resolvedMethod)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, resolvedMethod.ownerClassName)) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid simulated JNI instance upcall receiver for " +
+                    "${resolvedMethod.ownerClassName}.${resolvedMethod.name}:${resolvedMethod.descriptor}: " +
+                    "$receiverClassName is not assignable to ${resolvedMethod.ownerClassName}",
+            )
+        }
+        requireNonConstructorReceiverInitialized(resolvedMethod, receiver, heap)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        val targetMethod = classHierarchy.resolveVirtualMethod(
+            receiverClassName = receiverClassName,
+            name = resolvedMethod.name,
+            descriptor = resolvedMethod.descriptor,
+        )
+        requireInstanceUpcallMethod(targetMethod)
+        if (targetMethod.isAbstract) {
+            throw JvmAbstractMethodError(
+                guestClassName = "java/lang/AbstractMethodError",
+                message = "${targetMethod.ownerClassName}.${targetMethod.name}:${targetMethod.descriptor}",
+            )
+        }
+        val argumentDescriptors = targetMethod.descriptor.methodParameterDescriptors()
+        if (arguments.size != argumentDescriptors.size) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid simulated JNI instance upcall arguments for " +
+                    "${targetMethod.ownerClassName}.${targetMethod.name}:${targetMethod.descriptor}: " +
+                    "expected ${argumentDescriptors.size} arguments but was ${arguments.size}",
+            )
+        }
+        for ((argument, argumentDescriptor) in arguments.zip(argumentDescriptors)) {
+            requireUpcallArgumentValue("simulated JNI instance upcall", targetMethod, argumentDescriptor, argument)
+            requireUpcallReferenceArgumentAssignable(
+                upcallKind = "simulated JNI instance upcall",
+                method = targetMethod,
+                descriptor = argumentDescriptor,
+                value = argument,
+                heap = heap,
+                classHierarchy = classHierarchy,
+            )
+        }
+        val methodCode = targetMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved instance method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} has no Code attribute for simulated JNI instance upcall",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = targetMethod.maxLocals)
+        calleeLocals.store(0, receiver)
+        var localIndex = 1
+        for (argument in arguments) {
+            calleeLocals.store(localIndex, argument)
+            localIndex += argument.category.slotWidth
+        }
+
+        val frameResult = executeFrame(
+            code = methodCode,
+            maxStack = targetMethod.maxStack,
+            constantPool = ConstantPool.fromEntries(emptyList()),
+            heap = heap,
+            localVariables = calleeLocals,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            currentClassName = targetMethod.ownerClassName,
+            allowReturn = true,
+        )
+        return requireUpcallReturnValue(
+            upcallKind = "simulated JNI instance upcall",
+            method = targetMethod,
+            returnValue = frameResult.returnValue,
+            heap = heap,
+            classHierarchy = classHierarchy,
+        )
     }
 
     private fun requireStaticUpcallMethod(method: JvmResolvedMethod) {
@@ -3928,7 +4044,19 @@ object JvmInterpreter {
         )
     }
 
-    private fun requireStaticUpcallArgumentValue(
+    private fun requireInstanceUpcallMethod(method: JvmResolvedMethod) {
+        if (!method.isStatic) {
+            return
+        }
+        throw JvmIncompatibleClassChangeError(
+            guestClassName = "java/lang/IncompatibleClassChangeError",
+            message = "Expected instance method ${method.ownerClassName}.${method.name}:${method.descriptor} " +
+                "for simulated JNI instance upcall",
+        )
+    }
+
+    private fun requireUpcallArgumentValue(
+        upcallKind: String,
         method: JvmResolvedMethod,
         descriptor: String,
         value: JvmValue,
@@ -3937,13 +4065,14 @@ object JvmInterpreter {
             return
         }
         throw JvmUnsupportedInstructionException(
-            "Invalid simulated JNI static upcall argument for " +
+            "Invalid $upcallKind argument for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
                 "expected $descriptor but was ${value.javaClass.simpleName}",
         )
     }
 
-    private fun requireStaticUpcallReferenceArgumentAssignable(
+    private fun requireUpcallReferenceArgumentAssignable(
+        upcallKind: String,
         method: JvmResolvedMethod,
         descriptor: String,
         value: JvmValue,
@@ -3960,13 +4089,14 @@ object JvmInterpreter {
             return
         }
         throw JvmUnsupportedInstructionException(
-            "Invalid simulated JNI static upcall argument for " +
+            "Invalid $upcallKind argument for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
                 "$sourceClassName is not assignable to $targetClassName",
         )
     }
 
-    private fun requireStaticUpcallReturnValue(
+    private fun requireUpcallReturnValue(
+        upcallKind: String,
         method: JvmResolvedMethod,
         returnValue: JvmValue?,
         heap: JvmHeap,
@@ -3976,7 +4106,7 @@ object JvmInterpreter {
         if (returnDescriptor == "V") {
             if (returnValue != null) {
                 throw JvmUnsupportedInstructionException(
-                    "Invalid simulated JNI static upcall return for " +
+                    "Invalid $upcallKind return for " +
                         "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
                         "expected void but returned ${returnValue.javaClass.simpleName}",
                 )
@@ -3985,12 +4115,12 @@ object JvmInterpreter {
         }
         val value = returnValue
             ?: throw JvmUnsupportedInstructionException(
-                "Static upcall ${method.ownerClassName}.${method.name}:${method.descriptor} " +
+                "$upcallKind ${method.ownerClassName}.${method.name}:${method.descriptor} " +
                     "completed without returning a value",
             )
         if (!value.matchesFieldDescriptor(returnDescriptor)) {
             throw JvmUnsupportedInstructionException(
-                "Invalid simulated JNI static upcall return for " +
+                "Invalid $upcallKind return for " +
                     "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
                     "expected $returnDescriptor but was ${value.javaClass.simpleName}",
             )
@@ -4005,7 +4135,7 @@ object JvmInterpreter {
             return value
         }
         throw JvmUnsupportedInstructionException(
-            "Invalid simulated JNI static upcall return for " +
+            "Invalid $upcallKind return for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
                 "$sourceClassName is not assignable to $targetClassName",
         )
