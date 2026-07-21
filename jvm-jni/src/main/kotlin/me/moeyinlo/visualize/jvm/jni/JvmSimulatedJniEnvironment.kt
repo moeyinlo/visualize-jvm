@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
+import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
@@ -331,6 +332,31 @@ class JvmSimulatedJniEnvironment(
             ),
             JvmBooleanValue(value),
         )
+    }
+
+    fun getByteField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "B" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetByteField requires an instance byte field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = heap.getInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return when (value) {
+            is JvmByteValue -> value.value
+            is JvmIntValue -> value.value
+            else -> throw JvmJniFieldAccessException(
+                "GetByteField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
     }
 
     fun getObjectField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): JvmJniHandleId? {

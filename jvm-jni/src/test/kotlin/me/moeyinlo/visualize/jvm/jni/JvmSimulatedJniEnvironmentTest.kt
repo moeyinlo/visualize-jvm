@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.jni
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
+import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
@@ -1478,6 +1479,105 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<JvmJniFieldAccessException> {
             environment.setBooleanField(objectHandle, fieldHandle, true)
+        }
+    }
+
+    @Test
+    fun `GetByteField reads a stored guest byte instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "small",
+                                descriptor = "B",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "small", "B")
+        heap.putInstanceField(
+            objectReference,
+            JvmFieldReference(ownerClassName = "Example", name = "small", descriptor = "B"),
+            JvmByteValue(-7),
+        )
+
+        val result = environment.getByteField(objectHandle, fieldHandle)
+
+        assertEquals(-7, result)
+    }
+
+    @Test
+    fun `GetByteField reads default zero for an unwritten guest byte instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "small",
+                                descriptor = "B",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "small", "B")
+
+        val result = environment.getByteField(objectHandle, fieldHandle)
+
+        assertEquals(0, result)
+    }
+
+    @Test
+    fun `GetByteField rejects non byte guest field handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "value", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getByteField(objectHandle, fieldHandle)
         }
     }
 
