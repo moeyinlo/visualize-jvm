@@ -10981,5 +10981,3 @@ class JvmInterpreterTest {
         assertEquals("Unsupported instruction ireturn (0xac) at offset 0", exception.message)
     }
 }
-
-
