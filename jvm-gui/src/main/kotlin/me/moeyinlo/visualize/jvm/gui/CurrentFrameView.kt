@@ -9,10 +9,16 @@ data class CurrentFrameSnapshot(
     val descriptor: String,
     val pc: Int,
     val locals: List<LocalVariableSnapshot> = emptyList(),
+    val operandStack: List<OperandStackValueSnapshot> = emptyList(),
 )
 
 data class LocalVariableSnapshot(
     val slot: Int,
+    val value: String,
+)
+
+data class OperandStackValueSnapshot(
+    val depth: Int,
     val value: String,
 )
 
