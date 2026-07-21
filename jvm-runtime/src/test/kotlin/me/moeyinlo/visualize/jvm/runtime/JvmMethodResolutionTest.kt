@@ -95,6 +95,37 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `virtual method resolution starts at the receiver class before superclasses`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Sub",
+                    superclassName = "Base",
+                    methods = listOf(JvmMethodDefinition(name = "value", descriptor = "()I", isStatic = false)),
+                ),
+                JvmClassDefinition(
+                    internalName = "Base",
+                    methods = listOf(JvmMethodDefinition(name = "value", descriptor = "()I", isStatic = false)),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "Sub",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+            ),
+            hierarchy.resolveVirtualMethod(
+                receiverClassName = "Sub",
+                name = "value",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `class hierarchy exposes only the direct superclass name`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

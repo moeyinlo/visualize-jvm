@@ -132,6 +132,24 @@ class JvmClassHierarchy(
         )
     }
 
+    fun resolveVirtualMethod(
+        receiverClassName: String,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod {
+        val receiverClass = classesByName[receiverClassName]
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = receiverClassName,
+            )
+        return receiverClass.findDeclaredMethod(name, descriptor)
+            ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
+            ?: throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$receiverClassName.$name:$descriptor",
+            )
+    }
+
     private fun JvmClassDefinition.findDeclaredField(name: String, descriptor: String): JvmResolvedField? =
         fields.firstOrNull { field -> field.name == name && field.descriptor == descriptor }
             ?.let { field ->
