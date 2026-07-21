@@ -174,6 +174,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;ILjava/lang/Object;II)V",
         isStatic = true,
     )
+    private val SystemIdentityHashCodeKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "identityHashCode",
+        descriptor = "(Ljava/lang/Object;)I",
+        isStatic = true,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -241,6 +247,21 @@ object JvmVmIntrinsics {
         )
         null
     }
+    private val SystemIdentityHashCode = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("System.identityHashCode expects one argument")
+        }
+        when (val value = invocation.arguments.single()) {
+            JvmNullValue -> JvmIntValue(0)
+            is JvmObjectReferenceValue -> {
+                context.heap.get(value)
+                JvmIntValue(value.referenceId.value)
+            }
+            else -> throw JvmUnsupportedInstructionException(
+                "System.identityHashCode expects a reference argument, got ${value.javaClass.simpleName}",
+            )
+        }
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -252,6 +273,7 @@ object JvmVmIntrinsics {
         ObjectNotifyKey to ObjectNotify,
         ObjectNotifyAllKey to ObjectNotifyAll,
         SystemArraycopyKey to SystemArraycopy,
+        SystemIdentityHashCodeKey to SystemIdentityHashCode,
     )
 
     private fun validateWaitArguments(arguments: List<JvmValue>) {

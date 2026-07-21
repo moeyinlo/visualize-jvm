@@ -383,6 +383,52 @@ class JvmVmIntrinsicsTest {
         }
     }
 
+    @Test
+    fun `System identityHashCode intrinsic returns a stable identity hash for guest objects`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Example")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemIdentityHashCodeMethod())
+            ?: error("System.identityHashCode intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        val firstHash = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = listOf(receiver)),
+        )
+        val secondHash = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = listOf(receiver)),
+        )
+
+        assertEquals(firstHash, secondHash)
+        assertEquals(JvmIntValue::class, firstHash!!::class)
+    }
+
+    @Test
+    fun `System identityHashCode intrinsic returns zero for null`() {
+        val heap = JvmHeap()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemIdentityHashCodeMethod())
+            ?: error("System.identityHashCode intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = listOf(JvmNullValue)),
+        )
+
+        assertEquals(JvmIntValue(0), result)
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -435,6 +481,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/System",
         name = "arraycopy",
         descriptor = "(Ljava/lang/Object;ILjava/lang/Object;II)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemIdentityHashCodeMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "identityHashCode",
+        descriptor = "(Ljava/lang/Object;)I",
         isStatic = true,
         isNative = true,
     )
