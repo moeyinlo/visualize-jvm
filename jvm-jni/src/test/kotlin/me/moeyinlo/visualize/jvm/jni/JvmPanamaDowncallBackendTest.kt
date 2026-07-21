@@ -1,8 +1,15 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
+import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
+import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import java.nio.file.Path
 import kotlin.test.Test
@@ -177,6 +184,61 @@ class JvmPanamaDowncallBackendTest {
 
         assertEquals(target, invocation.target)
         assertSame(environment, (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJniEnv).environment)
-        assertEquals(JvmNativeDowncallArgument.GuestValue(JvmIntValue(7)), invocation.arguments[1])
+        assertEquals(JvmNativeDowncallArgument.IntPrimitive(7), invocation.arguments[1])
+    }
+
+    @Test
+    fun `Panama backend marshals primitive guest values into JNI primitive arguments`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "primitives",
+            methodDescriptor = "(ZBCSIJFD)V",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_primitives__ZBCSIJFD",
+        )
+        val target = JvmNativeDowncallTarget(
+            library = JvmNativeLibraryDescriptor(
+                logicalName = "native-api",
+                path = Path.of("native-api.dll"),
+                exports = listOf(export),
+            ),
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x4444L,
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = JvmHeap(),
+            staticFields = JvmStaticFields(),
+        )
+
+        val invocation = target.prepareInvocation(
+            environment = environment,
+            guestArguments = listOf(
+                JvmBooleanValue(true),
+                JvmByteValue(-2),
+                JvmCharValue('K'.code),
+                JvmShortValue(123),
+                JvmIntValue(456),
+                JvmLongValue(789L),
+                JvmFloatValue(1.5f),
+                JvmDoubleValue(2.5),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                JvmNativeDowncallArgument.SimulatedJniEnv(environment),
+                JvmNativeDowncallArgument.BooleanPrimitive(true),
+                JvmNativeDowncallArgument.BytePrimitive(-2),
+                JvmNativeDowncallArgument.CharPrimitive('K'.code),
+                JvmNativeDowncallArgument.ShortPrimitive(123),
+                JvmNativeDowncallArgument.IntPrimitive(456),
+                JvmNativeDowncallArgument.LongPrimitive(789L),
+                JvmNativeDowncallArgument.FloatPrimitive(1.5f),
+                JvmNativeDowncallArgument.DoublePrimitive(2.5),
+            ),
+            invocation.arguments,
+        )
     }
 }

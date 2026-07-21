@@ -1,5 +1,13 @@
 package me.moeyinlo.visualize.jvm.jni
 
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
+import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
+import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
+import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import java.nio.file.Path
 
@@ -36,6 +44,14 @@ data class JvmNativeDowncallInvocation(
 
 sealed interface JvmNativeDowncallArgument {
     data class SimulatedJniEnv(val environment: JvmSimulatedJniEnvironment) : JvmNativeDowncallArgument
+    data class BooleanPrimitive(val value: Boolean) : JvmNativeDowncallArgument
+    data class BytePrimitive(val value: Int) : JvmNativeDowncallArgument
+    data class CharPrimitive(val value: Int) : JvmNativeDowncallArgument
+    data class ShortPrimitive(val value: Int) : JvmNativeDowncallArgument
+    data class IntPrimitive(val value: Int) : JvmNativeDowncallArgument
+    data class LongPrimitive(val value: Long) : JvmNativeDowncallArgument
+    data class FloatPrimitive(val value: Float) : JvmNativeDowncallArgument
+    data class DoublePrimitive(val value: Double) : JvmNativeDowncallArgument
     data class GuestValue(val value: JvmValue) : JvmNativeDowncallArgument
 }
 
@@ -47,9 +63,22 @@ fun JvmNativeDowncallTarget.prepareInvocation(
     return JvmNativeDowncallInvocation(
         target = this,
         arguments = listOf(JvmNativeDowncallArgument.SimulatedJniEnv(environment)) +
-            guestArguments.map(JvmNativeDowncallArgument::GuestValue),
+            guestArguments.map(JvmValue::toDowncallArgument),
     )
 }
+
+private fun JvmValue.toDowncallArgument(): JvmNativeDowncallArgument =
+    when (this) {
+        is JvmBooleanValue -> JvmNativeDowncallArgument.BooleanPrimitive(value)
+        is JvmByteValue -> JvmNativeDowncallArgument.BytePrimitive(value)
+        is JvmCharValue -> JvmNativeDowncallArgument.CharPrimitive(value)
+        is JvmShortValue -> JvmNativeDowncallArgument.ShortPrimitive(value)
+        is JvmIntValue -> JvmNativeDowncallArgument.IntPrimitive(value)
+        is JvmLongValue -> JvmNativeDowncallArgument.LongPrimitive(value)
+        is JvmFloatValue -> JvmNativeDowncallArgument.FloatPrimitive(value)
+        is JvmDoubleValue -> JvmNativeDowncallArgument.DoublePrimitive(value)
+        else -> JvmNativeDowncallArgument.GuestValue(this)
+    }
 
 class JvmPanamaDowncallBackend(
     private val symbolLookup: JvmNativeSymbolLookup,
