@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
+import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
@@ -15,5 +16,25 @@ class JvmSimulatedJniEnvironment(
             )
         }
         return handles.newClassHandle(className)
+    }
+
+    fun getStaticMethodId(
+        classHandle: JvmJniHandleId,
+        name: String,
+        descriptor: String,
+    ): JvmJniHandleId {
+        val className = handles.resolveClass(classHandle)
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = className,
+            name = name,
+            descriptor = descriptor,
+        )
+        if (!method.isStatic) {
+            throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$className.$name:$descriptor",
+            )
+        }
+        return handles.newMethodIdHandle(method)
     }
 }
