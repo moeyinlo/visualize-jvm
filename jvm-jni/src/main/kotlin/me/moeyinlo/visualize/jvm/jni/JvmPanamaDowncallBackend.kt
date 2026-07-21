@@ -7,6 +7,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
+import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import java.nio.file.Path
@@ -52,6 +54,7 @@ sealed interface JvmNativeDowncallArgument {
     data class LongPrimitive(val value: Long) : JvmNativeDowncallArgument
     data class FloatPrimitive(val value: Float) : JvmNativeDowncallArgument
     data class DoublePrimitive(val value: Double) : JvmNativeDowncallArgument
+    data class ObjectHandle(val handle: JvmJniHandleId?) : JvmNativeDowncallArgument
     data class GuestValue(val value: JvmValue) : JvmNativeDowncallArgument
 }
 
@@ -63,11 +66,11 @@ fun JvmNativeDowncallTarget.prepareInvocation(
     return JvmNativeDowncallInvocation(
         target = this,
         arguments = listOf(JvmNativeDowncallArgument.SimulatedJniEnv(environment)) +
-            guestArguments.map(JvmValue::toDowncallArgument),
+            guestArguments.map { value -> value.toDowncallArgument(environment) },
     )
 }
 
-private fun JvmValue.toDowncallArgument(): JvmNativeDowncallArgument =
+private fun JvmValue.toDowncallArgument(environment: JvmSimulatedJniEnvironment): JvmNativeDowncallArgument =
     when (this) {
         is JvmBooleanValue -> JvmNativeDowncallArgument.BooleanPrimitive(value)
         is JvmByteValue -> JvmNativeDowncallArgument.BytePrimitive(value)
@@ -77,6 +80,8 @@ private fun JvmValue.toDowncallArgument(): JvmNativeDowncallArgument =
         is JvmLongValue -> JvmNativeDowncallArgument.LongPrimitive(value)
         is JvmFloatValue -> JvmNativeDowncallArgument.FloatPrimitive(value)
         is JvmDoubleValue -> JvmNativeDowncallArgument.DoublePrimitive(value)
+        is JvmObjectReferenceValue -> JvmNativeDowncallArgument.ObjectHandle(environment.handles.newObjectHandle(this))
+        JvmNullValue -> JvmNativeDowncallArgument.ObjectHandle(null)
         else -> JvmNativeDowncallArgument.GuestValue(this)
     }
 

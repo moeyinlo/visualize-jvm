@@ -9,6 +9,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import java.nio.file.Path
@@ -240,5 +241,42 @@ class JvmPanamaDowncallBackendTest {
             ),
             invocation.arguments,
         )
+    }
+
+    @Test
+    fun `Panama backend marshals object references into JNI handles`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "objects",
+            methodDescriptor = "(Ljava/lang/Object;Ljava/lang/Object;)V",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_objects__Ljava_lang_Object_2Ljava_lang_Object_2",
+        )
+        val target = JvmNativeDowncallTarget(
+            library = JvmNativeLibraryDescriptor(
+                logicalName = "native-api",
+                path = Path.of("native-api.dll"),
+                exports = listOf(export),
+            ),
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x5555L,
+        )
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val objectReference = heap.allocateObject("java/lang/Object")
+
+        val invocation = target.prepareInvocation(
+            environment = environment,
+            guestArguments = listOf(objectReference, JvmNullValue),
+        )
+
+        val objectHandle = invocation.arguments[1] as JvmNativeDowncallArgument.ObjectHandle
+        assertEquals(objectReference, environment.handles.resolveObject(objectHandle.handle!!))
+        assertEquals(JvmNativeDowncallArgument.ObjectHandle(null), invocation.arguments[2])
     }
 }
