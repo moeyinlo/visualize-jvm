@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
@@ -194,6 +195,36 @@ object JvmVmIntrinsics {
         descriptor = "()J",
         isStatic = true,
     )
+    private val ClassInitClassNameKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "initClassName",
+        descriptor = "()Ljava/lang/String;",
+        isStatic = false,
+    )
+    private val ClassIsArrayKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "isArray",
+        descriptor = "()Z",
+        isStatic = false,
+    )
+    private val ClassIsPrimitiveKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "isPrimitive",
+        descriptor = "()Z",
+        isStatic = false,
+    )
+    private val ClassIsInterfaceKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "isInterface",
+        descriptor = "()Z",
+        isStatic = false,
+    )
+    private val ClassGetSuperclassKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getSuperclass",
+        descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -284,6 +315,34 @@ object JvmVmIntrinsics {
         requireNoArguments("System.nanoTime", invocation)
         JvmLongValue(context.nanoTimeProvider())
     }
+    private val ClassInitClassName = JvmNativeMethodIntrinsic { context, invocation ->
+        val representedClassName = requireClassMirrorReceiver("Class.initClassName", context, invocation)
+        context.heap.internString(representedClassName.toBinaryClassName())
+    }
+    private val ClassIsArray = JvmNativeMethodIntrinsic { context, invocation ->
+        val representedClassName = requireClassMirrorReceiver("Class.isArray", context, invocation)
+        jvmBoolean(representedClassName.startsWith("["))
+    }
+    private val ClassIsPrimitive = JvmNativeMethodIntrinsic { context, invocation ->
+        val representedClassName = requireClassMirrorReceiver("Class.isPrimitive", context, invocation)
+        jvmBoolean(representedClassName in PrimitiveClassNames)
+    }
+    private val ClassIsInterface = JvmNativeMethodIntrinsic { context, invocation ->
+        val representedClassName = requireClassMirrorReceiver("Class.isInterface", context, invocation)
+        jvmBoolean(context.classHierarchy.isInterface(representedClassName))
+    }
+    private val ClassGetSuperclass = JvmNativeMethodIntrinsic { context, invocation ->
+        val representedClassName = requireClassMirrorReceiver("Class.getSuperclass", context, invocation)
+        when {
+            representedClassName in PrimitiveClassNames -> JvmNullValue
+            representedClassName == "java/lang/Object" -> JvmNullValue
+            context.classHierarchy.isInterface(representedClassName) -> JvmNullValue
+            representedClassName.startsWith("[") -> context.heap.internClassMirror("java/lang/Object")
+            else -> context.classHierarchy.directSuperclassName(representedClassName)
+                ?.let(context.heap::internClassMirror)
+                ?: JvmNullValue
+        }
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -298,6 +357,23 @@ object JvmVmIntrinsics {
         SystemIdentityHashCodeKey to SystemIdentityHashCode,
         SystemCurrentTimeMillisKey to SystemCurrentTimeMillis,
         SystemNanoTimeKey to SystemNanoTime,
+        ClassInitClassNameKey to ClassInitClassName,
+        ClassIsArrayKey to ClassIsArray,
+        ClassIsPrimitiveKey to ClassIsPrimitive,
+        ClassIsInterfaceKey to ClassIsInterface,
+        ClassGetSuperclassKey to ClassGetSuperclass,
+    )
+
+    private val PrimitiveClassNames = setOf(
+        "boolean",
+        "byte",
+        "char",
+        "short",
+        "int",
+        "long",
+        "float",
+        "double",
+        "void",
     )
 
     private fun requireNoArguments(name: String, invocation: JvmNativeMethodInvocation) {
@@ -305,6 +381,28 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("$name expects no arguments")
         }
     }
+
+    private fun requireClassMirrorReceiver(
+        name: String,
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): String {
+        requireNoArguments(name, invocation)
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("$name intrinsic requires a receiver")
+        return when (val payload = context.heap.get(receiver).payload) {
+            is JvmClassPayload -> payload.representedClassName
+            else -> throw JvmUnsupportedInstructionException(
+                "$name intrinsic requires a java/lang/Class mirror receiver",
+            )
+        }
+    }
+
+    private fun jvmBoolean(value: Boolean): JvmIntValue =
+        JvmIntValue(if (value) 1 else 0)
+
+    private fun String.toBinaryClassName(): String =
+        replace('/', '.')
 
     private fun validateWaitArguments(arguments: List<JvmValue>) {
         when (arguments.size) {

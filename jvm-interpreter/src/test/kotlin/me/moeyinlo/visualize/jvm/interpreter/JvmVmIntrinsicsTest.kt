@@ -14,6 +14,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -471,6 +472,84 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmLongValue(987_654_321L), result)
     }
 
+    @Test
+    fun `Class initClassName intrinsic returns the guest binary name string`() {
+        val heap = JvmHeap()
+        val classMirror = heap.internClassMirror("pkg/Example")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classInitClassNameMethod())
+            ?: error("Class.initClassName intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = classMirror, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+
+        assertEquals(JvmStringPayload("pkg.Example"), heap.get(result).payload)
+    }
+
+    @Test
+    fun `Class query intrinsics report array primitive and interface mirrors`() {
+        val heap = JvmHeap()
+        val arrayMirror = heap.internClassMirror("[Ljava/lang/String;")
+        val primitiveMirror = heap.internClassMirror("int")
+        val interfaceMirror = heap.internClassMirror("pkg/Service")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(JvmClassDefinition(internalName = "pkg/Service", isInterface = true)),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val isArray = JvmVmIntrinsics.Registry.resolve(classIsArrayMethod())
+            ?: error("Class.isArray intrinsic was not registered")
+        val isPrimitive = JvmVmIntrinsics.Registry.resolve(classIsPrimitiveMethod())
+            ?: error("Class.isPrimitive intrinsic was not registered")
+        val isInterface = JvmVmIntrinsics.Registry.resolve(classIsInterfaceMethod())
+            ?: error("Class.isInterface intrinsic was not registered")
+
+        assertEquals(JvmIntValue(1), isArray.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList())))
+        assertEquals(JvmIntValue(0), isArray.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList())))
+        assertEquals(JvmIntValue(1), isPrimitive.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList())))
+        assertEquals(JvmIntValue(0), isPrimitive.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList())))
+        assertEquals(JvmIntValue(1), isInterface.invoke(context, JvmNativeMethodInvocation(interfaceMirror, emptyList())))
+    }
+
+    @Test
+    fun `Class getSuperclass intrinsic returns object for arrays and declared superclass for ordinary classes`() {
+        val heap = JvmHeap()
+        val arrayMirror = heap.internClassMirror("[I")
+        val childMirror = heap.internClassMirror("pkg/Child")
+        val objectMirror = heap.internClassMirror("java/lang/Object")
+        val primitiveMirror = heap.internClassMirror("int")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetSuperclassMethod())
+            ?: error("Class.getSuperclass intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base")),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val arraySuperclass = intrinsic.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList()))
+        val childSuperclass = intrinsic.invoke(context, JvmNativeMethodInvocation(childMirror, emptyList()))
+        val objectSuperclass = intrinsic.invoke(context, JvmNativeMethodInvocation(objectMirror, emptyList()))
+        val primitiveSuperclass = intrinsic.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList()))
+
+        assertEquals(heap.internClassMirror("java/lang/Object"), arraySuperclass)
+        assertEquals(heap.internClassMirror("pkg/Base"), childSuperclass)
+        assertEquals(JvmNullValue, objectSuperclass)
+        assertEquals(JvmNullValue, primitiveSuperclass)
+    }
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -548,6 +627,45 @@ class JvmVmIntrinsicsTest {
         name = "nanoTime",
         descriptor = "()J",
         isStatic = true,
+        isNative = true,
+    )
+    private fun classInitClassNameMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "initClassName",
+        descriptor = "()Ljava/lang/String;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classIsArrayMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "isArray",
+        descriptor = "()Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classIsPrimitiveMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "isPrimitive",
+        descriptor = "()Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classIsInterfaceMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "isInterface",
+        descriptor = "()Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetSuperclassMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getSuperclass",
+        descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
         isNative = true,
     )
 }

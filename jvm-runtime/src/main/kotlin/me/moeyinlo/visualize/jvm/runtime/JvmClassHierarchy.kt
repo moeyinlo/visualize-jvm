@@ -6,6 +6,7 @@ data class JvmClassDefinition(
     val interfaceNames: List<String> = emptyList(),
     val fields: List<JvmFieldDefinition> = emptyList(),
     val methods: List<JvmMethodDefinition> = emptyList(),
+    val isInterface: Boolean = false,
 )
 
 data class JvmFieldDefinition(
@@ -69,6 +70,9 @@ class JvmClassHierarchy(
 
     fun directSuperclassName(internalName: String): String? =
         classesByName[internalName]?.superclassName
+
+    fun isInterface(internalName: String): Boolean =
+        classesByName[internalName]?.isInterface == true
 
     fun isAssignable(sourceClassName: String, targetClassName: String): Boolean {
         if (sourceClassName == targetClassName || targetClassName == "java/lang/Object") {
