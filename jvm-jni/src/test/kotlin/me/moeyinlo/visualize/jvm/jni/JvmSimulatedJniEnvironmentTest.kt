@@ -3517,4 +3517,47 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `NewString allocates a guest java lang String from UTF-16 code units`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val utf16 = charArrayOf('A', '\ud83d', '\ude00', '\u0000', '\u754c')
+
+        val stringHandle = environment.newString(utf16, 5)
+
+        val stringObject = heap.get(handles.resolveObject(stringHandle))
+        assertEquals("java/lang/String", stringObject.className)
+        assertEquals(JvmStringPayload("A\ud83d\ude00\u0000\u754c"), stringObject.payload)
+    }
+
+    @Test
+    fun `NewString copies only the requested UTF-16 code unit prefix`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val utf16 = charArrayOf('J', 'V', 'M', '!')
+
+        val stringHandle = environment.newString(utf16, 3)
+
+        val stringObject = heap.get(handles.resolveObject(stringHandle))
+        assertEquals(JvmStringPayload("JVM"), stringObject.payload)
+    }
+
 }

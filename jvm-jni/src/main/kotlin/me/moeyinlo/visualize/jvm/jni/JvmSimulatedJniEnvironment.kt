@@ -131,6 +131,9 @@ class JvmSimulatedJniEnvironment(
         return handles.newFieldIdHandle(field)
     }
 
+    fun newString(chars: CharArray, length: Int): JvmJniHandleId =
+        handles.newObjectHandle(heap.allocateString(chars.concatToString(startIndex = 0, endIndex = length)))
+
     fun newStringUtf(value: String): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateString(value))
 
