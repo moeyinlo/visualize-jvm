@@ -3414,6 +3414,13 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        if (resolvedMethod.isNative) {
+            throw JvmUnsatisfiedLinkError(
+                guestClassName = "java/lang/UnsatisfiedLinkError",
+                message = "Native method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} is not linked for ${instruction.metadata.mnemonic}",
+            )
+        }
         val methodCode = resolvedMethod.code
             ?: throw JvmUnsupportedInstructionException(
                 "Resolved static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
