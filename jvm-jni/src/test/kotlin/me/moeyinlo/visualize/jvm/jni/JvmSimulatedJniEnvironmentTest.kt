@@ -4684,6 +4684,51 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetDoubleArrayRegion writes a native double buffer into a guest array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newDoubleArray(5)
+
+        environment.setDoubleArrayRegion(
+            arrayHandle,
+            start = 1,
+            values = doubleArrayOf(-1.5, 0.0, 2.25),
+        )
+
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmDoubleArrayPayload
+        assertEquals(
+            mutableListOf(0.0, -1.5, 0.0, 2.25, 0.0),
+            payload.elements,
+        )
+    }
+
+    @Test
+    fun `SetDoubleArrayRegion rejects non double arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val wrongArrayHandle = environment.newFloatArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setDoubleArrayRegion(wrongArrayHandle, start = 0, values = doubleArrayOf())
+        }
+
+        val arrayHandle = environment.newDoubleArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setDoubleArrayRegion(arrayHandle, start = 2, values = doubleArrayOf(-1.5, 0.0, 2.25))
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
