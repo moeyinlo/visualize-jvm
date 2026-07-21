@@ -222,6 +222,9 @@ class JvmSimulatedJniEnvironment(
     fun newByteArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateByteArray(length))
 
+    fun getByteArrayElements(arrayHandle: JvmJniHandleId): ByteArray =
+        resolveByteArray(arrayHandle).elements.toByteArray()
+
     fun getByteArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): ByteArray {
         val array = resolveByteArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)

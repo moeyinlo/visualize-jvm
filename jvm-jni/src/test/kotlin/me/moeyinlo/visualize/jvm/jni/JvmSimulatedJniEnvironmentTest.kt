@@ -4822,6 +4822,37 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetByteArrayElements returns a copied guest byte array buffer`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newByteArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmByteArrayPayload
+        payload.elements[0] = (-1).toByte()
+        payload.elements[2] = 7.toByte()
+
+        val result = environment.getByteArrayElements(arrayHandle)
+
+        assertContentEquals(byteArrayOf((-1).toByte(), 0.toByte(), 7.toByte()), result)
+        result[0] = 99.toByte()
+        assertEquals((-1).toByte(), payload.elements[0])
+    }
+
+    @Test
+    fun `GetByteArrayElements rejects non byte arrays`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newBooleanArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getByteArrayElements(wrongArrayHandle)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
