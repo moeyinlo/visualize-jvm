@@ -4120,6 +4120,48 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetByteArrayRegion returns a copied guest byte array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newByteArray(5)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmByteArrayPayload
+        payload.elements[1] = (-7).toByte()
+        payload.elements[3] = 12.toByte()
+
+        val result = environment.getByteArrayRegion(arrayHandle, start = 1, length = 3)
+
+        assertContentEquals(byteArrayOf((-7).toByte(), 0.toByte(), 12.toByte()), result)
+        result[0] = 99.toByte()
+        assertEquals((-7).toByte(), payload.elements[1])
+    }
+
+    @Test
+    fun `GetByteArrayRegion rejects non byte arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val intArrayHandle = environment.newIntArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getByteArrayRegion(intArrayHandle, start = 0, length = 1)
+        }
+
+        val byteArrayHandle = environment.newByteArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getByteArrayRegion(byteArrayHandle, start = 2, length = 2)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
