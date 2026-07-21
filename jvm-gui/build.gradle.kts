@@ -11,3 +11,7 @@ javafx {
 application {
     mainClass.set("me.moeyinlo.visualize.jvm.gui.VisualizeJvmApplicationKt")
 }
+
+dependencies {
+    implementation(project(":jvm-classfile"))
+}

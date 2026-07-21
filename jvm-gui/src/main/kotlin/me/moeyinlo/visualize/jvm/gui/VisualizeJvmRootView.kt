@@ -7,9 +7,11 @@ class VisualizeJvmRootView(
 ) : BorderPane() {
     val projectClasspathPanel: ProjectClasspathPanel = ProjectClasspathPanel(project)
     val classTreeView: ClassTreeView = ClassTreeView(ClassTreeModel.fromClasspathEntries(project.classpathEntries))
+    val memberListView: MemberListView = MemberListView()
 
     init {
         left = projectClasspathPanel
         center = classTreeView
+        right = memberListView
     }
 }
