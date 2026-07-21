@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
@@ -164,6 +165,27 @@ class JvmSimulatedJniEnvironmentTest {
         assertFailsWith<JvmNoSuchMethodError> {
             environment.getMethodId(classHandle, "staticOnly", "()I")
         }
+    }
+
+    @Test
+    fun `GetObjectClass returns runtime class handle for guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        val classHandle = environment.getObjectClass(objectHandle)
+
+        assertEquals("Example", handles.resolveClass(classHandle))
     }
 
 }

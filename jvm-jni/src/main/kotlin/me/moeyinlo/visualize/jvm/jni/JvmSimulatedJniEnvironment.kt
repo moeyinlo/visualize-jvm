@@ -1,11 +1,13 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
+    private val heap: JvmHeap = JvmHeap(),
     val handles: JvmJniHandleTable = JvmJniHandleTable(),
 ) {
     fun findClass(className: String): JvmJniHandleId {
@@ -56,5 +58,11 @@ class JvmSimulatedJniEnvironment(
             )
         }
         return handles.newMethodIdHandle(method)
+    }
+
+    fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
+        val reference = handles.resolveObject(objectHandle)
+        val className = heap.get(reference).className
+        return handles.newClassHandle(className)
     }
 }
