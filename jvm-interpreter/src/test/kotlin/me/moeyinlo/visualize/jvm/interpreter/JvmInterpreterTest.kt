@@ -10803,6 +10803,52 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic passes and returns category two long values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x0A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("identity", "identity".encodeToByteArray()),
+                    ConstantUtf8Entry("(J)J", "(J)J".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "identity",
+                                descriptor = "(J)J",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x1E.toByte(),
+                                    0xAD.toByte(),
+                                ),
+                                maxStack = 2,
+                                maxLocals = 2,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmLongValue(1L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
