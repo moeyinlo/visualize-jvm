@@ -3432,6 +3432,7 @@ object JvmInterpreter {
                     "${resolvedMethod.descriptor} completed without returning a value",
             )
         requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
+        requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
         operandStack.push(returnValue)
     }
 
@@ -3517,6 +3518,30 @@ object JvmInterpreter {
             "Invalid ${instruction.metadata.mnemonic} return for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor} at offset ${instruction.offset}: " +
                 "expected $descriptor but was ${value.javaClass.simpleName}",
+        )
+    }
+
+    private fun requireReferenceMethodReturnAssignable(
+        instruction: DecodedInstruction,
+        method: JvmResolvedMethod,
+        descriptor: String,
+        value: JvmValue,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+    ) {
+        if (!descriptor.isReferenceDescriptor() || value == JvmNullValue) {
+            return
+        }
+        val reference = value as JvmObjectReferenceValue
+        val sourceClassName = heap.get(reference).className
+        val targetClassName = descriptor.referenceDescriptorClassName()
+        if (classHierarchy.isAssignable(sourceClassName, targetClassName)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid ${instruction.metadata.mnemonic} return for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor} at offset ${instruction.offset}: " +
+                "$sourceClassName is not assignable to $targetClassName",
         )
     }
 

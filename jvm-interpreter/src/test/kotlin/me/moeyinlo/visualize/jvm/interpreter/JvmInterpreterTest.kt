@@ -1,4 +1,4 @@
-package me.moeyinlo.visualize.jvm.interpreter
+﻿package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
@@ -10890,6 +10890,86 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic rejects object return values not assignable to declared return class`() {
+        val heap = JvmHeap()
+        val incompatibleValue = heap.allocateObject("java/lang/Object")
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "Ljava/lang/Object;",
+            ),
+            incompatibleValue,
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB8.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()Ljava/lang/String;", "()Ljava/lang/String;".encodeToByteArray()),
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(8)),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(9)),
+                        ConstantUtf8Entry("Ljava/lang/Object;", "Ljava/lang/Object;".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                staticFields = staticFields,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "java/lang/String",
+                            superclassName = "java/lang/Object",
+                        ),
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "()Ljava/lang/String;",
+                                    isStatic = true,
+                                    code = byteArrayOf(
+                                        0xB2.toByte(),
+                                        0x00.toByte(),
+                                        0x07.toByte(),
+                                        0xB0.toByte(),
+                                    ),
+                                    maxStack = 1,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "value",
+                                    descriptor = "Ljava/lang/Object;",
+                                    isStatic = true,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid invokestatic return for Example.value:()Ljava/lang/String; at offset 0: " +
+                "java/lang/Object is not assignable to java/lang/String",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
@@ -10901,3 +10981,5 @@ class JvmInterpreterTest {
         assertEquals("Unsupported instruction ireturn (0xac) at offset 0", exception.message)
     }
 }
+
+
