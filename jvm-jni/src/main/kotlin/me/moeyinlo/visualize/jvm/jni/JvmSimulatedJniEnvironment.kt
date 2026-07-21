@@ -296,6 +296,14 @@ class JvmSimulatedJniEnvironment(
         return array.elements.subList(start, start + length).toFloatArray()
     }
 
+    fun setFloatArrayRegion(arrayHandle: JvmJniHandleId, start: Int, values: FloatArray) {
+        val array = resolveFloatArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, values.size)
+        values.forEachIndexed { offset, value ->
+            array.elements[start + offset] = value
+        }
+    }
+
     fun newDoubleArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateDoubleArray(length))
 
