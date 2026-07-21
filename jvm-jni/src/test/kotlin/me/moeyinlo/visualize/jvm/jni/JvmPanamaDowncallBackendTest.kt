@@ -12,7 +12,17 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import java.lang.foreign.Arena
+import java.lang.foreign.FunctionDescriptor
+import java.lang.foreign.Linker
+import java.lang.foreign.SymbolLookup
+import java.lang.foreign.ValueLayout
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
+import java.nio.file.Files
 import java.nio.file.Path
+import org.junit.jupiter.api.Assumptions.assumeTrue
+import org.junit.jupiter.api.io.TempDir
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -320,5 +330,72 @@ class JvmPanamaDowncallBackendTest {
         }
 
         assertEquals(throwableReference, thrown.throwable)
+    }
+
+    @Test
+    fun `Panama backend runs tiny native library with upcall fixture`(@TempDir tempDir: Path) {
+        val library = compileTinyUpcallFixture(tempDir)
+
+        Arena.ofConfined().use { arena ->
+            val linker = Linker.nativeLinker()
+            val symbol = SymbolLookup.libraryLookup(library, arena)
+                .find("jvm_tiny_upcall_fixture")
+                .orElseThrow()
+            val downcall = linker.downcallHandle(
+                symbol,
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS),
+            )
+            val upcallHandle = MethodHandles.lookup().findStatic(
+                JvmPanamaDowncallBackendTest::class.java,
+                "fixtureUpcall",
+                MethodType.methodType(Integer.TYPE, Integer.TYPE),
+            )
+            val upcallStub = linker.upcallStub(
+                upcallHandle,
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT),
+                arena,
+            )
+
+            assertEquals(45, downcall.invokeWithArguments(2, upcallStub))
+        }
+    }
+
+    private fun compileTinyUpcallFixture(tempDir: Path): Path {
+        assumeTrue(commandSucceeds("clang", "--version"), "clang is required for the tiny native upcall fixture")
+
+        val source = tempDir.resolve("tiny_upcall_fixture.c")
+        val library = tempDir.resolve("tiny_upcall_fixture.dll")
+        Files.writeString(
+            source,
+            """
+            __declspec(dllexport) int jvm_tiny_upcall_fixture(int value, int (__cdecl *upcall)(int)) {
+                return upcall(value) + 3;
+            }
+            """.trimIndent(),
+        )
+        val output = runCommand("clang", "-shared", "-o", library.toString(), source.toString())
+        assumeTrue(output.exitCode == 0, "clang failed to build tiny native upcall fixture: ${output.text}")
+        return library
+    }
+
+    private fun commandSucceeds(vararg command: String): Boolean =
+        runCommand(*command).exitCode == 0
+
+    private fun runCommand(vararg command: String): ProcessOutput {
+        val process = ProcessBuilder(*command)
+            .redirectErrorStream(true)
+            .start()
+        val text = process.inputStream.bufferedReader().use { reader -> reader.readText() }
+        return ProcessOutput(process.waitFor(), text)
+    }
+
+    private data class ProcessOutput(
+        val exitCode: Int,
+        val text: String,
+    )
+
+    companion object {
+        @JvmStatic
+        fun fixtureUpcall(value: Int): Int = value + 40
     }
 }
