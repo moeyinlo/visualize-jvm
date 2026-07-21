@@ -17,6 +17,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
@@ -33,6 +34,8 @@ class JvmSimulatedJniEnvironment(
     private val heap: JvmHeap = JvmHeap(),
     private val staticFields: JvmStaticFields = JvmStaticFields(),
     val handles: JvmJniHandleTable = JvmJniHandleTable(),
+    private val monitors: JvmMonitorState = JvmMonitorState(),
+    private val currentThreadId: String = "main",
 ) {
     fun findClass(className: String): JvmJniHandleId {
         if (!classHierarchy.hasClass(className)) {
@@ -164,6 +167,11 @@ class JvmSimulatedJniEnvironment(
 
     fun releaseStringUtfChars(stringHandle: JvmJniHandleId, chars: ByteArray) {
         resolveStringValue(stringHandle)
+    }
+
+    fun monitorEnter(objectHandle: JvmJniHandleId): Int {
+        val reference = handles.resolveObject(objectHandle)
+        return monitors.enter(reference, currentThreadId)
     }
 
     fun getArrayLength(arrayHandle: JvmJniHandleId): Int {

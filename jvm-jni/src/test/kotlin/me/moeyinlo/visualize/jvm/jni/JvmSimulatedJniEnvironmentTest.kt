@@ -19,6 +19,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
@@ -5852,6 +5854,58 @@ class JvmSimulatedJniEnvironmentTest {
         assertFailsWith<JvmJniArrayAccessException> {
             environment.setObjectArrayRegion(referenceArrayHandle, start = 0, values = listOf(otherHandle))
         }
+    }
+
+    @Test
+    fun `MonitorEnter records reentrant guest monitor ownership`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val monitors = JvmMonitorState()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "jni-thread",
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        assertEquals(1, environment.monitorEnter(objectHandle))
+        assertEquals(1, monitors.holdCount(objectReference, "jni-thread"))
+
+        assertEquals(2, environment.monitorEnter(objectHandle))
+        assertEquals(2, monitors.holdCount(objectReference, "jni-thread"))
+    }
+
+    @Test
+    fun `MonitorEnter rejects monitors owned by another simulated JNI thread`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val monitors = JvmMonitorState()
+        val ownerEnvironment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "owner-thread",
+        )
+        val blockedEnvironment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "blocked-thread",
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        ownerEnvironment.monitorEnter(objectHandle)
+
+        assertFailsWith<JvmMonitorOwnershipException> {
+            blockedEnvironment.monitorEnter(objectHandle)
+        }
+        assertEquals(0, monitors.holdCount(objectReference, "blocked-thread"))
     }
 
 }
