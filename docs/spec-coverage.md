@@ -989,6 +989,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `GetIntField` reads guest instance `int` fields from `jobject` and `jfieldID` handles, including default zero for unwritten fields | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetIntField*` | IMPLEMENTED |
 | Simulated JNI | `SetIntField` writes guest instance `int` fields from `jobject` and `jfieldID` handles into guest heap state | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.SetIntField*` | IMPLEMENTED |
 | Simulated JNI | `GetObjectField` reads guest instance reference fields from `jobject` and `jfieldID` handles, mapping guest null to null and object references to new JNI handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetObjectField*` | IMPLEMENTED |
+| Simulated JNI | `SetObjectField` writes guest instance reference fields from `jobject` and `jfieldID` handles into guest heap state, including guest null | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.SetObjectField*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 

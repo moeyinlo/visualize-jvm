@@ -186,6 +186,34 @@ class JvmSimulatedJniEnvironment(
             )
         }
     }
+
+    fun setObjectField(
+        objectHandle: JvmJniHandleId,
+        fieldIdHandle: JvmJniHandleId,
+        valueHandle: JvmJniHandleId?,
+    ) {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (!field.descriptor.isReferenceFieldDescriptor() || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetObjectField requires an instance reference field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = if (valueHandle == null) {
+            JvmNullValue
+        } else {
+            handles.resolveObject(valueHandle)
+        }
+        heap.putInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            value,
+        )
+    }
 }
 
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
