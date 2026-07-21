@@ -358,6 +358,9 @@ class JvmSimulatedJniEnvironment(
     fun newLongArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateLongArray(length))
 
+    fun getLongArrayElements(arrayHandle: JvmJniHandleId): LongArray =
+        resolveLongArray(arrayHandle).elements.toLongArray()
+
     fun getLongArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): LongArray {
         val array = resolveLongArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
