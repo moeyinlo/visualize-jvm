@@ -140,6 +140,25 @@ class JvmSimulatedJniEnvironment(
                 "GetIntField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
             )
     }
+
+    fun setIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "I" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetIntField requires an instance int field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        heap.putInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            JvmIntValue(value),
+        )
+    }
 }
 
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
