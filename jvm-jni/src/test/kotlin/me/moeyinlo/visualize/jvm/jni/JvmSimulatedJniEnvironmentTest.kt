@@ -3949,4 +3949,103 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `SetObjectArrayElement writes nullable guest reference array slots`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("java/lang/String")
+        val initialReference = heap.allocateString("value")
+        val initialHandle = handles.newObjectHandle(initialReference)
+        val arrayHandle = environment.newObjectArray(2, classHandle, null)
+
+        environment.setObjectArrayElement(arrayHandle, 0, initialHandle)
+        environment.setObjectArrayElement(arrayHandle, 1, null)
+
+        assertEquals(
+            initialReference,
+            handles.resolveObject(environment.getObjectArrayElement(arrayHandle, 0)!!),
+        )
+        assertEquals(null, environment.getObjectArrayElement(arrayHandle, 1))
+    }
+
+    @Test
+    fun `SetObjectArrayElement accepts subclass values for reference arrays`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Base"),
+                    JvmClassDefinition(internalName = "Child", superclassName = "Base"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Base")
+        val childReference = heap.allocateObject("Child")
+        val childHandle = handles.newObjectHandle(childReference)
+        val arrayHandle = environment.newObjectArray(1, classHandle, null)
+
+        environment.setObjectArrayElement(arrayHandle, 0, childHandle)
+
+        assertEquals(
+            childReference,
+            handles.resolveObject(environment.getObjectArrayElement(arrayHandle, 0)!!),
+        )
+    }
+
+    @Test
+    fun `SetObjectArrayElement rejects non assignable values`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Target"),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Target")
+        val arrayHandle = environment.newObjectArray(1, classHandle, null)
+        val otherHandle = handles.newObjectHandle(heap.allocateObject("Other"))
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setObjectArrayElement(arrayHandle, 0, otherHandle)
+        }
+    }
+
+    @Test
+    fun `SetObjectArrayElement rejects primitive arrays and out of bounds indexes`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val primitiveArrayHandle = handles.newObjectHandle(heap.allocateIntArray(1))
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setObjectArrayElement(primitiveArrayHandle, 0, null)
+        }
+
+        val referenceArrayHandle = handles.newObjectHandle(heap.allocateReferenceArray("java/lang/Object", 1))
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setObjectArrayElement(referenceArrayHandle, 1, null)
+        }
+    }
+
 }

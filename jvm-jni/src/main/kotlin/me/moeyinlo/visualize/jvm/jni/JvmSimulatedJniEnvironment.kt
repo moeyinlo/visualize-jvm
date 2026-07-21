@@ -221,6 +221,30 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun setObjectArrayElement(arrayHandle: JvmJniHandleId, index: Int, valueHandle: JvmJniHandleId?) {
+        val arrayReference = handles.resolveObject(arrayHandle)
+        val arrayObject = heap.get(arrayReference)
+        val array = arrayObject.payload as? JvmReferenceArrayPayload
+            ?: throw JvmJniArrayAccessException(
+                "JNI object array helper requires reference array payload, got ${arrayObject.className}",
+            )
+        if (index !in array.elements.indices) {
+            throw JvmJniArrayAccessException("JNI array index $index is out of bounds")
+        }
+        val value = valueHandle?.let { handle ->
+            val reference = handles.resolveObject(handle)
+            val valueClassName = heap.get(reference).className
+            val componentClassName = arrayObject.className.referenceArrayComponentClassName()
+            if (!classHierarchy.isAssignable(sourceClassName = valueClassName, targetClassName = componentClassName)) {
+                throw JvmJniArrayAccessException(
+                    "SetObjectArrayElement value $valueClassName is not assignable to $componentClassName",
+                )
+            }
+            reference
+        } ?: JvmNullValue
+        array.elements[index] = value
+    }
+
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
@@ -1032,6 +1056,13 @@ class JvmSimulatedJniEnvironment(
         return payload.value
     }
 }
+
+private fun String.referenceArrayComponentClassName(): String =
+    when {
+        startsWith("[L") && endsWith(";") -> substring(startIndex = 2, endIndex = length - 1)
+        startsWith("[[") -> substring(startIndex = 1)
+        else -> throw JvmJniArrayAccessException("Not a reference array class name: $this")
+    }
 
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
 
