@@ -2079,4 +2079,67 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `SetStaticIntField writes a guest static int field`() {
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        environment.setStaticIntField(classHandle, fieldHandle, 99)
+
+        assertEquals(
+            JvmIntValue(99),
+            staticFields.get(
+                JvmFieldReference(ownerClassName = "Example", name = "counter", descriptor = "I"),
+            ),
+        )
+    }
+
+    @Test
+    fun `SetStaticIntField rejects non int guest static field handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "wide",
+                                descriptor = "J",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "wide", "J")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.setStaticIntField(classHandle, fieldHandle, 99)
+        }
+    }
+
 }

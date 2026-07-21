@@ -472,6 +472,24 @@ class JvmSimulatedJniEnvironment(
             )
     }
 
+    fun setStaticIntField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "I" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetStaticIntField requires a static int field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            JvmIntValue(value),
+        )
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
