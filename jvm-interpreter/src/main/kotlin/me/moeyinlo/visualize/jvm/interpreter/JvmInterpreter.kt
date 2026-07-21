@@ -118,6 +118,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
         classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
         staticFields: JvmStaticFields = JvmStaticFields(),
+        nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
         currentClassName: String? = null,
     ): JvmExecutionResult {
         val frameResult = executeFrame(
@@ -128,6 +129,7 @@ object JvmInterpreter {
             localVariables = localVariables,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
+            nativeMethods = nativeMethods,
             currentClassName = currentClassName,
             allowReturn = false,
         )
@@ -142,6 +144,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
         currentClassName: String?,
         allowReturn: Boolean,
     ): JvmFrameExecutionResult {
@@ -190,6 +193,7 @@ object JvmInterpreter {
                         localVariables,
                         classHierarchy,
                         staticFields,
+                        nativeMethods,
                         currentClassName,
                     )
                     null
@@ -216,6 +220,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
         currentClassName: String?,
     ) {
         when (instruction.metadata.opcode) {
@@ -386,6 +391,7 @@ object JvmInterpreter {
                 heap,
                 classHierarchy,
                 staticFields,
+                nativeMethods,
                 currentClassName,
             )
             0xB7 -> executeInvokeSpecial(
@@ -395,6 +401,7 @@ object JvmInterpreter {
                 heap,
                 classHierarchy,
                 staticFields,
+                nativeMethods,
                 currentClassName,
             )
             0xB8 -> executeInvokeStatic(
@@ -404,6 +411,7 @@ object JvmInterpreter {
                 heap,
                 classHierarchy,
                 staticFields,
+                nativeMethods,
                 currentClassName,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
@@ -3409,24 +3417,12 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
         currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
-        if (resolvedMethod.isNative) {
-            throw JvmUnsatisfiedLinkError(
-                guestClassName = "java/lang/UnsatisfiedLinkError",
-                message = "Native method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} is not linked for ${instruction.metadata.mnemonic}",
-            )
-        }
-        val methodCode = resolvedMethod.code
-            ?: throw JvmUnsupportedInstructionException(
-                "Resolved static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} has no Code attribute for invokestatic",
-            )
-        val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
@@ -3444,6 +3440,45 @@ object JvmInterpreter {
                 value
             }
             .asReversed()
+        if (resolvedMethod.isNative) {
+            val nativeReturnValue = executeNativeMethod(
+                instruction = instruction,
+                method = resolvedMethod,
+                receiver = null,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                currentClassName = currentClassName,
+            )
+            val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
+            if (returnDescriptor == "V") {
+                if (nativeReturnValue != null) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid invokestatic native return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                            "${resolvedMethod.descriptor}: expected void but returned " +
+                            nativeReturnValue.javaClass.simpleName,
+                    )
+                }
+                return
+            }
+            val returnValue = nativeReturnValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Native method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                        "${resolvedMethod.descriptor} completed without returning a value",
+                )
+            requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
+            requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
+            operandStack.push(returnValue)
+            return
+        }
+        val methodCode = resolvedMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} has no Code attribute for invokestatic",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
         var localIndex = 0
         for (argument in arguments) {
             calleeLocals.store(localIndex, argument)
@@ -3458,6 +3493,7 @@ object JvmInterpreter {
             localVariables = calleeLocals,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
+            nativeMethods = nativeMethods,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
         )
@@ -3489,6 +3525,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
         currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
@@ -3579,6 +3616,7 @@ object JvmInterpreter {
             localVariables = calleeLocals,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
+            nativeMethods = nativeMethods,
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
         )
@@ -3610,6 +3648,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
         currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
@@ -3690,6 +3729,7 @@ object JvmInterpreter {
             localVariables = calleeLocals,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
+            nativeMethods = nativeMethods,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
         )
@@ -3715,6 +3755,37 @@ object JvmInterpreter {
         requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
         requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
         operandStack.push(returnValue)
+    }
+
+    private fun executeNativeMethod(
+        instruction: DecodedInstruction,
+        method: JvmResolvedMethod,
+        receiver: JvmObjectReferenceValue?,
+        arguments: List<JvmValue>,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        currentClassName: String?,
+    ): JvmValue? {
+        val intrinsic = nativeMethods.resolve(method)
+            ?: throw JvmUnsatisfiedLinkError(
+                guestClassName = "java/lang/UnsatisfiedLinkError",
+                message = "Native method ${method.ownerClassName}.${method.name}:" +
+                    "${method.descriptor} is not linked for ${instruction.metadata.mnemonic}",
+            )
+        return intrinsic.invoke(
+            context = JvmNativeMethodContext(
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                currentClassName = currentClassName,
+            ),
+            invocation = JvmNativeMethodInvocation(
+                receiver = receiver,
+                arguments = arguments,
+            ),
+        )
     }
 
     private fun executeReturnInstruction(
