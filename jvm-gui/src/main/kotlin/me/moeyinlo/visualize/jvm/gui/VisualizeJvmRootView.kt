@@ -25,6 +25,7 @@ class VisualizeJvmRootView(
     val hostDelegationEventsView: HostDelegationEventsView = HostDelegationEventsView()
     val nativeIntrinsicFramesView: NativeIntrinsicFramesView = NativeIntrinsicFramesView()
     val simulatedJniCallsView: SimulatedJniCallsView = SimulatedJniCallsView()
+    val jniUpcallNestingView: JniUpcallNestingView = JniUpcallNestingView()
 
     init {
         top = VBox(debuggerControlBar, constantPoolView)
@@ -42,6 +43,7 @@ class VisualizeJvmRootView(
             hostDelegationEventsView,
             nativeIntrinsicFramesView,
             simulatedJniCallsView,
+            jniUpcallNestingView,
         )
         bottom = bytecodeInstructionView
     }
