@@ -5008,6 +5008,37 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetShortArrayElements returns a copied guest short array buffer`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newShortArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmShortArrayPayload
+        payload.elements[0] = (-123).toShort()
+        payload.elements[2] = 456.toShort()
+
+        val result = environment.getShortArrayElements(arrayHandle)
+
+        assertContentEquals(shortArrayOf((-123).toShort(), 0.toShort(), 456.toShort()), result)
+        result[0] = 99.toShort()
+        assertEquals((-123).toShort(), payload.elements[0])
+    }
+
+    @Test
+    fun `GetShortArrayElements rejects non short arrays`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newIntArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getShortArrayElements(wrongArrayHandle)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

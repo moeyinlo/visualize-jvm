@@ -290,6 +290,9 @@ class JvmSimulatedJniEnvironment(
     fun newShortArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateShortArray(length))
 
+    fun getShortArrayElements(arrayHandle: JvmJniHandleId): ShortArray =
+        resolveShortArray(arrayHandle).elements.toShortArray()
+
     fun getShortArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): ShortArray {
         val array = resolveShortArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
