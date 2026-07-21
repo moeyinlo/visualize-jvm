@@ -361,6 +361,20 @@ class JvmSimulatedJniEnvironment(
     fun getLongArrayElements(arrayHandle: JvmJniHandleId): LongArray =
         resolveLongArray(arrayHandle).elements.toLongArray()
 
+    fun releaseLongArrayElements(
+        arrayHandle: JvmJniHandleId,
+        elements: LongArray,
+        mode: JvmJniArrayReleaseMode = JvmJniArrayReleaseMode.CopyBackAndRelease,
+    ) {
+        val array = resolveLongArray(arrayHandle)
+        requireArrayElementsBufferSize(array.elements.size, elements.size)
+        if (mode != JvmJniArrayReleaseMode.Abort) {
+            elements.forEachIndexed { index, value ->
+                array.elements[index] = value
+            }
+        }
+    }
+
     fun getLongArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): LongArray {
         val array = resolveLongArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
