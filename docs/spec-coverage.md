@@ -20,8 +20,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.3 | Primitive value runtime model and JVM slot categories | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
 | 2.3.1 | Integral types and values | `jvm-runtime` | TBD | PENDING |
 | 2.3.2 | Floating-point types and values | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
-| 2.3.3 | `returnAddress` type and values | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
-| 2.3.4 | `boolean` type and values | `jvm-runtime` | TBD | PENDING |
+| 2.3.3 | `returnAddress` runtime value model stores non-negative bytecode targets as category-one JVM values | `jvm-runtime` | `JvmReturnAddressValueTest` | IMPLEMENTED |
+| 2.3.4 | `boolean` runtime value model stores true/false as category-one JVM values | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
 | 2.4 | Reference types and values | `jvm-runtime` | TBD | PENDING |
 | 2.4 | Null and non-null reference runtime value model | `jvm-runtime` | `JvmReferenceValueTest` | IMPLEMENTED |
 | 2.5.1 | pc register | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
