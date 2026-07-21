@@ -3743,4 +3743,52 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetArrayLength returns primitive guest array lengths`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val intArrayHandle = handles.newObjectHandle(heap.allocateIntArray(4))
+        val byteArrayHandle = handles.newObjectHandle(heap.allocateByteArray(2))
+
+        assertEquals(4, environment.getArrayLength(intArrayHandle))
+        assertEquals(2, environment.getArrayLength(byteArrayHandle))
+    }
+
+    @Test
+    fun `GetArrayLength returns reference guest array lengths`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = handles.newObjectHandle(heap.allocateReferenceArray("java/lang/String", 3))
+
+        val result = environment.getArrayLength(arrayHandle)
+
+        assertEquals(3, result)
+    }
+
+    @Test
+    fun `GetArrayLength rejects non array guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getArrayLength(objectHandle)
+        }
+    }
+
 }

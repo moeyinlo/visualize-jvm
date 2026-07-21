@@ -1,20 +1,29 @@
 package me.moeyinlo.visualize.jvm.jni
 
-import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
+import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
+import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
+import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
+import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
@@ -155,6 +164,25 @@ class JvmSimulatedJniEnvironment(
 
     fun releaseStringUtfChars(stringHandle: JvmJniHandleId, chars: ByteArray) {
         resolveStringValue(stringHandle)
+    }
+
+    fun getArrayLength(arrayHandle: JvmJniHandleId): Int {
+        val reference = handles.resolveObject(arrayHandle)
+        val heapObject = heap.get(reference)
+        return when (val payload = heapObject.payload) {
+            is JvmBooleanArrayPayload -> payload.elements.size
+            is JvmByteArrayPayload -> payload.elements.size
+            is JvmCharArrayPayload -> payload.elements.size
+            is JvmDoubleArrayPayload -> payload.elements.size
+            is JvmFloatArrayPayload -> payload.elements.size
+            is JvmIntArrayPayload -> payload.elements.size
+            is JvmLongArrayPayload -> payload.elements.size
+            is JvmReferenceArrayPayload -> payload.elements.size
+            is JvmShortArrayPayload -> payload.elements.size
+            else -> throw JvmJniArrayAccessException(
+                "JNI array helper requires array payload, got ${heapObject.className}",
+            )
+        }
     }
 
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
@@ -963,6 +991,8 @@ class JvmSimulatedJniEnvironment(
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniStringAccessException(message: String) : IllegalStateException(message)
+
+class JvmJniArrayAccessException(message: String) : IllegalStateException(message)
 
 private fun String.isReferenceFieldDescriptor(): Boolean =
     startsWith("L") || startsWith("[")
