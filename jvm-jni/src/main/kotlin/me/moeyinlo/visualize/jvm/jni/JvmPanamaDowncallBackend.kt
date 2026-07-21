@@ -54,6 +54,11 @@ class JvmPanamaDowncallBackend(
         )
     }
 
+    fun bindExports(library: JvmNativeLibraryDescriptor): Map<JvmNativeGuestMethodSignature, JvmNativeDowncallTarget> =
+        library.exports.associate { export ->
+            export.guestMethod to resolveExport(library, export)
+        }
+
     fun resolveSymbol(
         library: JvmNativeLibraryDescriptor,
         symbolName: String,

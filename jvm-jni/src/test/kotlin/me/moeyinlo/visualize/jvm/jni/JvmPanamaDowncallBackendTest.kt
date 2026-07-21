@@ -87,4 +87,58 @@ class JvmPanamaDowncallBackendTest {
         )
         assertEquals(null, missingOnLoadBackend.bindOnLoad(library))
     }
+
+    @Test
+    fun `Panama backend binds Java native exports by guest signature`() {
+        val staticExport = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "call",
+            methodDescriptor = "(I)J",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_call__I",
+        )
+        val instanceExport = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "poke",
+            methodDescriptor = "()V",
+            isStatic = false,
+            symbolName = "Java_pkg_NativeApi_poke",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(staticExport, instanceExport),
+        )
+        val backend = JvmPanamaDowncallBackend(
+            symbolLookup = JvmNativeSymbolLookup { path, symbolName ->
+                when {
+                    path == library.path && symbolName == staticExport.symbolName ->
+                        JvmNativeSymbolAddress(symbolName, 0x1111L)
+                    path == library.path && symbolName == instanceExport.symbolName ->
+                        JvmNativeSymbolAddress(symbolName, 0x2222L)
+                    else -> null
+                }
+            },
+        )
+
+        val targets = backend.bindExports(library)
+
+        assertEquals(
+            mapOf(
+                staticExport.guestMethod to JvmNativeDowncallTarget(
+                    library = library,
+                    guestMethod = staticExport.guestMethod,
+                    symbolName = staticExport.symbolName,
+                    address = 0x1111L,
+                ),
+                instanceExport.guestMethod to JvmNativeDowncallTarget(
+                    library = library,
+                    guestMethod = instanceExport.guestMethod,
+                    symbolName = instanceExport.symbolName,
+                    address = 0x2222L,
+                ),
+            ),
+            targets,
+        )
+    }
 }
