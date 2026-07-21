@@ -21,6 +21,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
 data class JvmNativeMethodKey(
@@ -233,6 +234,12 @@ object JvmVmIntrinsics {
         descriptor = "(I)Ljava/lang/Throwable;",
         isStatic = false,
     )
+    private val StringInternKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/String",
+        name = "intern",
+        descriptor = "()Ljava/lang/String;",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -367,6 +374,10 @@ object JvmVmIntrinsics {
         }
         context.heap.recordThrowableStackTrace(receiver, context.stackTraceProvider())
     }
+    private val StringIntern = JvmNativeMethodIntrinsic { context, invocation ->
+        val value = requireStringReceiver("String.intern", context, invocation)
+        context.heap.internString(value)
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -387,6 +398,7 @@ object JvmVmIntrinsics {
         ClassIsInterfaceKey to ClassIsInterface,
         ClassGetSuperclassKey to ClassGetSuperclass,
         ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
+        StringInternKey to StringIntern,
     )
 
     private val PrimitiveClassNames = setOf(
@@ -419,6 +431,22 @@ object JvmVmIntrinsics {
             is JvmClassPayload -> payload.representedClassName
             else -> throw JvmUnsupportedInstructionException(
                 "$name intrinsic requires a java/lang/Class mirror receiver",
+            )
+        }
+    }
+
+    private fun requireStringReceiver(
+        name: String,
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): String {
+        requireNoArguments(name, invocation)
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("$name intrinsic requires a receiver")
+        return when (val payload = context.heap.get(receiver).payload) {
+            is JvmStringPayload -> payload.value
+            else -> throw JvmUnsupportedInstructionException(
+                "$name intrinsic requires a java/lang/String receiver",
             )
         }
     }

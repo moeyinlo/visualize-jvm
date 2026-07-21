@@ -586,6 +586,28 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmThrowablePayload(listOf(frame)), heap.get(receiver).payload)
     }
 
+    @Test
+    fun `String intern intrinsic returns the canonical guest string reference`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateString("hello")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(stringInternMethod())
+            ?: error("String.intern intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/String",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+
+        assertEquals(heap.internString("hello"), result)
+        assertEquals(JvmStringPayload("hello"), heap.get(result).payload)
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -710,6 +732,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Throwable",
         name = "fillInStackTrace",
         descriptor = "(I)Ljava/lang/Throwable;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun stringInternMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/String",
+        name = "intern",
+        descriptor = "()Ljava/lang/String;",
         isStatic = false,
         isNative = true,
     )
