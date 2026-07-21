@@ -20,6 +20,7 @@ class VisualizeJvmRootView(
     val initializationEventsView: InitializationEventsView = InitializationEventsView()
     val verifierDiagnosticsView: VerifierDiagnosticsView = VerifierDiagnosticsView()
     val exceptionUnwindingEventsView: ExceptionUnwindingEventsView = ExceptionUnwindingEventsView()
+    val monitorEventsView: MonitorEventsView = MonitorEventsView()
 
     init {
         top = VBox(debuggerControlBar, constantPoolView)
@@ -32,6 +33,7 @@ class VisualizeJvmRootView(
             initializationEventsView,
             verifierDiagnosticsView,
             exceptionUnwindingEventsView,
+            monitorEventsView,
         )
         bottom = bytecodeInstructionView
     }
