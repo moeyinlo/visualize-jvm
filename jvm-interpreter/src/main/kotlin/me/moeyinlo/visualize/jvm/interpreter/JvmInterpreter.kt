@@ -3395,6 +3395,14 @@ object JvmInterpreter {
             .map { descriptor ->
                 val value = operandStack.pop()
                 requireMethodArgumentValue(instruction, resolvedMethod, descriptor, value)
+                requireReferenceMethodArgumentAssignable(
+                    instruction,
+                    resolvedMethod,
+                    descriptor,
+                    value,
+                    heap,
+                    classHierarchy,
+                )
                 value
             }
             .asReversed()
@@ -3502,6 +3510,30 @@ object JvmInterpreter {
             "Invalid ${instruction.metadata.mnemonic} argument for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor} at offset ${instruction.offset}: " +
                 "expected $descriptor but was ${value.javaClass.simpleName}",
+        )
+    }
+
+    private fun requireReferenceMethodArgumentAssignable(
+        instruction: DecodedInstruction,
+        method: JvmResolvedMethod,
+        descriptor: String,
+        value: JvmValue,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+    ) {
+        if (!descriptor.isReferenceDescriptor() || value == JvmNullValue) {
+            return
+        }
+        val reference = value as JvmObjectReferenceValue
+        val sourceClassName = heap.get(reference).className
+        val targetClassName = descriptor.referenceDescriptorClassName()
+        if (classHierarchy.isAssignable(sourceClassName, targetClassName)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid ${instruction.metadata.mnemonic} argument for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor} at offset ${instruction.offset}: " +
+                "$sourceClassName is not assignable to $targetClassName",
         )
     }
 

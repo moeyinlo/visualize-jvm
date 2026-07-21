@@ -10970,6 +10970,85 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic rejects object arguments not assignable to declared parameter class`() {
+        val heap = JvmHeap()
+        val incompatibleValue = heap.allocateObject("java/lang/Object")
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "Ljava/lang/Object;",
+            ),
+            incompatibleValue,
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x07.toByte(),
+                    0xB8.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("consume", "consume".encodeToByteArray()),
+                        ConstantUtf8Entry("(Ljava/lang/String;)V", "(Ljava/lang/String;)V".encodeToByteArray()),
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(8)),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(9), ConstantPoolIndex(10)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("Ljava/lang/Object;", "Ljava/lang/Object;".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                staticFields = staticFields,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "java/lang/String",
+                            superclassName = "java/lang/Object",
+                        ),
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "consume",
+                                    descriptor = "(Ljava/lang/String;)V",
+                                    isStatic = true,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "value",
+                                    descriptor = "Ljava/lang/Object;",
+                                    isStatic = true,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid invokestatic argument for Example.consume:(Ljava/lang/String;)V at offset 3: " +
+                "java/lang/Object is not assignable to java/lang/String",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
