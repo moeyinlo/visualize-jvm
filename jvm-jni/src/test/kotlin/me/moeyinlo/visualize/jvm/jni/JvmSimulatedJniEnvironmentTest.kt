@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
+import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -1985,6 +1986,96 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<JvmJniFieldAccessException> {
             environment.setShortField(objectHandle, fieldHandle, -5678)
+        }
+    }
+
+    @Test
+    fun `GetStaticIntField reads a stored guest static int field`() {
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+        staticFields.put(
+            JvmFieldReference(ownerClassName = "Example", name = "counter", descriptor = "I"),
+            JvmIntValue(42),
+        )
+
+        val result = environment.getStaticIntField(classHandle, fieldHandle)
+
+        assertEquals(42, result)
+    }
+
+    @Test
+    fun `GetStaticIntField reads default zero for an unwritten guest static int field`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        val result = environment.getStaticIntField(classHandle, fieldHandle)
+
+        assertEquals(0, result)
+    }
+
+    @Test
+    fun `GetStaticIntField rejects non int guest static field handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "wide",
+                                descriptor = "J",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "wide", "J")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getStaticIntField(classHandle, fieldHandle)
         }
     }
 

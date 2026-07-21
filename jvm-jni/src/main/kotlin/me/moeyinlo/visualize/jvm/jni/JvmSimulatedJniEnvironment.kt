@@ -16,10 +16,12 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
+import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
     private val heap: JvmHeap = JvmHeap(),
+    private val staticFields: JvmStaticFields = JvmStaticFields(),
     val handles: JvmJniHandleTable = JvmJniHandleTable(),
 ) {
     fun findClass(className: String): JvmJniHandleId {
@@ -447,6 +449,27 @@ class JvmSimulatedJniEnvironment(
                 "GetShortField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
             )
         }
+    }
+
+    fun getStaticIntField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "I" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetStaticIntField requires a static int field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = staticFields.get(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return (value as? JvmIntValue)?.value
+            ?: throw JvmJniFieldAccessException(
+                "GetStaticIntField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
     }
 
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
