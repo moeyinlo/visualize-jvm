@@ -985,6 +985,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `GetObjectClass` resolves a guest `jobject` handle through the guest heap and returns the object's runtime class as a `jclass` handle | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetObjectClass returns runtime class handle for guest object handles` | IMPLEMENTED |
 | Simulated JNI | `IsInstanceOf` tests a nullable guest `jobject` handle against a `jclass` handle using guest assignability rules | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.IsInstanceOf*` | IMPLEMENTED |
 | Simulated JNI | `GetFieldID` resolves instance guest fields from a `jclass` handle into `jfieldID` handles and rejects misses or static fields | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetFieldID*` | IMPLEMENTED |
+| Simulated JNI | `GetStaticFieldID` resolves static guest fields from a `jclass` handle into `jfieldID` handles and rejects misses or instance fields | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetStaticFieldID*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 

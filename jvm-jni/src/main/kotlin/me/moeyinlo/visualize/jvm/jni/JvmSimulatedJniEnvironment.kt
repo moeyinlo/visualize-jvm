@@ -96,4 +96,24 @@ class JvmSimulatedJniEnvironment(
         }
         return handles.newFieldIdHandle(field)
     }
+
+    fun getStaticFieldId(
+        classHandle: JvmJniHandleId,
+        name: String,
+        descriptor: String,
+    ): JvmJniHandleId {
+        val className = handles.resolveClass(classHandle)
+        val field = classHierarchy.resolveField(
+            ownerClassName = className,
+            name = name,
+            descriptor = descriptor,
+        )
+        if (!field.isStatic) {
+            throw JvmNoSuchFieldError(
+                guestClassName = "java/lang/NoSuchFieldError",
+                message = "$className.$name:$descriptor",
+            )
+        }
+        return handles.newFieldIdHandle(field)
+    }
 }

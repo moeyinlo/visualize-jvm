@@ -316,4 +316,67 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetStaticFieldID returns a field handle for loaded static guest fields`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        assertEquals(
+            JvmResolvedField(
+                ownerClassName = "Example",
+                name = "counter",
+                descriptor = "I",
+                isStatic = true,
+            ),
+            handles.resolveFieldId(fieldHandle),
+        )
+    }
+
+    @Test
+    fun `GetStaticFieldID throws guest NoSuchFieldError for missing or instance fields`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "instanceOnly",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val classHandle = environment.findClass("Example")
+
+        assertFailsWith<JvmNoSuchFieldError> {
+            environment.getStaticFieldId(classHandle, "missing", "I")
+        }
+        assertFailsWith<JvmNoSuchFieldError> {
+            environment.getStaticFieldId(classHandle, "instanceOnly", "I")
+        }
+    }
+
 }
