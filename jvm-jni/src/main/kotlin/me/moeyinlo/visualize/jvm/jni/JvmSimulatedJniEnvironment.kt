@@ -194,6 +194,14 @@ class JvmSimulatedJniEnvironment(
         return array.elements.subList(start, start + length).toBooleanArray()
     }
 
+    fun setBooleanArrayRegion(arrayHandle: JvmJniHandleId, start: Int, values: BooleanArray) {
+        val array = resolveBooleanArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, values.size)
+        values.forEachIndexed { offset, value ->
+            array.elements[start + offset] = value
+        }
+    }
+
     fun newByteArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateByteArray(length))
 
