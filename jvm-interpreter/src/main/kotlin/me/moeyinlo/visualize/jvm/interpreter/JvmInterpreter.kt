@@ -97,6 +97,11 @@ class JvmIllegalAccessError(
     message: String,
 ) : IllegalAccessError(message)
 
+class JvmAbstractMethodError(
+    val guestClassName: String,
+    message: String,
+) : AbstractMethodError(message)
+
 object JvmInterpreter {
     private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
 
@@ -3527,6 +3532,12 @@ object JvmInterpreter {
             descriptor = resolvedMethod.descriptor,
         )
         requireInstanceMethod(instruction, targetMethod)
+        if (targetMethod.isAbstract) {
+            throw JvmAbstractMethodError(
+                guestClassName = "java/lang/AbstractMethodError",
+                message = "${targetMethod.ownerClassName}.${targetMethod.name}:${targetMethod.descriptor}",
+            )
+        }
         val methodCode = targetMethod.code
             ?: throw JvmUnsupportedInstructionException(
                 "Resolved instance method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
