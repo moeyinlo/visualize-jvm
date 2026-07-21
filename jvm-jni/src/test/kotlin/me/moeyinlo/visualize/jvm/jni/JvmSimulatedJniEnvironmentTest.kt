@@ -2951,4 +2951,94 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetStaticByteField reads a stored guest static byte field`() {
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "narrow",
+                                descriptor = "B",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "narrow", "B")
+        staticFields.put(
+            JvmFieldReference(ownerClassName = "Example", name = "narrow", descriptor = "B"),
+            JvmByteValue(-8),
+        )
+
+        val result = environment.getStaticByteField(classHandle, fieldHandle)
+
+        assertEquals(-8, result)
+    }
+
+    @Test
+    fun `GetStaticByteField reads default zero for an unwritten guest static byte field`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "narrow",
+                                descriptor = "B",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "narrow", "B")
+
+        val result = environment.getStaticByteField(classHandle, fieldHandle)
+
+        assertEquals(0, result)
+    }
+
+    @Test
+    fun `GetStaticByteField rejects non byte guest static field handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getStaticByteField(classHandle, fieldHandle)
+        }
+    }
+
 }
