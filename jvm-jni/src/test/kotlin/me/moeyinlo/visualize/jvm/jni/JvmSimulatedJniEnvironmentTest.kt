@@ -17,6 +17,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
@@ -3788,6 +3789,82 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<JvmJniArrayAccessException> {
             environment.getArrayLength(objectHandle)
+        }
+    }
+
+    @Test
+    fun `NewObjectArray allocates a null filled guest reference array`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val elementClassHandle = environment.findClass("java/lang/String")
+
+        val arrayHandle = environment.newObjectArray(3, elementClassHandle, null)
+
+        val arrayObject = heap.get(handles.resolveObject(arrayHandle))
+        assertEquals("[Ljava/lang/String;", arrayObject.className)
+        assertEquals(
+            JvmReferenceArrayPayload(
+                mutableListOf(JvmNullValue, JvmNullValue, JvmNullValue),
+            ),
+            arrayObject.payload,
+        )
+    }
+
+    @Test
+    fun `NewObjectArray fills every element with an assignable initial object`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Base"),
+                    JvmClassDefinition(internalName = "Example", superclassName = "Base"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val elementClassHandle = environment.findClass("Base")
+        val initialReference = heap.allocateObject("Example")
+        val initialHandle = handles.newObjectHandle(initialReference)
+
+        val arrayHandle = environment.newObjectArray(2, elementClassHandle, initialHandle)
+
+        val arrayObject = heap.get(handles.resolveObject(arrayHandle))
+        assertEquals(
+            JvmReferenceArrayPayload(mutableListOf(initialReference, initialReference)),
+            arrayObject.payload,
+        )
+    }
+
+    @Test
+    fun `NewObjectArray rejects non assignable initial objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Target"),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val elementClassHandle = environment.findClass("Target")
+        val initialHandle = handles.newObjectHandle(heap.allocateObject("Other"))
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.newObjectArray(2, elementClassHandle, initialHandle)
         }
     }
 

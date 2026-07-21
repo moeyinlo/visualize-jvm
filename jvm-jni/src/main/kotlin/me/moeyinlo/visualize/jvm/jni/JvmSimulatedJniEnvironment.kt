@@ -185,6 +185,32 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun newObjectArray(
+        length: Int,
+        elementClassHandle: JvmJniHandleId,
+        initialElementHandle: JvmJniHandleId?,
+    ): JvmJniHandleId {
+        val elementClassName = handles.resolveClass(elementClassHandle)
+        val initialElement = initialElementHandle?.let { handle ->
+            val reference = handles.resolveObject(handle)
+            val elementClass = heap.get(reference).className
+            if (!classHierarchy.isAssignable(sourceClassName = elementClass, targetClassName = elementClassName)) {
+                throw JvmJniArrayAccessException(
+                    "NewObjectArray initial element $elementClass is not assignable to $elementClassName",
+                )
+            }
+            reference
+        }
+        val arrayReference = heap.allocateReferenceArray(elementClassName, length)
+        if (initialElement != null) {
+            val array = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+            array.elements.indices.forEach { index ->
+                array.elements[index] = initialElement
+            }
+        }
+        return handles.newObjectHandle(arrayReference)
+    }
+
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
