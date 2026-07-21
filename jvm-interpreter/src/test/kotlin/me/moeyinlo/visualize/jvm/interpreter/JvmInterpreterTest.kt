@@ -11903,6 +11903,60 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial allows private methods from the same class`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "secret",
+                                descriptor = "()I",
+                                isStatic = false,
+                                isPrivate = true,
+                                code = byteArrayOf(
+                                    0x08.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            currentClassName = "Owner",
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
