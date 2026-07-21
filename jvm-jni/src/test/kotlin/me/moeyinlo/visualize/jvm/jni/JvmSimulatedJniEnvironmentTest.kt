@@ -2754,4 +2754,98 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetStaticObjectField reads a stored guest static reference field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "child",
+                                descriptor = "LChild;",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val childReference = heap.allocateObject("Child")
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "child", "LChild;")
+        staticFields.put(
+            JvmFieldReference(ownerClassName = "Example", name = "child", descriptor = "LChild;"),
+            childReference,
+        )
+
+        val resultHandle = environment.getStaticObjectField(classHandle, fieldHandle)
+
+        assertEquals(childReference, handles.resolveObject(resultHandle!!))
+    }
+
+    @Test
+    fun `GetStaticObjectField reads null for an unwritten guest static reference field`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "child",
+                                descriptor = "LChild;",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "child", "LChild;")
+
+        val resultHandle = environment.getStaticObjectField(classHandle, fieldHandle)
+
+        assertEquals(null, resultHandle)
+    }
+
+    @Test
+    fun `GetStaticObjectField rejects non reference guest static field handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getStaticObjectField(classHandle, fieldHandle)
+        }
+    }
+
 }
