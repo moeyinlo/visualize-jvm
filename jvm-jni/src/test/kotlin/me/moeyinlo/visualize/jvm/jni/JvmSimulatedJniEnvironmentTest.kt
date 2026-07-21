@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
@@ -1102,6 +1103,105 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<JvmJniFieldAccessException> {
             environment.setFloatField(objectHandle, fieldHandle, 2.5f)
+        }
+    }
+
+    @Test
+    fun `GetDoubleField reads a stored guest double instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "precise",
+                                descriptor = "D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "precise", "D")
+        heap.putInstanceField(
+            objectReference,
+            JvmFieldReference(ownerClassName = "Example", name = "precise", descriptor = "D"),
+            JvmDoubleValue(3.25),
+        )
+
+        val result = environment.getDoubleField(objectHandle, fieldHandle)
+
+        assertEquals(3.25, result)
+    }
+
+    @Test
+    fun `GetDoubleField reads default zero for an unwritten guest double instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "precise",
+                                descriptor = "D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "precise", "D")
+
+        val result = environment.getDoubleField(objectHandle, fieldHandle)
+
+        assertEquals(0.0, result)
+    }
+
+    @Test
+    fun `GetDoubleField rejects non double guest field handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "ratio",
+                                descriptor = "F",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "ratio", "F")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getDoubleField(objectHandle, fieldHandle)
         }
     }
 
