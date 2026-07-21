@@ -134,6 +134,9 @@ class JvmSimulatedJniEnvironment(
     fun newStringUtf(value: String): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateString(value))
 
+    fun getStringLength(stringHandle: JvmJniHandleId): Int =
+        resolveStringValue(stringHandle).length
+
     fun getStringUtfLength(stringHandle: JvmJniHandleId): Int =
         resolveStringValue(stringHandle).sumOf { codeUnit ->
             when (codeUnit.code) {
