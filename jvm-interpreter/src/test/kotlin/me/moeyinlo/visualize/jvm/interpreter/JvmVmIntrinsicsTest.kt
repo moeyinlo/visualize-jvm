@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 
 class JvmVmIntrinsicsTest {
     @Test
@@ -691,6 +692,40 @@ class JvmVmIntrinsicsTest {
             sleepMillisNanos.invoke(
                 context,
                 JvmNativeMethodInvocation(null, listOf(JvmLongValue(0L), JvmIntValue(1_000_000))),
+            )
+        }
+    }
+
+    @Test
+    fun `VM intrinsic registry resolves the Phase 15 native intrinsic surface`() {
+        val phase15Methods = listOf(
+            objectGetClassMethod(),
+            objectHashCodeMethod(),
+            objectCloneMethod(),
+            objectWaitLongMethod(),
+            objectNotifyMethod(),
+            objectNotifyAllMethod(),
+            systemArraycopyMethod(),
+            systemIdentityHashCodeMethod(),
+            systemCurrentTimeMillisMethod(),
+            systemNanoTimeMethod(),
+            classInitClassNameMethod(),
+            classIsArrayMethod(),
+            classIsPrimitiveMethod(),
+            classIsInterfaceMethod(),
+            classGetSuperclassMethod(),
+            throwableFillInStackTraceMethod(),
+            stringInternMethod(),
+            threadCurrentThreadMethod(),
+            threadSleepMillisMethod(),
+            threadSleepMillisNanosMethod(),
+            threadSleepNanos0Method(),
+        )
+
+        phase15Methods.forEach { method ->
+            assertNotNull(
+                JvmVmIntrinsics.Registry.resolve(method),
+                "Expected intrinsic for ${method.ownerClassName}.${method.name}:${method.descriptor}",
             )
         }
     }
