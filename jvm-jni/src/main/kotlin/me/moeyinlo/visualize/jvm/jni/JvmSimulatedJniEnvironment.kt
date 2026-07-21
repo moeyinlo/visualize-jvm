@@ -395,6 +395,20 @@ class JvmSimulatedJniEnvironment(
     fun getFloatArrayElements(arrayHandle: JvmJniHandleId): FloatArray =
         resolveFloatArray(arrayHandle).elements.toFloatArray()
 
+    fun releaseFloatArrayElements(
+        arrayHandle: JvmJniHandleId,
+        elements: FloatArray,
+        mode: JvmJniArrayReleaseMode = JvmJniArrayReleaseMode.CopyBackAndRelease,
+    ) {
+        val array = resolveFloatArray(arrayHandle)
+        requireArrayElementsBufferSize(array.elements.size, elements.size)
+        if (mode != JvmJniArrayReleaseMode.Abort) {
+            elements.forEachIndexed { index, value ->
+                array.elements[index] = value
+            }
+        }
+    }
+
     fun getFloatArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): FloatArray {
         val array = resolveFloatArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
