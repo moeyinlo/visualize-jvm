@@ -5039,6 +5039,68 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `ReleaseShortArrayElements copies back default and commit buffers`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newShortArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmShortArrayPayload
+        val defaultBuffer = shortArrayOf((-123).toShort(), 0.toShort(), 456.toShort())
+        val commitBuffer = shortArrayOf(8.toShort(), (-2).toShort(), 0.toShort())
+
+        environment.releaseShortArrayElements(arrayHandle, defaultBuffer)
+        assertEquals(mutableListOf((-123).toShort(), 0.toShort(), 456.toShort()), payload.elements)
+
+        environment.releaseShortArrayElements(
+            arrayHandle,
+            commitBuffer,
+            JvmJniArrayReleaseMode.Commit,
+        )
+        assertEquals(mutableListOf(8.toShort(), (-2).toShort(), 0.toShort()), payload.elements)
+    }
+
+    @Test
+    fun `ReleaseShortArrayElements aborts without copying back`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newShortArray(2)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmShortArrayPayload
+        payload.elements[0] = 3.toShort()
+
+        environment.releaseShortArrayElements(
+            arrayHandle,
+            shortArrayOf(4.toShort(), 5.toShort()),
+            JvmJniArrayReleaseMode.Abort,
+        )
+
+        assertEquals(mutableListOf(3.toShort(), 0.toShort()), payload.elements)
+    }
+
+    @Test
+    fun `ReleaseShortArrayElements rejects non short arrays and mismatched buffers`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newIntArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.releaseShortArrayElements(wrongArrayHandle, shortArrayOf(0.toShort()))
+        }
+
+        val arrayHandle = environment.newShortArray(2)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.releaseShortArrayElements(arrayHandle, shortArrayOf(1.toShort()))
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

@@ -293,6 +293,20 @@ class JvmSimulatedJniEnvironment(
     fun getShortArrayElements(arrayHandle: JvmJniHandleId): ShortArray =
         resolveShortArray(arrayHandle).elements.toShortArray()
 
+    fun releaseShortArrayElements(
+        arrayHandle: JvmJniHandleId,
+        elements: ShortArray,
+        mode: JvmJniArrayReleaseMode = JvmJniArrayReleaseMode.CopyBackAndRelease,
+    ) {
+        val array = resolveShortArray(arrayHandle)
+        requireArrayElementsBufferSize(array.elements.size, elements.size)
+        if (mode != JvmJniArrayReleaseMode.Abort) {
+            elements.forEachIndexed { index, value ->
+                array.elements[index] = value
+            }
+        }
+    }
+
     fun getShortArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): ShortArray {
         val array = resolveShortArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
