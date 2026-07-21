@@ -12296,6 +12296,67 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial rejects object arguments that are not assignable to reference descriptors`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val argument = heap.allocateObject("other/Arg")
+        val callerLocals = JvmLocalVariables(maxLocals = 2)
+        callerLocals.store(0, receiver)
+        callerLocals.store(1, argument)
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x2B.toByte(),
+                    0xB7.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("accept", "accept".encodeToByteArray()),
+                        ConstantUtf8Entry("(Lpkg/Param;)V", "(Lpkg/Param;)V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "accept",
+                                    descriptor = "(Lpkg/Param;)V",
+                                    isStatic = false,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 2,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(internalName = "pkg/Param"),
+                        JvmClassDefinition(internalName = "other/Arg"),
+                    ),
+                ),
+                currentClassName = "Caller",
+            )
+        }
+
+        assertEquals(
+            "Invalid invokespecial argument for Owner.accept:(Lpkg/Param;)V at offset 2: " +
+                "other/Arg is not assignable to pkg/Param",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
