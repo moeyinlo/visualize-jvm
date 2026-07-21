@@ -11596,6 +11596,81 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `simulated JNI bindings can upcall interpreted static guest methods`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x07.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeTwice", "nativeTwice".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)I", "(I)I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "NativeOwner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeTwice",
+                                descriptor = "(I)I",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Helper",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "twice",
+                                descriptor = "(I)I",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x1A.toByte(),
+                                    0x1A.toByte(),
+                                    0x60.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 2,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.fromSimulatedJni(
+                JvmNativeMethodKey(
+                    ownerClassName = "NativeOwner",
+                    name = "nativeTwice",
+                    descriptor = "(I)I",
+                    isStatic = true,
+                ) to JvmNativeMethodIntrinsic { context, invocation ->
+                    context.callStaticMethod(
+                        ownerClassName = "Helper",
+                        name = "twice",
+                        descriptor = "(I)I",
+                        arguments = invocation.arguments,
+                    )
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(8)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokestatic prefers native intrinsics over simulated JNI bindings`() {
         val key = JvmNativeMethodKey(
             ownerClassName = "Example",
