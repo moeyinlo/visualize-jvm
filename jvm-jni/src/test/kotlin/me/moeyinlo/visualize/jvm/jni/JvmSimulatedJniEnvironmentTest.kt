@@ -2295,4 +2295,94 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetStaticFloatField reads a stored guest static float field`() {
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "ratio",
+                                descriptor = "F",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "ratio", "F")
+        staticFields.put(
+            JvmFieldReference(ownerClassName = "Example", name = "ratio", descriptor = "F"),
+            JvmFloatValue(1.5f),
+        )
+
+        val result = environment.getStaticFloatField(classHandle, fieldHandle)
+
+        assertEquals(1.5f, result)
+    }
+
+    @Test
+    fun `GetStaticFloatField reads default zero for an unwritten guest static float field`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "ratio",
+                                descriptor = "F",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "ratio", "F")
+
+        val result = environment.getStaticFloatField(classHandle, fieldHandle)
+
+        assertEquals(0.0f, result)
+    }
+
+    @Test
+    fun `GetStaticFloatField rejects non float guest static field handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getStaticFloatField(classHandle, fieldHandle)
+        }
+    }
+
 }
