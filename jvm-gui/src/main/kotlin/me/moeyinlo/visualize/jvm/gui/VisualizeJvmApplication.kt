@@ -2,8 +2,6 @@ package me.moeyinlo.visualize.jvm.gui
 
 import javafx.application.Application
 import javafx.scene.Scene
-import javafx.scene.control.Label
-import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 
 object VisualizeJvmApplicationModel {
@@ -16,7 +14,7 @@ class VisualizeJvmApplication : Application() {
     override fun start(stage: Stage) {
         stage.title = VisualizeJvmApplicationModel.Title
         stage.scene = Scene(
-            BorderPane(Label("Visualize JVM is ready")),
+            VisualizeJvmRootView(),
             VisualizeJvmApplicationModel.InitialWidth,
             VisualizeJvmApplicationModel.InitialHeight,
         )
