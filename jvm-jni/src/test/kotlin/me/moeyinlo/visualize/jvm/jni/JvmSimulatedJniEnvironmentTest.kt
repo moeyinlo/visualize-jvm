@@ -2448,4 +2448,94 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetStaticDoubleField reads a stored guest static double field`() {
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "wideRatio",
+                                descriptor = "D",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "wideRatio", "D")
+        staticFields.put(
+            JvmFieldReference(ownerClassName = "Example", name = "wideRatio", descriptor = "D"),
+            JvmDoubleValue(1.25),
+        )
+
+        val result = environment.getStaticDoubleField(classHandle, fieldHandle)
+
+        assertEquals(1.25, result)
+    }
+
+    @Test
+    fun `GetStaticDoubleField reads default zero for an unwritten guest static double field`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "wideRatio",
+                                descriptor = "D",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "wideRatio", "D")
+
+        val result = environment.getStaticDoubleField(classHandle, fieldHandle)
+
+        assertEquals(0.0, result)
+    }
+
+    @Test
+    fun `GetStaticDoubleField rejects non double guest static field handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getStaticDoubleField(classHandle, fieldHandle)
+        }
+    }
+
 }

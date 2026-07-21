@@ -568,6 +568,27 @@ class JvmSimulatedJniEnvironment(
         )
     }
 
+    fun getStaticDoubleField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Double {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "D" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetStaticDoubleField requires a static double field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = staticFields.get(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return (value as? JvmDoubleValue)?.value
+            ?: throw JvmJniFieldAccessException(
+                "GetStaticDoubleField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
