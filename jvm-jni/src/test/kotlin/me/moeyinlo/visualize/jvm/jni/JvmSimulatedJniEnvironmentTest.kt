@@ -1374,4 +1374,111 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `SetBooleanField writes a guest boolean instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "enabled",
+                                descriptor = "Z",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "enabled", "Z")
+
+        environment.setBooleanField(objectHandle, fieldHandle, true)
+
+        assertEquals(
+            JvmBooleanValue(true),
+            heap.getInstanceField(
+                objectReference,
+                JvmFieldReference(ownerClassName = "Example", name = "enabled", descriptor = "Z"),
+            ),
+        )
+    }
+
+    @Test
+    fun `SetBooleanField writes false to a guest boolean instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "enabled",
+                                descriptor = "Z",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "enabled", "Z")
+
+        environment.setBooleanField(objectHandle, fieldHandle, false)
+
+        assertEquals(
+            JvmBooleanValue(false),
+            heap.getInstanceField(
+                objectReference,
+                JvmFieldReference(ownerClassName = "Example", name = "enabled", descriptor = "Z"),
+            ),
+        )
+    }
+
+    @Test
+    fun `SetBooleanField rejects non boolean guest field handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "value", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.setBooleanField(objectHandle, fieldHandle, true)
+        }
+    }
+
 }
