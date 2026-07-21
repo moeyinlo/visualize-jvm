@@ -12362,6 +12362,57 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual throws guest UnsatisfiedLinkError for unbound native methods`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmUnsatisfiedLinkError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB6.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "nativeValue",
+                                    descriptor = "()I",
+                                    isStatic = false,
+                                    isNative = true,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                currentClassName = "Caller",
+            )
+        }
+
+        assertEquals("java/lang/UnsatisfiedLinkError", exception.guestClassName)
+        assertEquals("Native method Owner.nativeValue:()I is not linked for invokevirtual", exception.message)
+    }
+
+    @Test
     fun `invokevirtual passes int arguments into callee locals after receiver`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")

@@ -102,6 +102,11 @@ class JvmAbstractMethodError(
     message: String,
 ) : AbstractMethodError(message)
 
+class JvmUnsatisfiedLinkError(
+    val guestClassName: String,
+    message: String,
+) : UnsatisfiedLinkError(message)
+
 object JvmInterpreter {
     private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
 
@@ -3536,6 +3541,13 @@ object JvmInterpreter {
             throw JvmAbstractMethodError(
                 guestClassName = "java/lang/AbstractMethodError",
                 message = "${targetMethod.ownerClassName}.${targetMethod.name}:${targetMethod.descriptor}",
+            )
+        }
+        if (targetMethod.isNative) {
+            throw JvmUnsatisfiedLinkError(
+                guestClassName = "java/lang/UnsatisfiedLinkError",
+                message = "Native method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} is not linked for ${instruction.metadata.mnemonic}",
             )
         }
         val methodCode = targetMethod.code
