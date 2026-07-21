@@ -511,6 +511,24 @@ class JvmSimulatedJniEnvironment(
             )
     }
 
+    fun setStaticLongField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Long) {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "J" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetStaticLongField requires a static long field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            JvmLongValue(value),
+        )
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
