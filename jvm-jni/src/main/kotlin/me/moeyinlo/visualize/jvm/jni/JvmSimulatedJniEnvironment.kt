@@ -429,6 +429,20 @@ class JvmSimulatedJniEnvironment(
     fun getDoubleArrayElements(arrayHandle: JvmJniHandleId): DoubleArray =
         resolveDoubleArray(arrayHandle).elements.toDoubleArray()
 
+    fun releaseDoubleArrayElements(
+        arrayHandle: JvmJniHandleId,
+        elements: DoubleArray,
+        mode: JvmJniArrayReleaseMode = JvmJniArrayReleaseMode.CopyBackAndRelease,
+    ) {
+        val array = resolveDoubleArray(arrayHandle)
+        requireArrayElementsBufferSize(array.elements.size, elements.size)
+        if (mode != JvmJniArrayReleaseMode.Abort) {
+            elements.forEachIndexed { index, value ->
+                array.elements[index] = value
+            }
+        }
+    }
+
     fun getDoubleArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): DoubleArray {
         val array = resolveDoubleArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
