@@ -798,6 +798,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Field access | `putfield` rejects an object reference value that is not assignable to the declared object field descriptor | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Invocation | `invokevirtual`, `invokespecial`, `invokestatic`, `invokeinterface`, `invokedynamic` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Method resolution, 5.4.3.3 | Class method resolution finds a method declared directly by the referenced class and reports guest `NoSuchMethodError` on misses | `jvm-runtime` | `JvmMethodResolutionTest` | IMPLEMENTED |
+| Method resolution, 5.4.3.3 | Class method resolution searches the superclass chain after the referenced class | `jvm-runtime` | `JvmMethodResolutionTest.method resolution searches the superclass chain after the referenced class` | IMPLEMENTED |
 | Object and arrays | `new` resolves a `CONSTANT_Class` name and allocates a guest heap object reference for that class | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `anewarray` resolves an object `CONSTANT_Class`, pops an int count, and allocates a null-initialized guest reference array | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `arraylength` pops a guest `boolean[]` reference and pushes its length as an int | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |

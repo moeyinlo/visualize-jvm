@@ -33,6 +33,40 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `method resolution searches the superclass chain after the referenced class`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    superclassName = "Parent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    superclassName = "Grandparent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Grandparent",
+                    methods = listOf(JvmMethodDefinition(name = "answer", descriptor = "()I", isStatic = true)),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "Grandparent",
+                name = "answer",
+                descriptor = "()I",
+                isStatic = true,
+            ),
+            hierarchy.resolveMethod(
+                ownerClassName = "Example",
+                name = "answer",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `method resolution throws guest NoSuchMethodError when lookup misses`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

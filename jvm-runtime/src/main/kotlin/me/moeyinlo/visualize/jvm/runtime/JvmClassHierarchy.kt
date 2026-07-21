@@ -108,6 +108,7 @@ class JvmClassHierarchy(
                 message = ownerClassName,
             )
         return ownerClass.findDeclaredMethod(name, descriptor)
+            ?: findSuperclassMethod(ownerClass.superclassName, name, descriptor)
             ?: throw JvmNoSuchMethodError(
                 guestClassName = "java/lang/NoSuchMethodError",
                 message = "$ownerClassName.$name:$descriptor",
@@ -168,6 +169,19 @@ class JvmClassHierarchy(
         return superclass.findDeclaredField(name, descriptor)
             ?: findInterfaceField(superclass.interfaceNames, name, descriptor)
             ?: findSuperclassField(superclass.superclassName, name, descriptor)
+    }
+
+    private fun findSuperclassMethod(
+        superclassName: String?,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod? {
+        if (superclassName == null) {
+            return null
+        }
+        val superclass = classesByName[superclassName] ?: return null
+        return superclass.findDeclaredMethod(name, descriptor)
+            ?: findSuperclassMethod(superclass.superclassName, name, descriptor)
     }
 
     private fun String.isArrayClassName(): Boolean = startsWith("[")
