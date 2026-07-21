@@ -1035,6 +1035,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `GetObjectArrayElement` reads nullable guest reference array elements into local object handles and rejects primitive arrays or out-of-bounds indexes | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetObjectArrayElement*` | IMPLEMENTED |
 | Simulated JNI | `SetObjectArrayElement` writes nullable guest reference array elements and rejects primitive arrays, out-of-bounds indexes, or non-assignable values | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.SetObjectArrayElement*` | IMPLEMENTED |
 | Simulated JNI | `GetObjectArrayRegion` copies nullable guest reference array ranges into local object handles and rejects primitive arrays or invalid ranges | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetObjectArrayRegion*` | IMPLEMENTED |
+| Simulated JNI | `SetObjectArrayRegion` writes nullable local handles into guest reference array ranges and rejects primitive arrays, invalid ranges, or non-assignable values | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.SetObjectArrayRegion*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 

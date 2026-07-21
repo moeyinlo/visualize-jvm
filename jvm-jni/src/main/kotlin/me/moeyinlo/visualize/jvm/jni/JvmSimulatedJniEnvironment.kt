@@ -260,6 +260,18 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun setObjectArrayRegion(
+        arrayHandle: JvmJniHandleId,
+        start: Int,
+        values: List<JvmJniHandleId?>,
+    ) {
+        val array = resolveReferenceArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, values.size)
+        values.forEachIndexed { offset, valueHandle ->
+            setObjectArrayElement(arrayHandle, start + offset, valueHandle)
+        }
+    }
+
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
