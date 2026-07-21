@@ -243,6 +243,17 @@ class JvmHeap {
         }
     }
 
+    fun shallowClone(reference: JvmObjectReferenceValue): JvmObjectReferenceValue {
+        val heapObject = get(reference)
+        val clonedReference = allocate(
+            heapObject.copy(payload = heapObject.payload.shallowClonePayload()),
+        )
+        instanceFields[reference.referenceId]?.let { fields ->
+            instanceFields[clonedReference.referenceId] = fields.toMap(linkedMapOf())
+        }
+        return clonedReference
+    }
+
     fun get(reference: JvmObjectReferenceValue): JvmHeapObject =
         objects[reference.referenceId]
             ?: throw JvmHeapAccessException("Unknown heap reference ${reference.referenceId}")
@@ -275,3 +286,21 @@ class JvmHeap {
 }
 
 class JvmHeapAccessException(message: String) : IllegalStateException(message)
+
+private fun JvmHeapPayload.shallowClonePayload(): JvmHeapPayload =
+    when (this) {
+        is JvmBooleanArrayPayload -> JvmBooleanArrayPayload(elements.toMutableList())
+        is JvmByteArrayPayload -> JvmByteArrayPayload(elements.toMutableList())
+        is JvmCharArrayPayload -> JvmCharArrayPayload(elements.toMutableList())
+        is JvmClassPayload -> copy()
+        is JvmDoubleArrayPayload -> JvmDoubleArrayPayload(elements.toMutableList())
+        is JvmFloatArrayPayload -> JvmFloatArrayPayload(elements.toMutableList())
+        is JvmIntArrayPayload -> JvmIntArrayPayload(elements.toMutableList())
+        is JvmLongArrayPayload -> JvmLongArrayPayload(elements.toMutableList())
+        is JvmMethodHandlePayload -> copy()
+        is JvmMethodTypePayload -> copy()
+        JvmHeapPayload.None -> JvmHeapPayload.None
+        is JvmReferenceArrayPayload -> JvmReferenceArrayPayload(elements.toMutableList())
+        is JvmShortArrayPayload -> JvmShortArrayPayload(elements.toMutableList())
+        is JvmStringPayload -> copy()
+    }

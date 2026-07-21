@@ -174,4 +174,39 @@ class JvmHeapTest {
             heap.get(distinct),
         )
     }
+
+    @Test
+    fun `heap shallow clones objects with copied instance fields`() {
+        val heap = JvmHeap()
+        val original = heap.allocateObject("Example")
+        val counter = JvmFieldReference(ownerClassName = "Example", name = "counter", descriptor = "I")
+        val child = JvmFieldReference(ownerClassName = "Example", name = "child", descriptor = "LChild;")
+        val childReference = heap.allocateObject("Child")
+        heap.putInstanceField(original, counter, JvmIntValue(42))
+        heap.putInstanceField(original, child, childReference)
+
+        val cloned = heap.shallowClone(original)
+
+        assertNotEquals(original, cloned)
+        assertEquals(JvmHeapObject("Example"), heap.get(cloned))
+        assertEquals(JvmIntValue(42), heap.getInstanceField(cloned, counter))
+        assertEquals(childReference, heap.getInstanceField(cloned, child))
+    }
+
+    @Test
+    fun `heap shallow clones arrays with independent element storage`() {
+        val heap = JvmHeap()
+        val original = heap.allocateIntArray(2)
+        val originalPayload = heap.get(original).payload as JvmIntArrayPayload
+        originalPayload.elements[0] = 3
+        originalPayload.elements[1] = 4
+
+        val cloned = heap.shallowClone(original)
+
+        assertNotEquals(original, cloned)
+        val clonedPayload = heap.get(cloned).payload as JvmIntArrayPayload
+        assertEquals(mutableListOf(3, 4), clonedPayload.elements)
+        originalPayload.elements[1] = 9
+        assertEquals(mutableListOf(3, 4), clonedPayload.elements)
+    }
 }

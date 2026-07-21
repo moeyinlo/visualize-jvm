@@ -117,6 +117,12 @@ object JvmVmIntrinsics {
         descriptor = "()I",
         isStatic = false,
     )
+    private val ObjectCloneKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Object",
+        name = "clone",
+        descriptor = "()Ljava/lang/Object;",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -130,9 +136,23 @@ object JvmVmIntrinsics {
         context.heap.get(receiver)
         JvmIntValue(receiver.referenceId.value)
     }
+    private val ObjectClone = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Object.clone intrinsic requires a receiver")
+        val receiverClassName = context.heap.get(receiver).className
+        if (!receiverClassName.startsWith("[") &&
+            !context.classHierarchy.isAssignable(receiverClassName, "java/lang/Cloneable")
+        ) {
+            throw JvmUnsupportedInstructionException(
+                "Object.clone intrinsic requires Cloneable receiver, got $receiverClassName",
+            )
+        }
+        context.heap.shallowClone(receiver)
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
         ObjectHashCodeKey to ObjectHashCode,
+        ObjectCloneKey to ObjectClone,
     )
 }

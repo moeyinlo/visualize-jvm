@@ -1,8 +1,11 @@
 ﻿package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
@@ -114,6 +117,87 @@ class JvmVmIntrinsicsTest {
         }
     }
 
+    @Test
+    fun `Object clone intrinsic shallow clones Cloneable guest objects`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Example")
+        val field = JvmFieldReference(ownerClassName = "Example", name = "counter", descriptor = "I")
+        heap.putInstanceField(receiver, field, JvmIntValue(42))
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectCloneMethod())
+            ?: error("Object.clone intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        interfaceNames = listOf("java/lang/Cloneable"),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+
+        assertNotEquals(receiver, result)
+        assertEquals("Example", heap.get(result).className)
+        assertEquals(JvmIntValue(42), heap.getInstanceField(result, field))
+    }
+
+    @Test
+    fun `Object clone intrinsic shallow clones guest arrays`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateIntArray(2)
+        val originalPayload = heap.get(receiver).payload as JvmIntArrayPayload
+        originalPayload.elements[0] = 3
+        originalPayload.elements[1] = 4
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectCloneMethod())
+            ?: error("Object.clone intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = null,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+
+        assertNotEquals(receiver, result)
+        val clonedPayload = heap.get(result).payload as JvmIntArrayPayload
+        assertEquals(mutableListOf(3, 4), clonedPayload.elements)
+        originalPayload.elements[1] = 9
+        assertEquals(mutableListOf(3, 4), clonedPayload.elements)
+    }
+
+    @Test
+    fun `Object clone intrinsic rejects non Cloneable guest objects`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Example")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectCloneMethod())
+            ?: error("Object.clone intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition(internalName = "Example"))),
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+        )
+
+        assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(
+                context,
+                JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+            )
+        }
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -126,6 +210,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Object",
         name = "hashCode",
         descriptor = "()I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun objectCloneMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Object",
+        name = "clone",
+        descriptor = "()Ljava/lang/Object;",
         isStatic = false,
         isNative = true,
     )
