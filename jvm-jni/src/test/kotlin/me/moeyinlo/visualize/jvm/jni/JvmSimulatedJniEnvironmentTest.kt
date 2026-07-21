@@ -21,6 +21,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
@@ -3879,6 +3880,35 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<IllegalArgumentException> {
             environment.newCharArray(-1)
+        }
+    }
+
+    @Test
+    fun `NewShortArray allocates a zero filled guest short array`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+
+        val arrayHandle = environment.newShortArray(3)
+
+        val arrayObject = heap.get(handles.resolveObject(arrayHandle))
+        assertEquals("[S", arrayObject.className)
+        assertEquals(
+            JvmShortArrayPayload(mutableListOf(0.toShort(), 0.toShort(), 0.toShort())),
+            arrayObject.payload,
+        )
+    }
+
+    @Test
+    fun `NewShortArray rejects negative lengths`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        assertFailsWith<IllegalArgumentException> {
+            environment.newShortArray(-1)
         }
     }
 

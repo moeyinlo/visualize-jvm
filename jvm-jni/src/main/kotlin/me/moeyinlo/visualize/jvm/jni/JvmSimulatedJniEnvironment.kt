@@ -194,6 +194,9 @@ class JvmSimulatedJniEnvironment(
     fun newCharArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateCharArray(length))
 
+    fun newShortArray(length: Int): JvmJniHandleId =
+        handles.newObjectHandle(heap.allocateShortArray(length))
+
     fun newObjectArray(
         length: Int,
         elementClassHandle: JvmJniHandleId,
