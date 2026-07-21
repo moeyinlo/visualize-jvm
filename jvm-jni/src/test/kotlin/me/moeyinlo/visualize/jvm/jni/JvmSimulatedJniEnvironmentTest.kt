@@ -1919,4 +1919,73 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `SetShortField writes a guest short instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "narrow",
+                                descriptor = "S",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "narrow", "S")
+
+        environment.setShortField(objectHandle, fieldHandle, -5678)
+
+        assertEquals(
+            JvmShortValue(-5678),
+            heap.getInstanceField(
+                objectReference,
+                JvmFieldReference(ownerClassName = "Example", name = "narrow", descriptor = "S"),
+            ),
+        )
+    }
+
+    @Test
+    fun `SetShortField rejects non short guest field handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "value", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.setShortField(objectHandle, fieldHandle, -5678)
+        }
+    }
+
 }
