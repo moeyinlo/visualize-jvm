@@ -31,6 +31,7 @@ object DebuggerControlBarModel {
 
 class DebuggerControlBar(
     buttons: List<DebuggerControlButton> = DebuggerControlBarModel.initialButtons(),
+    onAction: (DebuggerControlAction) -> Unit = {},
 ) : HBox() {
     init {
         spacing = 8.0
@@ -39,6 +40,7 @@ class DebuggerControlBar(
             Button(button.label).apply {
                 isDisable = !button.enabled
                 userData = button.action
+                setOnAction { onAction(button.action) }
             }
         }
     }
