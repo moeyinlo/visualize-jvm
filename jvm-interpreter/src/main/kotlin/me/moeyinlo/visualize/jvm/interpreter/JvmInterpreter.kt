@@ -3467,6 +3467,7 @@ object JvmInterpreter {
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
+        requireVoidConstructorForInvokeSpecial(resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
         val methodCode = resolvedMethod.code
             ?: throw JvmUnsupportedInstructionException(
@@ -3979,6 +3980,16 @@ object JvmInterpreter {
             message = "Expected instance method " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor} " +
                 "for ${instruction.metadata.mnemonic}",
+        )
+    }
+
+    private fun requireVoidConstructorForInvokeSpecial(method: JvmResolvedMethod) {
+        if (method.name != "<init>" || method.descriptor.methodReturnDescriptor() == "V") {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Constructor ${method.ownerClassName}.${method.name}:${method.descriptor} " +
+                "must have a void descriptor for invokespecial",
         )
     }
 

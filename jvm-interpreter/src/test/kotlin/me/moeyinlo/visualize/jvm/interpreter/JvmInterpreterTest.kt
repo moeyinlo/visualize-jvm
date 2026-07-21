@@ -3702,6 +3702,62 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial rejects constructor descriptors that do not return void`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateUninitializedObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB7.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<init>",
+                                    descriptor = "()I",
+                                    isStatic = false,
+                                    code = byteArrayOf(
+                                        0x04.toByte(),
+                                        0xAC.toByte(),
+                                    ),
+                                    maxStack = 1,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                currentClassName = "Owner",
+            )
+        }
+
+        assertEquals("Constructor Owner.<init>:()I must have a void descriptor for invokespecial", exception.message)
+        assertFalse(heap.isInitialized(receiver))
+    }
+
+    @Test
     fun `anewarray allocates a reference array with default null values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(
