@@ -3616,6 +3616,13 @@ object JvmInterpreter {
         requireInstanceMethod(instruction, resolvedMethod)
         requireVoidConstructorForInvokeSpecial(resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        if (resolvedMethod.isNative) {
+            throw JvmUnsatisfiedLinkError(
+                guestClassName = "java/lang/UnsatisfiedLinkError",
+                message = "Native method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} is not linked for ${instruction.metadata.mnemonic}",
+            )
+        }
         val methodCode = resolvedMethod.code
             ?: throw JvmUnsupportedInstructionException(
                 "Resolved instance method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
