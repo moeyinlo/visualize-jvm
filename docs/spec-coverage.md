@@ -26,7 +26,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.4 | Null and non-null reference runtime value model | `jvm-runtime` | `JvmReferenceValueTest` | IMPLEMENTED |
 | 2.5.1 | pc register model stores Java bytecode offsets and explicit native-method undefined state | `jvm-runtime` | `JvmProgramCounterTest` | IMPLEMENTED |
 | 2.5.2 | Per-thread JVM stack model stores frames in LIFO order and reports configured stack overflow or empty-stack underflow | `jvm-runtime` | `JvmThreadStackTest` | IMPLEMENTED |
-| 2.5.3 | Heap | `jvm-runtime` | TBD | PENDING |
+| 2.5.3 | Heap stores guest objects and arrays behind opaque references with VM-owned payload and field state | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.3, 2.7 | Guest heap object allocation with opaque positive object references | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.3, 2.7 | Guest `java/lang/String` heap objects retain VM-owned string payloads | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.3, 2.7 | Guest `java/lang/Class` mirror objects retain the represented class name and are interned by name | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
