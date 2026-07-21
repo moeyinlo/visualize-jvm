@@ -256,6 +256,9 @@ class JvmSimulatedJniEnvironment(
     fun newCharArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateCharArray(length))
 
+    fun getCharArrayElements(arrayHandle: JvmJniHandleId): CharArray =
+        resolveCharArray(arrayHandle).elements.toCharArray()
+
     fun getCharArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): CharArray {
         val array = resolveCharArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)

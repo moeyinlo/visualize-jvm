@@ -4915,6 +4915,37 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetCharArrayElements returns a copied guest char array buffer`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newCharArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmCharArrayPayload
+        payload.elements[0] = 'a'
+        payload.elements[2] = '\uD83D'
+
+        val result = environment.getCharArrayElements(arrayHandle)
+
+        assertContentEquals(charArrayOf('a', '\u0000', '\uD83D'), result)
+        result[0] = 'z'
+        assertEquals('a', payload.elements[0])
+    }
+
+    @Test
+    fun `GetCharArrayElements rejects non char arrays`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newByteArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getCharArrayElements(wrongArrayHandle)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
