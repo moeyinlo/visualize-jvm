@@ -324,6 +324,9 @@ class JvmSimulatedJniEnvironment(
     fun newIntArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateIntArray(length))
 
+    fun getIntArrayElements(arrayHandle: JvmJniHandleId): IntArray =
+        resolveIntArray(arrayHandle).elements.toIntArray()
+
     fun getIntArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): IntArray {
         val array = resolveIntArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)

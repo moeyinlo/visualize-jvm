@@ -5101,6 +5101,37 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetIntArrayElements returns a copied guest int array buffer`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newIntArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmIntArrayPayload
+        payload.elements[0] = -7
+        payload.elements[2] = 12
+
+        val result = environment.getIntArrayElements(arrayHandle)
+
+        assertContentEquals(intArrayOf(-7, 0, 12), result)
+        result[0] = 99
+        assertEquals(-7, payload.elements[0])
+    }
+
+    @Test
+    fun `GetIntArrayElements rejects non int arrays`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newLongArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getIntArrayElements(wrongArrayHandle)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
