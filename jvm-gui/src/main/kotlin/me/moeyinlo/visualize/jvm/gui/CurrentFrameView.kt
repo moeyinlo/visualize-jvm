@@ -8,6 +8,12 @@ data class CurrentFrameSnapshot(
     val methodName: String,
     val descriptor: String,
     val pc: Int,
+    val locals: List<LocalVariableSnapshot> = emptyList(),
+)
+
+data class LocalVariableSnapshot(
+    val slot: Int,
+    val value: String,
 )
 
 data class CurrentFrameModel(
