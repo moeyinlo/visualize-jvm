@@ -3753,7 +3753,7 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         heap: JvmHeap,
     ) {
-        operandStack.push(heap.allocateObject(resolveConstantClassName(instruction, constantPool)))
+        operandStack.push(heap.allocateUninitializedObject(resolveConstantClassName(instruction, constantPool)))
     }
 
     private fun executeANewArray(

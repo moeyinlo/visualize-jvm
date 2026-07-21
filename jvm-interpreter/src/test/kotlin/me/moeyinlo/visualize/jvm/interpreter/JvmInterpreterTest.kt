@@ -54,6 +54,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 
 class JvmInterpreterTest {
     @Test
@@ -3643,6 +3644,7 @@ class JvmInterpreterTest {
         assertEquals(listOf(reference), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
         assertEquals("example/Foo", heap.get(reference).className)
+        assertFalse(heap.isInitialized(reference))
     }
 
     @Test
