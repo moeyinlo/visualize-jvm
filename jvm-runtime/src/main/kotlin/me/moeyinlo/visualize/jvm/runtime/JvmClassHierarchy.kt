@@ -63,6 +63,9 @@ class JvmClassHierarchy(
 
     fun hasClass(internalName: String): Boolean = internalName in classesByName
 
+    fun directSuperclassName(internalName: String): String? =
+        classesByName[internalName]?.superclassName
+
     fun isAssignable(sourceClassName: String, targetClassName: String): Boolean {
         if (sourceClassName == targetClassName || targetClassName == "java/lang/Object") {
             return true

@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.runtime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class JvmMethodResolutionTest {
     @Test
@@ -91,6 +92,28 @@ class JvmMethodResolutionTest {
 
         assertEquals("java/lang/NoSuchMethodError", exception.guestClassName)
         assertEquals("Example.<init>:()V", exception.message)
+    }
+
+    @Test
+    fun `class hierarchy exposes only the direct superclass name`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    superclassName = "Parent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    superclassName = "Grandparent",
+                ),
+                JvmClassDefinition(internalName = "Grandparent"),
+            ),
+        )
+
+        assertEquals("Parent", hierarchy.directSuperclassName("Example"))
+        assertEquals("Grandparent", hierarchy.directSuperclassName("Parent"))
+        assertNull(hierarchy.directSuperclassName("Grandparent"))
+        assertNull(hierarchy.directSuperclassName("Missing"))
     }
 
     @Test
