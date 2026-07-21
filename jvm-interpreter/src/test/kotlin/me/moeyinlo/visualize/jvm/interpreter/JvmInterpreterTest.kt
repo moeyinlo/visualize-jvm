@@ -12417,6 +12417,62 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial passes and returns category two long values`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 3)
+        callerLocals.store(0, receiver)
+        callerLocals.store(1, JvmLongValue(42L))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x1F.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("echo", "echo".encodeToByteArray()),
+                    ConstantUtf8Entry("(J)J", "(J)J".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "echo",
+                                descriptor = "(J)J",
+                                isStatic = false,
+                                code = byteArrayOf(
+                                    0x1F.toByte(),
+                                    0xAD.toByte(),
+                                ),
+                                maxStack = 2,
+                                maxLocals = 3,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmLongValue(42L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
