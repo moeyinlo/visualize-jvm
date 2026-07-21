@@ -3606,4 +3606,56 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetStringUTFChars returns copied modified UTF-8 bytes for guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(
+            heap.allocateString("\u0000A\u00a2\u20ac\ud83d\ude00"),
+        )
+
+        val result = environment.getStringUtfChars(stringHandle)
+
+        assertContentEquals(
+            byteArrayOf(
+                0xc0.toByte(), 0x80.toByte(),
+                0x41,
+                0xc2.toByte(), 0xa2.toByte(),
+                0xe2.toByte(), 0x82.toByte(), 0xac.toByte(),
+                0xed.toByte(), 0xa0.toByte(), 0xbd.toByte(),
+                0xed.toByte(), 0xb8.toByte(), 0x80.toByte(),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun `GetStringUTFChars rejects non string guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+
+        assertFailsWith<JvmJniStringAccessException> {
+            environment.getStringUtfChars(objectHandle)
+        }
+    }
+
 }

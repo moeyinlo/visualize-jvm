@@ -144,14 +144,10 @@ class JvmSimulatedJniEnvironment(
         resolveStringValue(stringHandle).toCharArray()
 
     fun getStringUtfLength(stringHandle: JvmJniHandleId): Int =
-        resolveStringValue(stringHandle).sumOf { codeUnit ->
-            when (codeUnit.code) {
-                0 -> 2
-                in 1..0x7f -> 1
-                in 0x80..0x7ff -> 2
-                else -> 3
-            }
-        }
+        getStringUtfChars(stringHandle).size
+
+    fun getStringUtfChars(stringHandle: JvmJniHandleId): ByteArray =
+        encodeModifiedUtf8(resolveStringValue(stringHandle))
 
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
@@ -919,6 +915,30 @@ class JvmSimulatedJniEnvironment(
             ),
             value,
         )
+    }
+
+    private fun encodeModifiedUtf8(value: String): ByteArray {
+        val bytes = mutableListOf<Byte>()
+        value.forEach { codeUnit ->
+            val code = codeUnit.code
+            when (code) {
+                0 -> {
+                    bytes += 0xc0.toByte()
+                    bytes += 0x80.toByte()
+                }
+                in 1..0x7f -> bytes += code.toByte()
+                in 0x80..0x7ff -> {
+                    bytes += (0xc0 or (code shr 6)).toByte()
+                    bytes += (0x80 or (code and 0x3f)).toByte()
+                }
+                else -> {
+                    bytes += (0xe0 or (code shr 12)).toByte()
+                    bytes += (0x80 or ((code shr 6) and 0x3f)).toByte()
+                    bytes += (0x80 or (code and 0x3f)).toByte()
+                }
+            }
+        }
+        return bytes.toByteArray()
     }
 
     private fun resolveStringValue(stringHandle: JvmJniHandleId): String {
