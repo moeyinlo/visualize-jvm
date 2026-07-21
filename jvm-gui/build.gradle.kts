@@ -14,4 +14,5 @@ application {
 
 dependencies {
     implementation(project(":jvm-classfile"))
+    implementation(project(":jvm-interpreter"))
 }

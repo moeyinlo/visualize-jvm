@@ -8,10 +8,12 @@ class VisualizeJvmRootView(
     val projectClasspathPanel: ProjectClasspathPanel = ProjectClasspathPanel(project)
     val classTreeView: ClassTreeView = ClassTreeView(ClassTreeModel.fromClasspathEntries(project.classpathEntries))
     val memberListView: MemberListView = MemberListView()
+    val bytecodeInstructionView: BytecodeInstructionView = BytecodeInstructionView()
 
     init {
         left = projectClasspathPanel
         center = classTreeView
         right = memberListView
+        bottom = bytecodeInstructionView
     }
 }
