@@ -7331,6 +7331,62 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putfield throws guest IllegalAccessError for protected fields from non subclass in another package`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("pkg/Owner")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x04.toByte(),
+                    0xB5.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("guarded", "guarded".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Owner",
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "guarded",
+                                    descriptor = "I",
+                                    isStatic = false,
+                                    isProtected = true,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals(
+            "Class other/Caller cannot access protected field pkg/Owner.guarded:I",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `putfield stores category two long value into object instance field`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("Example")
