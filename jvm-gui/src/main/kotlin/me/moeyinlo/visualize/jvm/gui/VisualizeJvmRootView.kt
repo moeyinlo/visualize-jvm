@@ -23,6 +23,7 @@ class VisualizeJvmRootView(
     val monitorEventsView: MonitorEventsView = MonitorEventsView()
     val dynamicLinkageEventsView: DynamicLinkageEventsView = DynamicLinkageEventsView()
     val hostDelegationEventsView: HostDelegationEventsView = HostDelegationEventsView()
+    val nativeIntrinsicFramesView: NativeIntrinsicFramesView = NativeIntrinsicFramesView()
 
     init {
         top = VBox(debuggerControlBar, constantPoolView)
@@ -38,6 +39,7 @@ class VisualizeJvmRootView(
             monitorEventsView,
             dynamicLinkageEventsView,
             hostDelegationEventsView,
+            nativeIntrinsicFramesView,
         )
         bottom = bytecodeInstructionView
     }
