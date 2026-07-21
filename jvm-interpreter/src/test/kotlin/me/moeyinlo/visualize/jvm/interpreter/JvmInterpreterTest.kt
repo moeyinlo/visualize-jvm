@@ -12509,6 +12509,68 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual executes bound native intrinsic methods`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x06.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)I", "(I)I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeValue",
+                                descriptor = "(I)I",
+                                isStatic = false,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey(
+                    ownerClassName = "Owner",
+                    name = "nativeValue",
+                    descriptor = "(I)I",
+                    isStatic = false,
+                ) to JvmNativeMethodIntrinsic { _, invocation ->
+                    assertEquals(receiver, invocation.receiver)
+                    assertEquals(listOf(JvmIntValue(3)), invocation.arguments)
+                    JvmIntValue(7)
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokevirtual passes int arguments into callee locals after receiver`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")
