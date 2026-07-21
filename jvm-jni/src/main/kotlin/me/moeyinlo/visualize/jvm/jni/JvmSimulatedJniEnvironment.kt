@@ -37,4 +37,24 @@ class JvmSimulatedJniEnvironment(
         }
         return handles.newMethodIdHandle(method)
     }
+
+    fun getMethodId(
+        classHandle: JvmJniHandleId,
+        name: String,
+        descriptor: String,
+    ): JvmJniHandleId {
+        val className = handles.resolveClass(classHandle)
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = className,
+            name = name,
+            descriptor = descriptor,
+        )
+        if (method.isStatic) {
+            throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$className.$name:$descriptor",
+            )
+        }
+        return handles.newMethodIdHandle(method)
+    }
 }

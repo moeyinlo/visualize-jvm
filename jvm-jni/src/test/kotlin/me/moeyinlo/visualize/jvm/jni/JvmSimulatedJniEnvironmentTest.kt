@@ -102,4 +102,68 @@ class JvmSimulatedJniEnvironmentTest {
             environment.getStaticMethodId(classHandle, "instanceOnly", "()I")
         }
     }
+
+    @Test
+    fun `GetMethodID returns a method handle for loaded instance guest methods`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "value",
+                                descriptor = "()I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+
+        val methodHandle = environment.getMethodId(classHandle, "value", "()I")
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+            ),
+            handles.resolveMethodId(methodHandle),
+        )
+    }
+
+    @Test
+    fun `GetMethodID throws guest NoSuchMethodError for missing or static methods`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "staticOnly",
+                                descriptor = "()I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val classHandle = environment.findClass("Example")
+
+        assertFailsWith<JvmNoSuchMethodError> {
+            environment.getMethodId(classHandle, "missing", "()I")
+        }
+        assertFailsWith<JvmNoSuchMethodError> {
+            environment.getMethodId(classHandle, "staticOnly", "()I")
+        }
+    }
+
 }

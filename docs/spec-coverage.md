@@ -981,6 +981,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | JNI handles represent guest objects, classes, methods, and fields | `jvm-jni`, `jvm-runtime` | `JvmJniHandleTableTest` | IMPLEMENTED |
 | Simulated JNI | `FindClass` resolves loaded guest classes to `jclass` handles and throws guest `NoClassDefFoundError` for misses | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest` | IMPLEMENTED |
 | Simulated JNI | `GetStaticMethodID` resolves static guest methods from a `jclass` handle into `jmethodID` handles and rejects misses or instance methods | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest` | IMPLEMENTED |
+| Simulated JNI | `GetMethodID` resolves instance guest methods from a `jclass` handle into `jmethodID` handles and rejects misses or static methods | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 
