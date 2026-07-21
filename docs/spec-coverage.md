@@ -1146,6 +1146,26 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | JNI refs, strings, arrays, fields, and monitors mutate one shared guest state across helper families | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.JNI data helpers mutate one guest state for refs strings arrays fields and monitors` | IMPLEMENTED |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 
+## Documentation and Audit Coverage
+
+These rows are project-level coverage artifacts that cross-reference normative JVMS work with implementation modules. They do not replace the chapter rows above; they make the final implementation/audit surface explicit.
+
+| Area | Requirement | Module / artifact | Tests / validation | Status |
+| --- | --- | --- | --- | --- |
+| Architecture | Module responsibilities and dependency boundaries for the full JVMS implementation are documented | `docs/module-architecture.md` | `gradlew build`, manual doc review | IMPLEMENTED |
+| Public API | Engine-facing API surface for class loading, verification, execution, events, host, native, and JNI is documented | `docs/public-engine-api.md` | `gradlew build`, manual doc review | IMPLEMENTED |
+| Events | Ordered event stream contract for GUI/debugger observation is documented | `docs/event-stream-contract.md` | `gradlew build`, manual doc review | IMPLEMENTED |
+| Classfile | Parser/writer/attribute/classfile coverage design is documented | `docs/classfile-coverage.md` | `AttributeParserCoverageTest`, `MalformedClassfileCorpusTest`, `ClassFileJavapDifferentialTest` | IMPLEMENTED |
+| Verifier | JVMS 4.10 verifier pipeline, models, gates, and known gaps are documented | `docs/verifier-design.md` | `VerifierRuleCoverageTest`, `gradlew build` | IMPLEMENTED |
+| Interpreter | Bytecode execution pipeline, opcode gates, invocation/native interaction, and known gaps are documented | `docs/interpreter-design.md` | `OpcodeTableCoverageTest`, `OpcodeExecutionCoverageTest`, HotSpot differential corpus | IMPLEMENTED |
+| Host delegation | Default-interpreted host delegation policy, opaque event boundary, and bridge constraints are documented | `docs/host-delegation-policy.md` | `HostDelegationEventsView` model tests as they are added, `gradlew build` | IMPLEMENTED |
+| Native resolver | Intrinsic-then-simulated-JNI native resolver layering is documented | `docs/layered-native-resolver.md` | `NativeResolverCoverageTest`, `JvmVmIntrinsicsTest`, `JvmPanamaDowncallBackendTest` | IMPLEMENTED |
+| Simulated JNI | Guest-scoped JNI environment, handle model, helper families, and upcall rule are documented | `docs/simulated-jni-architecture.md` | `SimulatedJniCoverageTest`, `JvmSimulatedJniEnvironmentTest` | IMPLEMENTED |
+| GUI | Import, inspection, debugging, event, host/native/JNI visualization workflow is documented | `docs/gui-workflow.md` | `JavaFX smoke test harness` planned, `gradlew build` | IMPLEMENTED |
+| Coverage gates | Parser, opcode, verifier, loading/linking/init, native resolver, simulated JNI, malformed, and differential corpus gates are tracked | `docs/spec-coverage.md` and module coverage tests | `gradlew build` | IMPLEMENTED |
+| Unsupported paths | Unsupported normative paths have an explicit audit step before final completion | `docs/spec-coverage.md`, future audit report | Step 330 | PENDING |
+| Final validation | Full build and smoke suite prove the final committed plan state | repository root | Step 331 | PENDING |
+
 ## Final Gate
 
 The project is not complete until every non-`N/A` row is at least `IMPLEMENTED`, and every row with an external comparison surface is `DIFFERENTIAL`.
