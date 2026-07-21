@@ -5966,4 +5966,68 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(1, monitors.holdCount(objectReference, "owner-thread"))
     }
 
+    @Test
+    fun `JNI data helpers mutate one guest state for refs strings arrays fields and monitors`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val monitors = JvmMonitorState()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = false),
+                            JvmFieldDefinition(name = "child", descriptor = "LChild;", isStatic = false),
+                            JvmFieldDefinition(name = "shared", descriptor = "I", isStatic = true),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Child"),
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "jni-thread",
+        )
+        val objectReference = heap.allocateObject("Example")
+        val childReference = heap.allocateObject("Child")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val childHandle = handles.newObjectHandle(childReference)
+        val exampleClassHandle = environment.findClass("Example")
+        val childClassHandle = environment.findClass("Child")
+        val counterFieldHandle = environment.getFieldId(exampleClassHandle, "counter", "I")
+        val childFieldHandle = environment.getFieldId(exampleClassHandle, "child", "LChild;")
+        val sharedFieldHandle = environment.getStaticFieldId(exampleClassHandle, "shared", "I")
+
+        val stringHandle = environment.newStringUtf("guest")
+        assertEquals(5, environment.getStringLength(stringHandle))
+        assertContentEquals(charArrayOf('g', 'u', 'e', 's', 't'), environment.getStringChars(stringHandle))
+
+        environment.setIntField(objectHandle, counterFieldHandle, 42)
+        environment.setObjectField(objectHandle, childFieldHandle, childHandle)
+        environment.setStaticIntField(exampleClassHandle, sharedFieldHandle, 7)
+
+        assertEquals(42, environment.getIntField(objectHandle, counterFieldHandle))
+        assertEquals(childReference, handles.resolveObject(environment.getObjectField(objectHandle, childFieldHandle)!!))
+        assertEquals(7, environment.getStaticIntField(exampleClassHandle, sharedFieldHandle))
+
+        val objectArrayHandle = environment.newObjectArray(2, childClassHandle, null)
+        environment.setObjectArrayRegion(objectArrayHandle, start = 0, values = listOf(childHandle, null))
+        assertEquals(childReference, handles.resolveObject(environment.getObjectArrayElement(objectArrayHandle, 0)!!))
+        assertEquals(null, environment.getObjectArrayElement(objectArrayHandle, 1))
+
+        val intArrayHandle = environment.newIntArray(2)
+        environment.setIntArrayRegion(intArrayHandle, start = 0, values = intArrayOf(3, 4))
+        val intElements = environment.getIntArrayElements(intArrayHandle)
+        intElements[1] = 9
+        environment.releaseIntArrayElements(intArrayHandle, intElements)
+        assertContentEquals(intArrayOf(3, 9), environment.getIntArrayRegion(intArrayHandle, start = 0, length = 2))
+
+        assertEquals(1, environment.monitorEnter(objectHandle))
+        assertEquals(0, environment.monitorExit(objectHandle))
+        assertEquals(0, monitors.holdCount(objectReference, "jni-thread"))
+    }
+
 }
