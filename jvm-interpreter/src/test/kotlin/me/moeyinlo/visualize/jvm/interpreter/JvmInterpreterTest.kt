@@ -3758,6 +3758,59 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial rejects constructor calls on initialized receivers`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB7.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<init>",
+                                    descriptor = "()V",
+                                    isStatic = false,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                currentClassName = "Owner",
+            )
+        }
+
+        assertEquals("Constructor Owner.<init>:()V receiver is already initialized", exception.message)
+        assertTrue(heap.isInitialized(receiver))
+    }
+
+    @Test
     fun `anewarray allocates a reference array with default null values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(

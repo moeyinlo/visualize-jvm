@@ -3516,6 +3516,7 @@ object JvmInterpreter {
                     "$receiverClassName is not assignable to ${resolvedMethod.ownerClassName}",
             )
         }
+        requireConstructorReceiverUninitialized(resolvedMethod, objectref, heap)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
 
         calleeLocals.store(0, objectref)
@@ -3990,6 +3991,19 @@ object JvmInterpreter {
         throw JvmUnsupportedInstructionException(
             "Constructor ${method.ownerClassName}.${method.name}:${method.descriptor} " +
                 "must have a void descriptor for invokespecial",
+        )
+    }
+
+    private fun requireConstructorReceiverUninitialized(
+        method: JvmResolvedMethod,
+        objectref: JvmObjectReferenceValue,
+        heap: JvmHeap,
+    ) {
+        if (method.name != "<init>" || !heap.isInitialized(objectref)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Constructor ${method.ownerClassName}.${method.name}:${method.descriptor} receiver is already initialized",
         )
     }
 
