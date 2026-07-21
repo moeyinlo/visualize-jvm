@@ -376,6 +376,7 @@ object JvmInterpreter {
                 heap,
                 classHierarchy,
                 staticFields,
+                currentClassName,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
@@ -3380,9 +3381,11 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
+        requireAccessibleMethod(resolvedMethod, currentClassName)
         val methodCode = resolvedMethod.code
             ?: throw JvmUnsupportedInstructionException(
                 "Resolved static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
@@ -3849,7 +3852,20 @@ object JvmInterpreter {
             message = "Expected static method " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor} " +
                 "for ${instruction.metadata.mnemonic}",
-        )
+            )
+    }
+
+    private fun requireAccessibleMethod(
+        method: JvmResolvedMethod,
+        currentClassName: String?,
+    ) {
+        if (method.isPrivate && currentClassName != null && currentClassName != method.ownerClassName) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access private method " +
+                    "${method.ownerClassName}.${method.name}:${method.descriptor}",
+            )
+        }
     }
 
     private fun resolveRuntimeMethodReference(
