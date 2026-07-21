@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.gui
 
 import javafx.scene.layout.BorderPane
+import javafx.scene.layout.VBox
 
 class VisualizeJvmRootView(
     project: JvmGuiProjectModel = JvmGuiProjectModel(),
@@ -10,9 +11,10 @@ class VisualizeJvmRootView(
     val memberListView: MemberListView = MemberListView()
     val bytecodeInstructionView: BytecodeInstructionView = BytecodeInstructionView()
     val constantPoolView: ConstantPoolView = ConstantPoolView()
+    val debuggerControlBar: DebuggerControlBar = DebuggerControlBar()
 
     init {
-        top = constantPoolView
+        top = VBox(debuggerControlBar, constantPoolView)
         left = projectClasspathPanel
         center = classTreeView
         right = memberListView
