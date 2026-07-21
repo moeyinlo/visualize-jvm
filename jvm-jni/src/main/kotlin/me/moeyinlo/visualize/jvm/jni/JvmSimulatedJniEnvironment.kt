@@ -607,6 +607,30 @@ class JvmSimulatedJniEnvironment(
         )
     }
 
+    fun getStaticBooleanField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Boolean {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "Z" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetStaticBooleanField requires a static boolean field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = staticFields.get(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return when (value) {
+            is JvmBooleanValue -> value.value
+            is JvmIntValue -> value.value != 0
+            else -> throw JvmJniFieldAccessException(
+                "GetStaticBooleanField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
