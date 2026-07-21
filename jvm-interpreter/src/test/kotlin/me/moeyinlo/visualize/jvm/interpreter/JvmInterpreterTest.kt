@@ -12357,6 +12357,66 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial rejects object returns that are not assignable to reference descriptors`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB7.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("self", "self".encodeToByteArray()),
+                        ConstantUtf8Entry("()Lpkg/Param;", "()Lpkg/Param;".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "self",
+                                    descriptor = "()Lpkg/Param;",
+                                    isStatic = false,
+                                    code = byteArrayOf(
+                                        0x2A.toByte(),
+                                        0xB0.toByte(),
+                                    ),
+                                    maxStack = 1,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(internalName = "pkg/Param"),
+                    ),
+                ),
+                currentClassName = "Caller",
+            )
+        }
+
+        assertEquals(
+            "Invalid invokespecial return for Owner.self:()Lpkg/Param; at offset 1: " +
+                "Owner is not assignable to pkg/Param",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
