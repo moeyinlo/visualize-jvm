@@ -24,7 +24,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.3.4 | `boolean` runtime value model stores true/false as category-one JVM values | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
 | 2.4 | Reference types and values | `jvm-runtime` | TBD | PENDING |
 | 2.4 | Null and non-null reference runtime value model | `jvm-runtime` | `JvmReferenceValueTest` | IMPLEMENTED |
-| 2.5.1 | pc register | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.5.1 | pc register model stores Java bytecode offsets and explicit native-method undefined state | `jvm-runtime` | `JvmProgramCounterTest` | IMPLEMENTED |
 | 2.5.2 | JVM stacks | `jvm-runtime` | TBD | PENDING |
 | 2.5.3 | Heap | `jvm-runtime` | TBD | PENDING |
 | 2.5.3, 2.7 | Guest heap object allocation with opaque positive object references | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
