@@ -31,6 +31,9 @@ data class JvmMethodDefinition(
     val name: String,
     val descriptor: String,
     val isStatic: Boolean,
+    val code: ByteArray? = null,
+    val maxStack: Int = 0,
+    val maxLocals: Int = 0,
 )
 
 data class JvmResolvedMethod(
@@ -38,6 +41,9 @@ data class JvmResolvedMethod(
     val name: String,
     val descriptor: String,
     val isStatic: Boolean,
+    val code: ByteArray? = null,
+    val maxStack: Int = 0,
+    val maxLocals: Int = 0,
 )
 
 class JvmClassHierarchy(
@@ -137,6 +143,9 @@ class JvmClassHierarchy(
                     name = method.name,
                     descriptor = method.descriptor,
                     isStatic = method.isStatic,
+                    code = method.code,
+                    maxStack = method.maxStack,
+                    maxLocals = method.maxLocals,
                 )
             }
 

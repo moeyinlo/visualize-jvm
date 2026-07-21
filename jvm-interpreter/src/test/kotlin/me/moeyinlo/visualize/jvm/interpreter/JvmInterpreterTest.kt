@@ -36,6 +36,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
@@ -10666,6 +10667,51 @@ class JvmInterpreterTest {
                 maxStack = 0,
             )
         }
+    }
+
+    @Test
+    fun `invokestatic executes no argument int returning static method`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "answer",
+                                descriptor = "()I",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x08.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
     }
 
     @Test

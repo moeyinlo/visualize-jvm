@@ -39,6 +39,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -46,6 +47,12 @@ import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
+)
+
+private data class JvmFrameExecutionResult(
+    val operandStack: JvmOperandStack,
+    val hasReturned: Boolean = false,
+    val returnValue: JvmValue? = null,
 )
 
 class JvmUnsupportedInstructionException(message: String) : IllegalStateException(message)
@@ -103,6 +110,31 @@ object JvmInterpreter {
         staticFields: JvmStaticFields = JvmStaticFields(),
         currentClassName: String? = null,
     ): JvmExecutionResult {
+        val frameResult = executeFrame(
+            code = code,
+            maxStack = maxStack,
+            constantPool = constantPool,
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            currentClassName = currentClassName,
+            allowReturn = false,
+        )
+        return JvmExecutionResult(operandStack = frameResult.operandStack)
+    }
+
+    private fun executeFrame(
+        code: ByteArray,
+        maxStack: Int,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        localVariables: JvmLocalVariables,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        currentClassName: String?,
+        allowReturn: Boolean,
+    ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
         val instructionIndexByOffset = instructions
@@ -111,6 +143,9 @@ object JvmInterpreter {
         var instructionIndex = 0
         while (instructionIndex < instructions.size) {
             val instruction = instructions[instructionIndex]
+            if (allowReturn && instruction.metadata.opcode in 0xAC..0xB1) {
+                return executeReturnInstruction(instruction, operandStack)
+            }
             val branchTargetOffset = when (instruction.metadata.opcode) {
                 0x99 -> executeIntBranch(instruction, operandStack) { value -> value == 0 }
                 0x9A -> executeIntBranch(instruction, operandStack) { value -> value != 0 }
@@ -160,7 +195,7 @@ object JvmInterpreter {
                     )
             }
         }
-        return JvmExecutionResult(operandStack = operandStack)
+        return JvmFrameExecutionResult(operandStack = operandStack)
     }
 
     private fun executeInstruction(
@@ -333,6 +368,14 @@ object JvmInterpreter {
                 heap,
                 classHierarchy,
                 currentClassName,
+            )
+            0xB8 -> executeInvokeStatic(
+                instruction,
+                operandStack,
+                constantPool,
+                heap,
+                classHierarchy,
+                staticFields,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
@@ -3330,6 +3373,153 @@ object JvmInterpreter {
         heap.putInstanceField(objectref, field, value)
     }
 
+    private fun executeInvokeStatic(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+    ) {
+        val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
+        requireStaticMethod(instruction, resolvedMethod)
+        val methodCode = resolvedMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} has no Code attribute for invokestatic",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
+        val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
+        val arguments = argumentDescriptors
+            .asReversed()
+            .map { descriptor ->
+                val value = operandStack.pop()
+                requireMethodArgumentValue(instruction, resolvedMethod, descriptor, value)
+                value
+            }
+            .asReversed()
+        var localIndex = 0
+        for (argument in arguments) {
+            calleeLocals.store(localIndex, argument)
+            localIndex += argument.category.slotWidth
+        }
+
+        val frameResult = executeFrame(
+            code = methodCode,
+            maxStack = resolvedMethod.maxStack,
+            constantPool = constantPool,
+            heap = heap,
+            localVariables = calleeLocals,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            currentClassName = resolvedMethod.ownerClassName,
+            allowReturn = true,
+        )
+        val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
+        if (returnDescriptor == "V") {
+            if (frameResult.returnValue != null) {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid invokestatic return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                        "${resolvedMethod.descriptor}: expected void but returned " +
+                        frameResult.returnValue.javaClass.simpleName,
+                )
+            }
+            return
+        }
+        val returnValue = frameResult.returnValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} completed without returning a value",
+            )
+        requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
+        operandStack.push(returnValue)
+    }
+
+    private fun executeReturnInstruction(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+    ): JvmFrameExecutionResult =
+        when (instruction.metadata.opcode) {
+            0xAC -> operandStack.pop().also { value ->
+                requireReturnOpcodeValue(instruction, "I", value)
+            }.let { value ->
+                JvmFrameExecutionResult(operandStack = operandStack, hasReturned = true, returnValue = value)
+            }
+            0xAD -> operandStack.pop().also { value ->
+                requireReturnOpcodeValue(instruction, "J", value)
+            }.let { value ->
+                JvmFrameExecutionResult(operandStack = operandStack, hasReturned = true, returnValue = value)
+            }
+            0xAE -> operandStack.pop().also { value ->
+                requireReturnOpcodeValue(instruction, "F", value)
+            }.let { value ->
+                JvmFrameExecutionResult(operandStack = operandStack, hasReturned = true, returnValue = value)
+            }
+            0xAF -> operandStack.pop().also { value ->
+                requireReturnOpcodeValue(instruction, "D", value)
+            }.let { value ->
+                JvmFrameExecutionResult(operandStack = operandStack, hasReturned = true, returnValue = value)
+            }
+            0xB0 -> operandStack.pop().also { value ->
+                if (value !is JvmReferenceValue) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid areturn value at offset ${instruction.offset}: expected JvmReferenceValue but was " +
+                            value.javaClass.simpleName,
+                    )
+                }
+            }.let { value ->
+                JvmFrameExecutionResult(operandStack = operandStack, hasReturned = true, returnValue = value)
+            }
+            0xB1 -> JvmFrameExecutionResult(operandStack = operandStack, hasReturned = true, returnValue = null)
+            else -> error("Instruction ${instruction.metadata.mnemonic} is not a return instruction")
+        }
+
+    private fun requireReturnOpcodeValue(
+        instruction: DecodedInstruction,
+        descriptor: String,
+        value: JvmValue,
+    ) {
+        if (value.matchesFieldDescriptor(descriptor)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid ${instruction.metadata.mnemonic} value at offset ${instruction.offset}: " +
+                "expected $descriptor but was ${value.javaClass.simpleName}",
+        )
+    }
+
+    private fun requireMethodArgumentValue(
+        instruction: DecodedInstruction,
+        method: JvmResolvedMethod,
+        descriptor: String,
+        value: JvmValue,
+    ) {
+        if (value.matchesFieldDescriptor(descriptor)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid ${instruction.metadata.mnemonic} argument for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor} at offset ${instruction.offset}: " +
+                "expected $descriptor but was ${value.javaClass.simpleName}",
+        )
+    }
+
+    private fun requireMethodReturnValue(
+        instruction: DecodedInstruction,
+        method: JvmResolvedMethod,
+        descriptor: String,
+        value: JvmValue,
+    ) {
+        if (value.matchesFieldDescriptor(descriptor)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid ${instruction.metadata.mnemonic} return for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor} at offset ${instruction.offset}: " +
+                "expected $descriptor but was ${value.javaClass.simpleName}",
+        )
+    }
+
     private fun requireFieldValue(
         instruction: DecodedInstruction,
         field: JvmFieldReference,
@@ -3590,6 +3780,162 @@ object JvmInterpreter {
         )
     }
 
+    private fun requireStaticMethod(
+        instruction: DecodedInstruction,
+        method: JvmResolvedMethod,
+    ) {
+        if (method.isStatic) {
+            return
+        }
+        throw JvmIncompatibleClassChangeError(
+            guestClassName = "java/lang/IncompatibleClassChangeError",
+            message = "Expected static method " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor} " +
+                "for ${instruction.metadata.mnemonic}",
+        )
+    }
+
+    private fun resolveRuntimeMethodReference(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+    ): JvmResolvedMethod {
+        val symbolicMethod = resolveConstantMethodReference(instruction, constantPool)
+        return classHierarchy.resolveMethod(
+            ownerClassName = symbolicMethod.ownerClassName,
+            name = symbolicMethod.name,
+            descriptor = symbolicMethod.descriptor,
+        )
+    }
+
+    private data class SymbolicMethodReference(
+        val ownerClassName: String,
+        val name: String,
+        val descriptor: String,
+    )
+
+    private fun resolveConstantMethodReference(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+    ): SymbolicMethodReference {
+        val index = instruction.constantPoolIndex()
+        val entry = constantPoolEntry(instruction, constantPool, index, "constant")
+        if (entry !is ConstantMethodRefEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} constant $index at offset ${instruction.offset}: " +
+                    "expected ConstantMethodRefEntry but was ${entry.javaClass.simpleName}",
+            )
+        }
+
+        val classEntry = constantPoolEntry(
+            instruction,
+            constantPool,
+            entry.classIndex,
+            "CONSTANT_Methodref class_index",
+        )
+        if (classEntry !is ConstantClassEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} CONSTANT_Methodref class_index ${entry.classIndex} " +
+                    "at offset ${instruction.offset}: expected ConstantClassEntry but was " +
+                    classEntry.javaClass.simpleName,
+            )
+        }
+        val ownerClassName = utf8ConstantValue(
+            instruction,
+            constantPool,
+            classEntry.nameIndex,
+            "CONSTANT_Class name_index",
+        )
+
+        val nameAndTypeEntry = constantPoolEntry(
+            instruction,
+            constantPool,
+            entry.nameAndTypeIndex,
+            "CONSTANT_Methodref name_and_type_index",
+        )
+        if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} CONSTANT_Methodref name_and_type_index " +
+                    "${entry.nameAndTypeIndex} at offset ${instruction.offset}: " +
+                    "expected ConstantNameAndTypeEntry but was ${nameAndTypeEntry.javaClass.simpleName}",
+            )
+        }
+
+        return SymbolicMethodReference(
+            ownerClassName = ownerClassName,
+            name = utf8ConstantValue(
+                instruction,
+                constantPool,
+                nameAndTypeEntry.nameIndex,
+                "CONSTANT_NameAndType name_index",
+            ),
+            descriptor = utf8ConstantValue(
+                instruction,
+                constantPool,
+                nameAndTypeEntry.descriptorIndex,
+                "CONSTANT_NameAndType descriptor_index",
+            ),
+        )
+    }
+
+    private fun String.methodParameterDescriptors(): List<String> {
+        if (!startsWith("(")) {
+            throw JvmUnsupportedInstructionException("Invalid method descriptor $this: missing opening parenthesis")
+        }
+        val parameters = mutableListOf<String>()
+        var index = 1
+        while (index < length && this[index] != ')') {
+            val endIndex = fieldDescriptorEndIndex(index)
+            parameters += substring(index, endIndex)
+            index = endIndex
+        }
+        if (index >= length || this[index] != ')') {
+            throw JvmUnsupportedInstructionException("Invalid method descriptor $this: missing closing parenthesis")
+        }
+        return parameters
+    }
+
+    private fun String.methodReturnDescriptor(): String {
+        val closeIndex = indexOf(')')
+        if (!startsWith("(") || closeIndex < 0 || closeIndex == lastIndex) {
+            throw JvmUnsupportedInstructionException("Invalid method descriptor $this: missing return descriptor")
+        }
+        val returnDescriptor = substring(closeIndex + 1)
+        if (returnDescriptor == "V") {
+            return returnDescriptor
+        }
+        if (fieldDescriptorEndIndex(closeIndex + 1) != length) {
+            throw JvmUnsupportedInstructionException("Invalid method descriptor $this: malformed return descriptor")
+        }
+        return returnDescriptor
+    }
+
+    private fun String.fieldDescriptorEndIndex(startIndex: Int): Int {
+        if (startIndex !in indices) {
+            throw JvmUnsupportedInstructionException("Invalid descriptor $this at index $startIndex")
+        }
+        return when (this[startIndex]) {
+            'Z', 'B', 'C', 'S', 'I', 'F', 'J', 'D' -> startIndex + 1
+            'L' -> {
+                val endIndex = indexOf(';', startIndex)
+                if (endIndex < 0) {
+                    throw JvmUnsupportedInstructionException("Invalid descriptor $this: missing object terminator")
+                }
+                endIndex + 1
+            }
+            '[' -> {
+                var componentIndex = startIndex
+                while (componentIndex < length && this[componentIndex] == '[') {
+                    componentIndex++
+                }
+                fieldDescriptorEndIndex(componentIndex)
+            }
+            else -> throw JvmUnsupportedInstructionException(
+                "Invalid descriptor $this at index $startIndex: unsupported tag ${this[startIndex]}",
+            )
+        }
+    }
+
     private fun resolveConstantFieldReference(
         instruction: DecodedInstruction,
         constantPool: ConstantPool,
@@ -3767,6 +4113,7 @@ object JvmInterpreter {
             0xB3,
             0xB4,
             0xB5,
+            0xB8,
             0xBB,
             0xBD,
             0xC0,
