@@ -3466,20 +3466,39 @@ object JvmInterpreter {
         val reference: JvmFieldReference,
         val isStatic: Boolean?,
         val isPrivate: Boolean = false,
+        val isPackagePrivate: Boolean = false,
     )
 
     private fun requireAccessibleField(
         field: RuntimeResolvedField,
         currentClassName: String?,
     ) {
-        if (!field.isPrivate || currentClassName == null || currentClassName == field.reference.ownerClassName) {
-            return
+        if (field.isPrivate && currentClassName != null && currentClassName != field.reference.ownerClassName) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access private field " +
+                    "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor}",
+            )
         }
-        throw JvmIllegalAccessError(
-            guestClassName = "java/lang/IllegalAccessError",
-            message = "Class $currentClassName cannot access private field " +
-                "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor}",
-        )
+        if (
+            field.isPackagePrivate &&
+            currentClassName != null &&
+            currentClassName.runtimePackageName() != field.reference.ownerClassName.runtimePackageName()
+        ) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access package-private field " +
+                    "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor}",
+            )
+        }
+    }
+
+    private fun String.runtimePackageName(): String {
+        val packageSeparatorIndex = lastIndexOf('/')
+        if (packageSeparatorIndex < 0) {
+            return ""
+        }
+        return substring(0, packageSeparatorIndex)
     }
 
     private fun requireStaticField(
@@ -3534,6 +3553,7 @@ object JvmInterpreter {
             ),
             isStatic = resolvedField.isStatic,
             isPrivate = resolvedField.isPrivate,
+            isPackagePrivate = resolvedField.isPackagePrivate,
         )
     }
 
