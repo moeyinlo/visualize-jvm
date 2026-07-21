@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.jni
 
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
@@ -3789,6 +3790,35 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertFailsWith<JvmJniArrayAccessException> {
             environment.getArrayLength(objectHandle)
+        }
+    }
+
+    @Test
+    fun `NewBooleanArray allocates a false filled guest boolean array`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+
+        val arrayHandle = environment.newBooleanArray(3)
+
+        val arrayObject = heap.get(handles.resolveObject(arrayHandle))
+        assertEquals("[Z", arrayObject.className)
+        assertEquals(
+            JvmBooleanArrayPayload(mutableListOf(false, false, false)),
+            arrayObject.payload,
+        )
+    }
+
+    @Test
+    fun `NewBooleanArray rejects negative lengths`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        assertFailsWith<IllegalArgumentException> {
+            environment.newBooleanArray(-1)
         }
     }
 
