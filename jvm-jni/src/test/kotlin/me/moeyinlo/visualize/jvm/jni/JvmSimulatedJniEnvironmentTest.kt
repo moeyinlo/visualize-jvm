@@ -4510,6 +4510,51 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetLongArrayRegion writes a native long buffer into a guest array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newLongArray(5)
+
+        environment.setLongArrayRegion(
+            arrayHandle,
+            start = 1,
+            values = longArrayOf(-7L, 0L, 12L),
+        )
+
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmLongArrayPayload
+        assertEquals(
+            mutableListOf(0L, -7L, 0L, 12L, 0L),
+            payload.elements,
+        )
+    }
+
+    @Test
+    fun `SetLongArrayRegion rejects non long arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val wrongArrayHandle = environment.newIntArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setLongArrayRegion(wrongArrayHandle, start = 0, values = longArrayOf())
+        }
+
+        val arrayHandle = environment.newLongArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setLongArrayRegion(arrayHandle, start = 2, values = longArrayOf(-7L, 0L, 12L))
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
