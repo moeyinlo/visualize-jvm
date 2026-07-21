@@ -3477,12 +3477,6 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
-        val methodCode = resolvedMethod.code
-            ?: throw JvmUnsupportedInstructionException(
-                "Resolved instance method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} has no Code attribute for invokevirtual",
-            )
-        val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
@@ -3526,6 +3520,18 @@ object JvmInterpreter {
         }
         requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        val targetMethod = classHierarchy.resolveVirtualMethod(
+            receiverClassName = receiverClassName,
+            name = resolvedMethod.name,
+            descriptor = resolvedMethod.descriptor,
+        )
+        requireInstanceMethod(instruction, targetMethod)
+        val methodCode = targetMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved instance method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} has no Code attribute for invokevirtual",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = targetMethod.maxLocals)
 
         calleeLocals.store(0, objectref)
         var localIndex = 1
@@ -3536,21 +3542,21 @@ object JvmInterpreter {
 
         val frameResult = executeFrame(
             code = methodCode,
-            maxStack = resolvedMethod.maxStack,
+            maxStack = targetMethod.maxStack,
             constantPool = constantPool,
             heap = heap,
             localVariables = calleeLocals,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
-            currentClassName = resolvedMethod.ownerClassName,
+            currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
         )
-        val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
+        val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
             if (frameResult.returnValue != null) {
                 throw JvmUnsupportedInstructionException(
-                    "Invalid invokevirtual return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                        "${resolvedMethod.descriptor}: expected void but returned " +
+                    "Invalid invokevirtual return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                        "${targetMethod.descriptor}: expected void but returned " +
                         frameResult.returnValue.javaClass.simpleName,
                 )
             }
@@ -3558,11 +3564,11 @@ object JvmInterpreter {
         }
         val returnValue = frameResult.returnValue
             ?: throw JvmUnsupportedInstructionException(
-                "Instance method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} completed without returning a value",
+                "Instance method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} completed without returning a value",
             )
-        requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
-        requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
+        requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
+        requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
         operandStack.push(returnValue)
     }
 
