@@ -15,6 +15,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
@@ -421,6 +422,31 @@ class JvmSimulatedJniEnvironment(
             ),
             JvmCharValue(value),
         )
+    }
+
+    fun getShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "S" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetShortField requires an instance short field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = heap.getInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return when (value) {
+            is JvmShortValue -> value.value
+            is JvmIntValue -> value.value
+            else -> throw JvmJniFieldAccessException(
+                "GetShortField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
     }
 
     fun getObjectField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): JvmJniHandleId? {
