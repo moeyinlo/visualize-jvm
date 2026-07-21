@@ -18,12 +18,19 @@ class VisualizeJvmRootView(
     val classLoadingEventsView: ClassLoadingEventsView = ClassLoadingEventsView()
     val linkingEventsView: LinkingEventsView = LinkingEventsView()
     val initializationEventsView: InitializationEventsView = InitializationEventsView()
+    val verifierDiagnosticsView: VerifierDiagnosticsView = VerifierDiagnosticsView()
 
     init {
         top = VBox(debuggerControlBar, constantPoolView)
         left = projectClasspathPanel
         center = VBox(classTreeView, currentFrameView, localVariablesView, operandStackView)
-        right = VBox(memberListView, classLoadingEventsView, linkingEventsView, initializationEventsView)
+        right = VBox(
+            memberListView,
+            classLoadingEventsView,
+            linkingEventsView,
+            initializationEventsView,
+            verifierDiagnosticsView,
+        )
         bottom = bytecodeInstructionView
     }
 }
