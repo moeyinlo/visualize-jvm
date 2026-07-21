@@ -3681,19 +3681,6 @@ object JvmInterpreter {
         requireInstanceMethod(instruction, resolvedMethod)
         requireVoidConstructorForInvokeSpecial(resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
-        if (resolvedMethod.isNative) {
-            throw JvmUnsatisfiedLinkError(
-                guestClassName = "java/lang/UnsatisfiedLinkError",
-                message = "Native method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} is not linked for ${instruction.metadata.mnemonic}",
-            )
-        }
-        val methodCode = resolvedMethod.code
-            ?: throw JvmUnsupportedInstructionException(
-                "Resolved instance method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} has no Code attribute for invokespecial",
-            )
-        val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
@@ -3740,6 +3727,46 @@ object JvmInterpreter {
         requireConstructorOwnerContext(resolvedMethod, receiverClassName, currentClassName, classHierarchy)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
 
+        if (resolvedMethod.isNative) {
+            val nativeReturnValue = executeNativeMethod(
+                instruction = instruction,
+                method = resolvedMethod,
+                receiver = objectref,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                currentClassName = resolvedMethod.ownerClassName,
+            )
+            val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
+            if (returnDescriptor == "V") {
+                if (nativeReturnValue != null) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid invokespecial native return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                            "${resolvedMethod.descriptor}: expected void but returned " +
+                            nativeReturnValue.javaClass.simpleName,
+                    )
+                }
+                return
+            }
+            val returnValue = nativeReturnValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Native method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                        "${resolvedMethod.descriptor} completed without returning a value",
+                )
+            requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
+            requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
+            operandStack.push(returnValue)
+            return
+        }
+
+        val methodCode = resolvedMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved instance method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} has no Code attribute for invokespecial",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
         calleeLocals.store(0, objectref)
         var localIndex = 1
         for (argument in arguments) {
