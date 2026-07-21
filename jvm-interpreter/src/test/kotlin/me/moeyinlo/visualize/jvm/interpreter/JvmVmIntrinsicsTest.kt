@@ -636,6 +636,65 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmThreadPayload("worker-1"), heap.get(result).payload)
     }
 
+    @Test
+    fun `Thread sleep intrinsics delegate validated guest sleep requests to the context`() {
+        val heap = JvmHeap()
+        val sleeps = mutableListOf<Pair<Long, Int>>()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+            threadSleepHandler = { millis, nanos -> sleeps += millis to nanos },
+        )
+        val sleepMillis = JvmVmIntrinsics.Registry.resolve(threadSleepMillisMethod())
+            ?: error("Thread.sleep(J) intrinsic was not registered")
+        val sleepMillisNanos = JvmVmIntrinsics.Registry.resolve(threadSleepMillisNanosMethod())
+            ?: error("Thread.sleep(JI) intrinsic was not registered")
+        val sleepNanos0 = JvmVmIntrinsics.Registry.resolve(threadSleepNanos0Method())
+            ?: error("Thread.sleepNanos0(J) intrinsic was not registered")
+
+        assertEquals(
+            null,
+            sleepMillis.invoke(context, JvmNativeMethodInvocation(null, listOf(JvmLongValue(5L)))),
+        )
+        assertEquals(
+            null,
+            sleepMillisNanos.invoke(context, JvmNativeMethodInvocation(null, listOf(JvmLongValue(6L), JvmIntValue(7)))),
+        )
+        assertEquals(
+            null,
+            sleepNanos0.invoke(context, JvmNativeMethodInvocation(null, listOf(JvmLongValue(1_234_567L)))),
+        )
+
+        assertEquals(listOf(5L to 0, 6L to 7, 1L to 234_567), sleeps)
+    }
+
+    @Test
+    fun `Thread sleep intrinsics reject negative and out of range guest sleep requests`() {
+        val heap = JvmHeap()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+        val sleepMillis = JvmVmIntrinsics.Registry.resolve(threadSleepMillisMethod())
+            ?: error("Thread.sleep(J) intrinsic was not registered")
+        val sleepMillisNanos = JvmVmIntrinsics.Registry.resolve(threadSleepMillisNanosMethod())
+            ?: error("Thread.sleep(JI) intrinsic was not registered")
+
+        assertFailsWith<JvmUnsupportedInstructionException> {
+            sleepMillis.invoke(context, JvmNativeMethodInvocation(null, listOf(JvmLongValue(-1L))))
+        }
+        assertFailsWith<JvmUnsupportedInstructionException> {
+            sleepMillisNanos.invoke(
+                context,
+                JvmNativeMethodInvocation(null, listOf(JvmLongValue(0L), JvmIntValue(1_000_000))),
+            )
+        }
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -776,6 +835,30 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "currentThread",
         descriptor = "()Ljava/lang/Thread;",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadSleepMillisMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "sleep",
+        descriptor = "(J)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadSleepMillisNanosMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "sleep",
+        descriptor = "(JI)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadSleepNanos0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "sleepNanos0",
+        descriptor = "(J)V",
         isStatic = true,
         isNative = true,
     )

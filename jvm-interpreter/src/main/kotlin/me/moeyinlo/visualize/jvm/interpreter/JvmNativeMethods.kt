@@ -56,6 +56,7 @@ data class JvmNativeMethodContext(
     val currentTimeMillisProvider: () -> Long = System::currentTimeMillis,
     val nanoTimeProvider: () -> Long = System::nanoTime,
     val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },
+    val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
     internal val callStaticMethodHandler: (
         ownerClassName: String,
         name: String,
@@ -246,6 +247,24 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Thread;",
         isStatic = true,
     )
+    private val ThreadSleepMillisKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "sleep",
+        descriptor = "(J)V",
+        isStatic = true,
+    )
+    private val ThreadSleepMillisNanosKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "sleep",
+        descriptor = "(JI)V",
+        isStatic = true,
+    )
+    private val ThreadSleepNanos0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "sleepNanos0",
+        descriptor = "(J)V",
+        isStatic = true,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -388,6 +407,23 @@ object JvmVmIntrinsics {
         requireNoArguments("Thread.currentThread", invocation)
         context.heap.internThread(context.currentThreadId)
     }
+    private val ThreadSleepMillis = JvmNativeMethodIntrinsic { context, invocation ->
+        val millis = requireSleepMillisArgument("Thread.sleep(J)", invocation)
+        context.threadSleepHandler(millis, 0)
+        null
+    }
+    private val ThreadSleepMillisNanos = JvmNativeMethodIntrinsic { context, invocation ->
+        val (millis, nanos) = requireSleepMillisNanosArguments("Thread.sleep(JI)", invocation)
+        context.threadSleepHandler(millis, nanos)
+        null
+    }
+    private val ThreadSleepNanos0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val totalNanos = requireSleepMillisArgument("Thread.sleepNanos0(J)", invocation)
+        val millis = totalNanos / 1_000_000L
+        val nanos = (totalNanos % 1_000_000L).toInt()
+        context.threadSleepHandler(millis, nanos)
+        null
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -410,6 +446,9 @@ object JvmVmIntrinsics {
         ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
         StringInternKey to StringIntern,
         ThreadCurrentThreadKey to ThreadCurrentThread,
+        ThreadSleepMillisKey to ThreadSleepMillis,
+        ThreadSleepMillisNanosKey to ThreadSleepMillisNanos,
+        ThreadSleepNanos0Key to ThreadSleepNanos0,
     )
 
     private val PrimitiveClassNames = setOf(
@@ -460,6 +499,38 @@ object JvmVmIntrinsics {
                 "$name intrinsic requires a java/lang/String receiver",
             )
         }
+    }
+
+    private fun requireSleepMillisArgument(
+        name: String,
+        invocation: JvmNativeMethodInvocation,
+    ): Long {
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("$name expects one long argument")
+        }
+        val millis = (invocation.arguments.single() as? JvmLongValue)?.value
+            ?: throw JvmUnsupportedInstructionException("$name expects one long argument")
+        if (millis < 0L) {
+            throw JvmUnsupportedInstructionException("$name timeout must be non-negative")
+        }
+        return millis
+    }
+
+    private fun requireSleepMillisNanosArguments(
+        name: String,
+        invocation: JvmNativeMethodInvocation,
+    ): Pair<Long, Int> {
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("$name expects long millis and int nanos")
+        }
+        val millis = (invocation.arguments[0] as? JvmLongValue)?.value
+            ?: throw JvmUnsupportedInstructionException("$name expects long millis")
+        val nanos = (invocation.arguments[1] as? JvmIntValue)?.value
+            ?: throw JvmUnsupportedInstructionException("$name expects int nanos")
+        if (millis < 0L || nanos !in 0..999_999) {
+            throw JvmUnsupportedInstructionException("$name timeout or nanos is out of range")
+        }
+        return millis to nanos
     }
 
     private fun jvmBoolean(value: Boolean): JvmIntValue =
