@@ -3286,9 +3286,10 @@ object JvmInterpreter {
                     objectref.javaClass.simpleName,
             )
         }
+        val receiverClassName = heap.get(objectref).className
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireInstanceField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
+        requireAccessibleField(resolvedField, currentClassName, classHierarchy, receiverClassName)
         val field = resolvedField.reference
         val value = heap.getInstanceField(objectref, field)
         requireFieldValue(instruction, field, value)
@@ -3319,9 +3320,10 @@ object JvmInterpreter {
                     objectref.javaClass.simpleName,
             )
         }
+        val receiverClassName = heap.get(objectref).className
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireInstanceField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
+        requireAccessibleField(resolvedField, currentClassName, classHierarchy, receiverClassName)
         val field = resolvedField.reference
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
@@ -3474,6 +3476,7 @@ object JvmInterpreter {
         field: RuntimeResolvedField,
         currentClassName: String?,
         classHierarchy: JvmClassHierarchy,
+        receiverClassName: String? = null,
     ) {
         if (field.isPrivate && currentClassName != null && currentClassName != field.reference.ownerClassName) {
             throw JvmIllegalAccessError(
@@ -3503,6 +3506,21 @@ object JvmInterpreter {
                 guestClassName = "java/lang/IllegalAccessError",
                 message = "Class $currentClassName cannot access protected field " +
                     "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor}",
+            )
+        }
+        if (
+            field.isProtected &&
+            currentClassName != null &&
+            receiverClassName != null &&
+            currentClassName.runtimePackageName() != field.reference.ownerClassName.runtimePackageName() &&
+            classHierarchy.isAssignable(currentClassName, field.reference.ownerClassName) &&
+            !classHierarchy.isAssignable(receiverClassName, currentClassName)
+        ) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access protected field " +
+                    "${field.reference.ownerClassName}.${field.reference.name}:${field.reference.descriptor} " +
+                    "on receiver $receiverClassName",
             )
         }
     }
