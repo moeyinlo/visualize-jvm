@@ -3518,6 +3518,7 @@ object JvmInterpreter {
         }
         requireConstructorReceiverUninitialized(resolvedMethod, objectref, heap)
         requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
+        requireConstructorOwnerContext(resolvedMethod, receiverClassName, currentClassName, classHierarchy)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
 
         calleeLocals.store(0, objectref)
@@ -4019,6 +4020,27 @@ object JvmInterpreter {
         throw JvmUnsupportedInstructionException(
             "Cannot invoke special method ${method.ownerClassName}.${method.name}:${method.descriptor} " +
                 "on uninitialized receiver",
+        )
+    }
+
+    private fun requireConstructorOwnerContext(
+        method: JvmResolvedMethod,
+        receiverClassName: String,
+        currentClassName: String?,
+        classHierarchy: JvmClassHierarchy,
+    ) {
+        if (method.name != "<init>" || method.ownerClassName == receiverClassName) {
+            return
+        }
+        if (
+            currentClassName == receiverClassName &&
+            classHierarchy.directSuperclassName(receiverClassName) == method.ownerClassName
+        ) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Constructor ${method.ownerClassName}.${method.name}:${method.descriptor} " +
+                "cannot initialize receiver $receiverClassName outside constructor context for $receiverClassName",
         )
     }
 

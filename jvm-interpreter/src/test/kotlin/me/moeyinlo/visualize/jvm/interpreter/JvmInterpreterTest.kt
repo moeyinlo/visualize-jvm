@@ -3702,6 +3702,121 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial allows current constructor to initialize receiver through direct superclass constructor`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateUninitializedObject("pkg/Sub")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("pkg/Super", "pkg/Super".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Sub",
+                        superclassName = "pkg/Super",
+                    ),
+                    JvmClassDefinition(
+                        internalName = "pkg/Super",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<init>",
+                                descriptor = "()V",
+                                isStatic = false,
+                                code = byteArrayOf(0xB1.toByte()),
+                                maxStack = 0,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            currentClassName = "pkg/Sub",
+        )
+
+        assertTrue(heap.isInitialized(receiver))
+    }
+
+    @Test
+    fun `invokespecial rejects superclass constructor outside receiver constructor context`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateUninitializedObject("pkg/Sub")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB7.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Super", "pkg/Super".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Sub",
+                            superclassName = "pkg/Super",
+                        ),
+                        JvmClassDefinition(
+                            internalName = "pkg/Super",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<init>",
+                                    descriptor = "()V",
+                                    isStatic = false,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                currentClassName = "pkg/Helper",
+            )
+        }
+
+        assertEquals(
+            "Constructor pkg/Super.<init>:()V cannot initialize receiver pkg/Sub " +
+                "outside constructor context for pkg/Sub",
+            exception.message,
+        )
+        assertFalse(heap.isInitialized(receiver))
+    }
+
+    @Test
     fun `invokespecial rejects constructor descriptors that do not return void`() {
         val heap = JvmHeap()
         val receiver = heap.allocateUninitializedObject("Owner")
