@@ -206,6 +206,9 @@ class JvmSimulatedJniEnvironment(
     fun newFloatArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateFloatArray(length))
 
+    fun newDoubleArray(length: Int): JvmJniHandleId =
+        handles.newObjectHandle(heap.allocateDoubleArray(length))
+
     fun newObjectArray(
         length: Int,
         elementClassHandle: JvmJniHandleId,
