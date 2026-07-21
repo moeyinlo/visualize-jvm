@@ -784,6 +784,30 @@ class JvmSimulatedJniEnvironment(
         )
     }
 
+    fun getStaticShortField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "S" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetStaticShortField requires a static short field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = staticFields.get(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return when (value) {
+            is JvmShortValue -> value.value
+            is JvmIntValue -> value.value
+            else -> throw JvmJniFieldAccessException(
+                "GetStaticShortField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)

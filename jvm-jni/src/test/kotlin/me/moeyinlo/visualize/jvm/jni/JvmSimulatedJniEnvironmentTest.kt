@@ -3257,4 +3257,94 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetStaticShortField reads a stored guest static short field`() {
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "narrow",
+                                descriptor = "S",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "narrow", "S")
+        staticFields.put(
+            JvmFieldReference(ownerClassName = "Example", name = "narrow", descriptor = "S"),
+            JvmShortValue(-1234),
+        )
+
+        val result = environment.getStaticShortField(classHandle, fieldHandle)
+
+        assertEquals(-1234, result)
+    }
+
+    @Test
+    fun `GetStaticShortField reads default zero for an unwritten guest static short field`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "narrow",
+                                descriptor = "S",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "narrow", "S")
+
+        val result = environment.getStaticShortField(classHandle, fieldHandle)
+
+        assertEquals(0, result)
+    }
+
+    @Test
+    fun `GetStaticShortField rejects non short guest static field handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "counter", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.getStaticShortField(classHandle, fieldHandle)
+        }
+    }
+
 }
