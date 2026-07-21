@@ -1163,7 +1163,7 @@ These rows are project-level coverage artifacts that cross-reference normative J
 | Simulated JNI | Guest-scoped JNI environment, handle model, helper families, and upcall rule are documented | `docs/simulated-jni-architecture.md` | `SimulatedJniCoverageTest`, `JvmSimulatedJniEnvironmentTest` | IMPLEMENTED |
 | GUI | Import, inspection, debugging, event, host/native/JNI visualization workflow is documented | `docs/gui-workflow.md` | `JavaFX smoke test harness` planned, `gradlew build` | IMPLEMENTED |
 | Coverage gates | Parser, opcode, verifier, loading/linking/init, native resolver, simulated JNI, malformed, and differential corpus gates are tracked | `docs/spec-coverage.md` and module coverage tests | `gradlew build` | IMPLEMENTED |
-| Unsupported paths | Unsupported normative paths have an explicit audit step before final completion | `docs/spec-coverage.md`, future audit report | Step 330 | PENDING |
+| Unsupported paths | Unsupported normative paths have an explicit audit step before final completion | `docs/spec-coverage.md`, `docs/unsupported-normative-paths-audit.md` | `gradlew build` | IMPLEMENTED |
 | Final validation | Full build and smoke suite prove the final committed plan state | repository root | Step 331 | PENDING |
 
 ## Final Gate
