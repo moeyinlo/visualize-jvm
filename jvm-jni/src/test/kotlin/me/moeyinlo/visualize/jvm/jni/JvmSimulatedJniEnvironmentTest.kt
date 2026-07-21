@@ -5287,6 +5287,37 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetFloatArrayElements returns a copied guest float array buffer`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newFloatArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmFloatArrayPayload
+        payload.elements[0] = -1.5f
+        payload.elements[2] = 2.25f
+
+        val result = environment.getFloatArrayElements(arrayHandle)
+
+        assertContentEquals(floatArrayOf(-1.5f, 0.0f, 2.25f), result)
+        result[0] = 99.0f
+        assertEquals(-1.5f, payload.elements[0])
+    }
+
+    @Test
+    fun `GetFloatArrayElements rejects non float arrays`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newDoubleArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getFloatArrayElements(wrongArrayHandle)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

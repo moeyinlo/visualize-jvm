@@ -392,6 +392,9 @@ class JvmSimulatedJniEnvironment(
     fun newFloatArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateFloatArray(length))
 
+    fun getFloatArrayElements(arrayHandle: JvmJniHandleId): FloatArray =
+        resolveFloatArray(arrayHandle).elements.toFloatArray()
+
     fun getFloatArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): FloatArray {
         val array = resolveFloatArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
