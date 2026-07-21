@@ -1750,4 +1750,73 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `SetCharField writes a guest char instance field`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "letter",
+                                descriptor = "C",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "letter", "C")
+
+        environment.setCharField(objectHandle, fieldHandle, '界'.code)
+
+        assertEquals(
+            JvmCharValue('界'.code),
+            heap.getInstanceField(
+                objectReference,
+                JvmFieldReference(ownerClassName = "Example", name = "letter", descriptor = "C"),
+            ),
+        )
+    }
+
+    @Test
+    fun `SetCharField rejects non char guest field handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "value", "I")
+
+        assertFailsWith<JvmJniFieldAccessException> {
+            environment.setCharField(objectHandle, fieldHandle, '界'.code)
+        }
+    }
+
 }

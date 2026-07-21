@@ -404,6 +404,25 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun setCharField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "C" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetCharField requires an instance char field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        heap.putInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            JvmCharValue(value),
+        )
+    }
+
     fun getObjectField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): JvmJniHandleId? {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
