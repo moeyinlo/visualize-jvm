@@ -766,6 +766,24 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun setStaticCharField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "C" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetStaticCharField requires a static char field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            JvmCharValue(value),
+        )
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
