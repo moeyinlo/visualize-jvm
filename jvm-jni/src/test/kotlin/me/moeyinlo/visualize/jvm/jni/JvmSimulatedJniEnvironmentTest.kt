@@ -4760,6 +4760,68 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `ReleaseBooleanArrayElements copies back default and commit buffers`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newBooleanArray(3)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmBooleanArrayPayload
+        val defaultBuffer = booleanArrayOf(true, false, true)
+        val commitBuffer = booleanArrayOf(false, true, false)
+
+        environment.releaseBooleanArrayElements(arrayHandle, defaultBuffer)
+        assertEquals(mutableListOf(true, false, true), payload.elements)
+
+        environment.releaseBooleanArrayElements(
+            arrayHandle,
+            commitBuffer,
+            JvmJniArrayReleaseMode.Commit,
+        )
+        assertEquals(mutableListOf(false, true, false), payload.elements)
+    }
+
+    @Test
+    fun `ReleaseBooleanArrayElements aborts without copying back`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newBooleanArray(2)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmBooleanArrayPayload
+        payload.elements[0] = true
+
+        environment.releaseBooleanArrayElements(
+            arrayHandle,
+            booleanArrayOf(false, true),
+            JvmJniArrayReleaseMode.Abort,
+        )
+
+        assertEquals(mutableListOf(true, false), payload.elements)
+    }
+
+    @Test
+    fun `ReleaseBooleanArrayElements rejects non boolean arrays and mismatched buffers`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val wrongArrayHandle = environment.newByteArray(1)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.releaseBooleanArrayElements(wrongArrayHandle, booleanArrayOf(false))
+        }
+
+        val arrayHandle = environment.newBooleanArray(2)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.releaseBooleanArrayElements(arrayHandle, booleanArrayOf(true))
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

@@ -191,6 +191,20 @@ class JvmSimulatedJniEnvironment(
     fun getBooleanArrayElements(arrayHandle: JvmJniHandleId): BooleanArray =
         resolveBooleanArray(arrayHandle).elements.toBooleanArray()
 
+    fun releaseBooleanArrayElements(
+        arrayHandle: JvmJniHandleId,
+        elements: BooleanArray,
+        mode: JvmJniArrayReleaseMode = JvmJniArrayReleaseMode.CopyBackAndRelease,
+    ) {
+        val array = resolveBooleanArray(arrayHandle)
+        requireArrayElementsBufferSize(array.elements.size, elements.size)
+        if (mode != JvmJniArrayReleaseMode.Abort) {
+            elements.forEachIndexed { index, value ->
+                array.elements[index] = value
+            }
+        }
+    }
+
     fun getBooleanArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): BooleanArray {
         val array = resolveBooleanArray(arrayHandle)
         requireArrayRange(array.elements.size, start, length)
@@ -1187,6 +1201,14 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    private fun requireArrayElementsBufferSize(arrayLength: Int, bufferLength: Int) {
+        if (bufferLength != arrayLength) {
+            throw JvmJniArrayAccessException(
+                "JNI array elements buffer length $bufferLength does not match array length $arrayLength",
+            )
+        }
+    }
+
     private fun resolveReferenceArray(arrayHandle: JvmJniHandleId): JvmReferenceArrayPayload {
         val reference = handles.resolveObject(arrayHandle)
         val heapObject = heap.get(reference)
@@ -1315,6 +1337,12 @@ class JvmJniFieldAccessException(message: String) : IllegalStateException(messag
 class JvmJniStringAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniArrayAccessException(message: String) : IllegalStateException(message)
+
+enum class JvmJniArrayReleaseMode {
+    CopyBackAndRelease,
+    Commit,
+    Abort,
+}
 
 private fun String.isReferenceFieldDescriptor(): Boolean =
     startsWith("L") || startsWith("[")
