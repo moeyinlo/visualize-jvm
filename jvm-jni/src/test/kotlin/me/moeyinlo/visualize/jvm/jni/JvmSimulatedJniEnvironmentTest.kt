@@ -4249,6 +4249,51 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetCharArrayRegion writes a native char buffer into a guest array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newCharArray(5)
+
+        environment.setCharArrayRegion(
+            arrayHandle,
+            start = 1,
+            values = charArrayOf('A', '\u0000', '?'),
+        )
+
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmCharArrayPayload
+        assertEquals(
+            mutableListOf('\u0000', 'A', '\u0000', '?', '\u0000'),
+            payload.elements,
+        )
+    }
+
+    @Test
+    fun `SetCharArrayRegion rejects non char arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val intArrayHandle = environment.newIntArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setCharArrayRegion(intArrayHandle, start = 0, values = charArrayOf('x'))
+        }
+
+        val charArrayHandle = environment.newCharArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.setCharArrayRegion(charArrayHandle, start = 2, values = charArrayOf('x', 'y'))
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
