@@ -12174,6 +12174,36 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual throws guest NoClassDefFoundError when method owner class is missing`() {
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0xB6.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("MissingOwner", "MissingOwner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(emptyList(), strictClassResolution = true),
+                currentClassName = "Caller",
+            )
+        }
+
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
+        assertEquals("MissingOwner", exception.message)
+    }
+
+    @Test
     fun `invokevirtual passes int arguments into callee locals after receiver`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")
