@@ -188,6 +188,12 @@ class JvmSimulatedJniEnvironment(
     fun newBooleanArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateBooleanArray(length))
 
+    fun getBooleanArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): BooleanArray {
+        val array = resolveBooleanArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, length)
+        return array.elements.subList(start, start + length).toBooleanArray()
+    }
+
     fun newByteArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateByteArray(length))
 
@@ -1078,6 +1084,15 @@ class JvmSimulatedJniEnvironment(
         return heapObject.payload as? JvmReferenceArrayPayload
             ?: throw JvmJniArrayAccessException(
                 "JNI object array helper requires reference array payload, got ${heapObject.className}",
+            )
+    }
+
+    private fun resolveBooleanArray(arrayHandle: JvmJniHandleId): JvmBooleanArrayPayload {
+        val reference = handles.resolveObject(arrayHandle)
+        val heapObject = heap.get(reference)
+        return heapObject.payload as? JvmBooleanArrayPayload
+            ?: throw JvmJniArrayAccessException(
+                "JNI boolean array helper requires boolean array payload, got ${heapObject.className}",
             )
     }
 

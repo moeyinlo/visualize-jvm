@@ -4033,6 +4033,48 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetBooleanArrayRegion returns a copied guest boolean array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newBooleanArray(5)
+        val payload = heap.get(handles.resolveObject(arrayHandle)).payload as JvmBooleanArrayPayload
+        payload.elements[1] = true
+        payload.elements[3] = true
+
+        val result = environment.getBooleanArrayRegion(arrayHandle, start = 1, length = 3)
+
+        assertContentEquals(booleanArrayOf(true, false, true), result)
+        result[0] = false
+        assertEquals(true, payload.elements[1])
+    }
+
+    @Test
+    fun `GetBooleanArrayRegion rejects non boolean arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val intArrayHandle = environment.newIntArray(3)
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getBooleanArrayRegion(intArrayHandle, start = 0, length = 1)
+        }
+
+        val booleanArrayHandle = environment.newBooleanArray(3)
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getBooleanArrayRegion(booleanArrayHandle, start = 2, length = 2)
+        }
+    }
+
+    @Test
     fun `NewObjectArray allocates a null filled guest reference array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
