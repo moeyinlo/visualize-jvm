@@ -1023,6 +1023,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `GetObjectField` reads guest instance reference fields from `jobject` and `jfieldID` handles, mapping guest null to null and object references to new JNI handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetObjectField*` | IMPLEMENTED |
 | Simulated JNI | `SetObjectField` writes guest instance reference fields from `jobject` and `jfieldID` handles into guest heap state, including guest null | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.SetObjectField*` | IMPLEMENTED |
 | Simulated JNI | `NewStringUTF` allocates a guest `java/lang/String` from modified UTF input and returns it as a local `jstring` handle | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.NewStringUTF*` | IMPLEMENTED |
+| Simulated JNI | `GetStringUTFLength` returns the modified UTF-8 byte length for guest `java/lang/String` handles and rejects non-string object handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetStringUTFLength*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 

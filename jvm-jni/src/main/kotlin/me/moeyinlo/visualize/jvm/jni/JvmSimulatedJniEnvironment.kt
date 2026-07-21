@@ -17,6 +17,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
@@ -132,6 +133,16 @@ class JvmSimulatedJniEnvironment(
 
     fun newStringUtf(value: String): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateString(value))
+
+    fun getStringUtfLength(stringHandle: JvmJniHandleId): Int =
+        resolveStringValue(stringHandle).sumOf { codeUnit ->
+            when (codeUnit.code) {
+                0 -> 2
+                in 1..0x7f -> 1
+                in 0x80..0x7ff -> 2
+                else -> 3
+            }
+        }
 
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
@@ -900,9 +911,21 @@ class JvmSimulatedJniEnvironment(
             value,
         )
     }
+
+    private fun resolveStringValue(stringHandle: JvmJniHandleId): String {
+        val reference = handles.resolveObject(stringHandle)
+        val heapObject = heap.get(reference)
+        val payload = heapObject.payload as? JvmStringPayload
+            ?: throw JvmJniStringAccessException(
+                "JNI string helper requires java/lang/String payload, got ${heapObject.className}",
+            )
+        return payload.value
+    }
 }
 
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
+
+class JvmJniStringAccessException(message: String) : IllegalStateException(message)
 
 private fun String.isReferenceFieldDescriptor(): Boolean =
     startsWith("L") || startsWith("[")

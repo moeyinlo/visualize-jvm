@@ -3433,4 +3433,46 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(JvmStringPayload("hello, \u4e16\u754c"), stringObject.payload)
     }
 
+    @Test
+    fun `GetStringUTFLength returns modified UTF byte length for guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(
+            heap.allocateString("\u0000A\u00a2\u20ac\ud83d\ude00"),
+        )
+
+        val result = environment.getStringUtfLength(stringHandle)
+
+        assertEquals(14, result)
+    }
+
+    @Test
+    fun `GetStringUTFLength rejects non string guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+
+        assertFailsWith<JvmJniStringAccessException> {
+            environment.getStringUtfLength(objectHandle)
+        }
+    }
+
 }
