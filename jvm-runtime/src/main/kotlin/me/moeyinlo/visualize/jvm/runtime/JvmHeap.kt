@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.runtime
 data class JvmHeapObject(
     val className: String,
     val payload: JvmHeapPayload = JvmHeapPayload.None,
+    val isInitialized: Boolean = true,
 )
 
 sealed interface JvmHeapPayload {
@@ -68,6 +69,17 @@ class JvmHeap {
         require(className.isNotBlank()) { "class name must not be blank" }
 
         return allocate(JvmHeapObject(className))
+    }
+
+    fun allocateUninitializedObject(className: String): JvmObjectReferenceValue {
+        require(className.isNotBlank()) { "class name must not be blank" }
+
+        return allocate(
+            JvmHeapObject(
+                className = className,
+                isInitialized = false,
+            ),
+        )
     }
 
     fun allocateBooleanArray(length: Int): JvmObjectReferenceValue {
@@ -234,6 +246,14 @@ class JvmHeap {
     fun get(reference: JvmObjectReferenceValue): JvmHeapObject =
         objects[reference.referenceId]
             ?: throw JvmHeapAccessException("Unknown heap reference ${reference.referenceId}")
+
+    fun isInitialized(reference: JvmObjectReferenceValue): Boolean =
+        get(reference).isInitialized
+
+    fun markInitialized(reference: JvmObjectReferenceValue) {
+        val heapObject = get(reference)
+        objects[reference.referenceId] = heapObject.copy(isInitialized = true)
+    }
 
     fun putInstanceField(reference: JvmObjectReferenceValue, field: JvmFieldReference, value: JvmValue) {
         get(reference)

@@ -2,7 +2,9 @@ package me.moeyinlo.visualize.jvm.runtime
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class JvmHeapTest {
     @Test
@@ -35,6 +37,20 @@ class JvmHeapTest {
 
         assertEquals(JvmIntValue(3), heap.getInstanceField(first, field))
         assertEquals(JvmIntValue(5), heap.getInstanceField(second, field))
+    }
+
+    @Test
+    fun `heap tracks uninitialized object state for constructor execution`() {
+        val heap = JvmHeap()
+
+        val initialized = heap.allocateObject("Example")
+        val uninitialized = heap.allocateUninitializedObject("Example")
+
+        assertTrue(heap.isInitialized(initialized))
+        assertFalse(heap.isInitialized(uninitialized))
+        heap.markInitialized(uninitialized)
+        assertTrue(heap.isInitialized(uninitialized))
+        assertEquals(JvmHeapObject("Example"), heap.get(uninitialized))
     }
 
     @Test
