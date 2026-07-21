@@ -3544,6 +3544,9 @@ object JvmInterpreter {
                         frameResult.returnValue.javaClass.simpleName,
                 )
             }
+            if (resolvedMethod.name == "<init>") {
+                heap.markInitialized(objectref)
+            }
             return
         }
         val returnValue = frameResult.returnValue

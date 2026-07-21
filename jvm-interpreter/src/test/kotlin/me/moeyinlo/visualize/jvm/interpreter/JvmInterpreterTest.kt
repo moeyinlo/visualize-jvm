@@ -55,6 +55,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class JvmInterpreterTest {
     @Test
@@ -3645,6 +3646,59 @@ class JvmInterpreterTest {
         assertEquals(1, result.operandStack.slotDepth)
         assertEquals("example/Foo", heap.get(reference).className)
         assertFalse(heap.isInitialized(reference))
+    }
+
+    @Test
+    fun `invokespecial initializes an uninitialized object after constructor returns`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBB.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+                0x59.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<init>",
+                                descriptor = "()V",
+                                isStatic = false,
+                                code = byteArrayOf(0xB1.toByte()),
+                                maxStack = 0,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            currentClassName = "Owner",
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals("Owner", heap.get(reference).className)
+        assertEquals(1, result.operandStack.slotDepth)
+        assertTrue(heap.isInitialized(reference))
     }
 
     @Test
