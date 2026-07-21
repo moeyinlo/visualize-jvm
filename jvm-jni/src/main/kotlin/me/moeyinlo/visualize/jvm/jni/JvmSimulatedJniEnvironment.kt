@@ -140,6 +140,9 @@ class JvmSimulatedJniEnvironment(
     fun getStringLength(stringHandle: JvmJniHandleId): Int =
         resolveStringValue(stringHandle).length
 
+    fun getStringChars(stringHandle: JvmJniHandleId): CharArray =
+        resolveStringValue(stringHandle).toCharArray()
+
     fun getStringUtfLength(stringHandle: JvmJniHandleId): Int =
         resolveStringValue(stringHandle).sumOf { codeUnit ->
             when (codeUnit.code) {

@@ -1026,6 +1026,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `NewStringUTF` allocates a guest `java/lang/String` from modified UTF input and returns it as a local `jstring` handle | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.NewStringUTF*` | IMPLEMENTED |
 | Simulated JNI | `GetStringUTFLength` returns the modified UTF-8 byte length for guest `java/lang/String` handles and rejects non-string object handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetStringUTFLength*` | IMPLEMENTED |
 | Simulated JNI | `GetStringLength` returns the UTF-16 code unit length for guest `java/lang/String` handles and rejects non-string object handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetStringLength*` | IMPLEMENTED |
+| Simulated JNI | `GetStringChars` returns copied UTF-16 code units for guest `java/lang/String` handles and rejects non-string object handles | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.GetStringChars*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, exceptions, strings, arrays, fields, and monitors mutate guest state | `jvm-jni`, `jvm-runtime` | TBD | PENDING |
 | Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
 

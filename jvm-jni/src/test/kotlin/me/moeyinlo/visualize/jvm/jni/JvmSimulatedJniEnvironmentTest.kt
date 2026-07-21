@@ -23,6 +23,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -3558,6 +3559,51 @@ class JvmSimulatedJniEnvironmentTest {
 
         val stringObject = heap.get(handles.resolveObject(stringHandle))
         assertEquals(JvmStringPayload("JVM"), stringObject.payload)
+    }
+
+    @Test
+    fun `GetStringChars returns copied UTF-16 code units for guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(
+            heap.allocateString("A\ud83d\ude00\u0000\u754c"),
+        )
+
+        val result = environment.getStringChars(stringHandle)
+
+        assertContentEquals(
+            charArrayOf('A', '\ud83d', '\ude00', '\u0000', '\u754c'),
+            result,
+        )
+    }
+
+    @Test
+    fun `GetStringChars rejects non string guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+
+        assertFailsWith<JvmJniStringAccessException> {
+            environment.getStringChars(objectHandle)
+        }
     }
 
 }
