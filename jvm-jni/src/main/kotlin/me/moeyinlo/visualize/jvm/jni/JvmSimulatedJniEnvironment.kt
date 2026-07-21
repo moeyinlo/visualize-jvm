@@ -1,7 +1,9 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
@@ -116,4 +118,28 @@ class JvmSimulatedJniEnvironment(
         }
         return handles.newFieldIdHandle(field)
     }
+
+    fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "I" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetIntField requires an instance int field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = heap.getInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return (value as? JvmIntValue)?.value
+            ?: throw JvmJniFieldAccessException(
+                "GetIntField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+    }
 }
+
+class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
