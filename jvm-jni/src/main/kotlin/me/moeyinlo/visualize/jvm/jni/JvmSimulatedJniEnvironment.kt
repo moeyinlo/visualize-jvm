@@ -589,6 +589,24 @@ class JvmSimulatedJniEnvironment(
             )
     }
 
+    fun setStaticDoubleField(classHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Double) {
+        handles.resolveClass(classHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "D" || !field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetStaticDoubleField requires a static double field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            JvmDoubleValue(value),
+        )
+    }
+
     fun setShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
