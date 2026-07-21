@@ -227,6 +227,25 @@ class JvmSimulatedJniEnvironment(
             )
     }
 
+    fun setFloatField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Float) {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "F" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "SetFloatField requires an instance float field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        heap.putInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+            JvmFloatValue(value),
+        )
+    }
+
     fun getObjectField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): JvmJniHandleId? {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
