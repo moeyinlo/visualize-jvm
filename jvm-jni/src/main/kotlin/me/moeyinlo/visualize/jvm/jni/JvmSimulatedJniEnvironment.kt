@@ -273,6 +273,12 @@ class JvmSimulatedJniEnvironment(
     fun newLongArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateLongArray(length))
 
+    fun getLongArrayRegion(arrayHandle: JvmJniHandleId, start: Int, length: Int): LongArray {
+        val array = resolveLongArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, length)
+        return array.elements.subList(start, start + length).toLongArray()
+    }
+
     fun newFloatArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateFloatArray(length))
 
@@ -1193,6 +1199,15 @@ class JvmSimulatedJniEnvironment(
         return heapObject.payload as? JvmIntArrayPayload
             ?: throw JvmJniArrayAccessException(
                 "JNI int array helper requires int array payload, got ${heapObject.className}",
+            )
+    }
+
+    private fun resolveLongArray(arrayHandle: JvmJniHandleId): JvmLongArrayPayload {
+        val reference = handles.resolveObject(arrayHandle)
+        val heapObject = heap.get(reference)
+        return heapObject.payload as? JvmLongArrayPayload
+            ?: throw JvmJniArrayAccessException(
+                "JNI long array helper requires long array payload, got ${heapObject.className}",
             )
     }
 
