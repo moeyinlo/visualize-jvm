@@ -16,6 +16,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -608,6 +609,33 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmStringPayload("hello"), heap.get(result).payload)
     }
 
+    @Test
+    fun `Thread currentThread intrinsic returns the current guest thread mirror`() {
+        val heap = JvmHeap()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadCurrentThreadMethod())
+            ?: error("Thread.currentThread intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+            currentThreadId = "worker-1",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+        val repeated = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(result, repeated)
+        assertEquals("java/lang/Thread", heap.get(result).className)
+        assertEquals(JvmThreadPayload("worker-1"), heap.get(result).payload)
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -741,6 +769,14 @@ class JvmVmIntrinsicsTest {
         name = "intern",
         descriptor = "()Ljava/lang/String;",
         isStatic = false,
+        isNative = true,
+    )
+
+    private fun threadCurrentThreadMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "currentThread",
+        descriptor = "()Ljava/lang/Thread;",
+        isStatic = true,
         isNative = true,
     )
 }

@@ -23,6 +23,8 @@ data class JvmStackTraceFrame(
 
 data class JvmThrowablePayload(val stackTrace: List<JvmStackTraceFrame>) : JvmHeapPayload
 
+data class JvmThreadPayload(val threadId: String) : JvmHeapPayload
+
 data class JvmBooleanArrayPayload(val elements: MutableList<Boolean>) : JvmHeapPayload
 
 data class JvmDoubleArrayPayload(val elements: MutableList<Double>) : JvmHeapPayload
@@ -72,6 +74,7 @@ class JvmHeap {
     private val classMirrors = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodTypes = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodHandles = linkedMapOf<JvmMethodHandleKey, JvmObjectReferenceValue>()
+    private val threads = linkedMapOf<String, JvmObjectReferenceValue>()
     private var nextReferenceId = 1
 
     fun allocateObject(className: String): JvmObjectReferenceValue {
@@ -206,6 +209,19 @@ class JvmHeap {
     fun internString(value: String): JvmObjectReferenceValue =
         internedStrings.getOrPut(value) { allocateString(value) }
 
+    fun internThread(threadId: String): JvmObjectReferenceValue {
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+
+        return threads.getOrPut(threadId) {
+            allocate(
+                JvmHeapObject(
+                    className = "java/lang/Thread",
+                    payload = JvmThreadPayload(threadId),
+                ),
+            )
+        }
+    }
+
     fun internClassMirror(className: String): JvmObjectReferenceValue {
         require(className.isNotBlank()) { "class name must not be blank" }
 
@@ -321,5 +337,6 @@ private fun JvmHeapPayload.shallowClonePayload(): JvmHeapPayload =
         is JvmReferenceArrayPayload -> JvmReferenceArrayPayload(elements.toMutableList())
         is JvmShortArrayPayload -> JvmShortArrayPayload(elements.toMutableList())
         is JvmStringPayload -> copy()
+        is JvmThreadPayload -> copy()
         is JvmThrowablePayload -> copy(stackTrace = stackTrace.toList())
     }

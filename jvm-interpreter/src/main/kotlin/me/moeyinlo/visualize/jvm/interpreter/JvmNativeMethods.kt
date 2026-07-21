@@ -240,6 +240,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/String;",
         isStatic = false,
     )
+    private val ThreadCurrentThreadKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "currentThread",
+        descriptor = "()Ljava/lang/Thread;",
+        isStatic = true,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -378,6 +384,10 @@ object JvmVmIntrinsics {
         val value = requireStringReceiver("String.intern", context, invocation)
         context.heap.internString(value)
     }
+    private val ThreadCurrentThread = JvmNativeMethodIntrinsic { context, invocation ->
+        requireNoArguments("Thread.currentThread", invocation)
+        context.heap.internThread(context.currentThreadId)
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -399,6 +409,7 @@ object JvmVmIntrinsics {
         ClassGetSuperclassKey to ClassGetSuperclass,
         ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
         StringInternKey to StringIntern,
+        ThreadCurrentThreadKey to ThreadCurrentThread,
     )
 
     private val PrimitiveClassNames = setOf(
