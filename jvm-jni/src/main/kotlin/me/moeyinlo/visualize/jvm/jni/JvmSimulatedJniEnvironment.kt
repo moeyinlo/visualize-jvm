@@ -4,6 +4,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
@@ -160,6 +161,28 @@ class JvmSimulatedJniEnvironment(
             ),
             JvmIntValue(value),
         )
+    }
+
+    fun getLongField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Long {
+        val reference = handles.resolveObject(objectHandle)
+        val field = handles.resolveFieldId(fieldIdHandle)
+        if (field.descriptor != "J" || field.isStatic) {
+            throw JvmJniFieldAccessException(
+                "GetLongField requires an instance long field, got ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
+        }
+        val value = heap.getInstanceField(
+            reference,
+            JvmFieldReference(
+                ownerClassName = field.ownerClassName,
+                name = field.name,
+                descriptor = field.descriptor,
+            ),
+        )
+        return (value as? JvmLongValue)?.value
+            ?: throw JvmJniFieldAccessException(
+                "GetLongField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
+            )
     }
 
     fun getObjectField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): JvmJniHandleId? {
