@@ -429,6 +429,48 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmIntValue(0), result)
     }
 
+    @Test
+    fun `System currentTimeMillis intrinsic returns the context wall clock value`() {
+        val heap = JvmHeap()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemCurrentTimeMillisMethod())
+            ?: error("System.currentTimeMillis intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+            currentTimeMillisProvider = { 123_456_789L },
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(JvmLongValue(123_456_789L), result)
+    }
+
+    @Test
+    fun `System nanoTime intrinsic returns the context monotonic clock value`() {
+        val heap = JvmHeap()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemNanoTimeMethod())
+            ?: error("System.nanoTime intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+            nanoTimeProvider = { 987_654_321L },
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(JvmLongValue(987_654_321L), result)
+    }
+
     private fun objectGetClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -489,6 +531,22 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/System",
         name = "identityHashCode",
         descriptor = "(Ljava/lang/Object;)I",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemCurrentTimeMillisMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "currentTimeMillis",
+        descriptor = "()J",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemNanoTimeMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "nanoTime",
+        descriptor = "()J",
         isStatic = true,
         isNative = true,
     )

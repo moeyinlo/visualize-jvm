@@ -50,6 +50,8 @@ data class JvmNativeMethodContext(
     val currentClassName: String?,
     val monitors: JvmMonitorState = JvmMonitorState(),
     val currentThreadId: String = "main",
+    val currentTimeMillisProvider: () -> Long = System::currentTimeMillis,
+    val nanoTimeProvider: () -> Long = System::nanoTime,
     internal val callStaticMethodHandler: (
         ownerClassName: String,
         name: String,
@@ -180,6 +182,18 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;)I",
         isStatic = true,
     )
+    private val SystemCurrentTimeMillisKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "currentTimeMillis",
+        descriptor = "()J",
+        isStatic = true,
+    )
+    private val SystemNanoTimeKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "nanoTime",
+        descriptor = "()J",
+        isStatic = true,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -262,6 +276,14 @@ object JvmVmIntrinsics {
             )
         }
     }
+    private val SystemCurrentTimeMillis = JvmNativeMethodIntrinsic { context, invocation ->
+        requireNoArguments("System.currentTimeMillis", invocation)
+        JvmLongValue(context.currentTimeMillisProvider())
+    }
+    private val SystemNanoTime = JvmNativeMethodIntrinsic { context, invocation ->
+        requireNoArguments("System.nanoTime", invocation)
+        JvmLongValue(context.nanoTimeProvider())
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -274,7 +296,15 @@ object JvmVmIntrinsics {
         ObjectNotifyAllKey to ObjectNotifyAll,
         SystemArraycopyKey to SystemArraycopy,
         SystemIdentityHashCodeKey to SystemIdentityHashCode,
+        SystemCurrentTimeMillisKey to SystemCurrentTimeMillis,
+        SystemNanoTimeKey to SystemNanoTime,
     )
+
+    private fun requireNoArguments(name: String, invocation: JvmNativeMethodInvocation) {
+        if (invocation.arguments.isNotEmpty()) {
+            throw JvmUnsupportedInstructionException("$name expects no arguments")
+        }
+    }
 
     private fun validateWaitArguments(arguments: List<JvmValue>) {
         when (arguments.size) {
