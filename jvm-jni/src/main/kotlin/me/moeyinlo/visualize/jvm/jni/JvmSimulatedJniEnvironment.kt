@@ -245,6 +245,21 @@ class JvmSimulatedJniEnvironment(
         array.elements[index] = value
     }
 
+    fun getObjectArrayRegion(
+        arrayHandle: JvmJniHandleId,
+        start: Int,
+        length: Int,
+    ): List<JvmJniHandleId?> {
+        val array = resolveReferenceArray(arrayHandle)
+        requireArrayRange(array.elements.size, start, length)
+        return array.elements.subList(start, start + length).map { element ->
+            when (element) {
+                JvmNullValue -> null
+                is JvmObjectReferenceValue -> handles.newObjectHandle(element)
+            }
+        }
+    }
+
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
         val reference = handles.resolveObject(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
@@ -1011,6 +1026,14 @@ class JvmSimulatedJniEnvironment(
             ),
             value,
         )
+    }
+
+    private fun requireArrayRange(arrayLength: Int, start: Int, length: Int) {
+        if (start < 0 || length < 0 || start > arrayLength - length) {
+            throw JvmJniArrayAccessException(
+                "JNI array range start=$start length=$length is out of bounds for length $arrayLength",
+            )
+        }
     }
 
     private fun resolveReferenceArray(arrayHandle: JvmJniHandleId): JvmReferenceArrayPayload {

@@ -4048,4 +4048,61 @@ class JvmSimulatedJniEnvironmentTest {
         }
     }
 
+    @Test
+    fun `GetObjectArrayRegion returns copied nullable local handles for a reference array range`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("java/lang/String")
+        val firstReference = heap.allocateString("first")
+        val secondReference = heap.allocateString("second")
+        val arrayHandle = environment.newObjectArray(4, classHandle, null)
+        environment.setObjectArrayElement(
+            arrayHandle,
+            1,
+            handles.newObjectHandle(firstReference),
+        )
+        environment.setObjectArrayElement(
+            arrayHandle,
+            3,
+            handles.newObjectHandle(secondReference),
+        )
+
+        val result = environment.getObjectArrayRegion(arrayHandle, start = 1, length = 3)
+
+        assertEquals(3, result.size)
+        assertEquals(firstReference, handles.resolveObject(result[0]!!))
+        assertEquals(null, result[1])
+        assertEquals(secondReference, handles.resolveObject(result[2]!!))
+    }
+
+    @Test
+    fun `GetObjectArrayRegion rejects primitive arrays and invalid ranges`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val primitiveArrayHandle = handles.newObjectHandle(heap.allocateIntArray(3))
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getObjectArrayRegion(primitiveArrayHandle, start = 0, length = 1)
+        }
+
+        val referenceArrayHandle = handles.newObjectHandle(heap.allocateReferenceArray("java/lang/Object", 3))
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getObjectArrayRegion(referenceArrayHandle, start = 2, length = 2)
+        }
+    }
+
 }
