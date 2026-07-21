@@ -45,14 +45,22 @@ fun interface JvmNativeMethodIntrinsic {
 
 class JvmNativeMethodRegistry(
     private val intrinsics: Map<JvmNativeMethodKey, JvmNativeMethodIntrinsic> = emptyMap(),
+    private val simulatedJni: Map<JvmNativeMethodKey, JvmNativeMethodIntrinsic> = emptyMap(),
 ) {
     fun resolve(method: JvmResolvedMethod): JvmNativeMethodIntrinsic? =
-        intrinsics[JvmNativeMethodKey.from(method)]
+        JvmNativeMethodKey.from(method).let { key ->
+            intrinsics[key] ?: simulatedJni[key]
+        }
 
     companion object {
         val Empty: JvmNativeMethodRegistry = JvmNativeMethodRegistry()
 
         fun from(vararg entries: Pair<JvmNativeMethodKey, JvmNativeMethodIntrinsic>): JvmNativeMethodRegistry =
             JvmNativeMethodRegistry(entries.toMap())
+
+        fun fromSimulatedJni(
+            vararg entries: Pair<JvmNativeMethodKey, JvmNativeMethodIntrinsic>,
+        ): JvmNativeMethodRegistry =
+            JvmNativeMethodRegistry(simulatedJni = entries.toMap())
     }
 }
