@@ -6046,6 +6046,58 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putstatic allows package private fields from the same package`() {
+        val staticFields = JvmStaticFields()
+        val field = JvmFieldReference(
+            ownerClassName = "pkg/Owner",
+            name = "shared",
+            descriptor = "I",
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x04.toByte(),
+                0xB3.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("shared", "shared".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Owner",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "shared",
+                                descriptor = "I",
+                                isStatic = true,
+                                isPackagePrivate = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition("pkg/Caller"),
+                ),
+            ),
+            currentClassName = "pkg/Caller",
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmIntValue(1), staticFields.get(field))
+    }
+
+    @Test
     fun `putstatic throws guest IllegalAccessError for protected fields from non subclass in another package`() {
         val exception = assertFailsWith<JvmIllegalAccessError> {
             JvmInterpreter.execute(
