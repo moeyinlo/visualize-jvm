@@ -317,6 +317,13 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.provides",
             fieldName = "provides_index",
         )
+        requireUniqueNames(
+            names = provides.mapIndexed { index, entry ->
+                className(context, entry.providesIndex, "${context.ownerPath}.provides[$index].provides_index")
+            },
+            role = "${context.ownerPath}.provides",
+            fieldName = "provides_index class name",
+        )
         return provides
     }
 
