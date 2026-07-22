@@ -16687,7 +16687,7 @@ class JvmInterpreterTest {
     }
 
     @Test
-    fun `invokedynamic keeps non static linked target method handles explicit`() {
+    fun `invokedynamic keeps invoke special linked target method handles explicit`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(
                 JvmClassDefinition(
@@ -16720,7 +16720,7 @@ class JvmInterpreterTest {
                     descriptor = "()I",
                 ),
                 targetMethodHandle = JvmMethodHandlePayload(
-                    referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeSpecial,
                     referenceIndex = 1,
                 ),
                 targetMethod = classHierarchy.resolveMethod(
@@ -16750,9 +16750,96 @@ class JvmInterpreterTest {
 
         assertEquals(
             "Unsupported invokedynamic linked target for answer:()I at offset 0: " +
-                "target method handle InvokeVirtual execution is not implemented yet",
+                "target method handle InvokeSpecial execution is not implemented yet",
             exception.message,
         )
+    }
+
+    @Test
+    fun `invokedynamic executes cached invoke virtual target using receiver dispatch`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Child")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x04.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Child",
+                    superclassName = "pkg/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 1),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "value",
+                    descriptor = "(Lpkg/Base;)I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Base",
+                    name = "value",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicVirtualReceiverCallSiteConstantPool(),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
     }
 
     @Test
@@ -16937,6 +17024,22 @@ class JvmInterpreterTest {
                 ),
                 ConstantUtf8Entry("increment", "increment".encodeToByteArray()),
                 ConstantUtf8Entry("(I)I", "(I)I".encodeToByteArray()),
+            ),
+        )
+
+    private fun invokedynamicVirtualReceiverCallSiteConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                ConstantUtf8Entry("(Lpkg/Base;)I", "(Lpkg/Base;)I".encodeToByteArray()),
             ),
         )
 

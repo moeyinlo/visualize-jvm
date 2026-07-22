@@ -4574,24 +4574,60 @@ object JvmInterpreter {
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
-        if (linkedCallSite.targetMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
-            throw JvmUnsupportedInstructionException(
+        when (linkedCallSite.targetMethodHandle.referenceKind) {
+            JvmMethodHandleReferenceKind.InvokeStatic -> executeLinkedInvokeDynamicStaticTarget(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                linkedCallSite = linkedCallSite,
+            )
+            JvmMethodHandleReferenceKind.InvokeVirtual -> executeLinkedInvokeDynamicVirtualTarget(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                linkedCallSite = linkedCallSite,
+            )
+            else -> throw JvmUnsupportedInstructionException(
                 "Unsupported invokedynamic linked target for ${linkedCallSite.spec.name}:" +
                     "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
                     "target method handle ${linkedCallSite.targetMethodHandle.referenceKind} execution is not " +
                     "implemented yet",
             )
         }
+    }
+
+    private fun executeLinkedInvokeDynamicStaticTarget(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
-        if (linkedCallSite.spec.descriptor != linkedCallSite.targetMethod.descriptor) {
-            throw JvmUnsupportedInstructionException(
-                "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
-                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
-                    "target ${linkedCallSite.targetMethod.ownerClassName}." +
-                    "${linkedCallSite.targetMethod.name}:${linkedCallSite.targetMethod.descriptor} " +
-                    "does not match call site descriptor",
-            )
-        }
+        requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, linkedCallSite.targetMethod.descriptor)
         executeResolvedStaticMethod(
             instruction = instruction,
             operandStack = operandStack,
@@ -4606,6 +4642,94 @@ object JvmInterpreter {
             invokeDynamicCallSites = invokeDynamicCallSites,
             resolvedMethod = linkedCallSite.targetMethod,
             opcodeMnemonic = "invokedynamic",
+        )
+    }
+
+    private fun executeLinkedInvokeDynamicVirtualTarget(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
+        requireInstanceMethod(instruction, linkedCallSite.targetMethod)
+        val expectedDescriptor = linkedCallSite.targetMethod.invokeVirtualMethodHandleDescriptor()
+        requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, expectedDescriptor)
+        val argumentDescriptors = linkedCallSite.targetMethod.descriptor.methodParameterDescriptors()
+        val arguments = argumentDescriptors
+            .asReversed()
+            .map { descriptor ->
+                val value = operandStack.pop()
+                requireMethodArgumentValue(instruction, linkedCallSite.targetMethod, descriptor, value)
+                requireReferenceMethodArgumentAssignable(
+                    instruction,
+                    linkedCallSite.targetMethod,
+                    descriptor,
+                    value,
+                    heap,
+                    classHierarchy,
+                )
+                value
+            }
+            .asReversed()
+        val receiver = operandStack.pop()
+        if (receiver == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "Cannot invoke dynamic virtual target " +
+                    "${linkedCallSite.targetMethod.ownerClassName}.${linkedCallSite.targetMethod.name}:" +
+                    "${linkedCallSite.targetMethod.descriptor} on null object reference",
+            )
+        }
+        if (receiver !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic virtual receiver for ${linkedCallSite.targetMethod.ownerClassName}." +
+                    "${linkedCallSite.targetMethod.name}:${linkedCallSite.targetMethod.descriptor} at offset " +
+                    "${instruction.offset}: expected reference but was ${receiver.javaClass.simpleName}",
+            )
+        }
+        executeVirtualMethodWithArguments(
+            instruction = instruction,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            currentClassName = linkedCallSite.targetMethod.ownerClassName,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            resolvedMethod = linkedCallSite.targetMethod,
+            receiver = receiver,
+            arguments = arguments,
+            opcodeMnemonic = "invokedynamic virtual",
+        )?.let { returnValue ->
+            operandStack.push(returnValue)
+        }
+    }
+
+    private fun requireLinkedInvokeDynamicDescriptor(
+        instruction: DecodedInstruction,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+        expectedDescriptor: String,
+    ) {
+        if (linkedCallSite.spec.descriptor == expectedDescriptor) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
+                "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
+                "target ${linkedCallSite.targetMethod.ownerClassName}." +
+                "${linkedCallSite.targetMethod.name}:${linkedCallSite.targetMethod.descriptor} " +
+                "does not match call site descriptor",
         )
     }
 
@@ -5812,6 +5936,11 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Invalid method descriptor $this: malformed return descriptor")
         }
         return returnDescriptor
+    }
+
+    private fun JvmResolvedMethod.invokeVirtualMethodHandleDescriptor(): String {
+        val parameters = descriptor.methodParameterDescriptors().joinToString(separator = "")
+        return "(L$ownerClassName;$parameters)${descriptor.methodReturnDescriptor()}"
     }
 
     private fun String.parameterSlotWidth(): Int =
