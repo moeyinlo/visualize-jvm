@@ -16606,6 +16606,63 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic executes cached get field target`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Targets")
+        val field = JvmFieldReference(
+            ownerClassName = "pkg/Targets",
+            name = "answer",
+            descriptor = "I",
+        )
+        heap.putInstanceField(receiver, field, JvmIntValue(42))
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 1),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "(Lpkg/Targets;)I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.GetField,
+                    referenceIndex = 1,
+                ),
+                target = JvmMethodHandleTarget.Field(
+                    JvmResolvedField(
+                        ownerClassName = "pkg/Targets",
+                        name = "answer",
+                        descriptor = "I",
+                        isStatic = false,
+                    ),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicFieldReceiverCallSiteConstantPool(),
+            heap = heap,
+            localVariables = locals,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokedynamic executes cached put static field target`() {
         val staticFields = JvmStaticFields()
         val field = JvmFieldReference(
@@ -17066,7 +17123,7 @@ class JvmInterpreterTest {
                     descriptor = "()I",
                 ),
                 targetMethodHandle = JvmMethodHandlePayload(
-                    referenceKind = JvmMethodHandleReferenceKind.GetField,
+                    referenceKind = JvmMethodHandleReferenceKind.PutField,
                     referenceIndex = 1,
                 ),
                 targetMethod = classHierarchy.resolveMethod(
@@ -17096,7 +17153,7 @@ class JvmInterpreterTest {
 
         assertEquals(
             "Unsupported invokedynamic linked target for answer:()I at offset 0: " +
-                "target method handle GetField execution is not implemented yet",
+                "target method handle PutField execution is not implemented yet",
             exception.message,
         )
     }
@@ -17402,6 +17459,22 @@ class JvmInterpreterTest {
                 ),
                 ConstantUtf8Entry("value", "value".encodeToByteArray()),
                 ConstantUtf8Entry("(Lpkg/Base;)I", "(Lpkg/Base;)I".encodeToByteArray()),
+            ),
+        )
+
+    private fun invokedynamicFieldReceiverCallSiteConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                ConstantUtf8Entry("(Lpkg/Targets;)I", "(Lpkg/Targets;)I".encodeToByteArray()),
             ),
         )
 

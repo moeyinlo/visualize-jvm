@@ -4579,6 +4579,13 @@ object JvmInterpreter {
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         when (linkedCallSite.targetMethodHandle.referenceKind) {
+            JvmMethodHandleReferenceKind.GetField -> executeLinkedInvokeDynamicGetFieldTarget(
+                instruction = instruction,
+                operandStack = operandStack,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                linkedCallSite = linkedCallSite,
+            )
             JvmMethodHandleReferenceKind.GetStatic -> executeLinkedInvokeDynamicGetStaticTarget(
                 instruction = instruction,
                 operandStack = operandStack,
@@ -4675,6 +4682,63 @@ object JvmInterpreter {
                     "implemented yet",
             )
         }
+    }
+
+    private fun executeLinkedInvokeDynamicGetFieldTarget(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
+        val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic getfield target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: linked target is not a field",
+            )
+        val resolvedField = target.field
+        val expectedDescriptor = "(L${resolvedField.ownerClassName};)${resolvedField.descriptor}"
+        if (linkedCallSite.spec.descriptor != expectedDescriptor) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: target " +
+                    "${resolvedField.ownerClassName}.${resolvedField.name}:${resolvedField.descriptor} " +
+                    "does not match call site descriptor",
+            )
+        }
+        val receiver = operandStack.pop()
+        if (receiver == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "Cannot invoke dynamic getfield target " +
+                    "${resolvedField.ownerClassName}.${resolvedField.name}:${resolvedField.descriptor} " +
+                    "on null object reference",
+            )
+        }
+        if (receiver !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic getfield receiver for ${resolvedField.ownerClassName}." +
+                    "${resolvedField.name}:${resolvedField.descriptor} at offset ${instruction.offset}: " +
+                    "expected reference but was ${receiver.javaClass.simpleName}",
+            )
+        }
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, resolvedField.ownerClassName)) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic getfield receiver for ${resolvedField.ownerClassName}.${resolvedField.name}:" +
+                    "${resolvedField.descriptor} at offset ${instruction.offset}: " +
+                    "$receiverClassName is not assignable to ${resolvedField.ownerClassName}",
+            )
+        }
+        val field = JvmFieldReference(
+            ownerClassName = resolvedField.ownerClassName,
+            name = resolvedField.name,
+            descriptor = resolvedField.descriptor,
+        )
+        val value = heap.getInstanceField(receiver, field)
+        requireFieldValue(instruction, field, value)
+        requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
+        operandStack.push(value)
     }
 
     private fun executeLinkedInvokeDynamicGetStaticTarget(
