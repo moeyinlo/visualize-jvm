@@ -37,6 +37,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
+import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmOperandStack
@@ -385,6 +386,21 @@ object JvmInterpreter {
                             "target is not an instruction offset",
                     )
             } catch (exception: JvmNoClassDefFoundError) {
+                val handler = JvmExceptionHandlerTable.findHandler(
+                    handlers = exceptionHandlers,
+                    thrownAtPc = instruction.offset,
+                    throwableClassName = exception.guestClassName,
+                    classHierarchy = classHierarchy,
+                ) ?: throw exception
+                val throwable = heap.allocateObject(exception.guestClassName)
+                resetOperandStackForExceptionHandler(operandStack, throwable)
+                instructionIndex = instructionIndexByOffset[handler.handlerPc]
+                    ?: throw JvmUnsupportedInstructionException(
+                        "Invalid exception handler target ${handler.handlerPc} for " +
+                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
+                            "target is not an instruction offset",
+                    )
+            } catch (exception: JvmNoSuchFieldError) {
                 val handler = JvmExceptionHandlerTable.findHandler(
                     handlers = exceptionHandlers,
                     thrownAtPc = instruction.offset,

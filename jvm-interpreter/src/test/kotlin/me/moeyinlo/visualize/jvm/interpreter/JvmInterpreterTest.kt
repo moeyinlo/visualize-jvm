@@ -41,6 +41,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
+import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -6126,6 +6127,86 @@ class JvmInterpreterTest {
 
         val caught = localVariables.load(0) as JvmObjectReferenceValue
         assertEquals("java/lang/NoClassDefFoundError", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
+    fun `getstatic throws guest NoSuchFieldError when resolved field is missing`() {
+        val exception = assertFailsWith<JvmNoSuchFieldError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("missing", "missing".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition("Owner"),
+                    ),
+                    strictClassResolution = true,
+                ),
+            )
+        }
+
+        assertEquals("java/lang/NoSuchFieldError", exception.guestClassName)
+        assertEquals("Owner.missing:I", exception.message)
+    }
+
+    @Test
+    fun `getstatic missing resolved field transfers control to matching NoSuchFieldError handler`() {
+        val heap = JvmHeap()
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("missing", "missing".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition("Owner"),
+                ),
+                strictClassResolution = true,
+            ),
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 3,
+                    handlerPc = 3,
+                    catchClassName = "java/lang/NoSuchFieldError",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/NoSuchFieldError", heap.get(caught).className)
         assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
     }
 
