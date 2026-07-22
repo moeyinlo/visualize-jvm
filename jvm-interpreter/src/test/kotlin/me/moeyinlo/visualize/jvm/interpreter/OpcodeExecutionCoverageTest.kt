@@ -26,7 +26,6 @@ class OpcodeExecutionCoverageTest {
             listOf(
                 "invokeinterface",
                 "invokedynamic",
-                "multianewarray",
             ),
             unsupported,
         )

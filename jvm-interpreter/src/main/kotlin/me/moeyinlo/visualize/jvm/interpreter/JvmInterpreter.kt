@@ -5390,13 +5390,37 @@ object JvmInterpreter {
             )
         }
         val arrayClassName = resolveConstantClassName(instruction, constantPool)
-        if (dimensions != 1) {
+        operandStack.push(allocateMultiDimensionalArray(arrayClassName, counts, heap, instruction))
+    }
+
+    private fun allocateMultiDimensionalArray(
+        arrayClassName: String,
+        counts: List<Int>,
+        heap: JvmHeap,
+        instruction: DecodedInstruction,
+    ): JvmObjectReferenceValue {
+        if (counts.size == 1) {
+            return allocateOneDimensionalArray(arrayClassName, counts.single(), heap, instruction)
+        }
+        if (!arrayClassName.startsWith("[[")) {
             throw JvmUnsupportedInstructionException(
-                "Unsupported ${instruction.metadata.mnemonic} allocation for $arrayClassName " +
-                    "with $dimensions dimension(s) at offset ${instruction.offset}",
+                "Invalid ${instruction.metadata.mnemonic} dimensions ${counts.size} for $arrayClassName " +
+                    "at offset ${instruction.offset}: dimensions exceed array class descriptor",
             )
         }
-        operandStack.push(allocateOneDimensionalArray(arrayClassName, counts.single(), heap, instruction))
+
+        val componentArrayClassName = arrayClassName.substring(1)
+        val reference = heap.allocateReferenceArray(componentArrayClassName, counts.first())
+        val payload = heap.get(reference).payload as JvmReferenceArrayPayload
+        for (index in payload.elements.indices) {
+            payload.elements[index] = allocateMultiDimensionalArray(
+                arrayClassName = componentArrayClassName,
+                counts = counts.drop(1),
+                heap = heap,
+                instruction = instruction,
+            )
+        }
+        return reference
     }
 
     private fun allocateOneDimensionalArray(

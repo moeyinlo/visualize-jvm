@@ -15877,6 +15877,42 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `multianewarray allocates recursive primitive arrays`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x05.toByte(),
+                0x06.toByte(),
+                0xC5.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("[[I", "[[I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val rootReference = result.operandStack.toList().single() as JvmObjectReferenceValue
+        val rootObject = heap.get(rootReference)
+        assertEquals("[[I", rootObject.className)
+        val rootElements = (rootObject.payload as JvmReferenceArrayPayload).elements
+        assertEquals(2, rootElements.size)
+        for (element in rootElements) {
+            val childReference = element as JvmObjectReferenceValue
+            val childObject = heap.get(childReference)
+            assertEquals("[I", childObject.className)
+            assertEquals(listOf(0, 0, 0), (childObject.payload as JvmIntArrayPayload).elements)
+        }
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
