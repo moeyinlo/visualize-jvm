@@ -40,6 +40,7 @@ object ClassFileParser {
             ownerPath = "ClassFile",
             majorVersion = version.major,
         )
+        validateClassAttributes(attributes, constantPool, reader.source)
         if (reader.remaining != 0) {
             throw ClassFileFormatException(
                 "Trailing bytes after ClassFile source=${reader.source} offset=${reader.currentOffset} " +
@@ -56,5 +57,49 @@ object ClassFileParser {
             methods = methods,
             attributes = attributes,
         )
+    }
+
+    private fun validateClassAttributes(
+        attributes: List<AttributeInfo>,
+        constantPool: ConstantPool,
+        source: String,
+    ) {
+        var nestHostPath: String? = null
+        var nestMembersPath: String? = null
+        attributes.forEachIndexed { index, attribute ->
+            when (attributeName(attribute, constantPool, source, index)) {
+                "NestHost" -> nestHostPath = "ClassFile.attributes[$index]"
+                "NestMembers" -> nestMembersPath = "ClassFile.attributes[$index]"
+            }
+        }
+        if (nestHostPath != null && nestMembersPath != null) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: must not contain both " +
+                    "NestHost ($nestHostPath) and NestMembers ($nestMembersPath)",
+            )
+        }
+    }
+
+    private fun attributeName(
+        attribute: AttributeInfo,
+        constantPool: ConstantPool,
+        source: String,
+        attributeIndex: Int,
+    ): String {
+        val entry = try {
+            constantPool[attribute.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile.attributes[$attributeIndex].attribute_name_index=${attribute.nameIndex} " +
+                    "source=$source: ${exception.message}",
+            )
+        }
+        if (entry !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile.attributes[$attributeIndex].attribute_name_index=${attribute.nameIndex} " +
+                    "source=$source: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
+            )
+        }
+        return entry.value
     }
 }
