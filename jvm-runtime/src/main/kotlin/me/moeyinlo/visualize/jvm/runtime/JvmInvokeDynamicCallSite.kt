@@ -31,12 +31,29 @@ data class JvmInvokeDynamicCallSiteSpec(
     }
 }
 
+data class JvmInvokeDynamicLinkageSpec(
+    val callSite: JvmInvokeDynamicCallSiteSpec,
+    val bootstrapMethod: JvmBootstrapMethod,
+)
+
 data class JvmLinkedInvokeDynamicCallSite(
     val spec: JvmInvokeDynamicCallSiteSpec,
     val targetMethod: JvmResolvedMethod,
 )
 
 object JvmInvokeDynamicCallSiteResolver {
+    fun resolveLinkageSpec(
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        bootstrapMethods: JvmBootstrapMethodTable,
+    ): JvmInvokeDynamicLinkageSpec {
+        val callSiteSpec = resolveSpec(constantPool, index)
+        return JvmInvokeDynamicLinkageSpec(
+            callSite = callSiteSpec,
+            bootstrapMethod = bootstrapMethods[callSiteSpec.bootstrapMethodIndex],
+        )
+    }
+
     fun resolveSpec(
         constantPool: ConstantPool,
         index: ConstantPoolIndex,

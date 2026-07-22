@@ -34,6 +34,78 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `call site resolver links invoke dynamic specs to bootstrap methods by zero based index`() {
+        val linkageSpec = JvmInvokeDynamicCallSiteResolver.resolveLinkageSpec(
+            constantPool = invokedynamicConstantPool(),
+            index = ConstantPoolIndex(1),
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(9),
+                        bootstrapArguments = emptyList(),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(10),
+                        bootstrapArguments = emptyList(),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                        bootstrapArguments = emptyList(),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(12),
+                        bootstrapArguments = emptyList(),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(13),
+                        bootstrapArguments = emptyList(),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(14),
+                        bootstrapArguments = emptyList(),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(15),
+                        bootstrapArguments = emptyList(),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(16),
+                        bootstrapArguments = listOf(JvmRuntimeConstantPoolIndex(4)),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmInvokeDynamicLinkageSpec(
+                callSite = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 7,
+                    name = "run",
+                    descriptor = "(I)Ljava/lang/String;",
+                ),
+                bootstrapMethod = JvmBootstrapMethod(
+                    bootstrapMethodRef = JvmRuntimeConstantPoolIndex(16),
+                    bootstrapArguments = listOf(JvmRuntimeConstantPoolIndex(4)),
+                ),
+            ),
+            linkageSpec,
+        )
+    }
+
+    @Test
+    fun `call site resolver rejects missing bootstrap method table entries`() {
+        val exception = assertFailsWith<JvmBootstrapMethodAccessException> {
+            JvmInvokeDynamicCallSiteResolver.resolveLinkageSpec(
+                constantPool = invokedynamicConstantPool(),
+                index = ConstantPoolIndex(1),
+                bootstrapMethods = JvmBootstrapMethodTable(),
+            )
+        }
+
+        assertEquals("Bootstrap method index #7 is outside 0..-1", exception.message)
+    }
+    @Test
     fun `call site resolver rejects non invoke dynamic constant pool entries`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveSpec(
