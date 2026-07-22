@@ -275,6 +275,28 @@ object JvmInvokeDynamicCallSiteResolver {
                 return resolvedMethod
             }
 
+            JvmMethodHandleReferenceKind.InvokeInterface -> {
+                if (methodReferenceEntry !is ConstantInterfaceMethodRefEntry) {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle InvokeInterface reference index $referenceIndex expected interface method " +
+                            "reference but found ${methodReferenceEntry.javaClass.simpleName}",
+                    )
+                }
+                val resolvedMethod = resolveMethodHandleReferenceMethod(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodReferenceEntry = methodReferenceEntry,
+                    referenceIndex = referenceIndex,
+                )
+                if (resolvedMethod.isStatic) {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle InvokeInterface target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                            "${resolvedMethod.descriptor} resolved to a static method",
+                    )
+                }
+                return resolvedMethod
+            }
+
             else -> throw JvmInvokeDynamicLinkageException(
                 "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
             )

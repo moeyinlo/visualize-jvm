@@ -7,6 +7,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
@@ -475,6 +476,75 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `method handle resolver resolves invoke interface targets through the class hierarchy`() {
+        val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+            constantPool = interfaceMethodHandleConstantPool(),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/TargetInterface",
+                        isInterface = true,
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "value",
+                                descriptor = "()I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            methodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
+                referenceIndex = 1,
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "pkg/TargetInterface",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+            ),
+            resolvedMethod,
+        )
+    }
+
+    @Test
+    fun `method handle resolver rejects invoke interface targets that resolve to static methods`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = interfaceMethodHandleConstantPool(),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/TargetInterface",
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "()I",
+                                    isStatic = true,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
+                    referenceIndex = 1,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle InvokeInterface target pkg/TargetInterface.value:()I resolved to a static method",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `method handle resolver keeps unsupported reference kinds explicit`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
@@ -711,6 +781,24 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                         ),
                     ),
                 ),
+            ),
+        )
+
+    private fun interfaceMethodHandleConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInterfaceMethodRefEntry(
+                    classIndex = ConstantPoolIndex(2),
+                    nameAndTypeIndex = ConstantPoolIndex(4),
+                ),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/TargetInterface", "pkg/TargetInterface".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(5),
+                    descriptorIndex = ConstantPoolIndex(6),
+                ),
+                ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
             ),
         )
 
