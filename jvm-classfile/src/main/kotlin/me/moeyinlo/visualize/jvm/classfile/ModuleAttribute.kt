@@ -236,6 +236,13 @@ object ModuleAttributeParser : AttributeBodyParser {
                 role = "$ownerPath.opens_to",
                 fieldName = "opens_to_index",
             )
+            requireUniqueNames(
+                names = opensToIndexes.mapIndexed { targetIndex, target ->
+                    moduleName(context, target, "$ownerPath.opens_to_index[$targetIndex]")
+                },
+                role = "$ownerPath.opens_to",
+                fieldName = "opens_to_index module name",
+            )
             ModuleOpens(
                 opensIndex = opensIndex,
                 opensFlags = opensFlags,
