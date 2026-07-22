@@ -80,7 +80,7 @@ object MethodInfoParser {
             validateSpecialMethodDescriptor(name.value, descriptor.value, method.descriptorIndex, ownerPath, majorVersion)
             validateAccessFlags(method.accessFlags, name.value, classKind, ownerPath, majorVersion)
             validateCodeAttributeCardinality(method, constantPool, name.value, ownerPath)
-            validateSignatureAttributeCardinality(method, constantPool, ownerPath)
+            validateMethodAttributeCardinality(method, constantPool, ownerPath)
 
             val duplicateOf = seenMethods.putIfAbsent(name.value to descriptor.value, index)
             if (duplicateOf != null) {
@@ -131,11 +131,12 @@ object MethodInfoParser {
         }
     }
 
-    private fun validateSignatureAttributeCardinality(
+    private fun validateMethodAttributeCardinality(
         method: MethodInfo,
         constantPool: ConstantPool,
         ownerPath: String,
     ) {
+        val exceptionsPaths = mutableListOf<String>()
         val signaturePaths = mutableListOf<String>()
         method.attributes.forEachIndexed { attributeIndex, attribute ->
             val name = expectUtf8(
@@ -143,16 +144,27 @@ object MethodInfoParser {
                 index = attribute.nameIndex,
                 role = "$ownerPath.attributes[$attributeIndex].attribute_name_index",
             )
-            if (name.value == "Signature") {
-                signaturePaths += "$ownerPath.attributes[$attributeIndex]"
+            when (name.value) {
+                "Exceptions" -> exceptionsPaths += "$ownerPath.attributes[$attributeIndex]"
+                "Signature" -> signaturePaths += "$ownerPath.attributes[$attributeIndex]"
             }
         }
-        if (signaturePaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid $ownerPath attributes: at most one Signature attribute is permitted " +
-                    "but found ${signaturePaths.size} at ${signaturePaths.joinToString()}",
-            )
+        requireAtMostOneAttribute(exceptionsPaths, "Exceptions", ownerPath)
+        requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
+    }
+
+    private fun requireAtMostOneAttribute(
+        paths: List<String>,
+        attributeName: String,
+        ownerPath: String,
+    ) {
+        if (paths.size <= 1) {
+            return
         }
+        throw ClassFileFormatException(
+            "Invalid $ownerPath attributes: at most one $attributeName attribute is permitted " +
+                "but found ${paths.size} at ${paths.joinToString()}",
+        )
     }
 
     private fun validateSpecialMethodDescriptor(
