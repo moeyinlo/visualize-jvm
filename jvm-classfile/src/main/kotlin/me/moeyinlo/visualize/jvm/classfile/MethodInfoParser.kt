@@ -80,6 +80,7 @@ object MethodInfoParser {
             validateSpecialMethodDescriptor(name.value, descriptor.value, method.descriptorIndex, ownerPath, majorVersion)
             validateAccessFlags(method.accessFlags, name.value, classKind, ownerPath, majorVersion)
             validateCodeAttributeCardinality(method, constantPool, name.value, ownerPath)
+            validateSignatureAttributeCardinality(method, constantPool, ownerPath)
 
             val duplicateOf = seenMethods.putIfAbsent(name.value to descriptor.value, index)
             if (duplicateOf != null) {
@@ -126,6 +127,30 @@ object MethodInfoParser {
             throw ClassFileFormatException(
                 "Invalid $ownerPath.attributes: method '$methodName' must have exactly one Code attribute " +
                     "but found $codeAttributeCount",
+            )
+        }
+    }
+
+    private fun validateSignatureAttributeCardinality(
+        method: MethodInfo,
+        constantPool: ConstantPool,
+        ownerPath: String,
+    ) {
+        val signaturePaths = mutableListOf<String>()
+        method.attributes.forEachIndexed { attributeIndex, attribute ->
+            val name = expectUtf8(
+                constantPool = constantPool,
+                index = attribute.nameIndex,
+                role = "$ownerPath.attributes[$attributeIndex].attribute_name_index",
+            )
+            if (name.value == "Signature") {
+                signaturePaths += "$ownerPath.attributes[$attributeIndex]"
+            }
+        }
+        if (signaturePaths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: at most one Signature attribute is permitted " +
+                    "but found ${signaturePaths.size} at ${signaturePaths.joinToString()}",
             )
         }
     }
