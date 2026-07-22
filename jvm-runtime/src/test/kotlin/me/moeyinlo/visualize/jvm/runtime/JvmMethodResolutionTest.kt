@@ -273,6 +273,56 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `interface method target resolution lets abstract child suppress parent default`() {
+        val parentCode = byteArrayOf(0x05)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("ParentFace", "ChildFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "ParentFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = parentCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "ChildFace",
+                    interfaceNames = listOf("ParentFace"),
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isAbstract = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmAbstractMethodError> {
+            hierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+            )
+        }
+
+        assertEquals("java/lang/AbstractMethodError", exception.guestClassName)
+        assertEquals("Example.value:()I", exception.message)
+    }
+    @Test
     fun `interface method target resolution rejects unrelated default method conflict`() {
         val leftCode = byteArrayOf(0x05)
         val rightCode = byteArrayOf(0x06)
