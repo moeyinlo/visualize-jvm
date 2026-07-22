@@ -207,6 +207,13 @@ object MethodInfoParser {
                     "must not return void but found $annotationDefaultPath",
             )
         }
+        val exceptionsPath = exceptionsPaths.singleOrNull()
+        if (annotationDefaultPath != null && exceptionsPath != null) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: AnnotationDefault annotation interface elements " +
+                    "must not declare Exceptions but found $exceptionsPath",
+            )
+        }
     }
 
     private fun requireAtMostOneAttribute(

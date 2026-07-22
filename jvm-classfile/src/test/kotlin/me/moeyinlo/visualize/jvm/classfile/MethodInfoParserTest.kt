@@ -661,6 +661,48 @@ class MethodInfoParserTest {
         assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
         assertTrue(failure.message.orEmpty().contains("must not return void"), failure.message)
     }
+
+    @Test
+    fun `rejects AnnotationDefault attributes on annotation interface methods with Exceptions`() {
+        val annotationDefaultAttribute = byteArrayOf(0, 3) + intBytes(3) + byteArrayOf('I'.code.toByte(), 0, 4)
+        val exceptionsAttribute = byteArrayOf(0, 5) + intBytes(4) + byteArrayOf(0, 1, 0, 7)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(
+                            accessFlags = 0x0401,
+                            descriptorIndex = 2,
+                            attributes = listOf(annotationDefaultAttribute, exceptionsAttribute),
+                        ),
+                    ),
+                    source = "bad-throws-annotation-default.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ConstantUtf8Entry("AnnotationDefault", "AnnotationDefault".encodeToByteArray()),
+                        ConstantIntegerEntry(1),
+                        ConstantUtf8Entry("Exceptions", "Exceptions".encodeToByteArray()),
+                        ConstantUtf8Entry("java/lang/Exception", "java/lang/Exception".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(6)),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "AnnotationDefault" to AnnotationDefaultAttributeParser,
+                    "Exceptions" to ExceptionsAttributeParser,
+                ),
+                classKind = ClassFileKind.AnnotationInterface,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("must not declare Exceptions"), failure.message)
+    }
     @Test
     fun `rejects instance initialization methods in interfaces`() {
         val failure = assertFailsWith<ClassFileFormatException> {
