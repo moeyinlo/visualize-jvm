@@ -204,7 +204,7 @@ class JvmClassHierarchy(
         return receiverClass.findDeclaredMethod(name, descriptor)
             ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
             ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
-            ?: findInterfaceMethod(receiverClass.interfaceNames, name, descriptor)
+            ?: findMaximallySpecificInterfaceMethod(receiverClass.interfaceNames, name, descriptor)
                 ?.takeIf { method -> !method.isAbstract }
             ?: throw JvmNoSuchMethodError(
                 guestClassName = "java/lang/NoSuchMethodError",
@@ -289,21 +289,37 @@ class JvmClassHierarchy(
         return null
     }
 
-    private fun findInterfaceMethod(
+    private fun findMaximallySpecificInterfaceMethod(
+        interfaceNames: List<String>,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod? {
+        val candidates = collectInterfaceMethods(interfaceNames, name, descriptor)
+            .filterNot { method -> method.isAbstract }
+        return candidates.singleOrNull { candidate ->
+            candidates.none { other ->
+                other.ownerClassName != candidate.ownerClassName &&
+                    isAssignable(other.ownerClassName, candidate.ownerClassName)
+            }
+        }
+    }
+
+    private fun collectInterfaceMethods(
         interfaceNames: List<String>,
         name: String,
         descriptor: String,
         visited: MutableSet<String> = linkedSetOf(),
-    ): JvmResolvedMethod? {
+    ): List<JvmResolvedMethod> {
+        val methods = mutableListOf<JvmResolvedMethod>()
         for (interfaceName in interfaceNames) {
             if (!visited.add(interfaceName)) {
                 continue
             }
             val interfaceClass = classesByName[interfaceName] ?: continue
-            interfaceClass.findDeclaredMethod(name, descriptor)?.let { resolved -> return resolved }
-            findInterfaceMethod(interfaceClass.interfaceNames, name, descriptor, visited)?.let { resolved -> return resolved }
+            interfaceClass.findDeclaredMethod(name, descriptor)?.let { resolved -> methods += resolved }
+            methods += collectInterfaceMethods(interfaceClass.interfaceNames, name, descriptor, visited)
         }
-        return null
+        return methods
     }
 
     private fun findSuperclassField(

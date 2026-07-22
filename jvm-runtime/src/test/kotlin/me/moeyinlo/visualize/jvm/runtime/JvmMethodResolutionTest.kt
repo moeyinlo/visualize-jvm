@@ -213,6 +213,66 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `interface method target resolution prefers child interface default over parent default`() {
+        val parentCode = byteArrayOf(0x05)
+        val childCode = byteArrayOf(0x06)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("ParentFace", "ChildFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "ParentFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = parentCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "ChildFace",
+                    interfaceNames = listOf("ParentFace"),
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = childCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "ChildFace",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                code = childCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `class initialization method lookup returns declared static void clinit only`() {
         val hierarchy = JvmClassHierarchy(
             listOf(
