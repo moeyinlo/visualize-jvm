@@ -691,7 +691,7 @@ object JvmInterpreter {
             0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, currentThreadId)
             0xC3 -> executeMonitorExit(instruction, operandStack, heap, monitors, currentThreadId)
-            0xC5 -> executeMultiANewArray(instruction, constantPool)
+            0xC5 -> executeMultiANewArray(instruction, operandStack, constantPool)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -5360,6 +5360,7 @@ object JvmInterpreter {
 
     private fun executeMultiANewArray(
         instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
         constantPool: ConstantPool,
     ) {
         val dimensions = instruction.operands[2]
@@ -5367,6 +5368,24 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException(
                 "Invalid ${instruction.metadata.mnemonic} dimensions 0 at offset ${instruction.offset}: " +
                     "dimensions must be greater than zero",
+            )
+        }
+        val counts = (0 until dimensions)
+            .map {
+                val count = operandStack.pop()
+                if (count !is JvmIntValue) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ${instruction.metadata.mnemonic} count at offset ${instruction.offset}: " +
+                            "expected JvmIntValue but was ${count.javaClass.simpleName}",
+                    )
+                }
+                count.value
+            }
+            .asReversed()
+        counts.firstOrNull { count -> count < 0 }?.let { count ->
+            throw JvmNegativeArraySizeException(
+                guestClassName = "java/lang/NegativeArraySizeException",
+                message = count.toString(),
             )
         }
         val arrayClassName = resolveConstantClassName(instruction, constantPool)

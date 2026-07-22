@@ -15810,6 +15810,45 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `multianewarray throws guest NegativeArraySizeException for negative counts`() {
+        val heap = JvmHeap()
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x02.toByte(),
+                0xC5.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x01.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("[I", "[I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 5,
+                    handlerPc = 5,
+                    catchClassName = "java/lang/NegativeArraySizeException",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/NegativeArraySizeException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
