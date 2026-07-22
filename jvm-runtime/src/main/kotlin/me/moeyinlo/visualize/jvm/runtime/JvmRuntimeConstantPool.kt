@@ -38,7 +38,8 @@ data class JvmRuntimeMethodSymbolicReference(
 
 sealed interface JvmRuntimeResolvedConstant {
     data class Value(val value: JvmValue) : JvmRuntimeResolvedConstant
-    data class Class(val internalName: String) : JvmRuntimeResolvedConstant
+    data class String(val value: kotlin.String) : JvmRuntimeResolvedConstant
+    data class Class(val internalName: kotlin.String) : JvmRuntimeResolvedConstant
     data class Field(val field: JvmResolvedField) : JvmRuntimeResolvedConstant
     data class Method(val method: JvmResolvedMethod) : JvmRuntimeResolvedConstant
 }
