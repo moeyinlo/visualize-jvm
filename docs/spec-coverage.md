@@ -18,7 +18,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.2 | Runtime data type model partitions JVM values into primitive values, reference values, and `returnAddress` values with JVMS category-one/category-two slot widths | `jvm-runtime` | `JvmDataTypeModelTest`, `JvmPrimitiveValueTest`, `JvmReferenceValueTest`, `JvmReturnAddressValueTest` | IMPLEMENTED |
 | 2.3 | Primitive types and values | `jvm-runtime` | TBD | PENDING |
 | 2.3 | Primitive value runtime model and JVM slot categories | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
-| 2.3.1 | Integral types and values | `jvm-runtime` | TBD | PENDING |
+| 2.3.1 | Integral runtime values cover `boolean`, `byte`, `char`, `short`, `int`, and `long`, including narrowed range checks and category-one/category-two slot widths | `jvm-runtime` | `JvmIntegralValueTest`, `JvmPrimitiveValueTest`, `JvmDataTypeModelTest` | IMPLEMENTED |
 | 2.3.2 | Floating-point types and values | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.3.3 | `returnAddress` runtime value model stores non-negative bytecode targets as category-one JVM values | `jvm-runtime` | `JvmReturnAddressValueTest` | IMPLEMENTED |
 | 2.3.4 | `boolean` runtime value model stores true/false as category-one JVM values | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
