@@ -545,11 +545,59 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
-    fun `method handle resolver keeps unsupported reference kinds explicit`() {
+    fun `method handle resolver resolves new invoke special constructor targets through the class hierarchy`() {
+        val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+            constantPool = constructorMethodHandleConstantPool(),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Constructed",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<init>",
+                                descriptor = "()V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            methodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                referenceIndex = 1,
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "pkg/Constructed",
+                name = "<init>",
+                descriptor = "()V",
+                isStatic = false,
+            ),
+            resolvedMethod,
+        )
+    }
+
+    @Test
+    fun `method handle resolver rejects new invoke special targets that are not constructors`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
                 constantPool = bootstrapInvocationConstantPool(),
-                classHierarchy = JvmClassHierarchy(),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Bootstrap",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "bootstrap",
+                                    descriptor = BOOTSTRAP_DESCRIPTOR,
+                                    isStatic = false,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
                 methodHandle = JvmMethodHandlePayload(
                     referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
                     referenceIndex = 6,
@@ -558,7 +606,26 @@ class JvmInvokeDynamicCallSiteRegistryTest {
         }
 
         assertEquals(
-            "MethodHandle reference kind NewInvokeSpecial target resolution is not implemented yet",
+            "MethodHandle NewInvokeSpecial target pkg/Bootstrap.bootstrap:$BOOTSTRAP_DESCRIPTOR is not an instance initializer",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `method handle resolver keeps unsupported reference kinds explicit`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = bootstrapInvocationConstantPool(),
+                classHierarchy = JvmClassHierarchy(),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                    referenceIndex = 6,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle reference kind GetStatic target resolution is not implemented yet",
             exception.message,
         )
     }
@@ -781,6 +848,24 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                         ),
                     ),
                 ),
+            ),
+        )
+
+    private fun constructorMethodHandleConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(2),
+                    nameAndTypeIndex = ConstantPoolIndex(4),
+                ),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Constructed", "pkg/Constructed".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(5),
+                    descriptorIndex = ConstantPoolIndex(6),
+                ),
+                ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
             ),
         )
 
