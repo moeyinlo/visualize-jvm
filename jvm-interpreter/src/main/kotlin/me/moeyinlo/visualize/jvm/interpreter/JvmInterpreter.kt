@@ -4636,6 +4636,21 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 linkedCallSite = linkedCallSite,
             )
+            JvmMethodHandleReferenceKind.NewInvokeSpecial -> executeLinkedInvokeDynamicConstructorTarget(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                linkedCallSite = linkedCallSite,
+            )
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported invokedynamic linked target for ${linkedCallSite.spec.name}:" +
                     "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
@@ -5080,6 +5095,116 @@ object JvmInterpreter {
         requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
         requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
         operandStack.push(returnValue)
+    }
+
+    private fun executeLinkedInvokeDynamicConstructorTarget(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
+        val constructor = linkedCallSite.targetMethod
+        if (constructor.name != "<init>") {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic constructor target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
+                    "target ${constructor.ownerClassName}.${constructor.name}:${constructor.descriptor} is not <init>",
+            )
+        }
+        requireInstanceMethod(instruction, constructor)
+        val expectedDescriptor = constructor.newInvokeSpecialMethodHandleDescriptor()
+        requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, expectedDescriptor)
+        requireAccessibleMethod(constructor, currentClassName, classHierarchy)
+        val argumentDescriptors = constructor.descriptor.methodParameterDescriptors()
+        val arguments = argumentDescriptors
+            .asReversed()
+            .map { descriptor ->
+                val value = operandStack.pop()
+                requireMethodArgumentValue(instruction, constructor, descriptor, value)
+                requireReferenceMethodArgumentAssignable(
+                    instruction,
+                    constructor,
+                    descriptor,
+                    value,
+                    heap,
+                    classHierarchy,
+                )
+                value
+            }
+            .asReversed()
+        val receiver = heap.allocateUninitializedObject(constructor.ownerClassName)
+        if (constructor.isNative) {
+            val nativeReturnValue = executeNativeMethod(
+                instruction = instruction,
+                method = constructor,
+                receiver = receiver,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = constructor.ownerClassName,
+            )
+            if (nativeReturnValue != null) {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid invokedynamic constructor native return for ${constructor.ownerClassName}." +
+                        "${constructor.name}:${constructor.descriptor}: expected void but returned " +
+                        nativeReturnValue.javaClass.simpleName,
+                )
+            }
+            heap.markInitialized(receiver)
+            operandStack.push(receiver)
+            return
+        }
+        val methodCode = constructor.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved constructor ${constructor.ownerClassName}.${constructor.name}:" +
+                    "${constructor.descriptor} has no Code attribute for invokedynamic constructor",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = constructor.maxLocals)
+        calleeLocals.store(0, receiver)
+        var localIndex = 1
+        for (argument in arguments) {
+            calleeLocals.store(localIndex, argument)
+            localIndex += argument.category.slotWidth
+        }
+        val frameResult = executeFrame(
+            code = methodCode,
+            maxStack = constructor.maxStack,
+            constantPool = constantPool,
+            heap = heap,
+            localVariables = calleeLocals,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            currentClassName = constructor.ownerClassName,
+            allowReturn = true,
+            exceptionHandlers = constructor.exceptionHandlers,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+        )
+        if (frameResult.returnValue != null) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic constructor return for ${constructor.ownerClassName}.${constructor.name}:" +
+                    "${constructor.descriptor}: expected void but returned " +
+                    frameResult.returnValue.javaClass.simpleName,
+            )
+        }
+        heap.markInitialized(receiver)
+        operandStack.push(receiver)
     }
 
     private fun requireLinkedInvokeDynamicDescriptor(
@@ -6307,6 +6432,11 @@ object JvmInterpreter {
     private fun JvmResolvedMethod.invokeVirtualMethodHandleDescriptor(): String {
         val parameters = descriptor.methodParameterDescriptors().joinToString(separator = "")
         return "(L$ownerClassName;$parameters)${descriptor.methodReturnDescriptor()}"
+    }
+
+    private fun JvmResolvedMethod.newInvokeSpecialMethodHandleDescriptor(): String {
+        val parameters = descriptor.methodParameterDescriptors().joinToString(separator = "")
+        return "($parameters)L$ownerClassName;"
     }
 
     private fun String.parameterSlotWidth(): Int =

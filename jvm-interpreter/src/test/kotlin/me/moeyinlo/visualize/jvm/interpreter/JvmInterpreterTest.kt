@@ -16862,6 +16862,69 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic executes cached new invoke special constructor target`() {
+        val heap = JvmHeap()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Constructed",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "<init>",
+                            descriptor = "()V",
+                            isStatic = false,
+                            code = byteArrayOf(0xB1.toByte()),
+                            maxStack = 0,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicConstructorCallSiteConstantPool(),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+        )
+
+        val constructed = result.operandStack.toList().single() as JvmObjectReferenceValue
+        assertEquals("pkg/Constructed", heap.get(constructed).className)
+        assertTrue(heap.isInitialized(constructed))
+    }
+
+    @Test
     fun `invokedynamic keeps unsupported linked target method handles explicit`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(
@@ -16895,7 +16958,7 @@ class JvmInterpreterTest {
                     descriptor = "()I",
                 ),
                 targetMethodHandle = JvmMethodHandlePayload(
-                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceKind = JvmMethodHandleReferenceKind.GetStatic,
                     referenceIndex = 1,
                 ),
                 targetMethod = classHierarchy.resolveMethod(
@@ -16925,7 +16988,7 @@ class JvmInterpreterTest {
 
         assertEquals(
             "Unsupported invokedynamic linked target for answer:()I at offset 0: " +
-                "target method handle NewInvokeSpecial execution is not implemented yet",
+                "target method handle GetStatic execution is not implemented yet",
             exception.message,
         )
     }
@@ -17234,6 +17297,22 @@ class JvmInterpreterTest {
                     "(Lpkg/TargetInterface;)I",
                     "(Lpkg/TargetInterface;)I".encodeToByteArray(),
                 ),
+            ),
+        )
+
+    private fun invokedynamicConstructorCallSiteConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("make", "make".encodeToByteArray()),
+                ConstantUtf8Entry("()Lpkg/Constructed;", "()Lpkg/Constructed;".encodeToByteArray()),
             ),
         )
 
