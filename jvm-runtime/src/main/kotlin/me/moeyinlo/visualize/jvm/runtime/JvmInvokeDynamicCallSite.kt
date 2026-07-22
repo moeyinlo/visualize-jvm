@@ -206,32 +206,71 @@ object JvmInvokeDynamicCallSiteResolver {
         classHierarchy: JvmClassHierarchy,
         methodHandle: JvmMethodHandlePayload,
     ): JvmResolvedMethod {
-        if (methodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
-            throw JvmInvokeDynamicLinkageException(
+        val referenceIndex = ConstantPoolIndex(methodHandle.referenceIndex)
+        val methodReferenceEntry = constantPoolEntry(constantPool, referenceIndex)
+        when (methodHandle.referenceKind) {
+            JvmMethodHandleReferenceKind.InvokeStatic -> {
+                if (methodReferenceEntry !is ConstantMethodRefEntry && methodReferenceEntry !is ConstantInterfaceMethodRefEntry) {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle InvokeStatic reference index $referenceIndex expected method reference but found " +
+                            methodReferenceEntry.javaClass.simpleName,
+                    )
+                }
+                val resolvedMethod = resolveMethodHandleReferenceMethod(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodReferenceEntry = methodReferenceEntry,
+                    referenceIndex = referenceIndex,
+                )
+                if (!resolvedMethod.isStatic) {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle InvokeStatic target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                            "${resolvedMethod.descriptor} resolved to a non-static method",
+                    )
+                }
+                return resolvedMethod
+            }
+
+            JvmMethodHandleReferenceKind.InvokeVirtual -> {
+                if (methodReferenceEntry !is ConstantMethodRefEntry) {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle InvokeVirtual reference index $referenceIndex expected class method reference " +
+                            "but found ${methodReferenceEntry.javaClass.simpleName}",
+                    )
+                }
+                val resolvedMethod = resolveMethodHandleReferenceMethod(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodReferenceEntry = methodReferenceEntry,
+                    referenceIndex = referenceIndex,
+                )
+                if (resolvedMethod.isStatic) {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle InvokeVirtual target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                            "${resolvedMethod.descriptor} resolved to a static method",
+                    )
+                }
+                return resolvedMethod
+            }
+
+            else -> throw JvmInvokeDynamicLinkageException(
                 "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
             )
         }
-        val referenceIndex = ConstantPoolIndex(methodHandle.referenceIndex)
-        val methodReferenceEntry = constantPoolEntry(constantPool, referenceIndex)
-        if (methodReferenceEntry !is ConstantMethodRefEntry && methodReferenceEntry !is ConstantInterfaceMethodRefEntry) {
-            throw JvmInvokeDynamicLinkageException(
-                "MethodHandle InvokeStatic reference index $referenceIndex expected method reference but found " +
-                    methodReferenceEntry.javaClass.simpleName,
-            )
-        }
+    }
+
+    private fun resolveMethodHandleReferenceMethod(
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+        methodReferenceEntry: ConstantPoolEntry,
+        referenceIndex: ConstantPoolIndex,
+    ): JvmResolvedMethod {
         val methodReference = methodReference(constantPool, methodReferenceEntry, referenceIndex)
-        val resolvedMethod = classHierarchy.resolveMethod(
+        return classHierarchy.resolveMethod(
             ownerClassName = methodReference.ownerClassName,
             name = methodReference.name,
             descriptor = methodReference.descriptor,
         )
-        if (!resolvedMethod.isStatic) {
-            throw JvmInvokeDynamicLinkageException(
-                "MethodHandle InvokeStatic target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} resolved to a non-static method",
-            )
-        }
-        return resolvedMethod
     }
 
     fun resolveBootstrapInvocation(

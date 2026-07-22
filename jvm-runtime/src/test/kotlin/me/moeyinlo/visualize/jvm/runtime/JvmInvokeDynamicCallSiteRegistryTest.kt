@@ -367,11 +367,46 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
-    fun `method handle resolver keeps unsupported reference kinds explicit`() {
+    fun `method handle resolver resolves invoke virtual targets through the class hierarchy`() {
+        val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+            constantPool = bootstrapInvocationConstantPool(),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Bootstrap",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "bootstrap",
+                                descriptor = BOOTSTRAP_DESCRIPTOR,
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            methodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+                referenceIndex = 6,
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "pkg/Bootstrap",
+                name = "bootstrap",
+                descriptor = BOOTSTRAP_DESCRIPTOR,
+                isStatic = false,
+            ),
+            resolvedMethod,
+        )
+    }
+
+    @Test
+    fun `method handle resolver rejects invoke virtual targets that resolve to static methods`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
                 constantPool = bootstrapInvocationConstantPool(),
-                classHierarchy = JvmClassHierarchy(),
+                classHierarchy = bootstrapTargetHierarchy(),
                 methodHandle = JvmMethodHandlePayload(
                     referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
                     referenceIndex = 6,
@@ -380,7 +415,26 @@ class JvmInvokeDynamicCallSiteRegistryTest {
         }
 
         assertEquals(
-            "MethodHandle reference kind InvokeVirtual target resolution is not implemented yet",
+            "MethodHandle InvokeVirtual target pkg/Bootstrap.bootstrap:$BOOTSTRAP_DESCRIPTOR resolved to a static method",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `method handle resolver keeps unsupported reference kinds explicit`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = bootstrapInvocationConstantPool(),
+                classHierarchy = JvmClassHierarchy(),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeSpecial,
+                    referenceIndex = 6,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle reference kind InvokeSpecial target resolution is not implemented yet",
             exception.message,
         )
     }
