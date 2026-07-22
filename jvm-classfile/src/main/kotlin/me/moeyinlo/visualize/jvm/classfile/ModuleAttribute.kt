@@ -54,7 +54,7 @@ object ModuleAttributeParser : AttributeBodyParser {
             moduleNameIndex = moduleNameIndex,
             moduleFlags = moduleFlags,
             moduleVersionIndex = moduleVersionIndex,
-            requires = parseRequires(context),
+            requires = parseRequires(context, moduleNameIndex),
             exports = parseExports(context),
             opens = parseOpens(context),
             uses = parseUses(context),
@@ -62,7 +62,10 @@ object ModuleAttributeParser : AttributeBodyParser {
         )
     }
 
-    private fun parseRequires(context: AttributeParseContext): List<ModuleRequires> {
+    private fun parseRequires(
+        context: AttributeParseContext,
+        moduleNameIndex: ConstantPoolIndex,
+    ): List<ModuleRequires> {
         val requires = List(context.reader.readU2()) { index ->
             val ownerPath = "${context.ownerPath}.requires[$index]"
             ModuleRequires(
@@ -80,9 +83,25 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.requires",
             fieldName = "requires_index",
         )
+        requireJavaBaseModuleHasNoRequires(context, moduleNameIndex, requires)
         requireJavaBaseRequiresAreNotSynthetic(context, requires)
         requireJavaBaseRequiresAreNotStaticPhase(context, requires)
         return requires
+    }
+
+    private fun requireJavaBaseModuleHasNoRequires(
+        context: AttributeParseContext,
+        moduleNameIndex: ConstantPoolIndex,
+        requires: List<ModuleRequires>,
+    ) {
+        if (requires.isNotEmpty() &&
+            moduleName(context, moduleNameIndex, "${context.ownerPath}.module_name_index") == JavaBaseModuleName
+        ) {
+            throw ClassFileFormatException(
+                "Invalid ${context.ownerPath}.requires_count=${requires.size}: " +
+                    "java.base module must not declare requires entries",
+            )
+        }
     }
 
     private fun requireJavaBaseRequiresAreNotSynthetic(

@@ -157,6 +157,35 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects java base module with requires entries`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 22,
+                        0, 6, 0, 0, 0, 0,
+                        0, 1,
+                        0, 10, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].requires_count=1"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("java.base module must not declare requires entries"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate Module exports indexes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(
