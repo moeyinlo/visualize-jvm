@@ -3885,6 +3885,59 @@ object JvmInterpreter {
                 value
             }
             .asReversed()
+        executeStaticMethodWithArguments(
+            instruction = instruction,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            resolvedMethod = resolvedMethod,
+            arguments = arguments,
+            opcodeMnemonic = opcodeMnemonic,
+        )?.let { returnValue ->
+            operandStack.push(returnValue)
+        }
+    }
+
+    private fun executeStaticMethodWithArguments(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        resolvedMethod: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+        opcodeMnemonic: String,
+    ): JvmValue? {
+        val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
+        if (arguments.size != argumentDescriptors.size) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid $opcodeMnemonic arguments for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor}: expected ${argumentDescriptors.size} arguments but was " +
+                    arguments.size,
+            )
+        }
+        for ((argument, descriptor) in arguments.zip(argumentDescriptors)) {
+            requireMethodArgumentValue(instruction, resolvedMethod, descriptor, argument)
+            requireReferenceMethodArgumentAssignable(
+                instruction,
+                resolvedMethod,
+                descriptor,
+                argument,
+                heap,
+                classHierarchy,
+            )
+        }
         if (resolvedMethod.isNative) {
             val nativeReturnValue = executeNativeMethod(
                 instruction = instruction,
@@ -3908,7 +3961,7 @@ object JvmInterpreter {
                             nativeReturnValue.javaClass.simpleName,
                     )
                 }
-                return
+                return null
             }
             val returnValue = nativeReturnValue
                 ?: throw JvmUnsupportedInstructionException(
@@ -3917,8 +3970,7 @@ object JvmInterpreter {
                 )
             requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
             requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
-            operandStack.push(returnValue)
-            return
+            return returnValue
         }
         val methodCode = resolvedMethod.code
             ?: throw JvmUnsupportedInstructionException(
@@ -3958,7 +4010,7 @@ object JvmInterpreter {
                         frameResult.returnValue.javaClass.simpleName,
                 )
             }
-            return
+            return null
         }
         val returnValue = frameResult.returnValue
             ?: throw JvmUnsupportedInstructionException(
@@ -3967,7 +4019,7 @@ object JvmInterpreter {
             )
         requireMethodReturnValue(instruction, resolvedMethod, returnDescriptor, returnValue)
         requireReferenceMethodReturnAssignable(instruction, resolvedMethod, returnDescriptor, returnValue, heap, classHierarchy)
-        operandStack.push(returnValue)
+        return returnValue
     }
 
     private fun executeInvokeVirtual(
