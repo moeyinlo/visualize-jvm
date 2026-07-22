@@ -550,6 +550,43 @@ class MethodInfoParserTest {
         assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
+
+    @Test
+    fun `rejects AnnotationDefault attributes on non annotation interface methods`() {
+        val annotationDefaultAttribute = byteArrayOf(0, 3) + intBytes(3) + byteArrayOf('I'.code.toByte(), 0, 4)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(
+                            accessFlags = 0x0401,
+                            descriptorIndex = 2,
+                            attributes = listOf(annotationDefaultAttribute),
+                        ),
+                    ),
+                    source = "bad-non-annotation-default.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ConstantUtf8Entry("AnnotationDefault", "AnnotationDefault".encodeToByteArray()),
+                        ConstantIntegerEntry(1),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "AnnotationDefault" to AnnotationDefaultAttributeParser,
+                ),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("annotation interface element"), failure.message)
+    }
     @Test
     fun `rejects instance initialization methods in interfaces`() {
         val failure = assertFailsWith<ClassFileFormatException> {
