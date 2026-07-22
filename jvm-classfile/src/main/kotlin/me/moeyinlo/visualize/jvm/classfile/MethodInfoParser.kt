@@ -143,6 +143,7 @@ object MethodInfoParser {
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeVisibleParameterAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleParameterAnnotationsPaths = mutableListOf<String>()
         method.attributes.forEachIndexed { attributeIndex, attribute ->
             val name = expectUtf8(
                 constantPool = constantPool,
@@ -157,6 +158,7 @@ object MethodInfoParser {
                 "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "$ownerPath.attributes[$attributeIndex]"
                 "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "$ownerPath.attributes[$attributeIndex]"
                 "RuntimeVisibleParameterAnnotations" -> runtimeVisibleParameterAnnotationsPaths += "$ownerPath.attributes[$attributeIndex]"
+                "RuntimeInvisibleParameterAnnotations" -> runtimeInvisibleParameterAnnotationsPaths += "$ownerPath.attributes[$attributeIndex]"
             }
         }
         requireAtMostOneAttribute(exceptionsPaths, "Exceptions", ownerPath)
@@ -168,6 +170,11 @@ object MethodInfoParser {
         requireAtMostOneAttribute(
             runtimeVisibleParameterAnnotationsPaths,
             "RuntimeVisibleParameterAnnotations",
+            ownerPath,
+        )
+        requireAtMostOneAttribute(
+            runtimeInvisibleParameterAnnotationsPaths,
+            "RuntimeInvisibleParameterAnnotations",
             ownerPath,
         )
     }
