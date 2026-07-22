@@ -53,6 +53,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.11.10 | Guest monitor ownership state tracks object monitor owner thread and reentrant hold count | `jvm-runtime` | `JvmMonitorStateTest` | IMPLEMENTED |
 | 2.11.10 | Guest monitor wait-set state releases ownership for wait and records FIFO notification targets | `jvm-runtime` | `JvmMonitorStateTest.*waitForNotification*`, `JvmMonitorStateTest.*notify*` | IMPLEMENTED |
 | 2.10 | Exceptions | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.10 | Runtime method metadata preserves `Code.exception_table` protected ranges, handler PCs, typed catches, and catch-all handlers from parsed classfiles | `jvm-classfile`, `jvm-runtime` | `JvmClassfileRuntimeAdapterTest` | IMPLEMENTED |
 | 2.11 | Instruction set summary | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | 2.12 | Class libraries interface assumptions | `jvm-host`, `jvm-native`, `jvm-jni` | TBD | PENDING |
 | 2.13 | Public design private implementation boundary | all modules | TBD | PENDING |

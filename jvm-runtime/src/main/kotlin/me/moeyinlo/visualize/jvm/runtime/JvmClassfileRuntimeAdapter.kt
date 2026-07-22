@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.runtime
 import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlag
 import me.moeyinlo.visualize.jvm.classfile.ClassFile
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
+import me.moeyinlo.visualize.jvm.classfile.CodeExceptionHandler
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
@@ -49,8 +50,19 @@ private fun MethodInfo.toJvmMethodDefinition(constantPool: ConstantPool): JvmMet
         code = codeAttribute?.code,
         maxStack = codeAttribute?.maxStack ?: 0,
         maxLocals = codeAttribute?.maxLocals ?: 0,
+        exceptionHandlers = codeAttribute?.exceptionTable?.map { handler ->
+            handler.toJvmExceptionHandler(constantPool)
+        } ?: emptyList(),
     )
 }
+
+private fun CodeExceptionHandler.toJvmExceptionHandler(constantPool: ConstantPool): JvmExceptionHandler =
+    JvmExceptionHandler(
+        startPc = startPc,
+        endPc = endPc,
+        handlerPc = handlerPc,
+        catchClassName = catchType?.let(constantPool::className),
+    )
 
 private fun ConstantPool.className(index: ConstantPoolIndex): String {
     val classEntry = getEntry<ConstantClassEntry>(index, "class reference")

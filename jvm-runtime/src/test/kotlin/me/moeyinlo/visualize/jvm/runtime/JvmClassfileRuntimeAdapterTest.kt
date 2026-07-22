@@ -10,6 +10,7 @@ import me.moeyinlo.visualize.jvm.classfile.ClassFileMagic
 import me.moeyinlo.visualize.jvm.classfile.ClassFileVersion
 import me.moeyinlo.visualize.jvm.classfile.ClassIdentity
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
+import me.moeyinlo.visualize.jvm.classfile.CodeExceptionHandler
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
@@ -56,6 +57,20 @@ class JvmClassfileRuntimeAdapterTest {
                             maxStack = 1,
                             maxLocals = 1,
                             code = byteArrayOf(0x04, 0xAC.toByte()),
+                            exceptionTable = listOf(
+                                CodeExceptionHandler(
+                                    startPc = 0,
+                                    endPc = 1,
+                                    handlerPc = 1,
+                                    catchType = ConstantPoolIndex(18),
+                                ),
+                                CodeExceptionHandler(
+                                    startPc = 1,
+                                    endPc = 2,
+                                    handlerPc = 1,
+                                    catchType = null,
+                                ),
+                            ),
                         ),
                     ),
                 ),
@@ -101,6 +116,23 @@ class JvmClassfileRuntimeAdapterTest {
         assertEquals(1, valueMethod.maxStack)
         assertEquals(1, valueMethod.maxLocals)
         assertContentEquals(byteArrayOf(0x04, 0xAC.toByte()), valueMethod.code)
+        assertEquals(
+            listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 1,
+                    handlerPc = 1,
+                    catchClassName = "java/lang/RuntimeException",
+                ),
+                JvmExceptionHandler(
+                    startPc = 1,
+                    endPc = 2,
+                    handlerPc = 1,
+                    catchClassName = null,
+                ),
+            ),
+            valueMethod.exceptionHandlers,
+        )
         assertEquals(
             JvmMethodDefinition(
                 name = "nativeVarargs",
@@ -158,6 +190,8 @@ class JvmClassfileRuntimeAdapterTest {
                     "([Ljava/lang/Object;)Ljava/lang/Object;".encodeToByteArray(),
                 ),
                 ConstantNameAndTypeEntry(ConstantPoolIndex(11), ConstantPoolIndex(12)),
+                ConstantUtf8Entry("java/lang/RuntimeException", "java/lang/RuntimeException".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(17)),
             ),
         )
 }

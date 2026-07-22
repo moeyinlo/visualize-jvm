@@ -28,6 +28,13 @@ data class JvmResolvedField(
     val isProtected: Boolean = false,
 )
 
+data class JvmExceptionHandler(
+    val startPc: Int,
+    val endPc: Int,
+    val handlerPc: Int,
+    val catchClassName: String?,
+)
+
 data class JvmMethodDefinition(
     val name: String,
     val descriptor: String,
@@ -41,6 +48,7 @@ data class JvmMethodDefinition(
     val code: ByteArray? = null,
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
+    val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
 )
 
 data class JvmResolvedMethod(
@@ -58,6 +66,7 @@ data class JvmResolvedMethod(
     val code: ByteArray? = null,
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
+    val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
 ) {
     val isSignaturePolymorphic: Boolean
         get() = ownerClassName == "java/lang/invoke/MethodHandle" &&
@@ -211,6 +220,7 @@ class JvmClassHierarchy(
                     code = method.code,
                     maxStack = method.maxStack,
                     maxLocals = method.maxLocals,
+                    exceptionHandlers = method.exceptionHandlers,
                 )
             }
 
