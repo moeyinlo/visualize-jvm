@@ -260,7 +260,7 @@ object MethodInfoParser {
             "Z" -> 'Z'
             "Ljava/lang/String;" -> 's'
             "Ljava/lang/Class;" -> 'c'
-            else -> null
+            else -> if (descriptor.startsWith("[")) '[' else null
         }
 
     private fun returnDescriptor(descriptor: String): String = descriptor.substringAfter(')')
