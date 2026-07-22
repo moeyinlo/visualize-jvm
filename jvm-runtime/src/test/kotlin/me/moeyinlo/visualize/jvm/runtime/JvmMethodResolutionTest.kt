@@ -183,6 +183,113 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `method handle invoke declarations are recognized as signature polymorphic`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/invoke/MethodHandle",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "invokeExact",
+                            descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                            isStatic = false,
+                            isNative = true,
+                            isVarargs = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val method = hierarchy.resolveMethod(
+            ownerClassName = "java/lang/invoke/MethodHandle",
+            name = "invokeExact",
+            descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+        )
+
+        assertEquals(true, method.isSignaturePolymorphic)
+    }
+
+    @Test
+    fun `signature polymorphic recognition requires method handle owner native varargs and erased descriptor`() {
+        val declarations = listOf(
+            JvmMethodDefinition(
+                name = "invoke",
+                descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                isStatic = false,
+                isNative = true,
+                isVarargs = true,
+            ),
+            JvmMethodDefinition(
+                name = "invoke",
+                descriptor = "(I)I",
+                isStatic = false,
+                isNative = true,
+                isVarargs = true,
+            ),
+        )
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/invoke/MethodHandle",
+                    methods = declarations,
+                ),
+                JvmClassDefinition(
+                    internalName = "other/MethodHandle",
+                    methods = listOf(declarations.first()),
+                ),
+            ),
+        )
+
+        assertEquals(
+            true,
+            hierarchy.resolveMethod(
+                ownerClassName = "java/lang/invoke/MethodHandle",
+                name = "invoke",
+                descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+            ).isSignaturePolymorphic,
+        )
+        assertEquals(
+            false,
+            JvmResolvedMethod(
+                ownerClassName = "java/lang/invoke/MethodHandle",
+                name = "invoke",
+                descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                isStatic = false,
+                isNative = false,
+                isVarargs = true,
+            ).isSignaturePolymorphic,
+        )
+        assertEquals(
+            false,
+            JvmResolvedMethod(
+                ownerClassName = "java/lang/invoke/MethodHandle",
+                name = "invoke",
+                descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                isStatic = false,
+                isNative = true,
+                isVarargs = false,
+            ).isSignaturePolymorphic,
+        )
+        assertEquals(
+            false,
+            hierarchy.resolveMethod(
+                ownerClassName = "java/lang/invoke/MethodHandle",
+                name = "invoke",
+                descriptor = "(I)I",
+            ).isSignaturePolymorphic,
+        )
+        assertEquals(
+            false,
+            hierarchy.resolveMethod(
+                ownerClassName = "other/MethodHandle",
+                name = "invoke",
+                descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+            ).isSignaturePolymorphic,
+        )
+    }
+
+    @Test
     fun `class hierarchy exposes only the direct superclass name`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

@@ -37,6 +37,7 @@ data class JvmMethodDefinition(
     val isProtected: Boolean = false,
     val isAbstract: Boolean = false,
     val isNative: Boolean = false,
+    val isVarargs: Boolean = false,
     val code: ByteArray? = null,
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
@@ -52,10 +53,18 @@ data class JvmResolvedMethod(
     val isProtected: Boolean = false,
     val isAbstract: Boolean = false,
     val isNative: Boolean = false,
+    val isVarargs: Boolean = false,
     val code: ByteArray? = null,
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
-)
+) {
+    val isSignaturePolymorphic: Boolean
+        get() = ownerClassName == "java/lang/invoke/MethodHandle" &&
+            (name == "invoke" || name == "invokeExact") &&
+            descriptor == "([Ljava/lang/Object;)Ljava/lang/Object;" &&
+            isNative &&
+            isVarargs
+}
 
 class JvmClassHierarchy(
     classes: Iterable<JvmClassDefinition> = emptyList(),
@@ -195,6 +204,7 @@ class JvmClassHierarchy(
                     isProtected = method.isProtected,
                     isAbstract = method.isAbstract,
                     isNative = method.isNative,
+                    isVarargs = method.isVarargs,
                     code = method.code,
                     maxStack = method.maxStack,
                     maxLocals = method.maxLocals,
