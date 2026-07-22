@@ -84,6 +84,21 @@ class JvmExceptionHandlerTableTest {
     }
 
     @Test
+    fun `handler lookup recognizes standard java lang throwable superclasses without loaded class metadata`() {
+        val handler = handler(startPc = 0, endPc = 3, handlerPc = 7, catchClassName = "java/lang/RuntimeException")
+
+        assertEquals(
+            handler,
+            JvmExceptionHandlerTable.findHandler(
+                handlers = listOf(handler),
+                thrownAtPc = 1,
+                throwableClassName = "java/lang/ArithmeticException",
+                classHierarchy = JvmClassHierarchy.Empty,
+            ),
+        )
+    }
+
+    @Test
     fun `handler model and lookup validate non negative offsets and class names`() {
         assertFailsWith<IllegalArgumentException> { handler(startPc = -1, endPc = 1, handlerPc = 1) }
         assertFailsWith<IllegalArgumentException> { handler(startPc = 2, endPc = 1, handlerPc = 1) }

@@ -5,7 +5,7 @@ This audit is derived from `docs/spec-coverage.md` after the Phase 20 documentat
 ## Ledger status summary
 
 - DIFFERENTIAL: 1
-- IMPLEMENTED: 1074
+- IMPLEMENTED: 1075
 - PENDING: 67
 
 ## Pending rows by section

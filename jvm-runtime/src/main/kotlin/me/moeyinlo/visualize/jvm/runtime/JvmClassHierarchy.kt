@@ -119,7 +119,10 @@ class JvmClassHierarchy(
             )
         }
 
-        val sourceClass = classesByName[sourceClassName] ?: return false
+        val sourceClass = classesByName[sourceClassName]
+            ?: return standardJavaLangSuperclassName(sourceClassName)
+                ?.let { superclassName -> isAssignable(superclassName, targetClassName) }
+                ?: false
         val superclassName = sourceClass.superclassName
         if (superclassName != null && isAssignable(superclassName, targetClassName)) {
             return true
@@ -304,7 +307,32 @@ class JvmClassHierarchy(
             substring(1)
         }
 
+    private fun standardJavaLangSuperclassName(className: String): String? =
+        standardJavaLangSuperclasses[className]
+
     companion object {
+        private val standardJavaLangSuperclasses = mapOf(
+            "java/lang/Throwable" to "java/lang/Object",
+            "java/lang/Exception" to "java/lang/Throwable",
+            "java/lang/RuntimeException" to "java/lang/Exception",
+            "java/lang/Error" to "java/lang/Throwable",
+            "java/lang/LinkageError" to "java/lang/Error",
+            "java/lang/IndexOutOfBoundsException" to "java/lang/RuntimeException",
+            "java/lang/ArithmeticException" to "java/lang/RuntimeException",
+            "java/lang/ArrayIndexOutOfBoundsException" to "java/lang/IndexOutOfBoundsException",
+            "java/lang/ArrayStoreException" to "java/lang/RuntimeException",
+            "java/lang/ClassCastException" to "java/lang/RuntimeException",
+            "java/lang/NegativeArraySizeException" to "java/lang/RuntimeException",
+            "java/lang/NullPointerException" to "java/lang/RuntimeException",
+            "java/lang/AbstractMethodError" to "java/lang/IncompatibleClassChangeError",
+            "java/lang/IllegalAccessError" to "java/lang/IncompatibleClassChangeError",
+            "java/lang/IncompatibleClassChangeError" to "java/lang/LinkageError",
+            "java/lang/NoClassDefFoundError" to "java/lang/LinkageError",
+            "java/lang/NoSuchFieldError" to "java/lang/IncompatibleClassChangeError",
+            "java/lang/NoSuchMethodError" to "java/lang/IncompatibleClassChangeError",
+            "java/lang/UnsatisfiedLinkError" to "java/lang/LinkageError",
+        )
+
         val Empty: JvmClassHierarchy = JvmClassHierarchy()
     }
 }
