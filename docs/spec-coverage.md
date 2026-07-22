@@ -1165,7 +1165,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Simulated JNI | `MonitorEnter` resolves guest object handles and records reentrant ownership in guest monitor state for the current simulated JNI thread | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.MonitorEnter*` | IMPLEMENTED |
 | Simulated JNI | `MonitorExit` resolves guest object handles and decrements or releases ownership in guest monitor state for the current simulated JNI thread | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.MonitorExit*` | IMPLEMENTED |
 | Simulated JNI | JNI refs, strings, arrays, fields, and monitors mutate one shared guest state across helper families | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest.JNI data helpers mutate one guest state for refs strings arrays fields and monitors` | IMPLEMENTED |
-| Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` | `jvm-native`, `jvm-runtime` | TBD | PENDING |
+| Unbound native | Missing native binding throws guest `UnsatisfiedLinkError` for unbound native static, virtual, and special invocation paths | `jvm-interpreter`, `jvm-native`, `jvm-runtime` | `JvmInterpreterTest.invokestatic throws guest UnsatisfiedLinkError for unbound native methods`, `JvmInterpreterTest.invokevirtual throws guest UnsatisfiedLinkError for unbound native methods`, `JvmInterpreterTest.invokespecial throws guest UnsatisfiedLinkError for unbound native methods` | IMPLEMENTED |
 
 ## Documentation and Audit Coverage
 
