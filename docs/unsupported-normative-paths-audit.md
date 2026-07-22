@@ -5,12 +5,12 @@ This audit is derived from `docs/spec-coverage.md` after the Phase 20 documentat
 ## Ledger status summary
 
 - DIFFERENTIAL: 1
-- IMPLEMENTED: 1033
-- PENDING: 88
+- IMPLEMENTED: 1034
+- PENDING: 87
 
 ## Pending rows by section
 
-- Chapter 2 - JVM Structure: 24 pending row(s)
+- Chapter 2 - JVM Structure: 23 pending row(s)
 - Chapter 4 - Class File Format: 14 pending row(s)
 - Chapter 5 - Loading, Linking, and Initializing: 22 pending row(s)
 - Chapters 6 and 7 - Instruction Set and Opcode Mnemonics: 23 pending row(s)
@@ -28,7 +28,6 @@ These are the first pending rows in ledger order and should be converted into im
 | Chapter 2 - JVM Structure | Integral types and values | `jvm-runtime` | TBD |
 | Chapter 2 - JVM Structure | Floating-point types and values | `jvm-runtime`, `jvm-interpreter` | TBD |
 | Chapter 2 - JVM Structure | Reference types and values | `jvm-runtime` | TBD |
-| Chapter 2 - JVM Structure | Method area | `jvm-runtime` | TBD |
 | Chapter 2 - JVM Structure | Run-time constant pool | `jvm-runtime` | TBD |
 | Chapter 2 - JVM Structure | Native method stacks | `jvm-native`, `jvm-jni` | TBD |
 | Chapter 2 - JVM Structure | Frames | `jvm-runtime` | TBD |

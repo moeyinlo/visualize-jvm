@@ -30,7 +30,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.5.3, 2.7 | Guest heap object allocation with opaque positive object references | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.3, 2.7 | Guest `java/lang/String` heap objects retain VM-owned string payloads | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.3, 2.7 | Guest `java/lang/Class` mirror objects retain the represented class name and are interned by name | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
-| 2.5.4 | Method area | `jvm-runtime` | TBD | PENDING |
+| 2.5.4 | Method area stores per-class runtime metadata, static field storage, duplicate definition checks, and hierarchy views | `jvm-runtime` | `JvmMethodAreaTest` | IMPLEMENTED |
 | 2.5.5 | Run-time constant pool | `jvm-runtime` | TBD | PENDING |
 | 2.5.6 | Native method stacks | `jvm-native`, `jvm-jni` | TBD | PENDING |
 | 2.6 | Frames | `jvm-runtime` | TBD | PENDING |
