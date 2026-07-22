@@ -11769,6 +11769,63 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic unbound native transfers control to matching UnsatisfiedLinkError handler`() {
+        val heap = JvmHeap()
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeValue",
+                                descriptor = "()I",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            currentClassName = "Caller",
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 3,
+                    handlerPc = 3,
+                    catchClassName = "java/lang/UnsatisfiedLinkError",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/UnsatisfiedLinkError", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokestatic executes bound native intrinsic methods`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
