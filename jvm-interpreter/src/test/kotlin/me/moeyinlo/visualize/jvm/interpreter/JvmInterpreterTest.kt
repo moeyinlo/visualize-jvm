@@ -15958,6 +15958,35 @@ class JvmInterpreterTest {
         )
     }
 
+    @Test
+    fun `invokeinterface executes receiver class implementation`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Impl")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x0A.toByte(),
+                0xB9.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x03.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = interfaceMethodConstantPool(),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = interfaceMethodHierarchy(),
+            currentClassName = "pkg/Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(3)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
     private fun interfaceMethodConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
@@ -15982,6 +16011,26 @@ class JvmInterpreterTest {
                             descriptor = "(J)I",
                             isStatic = false,
                             isAbstract = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Impl",
+                    interfaceNames = listOf("pkg/Face"),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "(J)I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x1F.toByte(),
+                                0x88.toByte(),
+                                0x05.toByte(),
+                                0x60.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 2,
+                            maxLocals = 3,
                         ),
                     ),
                 ),

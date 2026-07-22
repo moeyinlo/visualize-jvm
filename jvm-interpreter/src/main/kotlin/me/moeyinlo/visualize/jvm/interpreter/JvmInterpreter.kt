@@ -682,7 +682,18 @@ object JvmInterpreter {
                 currentThreadId,
                 currentClassName,
             )
-            0xB9 -> executeInvokeInterface(instruction, constantPool, classHierarchy)
+            0xB9 -> executeInvokeInterface(
+                instruction,
+                operandStack,
+                constantPool,
+                heap,
+                classHierarchy,
+                staticFields,
+                nativeMethods,
+                monitors,
+                currentThreadId,
+                currentClassName,
+            )
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -4192,13 +4203,21 @@ object JvmInterpreter {
 
     private fun executeInvokeInterface(
         instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
         constantPool: ConstantPool,
+        heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         val count = instruction.operands[2]
         val zero = instruction.operands[3]
-        val expectedCount = 1 + resolvedMethod.descriptor.methodParameterDescriptors().sumOf { descriptor ->
+        val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
+        val expectedCount = 1 + argumentDescriptors.sumOf { descriptor ->
             descriptor.parameterSlotWidth()
         }
         if (count != expectedCount) {
@@ -4213,10 +4232,116 @@ object JvmInterpreter {
                 "Invalid invokeinterface fourth operand $zero at offset ${instruction.offset}: expected 0",
             )
         }
-        throw JvmUnsupportedInstructionException(
-            "Unsupported invokeinterface execution for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                resolvedMethod.descriptor,
+        requireInstanceMethod(instruction, resolvedMethod)
+        requireVirtualMethodName(resolvedMethod)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        val arguments = argumentDescriptors
+            .asReversed()
+            .map { descriptor ->
+                val value = operandStack.pop()
+                requireMethodArgumentValue(instruction, resolvedMethod, descriptor, value)
+                requireReferenceMethodArgumentAssignable(
+                    instruction,
+                    resolvedMethod,
+                    descriptor,
+                    value,
+                    heap,
+                    classHierarchy,
+                )
+                value
+            }
+            .asReversed()
+        val objectref = operandStack.pop()
+        if (objectref == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "Cannot invoke interface method " +
+                    "${resolvedMethod.ownerClassName}.${resolvedMethod.name}:${resolvedMethod.descriptor} " +
+                    "on null object reference",
+            )
+        }
+        if (objectref !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokeinterface receiver for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} at offset ${instruction.offset}: expected reference but was " +
+                    objectref.javaClass.simpleName,
+            )
+        }
+        val receiverClassName = heap.get(objectref).className
+        if (!classHierarchy.isAssignable(receiverClassName, resolvedMethod.ownerClassName)) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokeinterface receiver for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} at offset ${instruction.offset}: " +
+                    "$receiverClassName is not assignable to ${resolvedMethod.ownerClassName}",
+            )
+        }
+        requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        val targetMethod = classHierarchy.resolveVirtualMethod(
+            receiverClassName = receiverClassName,
+            name = resolvedMethod.name,
+            descriptor = resolvedMethod.descriptor,
         )
+        requireInstanceMethod(instruction, targetMethod)
+        if (targetMethod.isAbstract) {
+            throw JvmAbstractMethodError(
+                guestClassName = "java/lang/AbstractMethodError",
+                message = "${targetMethod.ownerClassName}.${targetMethod.name}:${targetMethod.descriptor}",
+            )
+        }
+        if (targetMethod.isNative) {
+            throw JvmUnsupportedInstructionException(
+                "Native invokeinterface target ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} is not implemented yet",
+            )
+        }
+        val methodCode = targetMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved interface target method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} has no Code attribute for invokeinterface",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = targetMethod.maxLocals)
+        calleeLocals.store(0, objectref)
+        var localIndex = 1
+        for (argument in arguments) {
+            calleeLocals.store(localIndex, argument)
+            localIndex += argument.category.slotWidth
+        }
+
+        val frameResult = executeFrame(
+            code = methodCode,
+            maxStack = targetMethod.maxStack,
+            constantPool = constantPool,
+            heap = heap,
+            localVariables = calleeLocals,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            currentClassName = targetMethod.ownerClassName,
+            allowReturn = true,
+            exceptionHandlers = targetMethod.exceptionHandlers,
+        )
+        val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
+        if (returnDescriptor == "V") {
+            if (frameResult.returnValue != null) {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid invokeinterface return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                        "${targetMethod.descriptor}: expected void but returned " +
+                        frameResult.returnValue.javaClass.simpleName,
+                )
+            }
+            return
+        }
+        val returnValue = frameResult.returnValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Interface target method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} completed without returning a value",
+            )
+        requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
+        requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
+        operandStack.push(returnValue)
     }
 
     private fun executeNativeMethod(
