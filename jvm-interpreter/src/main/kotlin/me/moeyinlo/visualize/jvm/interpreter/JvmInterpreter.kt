@@ -4277,7 +4277,7 @@ object JvmInterpreter {
         }
         requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
-        val targetMethod = classHierarchy.resolveVirtualMethod(
+        val targetMethod = classHierarchy.resolveInterfaceMethodTarget(
             receiverClassName = receiverClassName,
             name = resolvedMethod.name,
             descriptor = resolvedMethod.descriptor,
