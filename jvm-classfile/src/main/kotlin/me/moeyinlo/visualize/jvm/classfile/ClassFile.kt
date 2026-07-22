@@ -64,14 +64,21 @@ object ClassFileParser {
         constantPool: ConstantPool,
         source: String,
     ) {
-        var nestHostPath: String? = null
+        val nestHostPaths = mutableListOf<String>()
         var nestMembersPath: String? = null
         attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, source, index)) {
-                "NestHost" -> nestHostPath = "ClassFile.attributes[$index]"
+                "NestHost" -> nestHostPaths += "ClassFile.attributes[$index]"
                 "NestMembers" -> nestMembersPath = "ClassFile.attributes[$index]"
             }
         }
+        if (nestHostPaths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: at most one NestHost attribute is permitted " +
+                    "but found ${nestHostPaths.size} at ${nestHostPaths.joinToString()}",
+            )
+        }
+        val nestHostPath = nestHostPaths.singleOrNull()
         if (nestHostPath != null && nestMembersPath != null) {
             throw ClassFileFormatException(
                 "Invalid ClassFile attributes source=$source: must not contain both " +
