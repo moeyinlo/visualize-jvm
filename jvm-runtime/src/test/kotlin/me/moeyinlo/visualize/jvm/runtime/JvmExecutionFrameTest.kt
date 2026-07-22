@@ -66,6 +66,21 @@ class JvmExecutionFrameTest {
     }
 
     @Test
+    fun `execution frame completes abruptly with a guest throwable reference`() {
+        val method = resolvedMethod()
+        val frame = JvmExecutionFrame.create(
+            method = method,
+            runtimeConstantPool = JvmRuntimeConstantPool(ownerClassName = "Example", entries = emptyList()),
+        )
+        val throwable = JvmObjectReferenceValue(JvmReferenceId(11))
+
+        assertEquals(
+            JvmMethodCompletion.Abrupt(method = method, throwable = throwable),
+            frame.completeAbruptly(throwable),
+        )
+    }
+
+    @Test
     fun `native execution frame has undefined pc and rejects bytecode pc moves`() {
         val frame = JvmExecutionFrame.create(
             method = resolvedMethod(isNative = true),

@@ -7,6 +7,11 @@ sealed interface JvmMethodCompletion {
         override val method: JvmResolvedMethod,
         val returnValue: JvmValue?,
     ) : JvmMethodCompletion
+
+    data class Abrupt(
+        override val method: JvmResolvedMethod,
+        val throwable: JvmObjectReferenceValue,
+    ) : JvmMethodCompletion
 }
 
 fun JvmResolvedMethod.normalCompletion(returnValue: JvmValue? = null): JvmMethodCompletion.Normal {
@@ -31,6 +36,9 @@ fun JvmResolvedMethod.normalCompletion(returnValue: JvmValue? = null): JvmMethod
     }
     return JvmMethodCompletion.Normal(method = this, returnValue = value)
 }
+
+fun JvmResolvedMethod.abruptCompletion(throwable: JvmObjectReferenceValue): JvmMethodCompletion.Abrupt =
+    JvmMethodCompletion.Abrupt(method = this, throwable = throwable)
 
 class JvmMethodCompletionException(message: String) : IllegalStateException(message)
 

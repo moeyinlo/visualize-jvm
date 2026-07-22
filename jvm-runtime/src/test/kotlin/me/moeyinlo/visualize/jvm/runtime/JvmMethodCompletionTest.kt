@@ -71,6 +71,17 @@ class JvmMethodCompletionTest {
         }
     }
 
+    @Test
+    fun `methods complete abruptly with a guest throwable reference`() {
+        val method = resolvedMethod(descriptor = "()V")
+        val throwable = JvmObjectReferenceValue(JvmReferenceId(7))
+
+        assertEquals(
+            JvmMethodCompletion.Abrupt(method = method, throwable = throwable),
+            method.abruptCompletion(throwable),
+        )
+    }
+
     private fun resolvedMethod(descriptor: String): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "Example",
         name = "run",

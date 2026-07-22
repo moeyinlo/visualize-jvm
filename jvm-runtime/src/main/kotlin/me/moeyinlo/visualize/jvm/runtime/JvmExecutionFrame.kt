@@ -22,6 +22,9 @@ class JvmExecutionFrame private constructor(
     fun completeNormally(returnValue: JvmValue? = null): JvmMethodCompletion.Normal =
         method.normalCompletion(returnValue)
 
+    fun completeAbruptly(throwable: JvmObjectReferenceValue): JvmMethodCompletion.Abrupt =
+        method.abruptCompletion(throwable)
+
     companion object {
         fun create(
             method: JvmResolvedMethod,
