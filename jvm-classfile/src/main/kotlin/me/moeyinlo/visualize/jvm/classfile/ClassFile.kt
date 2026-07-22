@@ -71,6 +71,7 @@ object ClassFileParser {
         val sourceFilePaths = mutableListOf<String>()
         val sourceDebugExtensionPaths = mutableListOf<String>()
         val enclosingMethodPaths = mutableListOf<String>()
+        val recordPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, source, index)) {
                 "NestHost" -> nestHostPaths += "ClassFile.attributes[$index]"
@@ -79,6 +80,7 @@ object ClassFileParser {
                 "SourceFile" -> sourceFilePaths += "ClassFile.attributes[$index]"
                 "SourceDebugExtension" -> sourceDebugExtensionPaths += "ClassFile.attributes[$index]"
                 "EnclosingMethod" -> enclosingMethodPaths += "ClassFile.attributes[$index]"
+                "Record" -> recordPaths += "ClassFile.attributes[$index]"
             }
         }
         if (nestHostPaths.size > 1) {
@@ -122,6 +124,12 @@ object ClassFileParser {
             throw ClassFileFormatException(
                 "Invalid ClassFile attributes source=$source: at most one EnclosingMethod attribute is permitted " +
                     "but found ${enclosingMethodPaths.size} at ${enclosingMethodPaths.joinToString()}",
+            )
+        }
+        if (recordPaths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: at most one Record attribute is permitted " +
+                    "but found ${recordPaths.size} at ${recordPaths.joinToString()}",
             )
         }
         val nestHostPath = nestHostPaths.singleOrNull()
