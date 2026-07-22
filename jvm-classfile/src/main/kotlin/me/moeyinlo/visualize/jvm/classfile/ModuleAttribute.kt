@@ -143,11 +143,18 @@ object ModuleAttributeParser : AttributeBodyParser {
     private fun parseProvides(context: AttributeParseContext): List<ModuleProvides> {
         val provides = List(context.reader.readU2()) { index ->
             val ownerPath = "${context.ownerPath}.provides[$index]"
+            val providesIndex = readRequiredIndex<ConstantClassEntry>(context, "$ownerPath.provides_index")
+            val providesWithIndexes = List(context.reader.readU2()) { withIndex ->
+                readRequiredIndex<ConstantClassEntry>(context, "$ownerPath.provides_with_index[$withIndex]")
+            }
+            requireUniqueConstantPoolIndexes(
+                indexes = providesWithIndexes,
+                role = "$ownerPath.provides_with",
+                fieldName = "provides_with_index",
+            )
             ModuleProvides(
-                providesIndex = readRequiredIndex<ConstantClassEntry>(context, "$ownerPath.provides_index"),
-                providesWithIndexes = List(context.reader.readU2()) { withIndex ->
-                    readRequiredIndex<ConstantClassEntry>(context, "$ownerPath.provides_with_index[$withIndex]")
-                },
+                providesIndex = providesIndex,
+                providesWithIndexes = providesWithIndexes,
             )
         }
         requireUniqueConstantPoolIndexes(
