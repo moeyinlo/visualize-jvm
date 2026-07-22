@@ -240,6 +240,13 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.opens",
             fieldName = "opens_index",
         )
+        requireUniqueNames(
+            names = opens.mapIndexed { index, entry ->
+                packageName(context, entry.opensIndex, "${context.ownerPath}.opens[$index].opens_index")
+            },
+            role = "${context.ownerPath}.opens",
+            fieldName = "opens_index package name",
+        )
         if (opens.isNotEmpty() && moduleFlags and AccOpen != 0) {
             throw ClassFileFormatException(
                 "Invalid ${context.ownerPath}.opens_count=${opens.size}: " +

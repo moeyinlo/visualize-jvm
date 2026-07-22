@@ -201,6 +201,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.25 | `Module` `exports` table rejects duplicate `exports_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `exports` table rejects duplicate package names even through different `exports_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports package names` | IMPLEMENTED |
 | 4.7.25 | `Module` `opens` table rejects duplicate `opens_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module opens indexes` | IMPLEMENTED |
+| 4.7.25 | `Module` `opens` table rejects duplicate package names even through different `opens_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module opens package names` | IMPLEMENTED |
 | 4.7.25 | `Module` `uses` table rejects duplicate `uses_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module uses indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `provides` table rejects duplicate `provides_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module provides indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `exports_to_index` target lists reject duplicate module targets within one `exports` entry | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports to indexes` | IMPLEMENTED |
