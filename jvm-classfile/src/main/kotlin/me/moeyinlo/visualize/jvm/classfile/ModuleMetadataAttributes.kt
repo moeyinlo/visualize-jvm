@@ -13,11 +13,17 @@ data class ModuleMainClassAttribute(
 object ModulePackagesAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
         val packageCount = context.reader.readU2()
+        val packageIndexes = List(packageCount) { index ->
+            readRequiredIndex<ConstantPackageEntry>(context, "${context.ownerPath}.package_index[$index]")
+        }
+        requireUniqueConstantPoolIndexes(
+            indexes = packageIndexes,
+            role = "${context.ownerPath}.packages",
+            fieldName = "package_index",
+        )
         return ModulePackagesAttribute(
             nameIndex = context.nameIndex,
-            packageIndexes = List(packageCount) { index ->
-                readRequiredIndex<ConstantPackageEntry>(context, "${context.ownerPath}.package_index[$index]")
-            },
+            packageIndexes = packageIndexes,
         )
     }
 }
@@ -52,6 +58,19 @@ private inline fun <reified T : ConstantPoolEntry> readRequiredIndex(
         )
     }
     return index
+}
+
+private fun requireUniqueConstantPoolIndexes(
+    indexes: List<ConstantPoolIndex>,
+    role: String,
+    fieldName: String,
+) {
+    val seen = mutableSetOf<ConstantPoolIndex>()
+    indexes.forEach { index ->
+        if (!seen.add(index)) {
+            throw ClassFileFormatException("Invalid $role: duplicate $fieldName $index")
+        }
+    }
 }
 
 private inline fun <reified T : ConstantPoolEntry> expectedConstantName(): String =

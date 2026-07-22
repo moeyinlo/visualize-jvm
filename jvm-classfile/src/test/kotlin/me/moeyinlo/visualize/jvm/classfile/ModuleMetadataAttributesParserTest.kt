@@ -83,6 +83,32 @@ class ModuleMetadataAttributesParserTest {
     }
 
     @Test
+    fun `rejects duplicate ModulePackages package indexes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("ModulePackages", byteArrayOf()),
+                ConstantUtf8Entry("pkg/one", byteArrayOf()),
+                ConstantPackageEntry(ConstantPoolIndex(2)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 6, 0, 2, 0, 3, 0, 3),
+                    source = "bad-module-packages.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("ModulePackages" to ModulePackagesAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].packages"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("duplicate package_index #3"), failure.message)
+    }
+
+    @Test
     fun `rejects ModuleMainClass attribute with non class index`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
