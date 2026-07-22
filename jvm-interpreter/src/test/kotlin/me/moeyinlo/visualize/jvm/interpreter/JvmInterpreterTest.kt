@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.interpreter
 import me.moeyinlo.visualize.jvm.classfile.BootstrapMethodIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
@@ -20,6 +21,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
@@ -11106,6 +11108,98 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc pushes cached dynamic constants from the runtime constant pool`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+        dynamicConstants.bind(JvmRuntimeConstantPoolIndex(4), JvmIntValue(42))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x04.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(nameIndex = ConstantPoolIndex(1), descriptorIndex = ConstantPoolIndex(2)),
+                    ConstantDynamicEntry(
+                        bootstrapMethodIndex = BootstrapMethodIndex(0),
+                        nameAndTypeIndex = ConstantPoolIndex(3),
+                    ),
+                ),
+            ),
+            dynamicConstants = dynamicConstants,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldc rejects unresolved dynamic constants with bootstrap resolution diagnostic`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x04.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("unresolved", "unresolved".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(1),
+                            descriptorIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(3),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(exception.message!!.contains("CONSTANT_Dynamic #4"))
+        assertTrue(exception.message!!.contains("requires bootstrap resolution"))
+    }
+
+    @Test
+    fun `ldc rejects category two cached dynamic constants`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+        dynamicConstants.bind(JvmRuntimeConstantPoolIndex(4), JvmLongValue(42L))
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x04.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("longValue", "longValue".encodeToByteArray()),
+                        ConstantUtf8Entry("J", "J".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(1),
+                            descriptorIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(3),
+                        ),
+                    ),
+                ),
+                dynamicConstants = dynamicConstants,
+            )
+        }
+
+        assertTrue(exception.message!!.contains("expected category 1 value but was category 2"))
+    }
+
+    @Test
     fun `ldc pushes string constants as guest string references`() {
         val heap = JvmHeap()
 
@@ -11403,6 +11497,37 @@ class JvmInterpreterTest {
             constantPool = ConstantPool.fromEntries(
                 (1..255).map { value -> ConstantIntegerEntry(value) } + ConstantIntegerEntry(65_536),
             ),
+        )
+
+        assertEquals(listOf(JvmIntValue(65_536)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldc_w pushes cached dynamic constants from a two byte runtime constant pool index`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+        dynamicConstants.bind(JvmRuntimeConstantPoolIndex(256), JvmIntValue(65_536))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x13.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("wideDynamic", "wideDynamic".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(nameIndex = ConstantPoolIndex(1), descriptorIndex = ConstantPoolIndex(2)),
+                ) +
+                    List(252) { value -> ConstantIntegerEntry(value) } +
+                    ConstantDynamicEntry(
+                        bootstrapMethodIndex = BootstrapMethodIndex(0),
+                        nameAndTypeIndex = ConstantPoolIndex(3),
+                    ),
+            ),
+            dynamicConstants = dynamicConstants,
         )
 
         assertEquals(listOf(JvmIntValue(65_536)), result.operandStack.toList())

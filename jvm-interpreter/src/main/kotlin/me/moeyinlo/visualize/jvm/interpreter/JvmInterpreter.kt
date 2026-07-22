@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
@@ -27,6 +28,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
 import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandler
 import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandlerTable
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
@@ -59,6 +61,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
 data class JvmExecutionResult(
@@ -151,6 +154,7 @@ object JvmInterpreter {
         exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
         bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
+        dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
     ): JvmExecutionResult {
         val frameResult = executeFrame(
             code = code,
@@ -168,6 +172,7 @@ object JvmInterpreter {
             exceptionHandlers = exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -188,6 +193,7 @@ object JvmInterpreter {
         exceptionHandlers: List<JvmExceptionHandler>,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
@@ -241,6 +247,7 @@ object JvmInterpreter {
                             currentClassName,
                             bootstrapMethods,
                             invokeDynamicCallSites,
+                            dynamicConstants,
                         )
                         null
                     }
@@ -503,6 +510,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -517,7 +525,7 @@ object JvmInterpreter {
             )
             0x12,
             0x13,
-            -> executeLdc(instruction, operandStack, constantPool, heap)
+            -> executeLdc(instruction, operandStack, constantPool, heap, dynamicConstants)
             0x14 -> executeLdc2(instruction, operandStack, constantPool)
             0x15,
             in 0x1A..0x1D,
@@ -678,6 +686,7 @@ object JvmInterpreter {
                 currentClassName,
                 bootstrapMethods,
                 invokeDynamicCallSites,
+                dynamicConstants,
             )
             0xB7 -> executeInvokeSpecial(
                 instruction,
@@ -692,6 +701,7 @@ object JvmInterpreter {
                 currentClassName,
                 bootstrapMethods,
                 invokeDynamicCallSites,
+                dynamicConstants,
             )
             0xB8 -> executeInvokeStatic(
                 instruction,
@@ -706,6 +716,7 @@ object JvmInterpreter {
                 currentClassName,
                 bootstrapMethods,
                 invokeDynamicCallSites,
+                dynamicConstants,
             )
             0xB9 -> executeInvokeInterface(
                 instruction,
@@ -720,6 +731,7 @@ object JvmInterpreter {
                 currentClassName,
                 bootstrapMethods,
                 invokeDynamicCallSites,
+                dynamicConstants,
             )
             0xBA -> executeInvokeDynamic(
                 instruction = instruction,
@@ -734,6 +746,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
@@ -3459,6 +3472,7 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
         heap: JvmHeap,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -3486,6 +3500,19 @@ object JvmInterpreter {
                     )
                 }
                 operandStack.push(heap.internClassMirror(nameEntry.value))
+            }
+            is ConstantDynamicEntry -> {
+                val value = dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(index.value))
+                    ?: throw JvmUnsupportedInstructionException(
+                        "CONSTANT_Dynamic $index at offset ${instruction.offset} requires bootstrap resolution",
+                    )
+                if (value.category.slotWidth != 1) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_Dynamic $index at offset ${instruction.offset}: " +
+                            "expected category 1 value but was category ${value.category.slotWidth}",
+                    )
+                }
+                operandStack.push(value)
             }
             is ConstantFloatEntry -> operandStack.push(JvmFloatValue(entry.value))
             is ConstantIntegerEntry -> operandStack.push(JvmIntValue(entry.value))
@@ -3834,6 +3861,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
@@ -3850,6 +3878,7 @@ object JvmInterpreter {
             currentThreadId = currentThreadId,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
             resolvedMethod = resolvedMethod,
             opcodeMnemonic = "invokestatic",
         )
@@ -3867,6 +3896,7 @@ object JvmInterpreter {
         currentThreadId: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         resolvedMethod: JvmResolvedMethod,
         opcodeMnemonic: String,
     ) {
@@ -3898,6 +3928,7 @@ object JvmInterpreter {
             currentThreadId = currentThreadId,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
             resolvedMethod = resolvedMethod,
             arguments = arguments,
             opcodeMnemonic = opcodeMnemonic,
@@ -3917,6 +3948,7 @@ object JvmInterpreter {
         currentThreadId: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         resolvedMethod: JvmResolvedMethod,
         arguments: List<JvmValue>,
         opcodeMnemonic: String,
@@ -3953,6 +3985,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 currentClassName = resolvedMethod.ownerClassName,
+                dynamicConstants = dynamicConstants,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -4002,6 +4035,7 @@ object JvmInterpreter {
             exceptionHandlers = resolvedMethod.exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -4037,6 +4071,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
@@ -4087,6 +4122,7 @@ object JvmInterpreter {
             currentClassName = currentClassName,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
             resolvedMethod = resolvedMethod,
             receiver = objectref,
             arguments = arguments,
@@ -4108,6 +4144,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         resolvedMethod: JvmResolvedMethod,
         receiver: JvmObjectReferenceValue,
         arguments: List<JvmValue>,
@@ -4167,6 +4204,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
+                dynamicConstants = dynamicConstants,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -4218,6 +4256,7 @@ object JvmInterpreter {
             exceptionHandlers = targetMethod.exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -4253,6 +4292,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
@@ -4317,6 +4357,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 currentClassName = resolvedMethod.ownerClassName,
+                dynamicConstants = dynamicConstants,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -4369,6 +4410,7 @@ object JvmInterpreter {
             exceptionHandlers = resolvedMethod.exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -4407,6 +4449,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val thirdOperand = instruction.operands[2]
         val fourthOperand = instruction.operands[3]
@@ -4448,6 +4491,7 @@ object JvmInterpreter {
                     currentClassName = currentClassName,
                     bootstrapMethods = bootstrapMethods,
                     invokeDynamicCallSites = invokeDynamicCallSites,
+                    dynamicConstants = dynamicConstants,
                     linkedCallSite = linkedCallSite,
                 )
                 return
@@ -4519,6 +4563,7 @@ object JvmInterpreter {
             currentThreadId = currentThreadId,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
             resolvedMethod = bootstrapMethod,
             arguments = bootstrapArguments,
             opcodeMnemonic = "invokedynamic bootstrap",
@@ -4559,6 +4604,7 @@ object JvmInterpreter {
             currentClassName = currentClassName,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
             linkedCallSite = linkedCallSite,
         )
     }
@@ -4576,6 +4622,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         when (linkedCallSite.targetMethodHandle.referenceKind) {
@@ -4621,6 +4668,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
             )
             JvmMethodHandleReferenceKind.InvokeVirtual -> executeLinkedInvokeDynamicVirtualTarget(
@@ -4635,6 +4683,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
             )
             JvmMethodHandleReferenceKind.InvokeSpecial -> executeLinkedInvokeDynamicSpecialTarget(
@@ -4650,6 +4699,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
             )
             JvmMethodHandleReferenceKind.InvokeInterface -> executeLinkedInvokeDynamicInterfaceTarget(
@@ -4665,6 +4715,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
             )
             JvmMethodHandleReferenceKind.NewInvokeSpecial -> executeLinkedInvokeDynamicConstructorTarget(
@@ -4680,6 +4731,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
             )
         }
@@ -4879,6 +4931,7 @@ object JvmInterpreter {
         currentThreadId: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
@@ -4895,6 +4948,7 @@ object JvmInterpreter {
             currentThreadId = currentThreadId,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
             resolvedMethod = linkedCallSite.targetMethod,
             opcodeMnemonic = "invokedynamic",
         )
@@ -4912,6 +4966,7 @@ object JvmInterpreter {
         currentThreadId: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         requireInstanceMethod(instruction, linkedCallSite.targetMethod)
@@ -4962,6 +5017,7 @@ object JvmInterpreter {
             currentClassName = linkedCallSite.targetMethod.ownerClassName,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
             resolvedMethod = linkedCallSite.targetMethod,
             receiver = receiver,
             arguments = arguments,
@@ -4984,6 +5040,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         val targetMethod = linkedCallSite.targetMethod
@@ -5059,6 +5116,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
+                dynamicConstants = dynamicConstants,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -5109,6 +5167,7 @@ object JvmInterpreter {
             exceptionHandlers = targetMethod.exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -5144,6 +5203,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         val resolvedMethod = linkedCallSite.targetMethod
@@ -5232,6 +5292,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
+                dynamicConstants = dynamicConstants,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -5282,6 +5343,7 @@ object JvmInterpreter {
             exceptionHandlers = targetMethod.exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -5317,6 +5379,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         val constructor = linkedCallSite.targetMethod
@@ -5362,6 +5425,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 currentClassName = constructor.ownerClassName,
+                dynamicConstants = dynamicConstants,
             )
             if (nativeReturnValue != null) {
                 throw JvmUnsupportedInstructionException(
@@ -5402,6 +5466,7 @@ object JvmInterpreter {
             exceptionHandlers = constructor.exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         if (frameResult.returnValue != null) {
             throw JvmUnsupportedInstructionException(
@@ -5444,6 +5509,7 @@ object JvmInterpreter {
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         val count = instruction.operands[2]
@@ -5546,6 +5612,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
+                dynamicConstants = dynamicConstants,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -5597,6 +5664,7 @@ object JvmInterpreter {
             exceptionHandlers = targetMethod.exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -5631,6 +5699,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ): JvmValue? {
         val intrinsic = nativeMethods.resolve(method)
             ?: throw JvmUnsatisfiedLinkError(
@@ -5659,6 +5728,7 @@ object JvmInterpreter {
                         monitors = monitors,
                         currentThreadId = currentThreadId,
                         currentClassName = currentClassName,
+                        dynamicConstants = dynamicConstants,
                     )
                 },
                 callInstanceMethodHandler = { upcallReceiver, ownerClassName, name, descriptor, upcallArguments ->
@@ -5675,6 +5745,7 @@ object JvmInterpreter {
                         monitors = monitors,
                         currentThreadId = currentThreadId,
                         currentClassName = currentClassName,
+                        dynamicConstants = dynamicConstants,
                     )
                 },
             ),
@@ -5697,6 +5768,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
             ownerClassName = ownerClassName,
@@ -5752,6 +5824,7 @@ object JvmInterpreter {
             exceptionHandlers = resolvedMethod.exceptionHandlers,
             bootstrapMethods = JvmBootstrapMethodTable(),
             invokeDynamicCallSites = JvmInvokeDynamicCallSiteRegistry(),
+            dynamicConstants = dynamicConstants,
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI static upcall",
@@ -5775,6 +5848,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
             ownerClassName = ownerClassName,
@@ -5854,6 +5928,7 @@ object JvmInterpreter {
             exceptionHandlers = targetMethod.exceptionHandlers,
             bootstrapMethods = JvmBootstrapMethodTable(),
             invokeDynamicCallSites = JvmInvokeDynamicCallSiteRegistry(),
+            dynamicConstants = dynamicConstants,
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI instance upcall",
