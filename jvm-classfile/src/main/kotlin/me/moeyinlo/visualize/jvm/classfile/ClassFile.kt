@@ -83,24 +83,9 @@ object ClassFileParser {
                 "Record" -> recordPaths += "ClassFile.attributes[$index]"
             }
         }
-        if (nestHostPaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ClassFile attributes source=$source: at most one NestHost attribute is permitted " +
-                    "but found ${nestHostPaths.size} at ${nestHostPaths.joinToString()}",
-            )
-        }
-        if (nestMembersPaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ClassFile attributes source=$source: at most one NestMembers attribute is permitted " +
-                    "but found ${nestMembersPaths.size} at ${nestMembersPaths.joinToString()}",
-            )
-        }
-        if (permittedSubclassesPaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ClassFile attributes source=$source: at most one PermittedSubclasses attribute is permitted " +
-                    "but found ${permittedSubclassesPaths.size} at ${permittedSubclassesPaths.joinToString()}",
-            )
-        }
+        requireAtMostOneAttribute(nestHostPaths, "NestHost", source)
+        requireAtMostOneAttribute(nestMembersPaths, "NestMembers", source)
+        requireAtMostOneAttribute(permittedSubclassesPaths, "PermittedSubclasses", source)
         val permittedSubclassesPath = permittedSubclassesPaths.singleOrNull()
         if (permittedSubclassesPath != null && accessFlags.has(ClassAccessFlag.Final)) {
             throw ClassFileFormatException(
@@ -108,36 +93,29 @@ object ClassFileParser {
                     "PermittedSubclasses ($permittedSubclassesPath)",
             )
         }
-        if (sourceFilePaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ClassFile attributes source=$source: at most one SourceFile attribute is permitted " +
-                    "but found ${sourceFilePaths.size} at ${sourceFilePaths.joinToString()}",
-            )
-        }
-        if (sourceDebugExtensionPaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ClassFile attributes source=$source: at most one SourceDebugExtension attribute is permitted " +
-                    "but found ${sourceDebugExtensionPaths.size} at ${sourceDebugExtensionPaths.joinToString()}",
-            )
-        }
-        if (enclosingMethodPaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ClassFile attributes source=$source: at most one EnclosingMethod attribute is permitted " +
-                    "but found ${enclosingMethodPaths.size} at ${enclosingMethodPaths.joinToString()}",
-            )
-        }
-        if (recordPaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ClassFile attributes source=$source: at most one Record attribute is permitted " +
-                    "but found ${recordPaths.size} at ${recordPaths.joinToString()}",
-            )
-        }
+        requireAtMostOneAttribute(sourceFilePaths, "SourceFile", source)
+        requireAtMostOneAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", source)
+        requireAtMostOneAttribute(enclosingMethodPaths, "EnclosingMethod", source)
+        requireAtMostOneAttribute(recordPaths, "Record", source)
         val nestHostPath = nestHostPaths.singleOrNull()
         val nestMembersPath = nestMembersPaths.singleOrNull()
         if (nestHostPath != null && nestMembersPath != null) {
             throw ClassFileFormatException(
                 "Invalid ClassFile attributes source=$source: must not contain both " +
                     "NestHost ($nestHostPath) and NestMembers ($nestMembersPath)",
+            )
+        }
+    }
+
+    private fun requireAtMostOneAttribute(
+        paths: List<String>,
+        attributeName: String,
+        source: String,
+    ) {
+        if (paths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: at most one $attributeName attribute is permitted " +
+                    "but found ${paths.size} at ${paths.joinToString()}",
             )
         }
     }
