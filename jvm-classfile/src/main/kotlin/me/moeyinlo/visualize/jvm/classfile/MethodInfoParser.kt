@@ -194,6 +194,15 @@ object MethodInfoParser {
         }
         if (
             annotationDefaultPath != null &&
+            (!has(method.accessFlags, MethodAccessFlag.Public) || !has(method.accessFlags, MethodAccessFlag.Abstract))
+        ) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: AnnotationDefault annotation interface elements " +
+                    "must set ACC_PUBLIC and ACC_ABSTRACT but found $annotationDefaultPath",
+            )
+        }
+        if (
+            annotationDefaultPath != null &&
             DescriptorValidator.methodParameterUnits(method.descriptorIndex, "$ownerPath.descriptor_index", descriptor) != 0
         ) {
             throw ClassFileFormatException(

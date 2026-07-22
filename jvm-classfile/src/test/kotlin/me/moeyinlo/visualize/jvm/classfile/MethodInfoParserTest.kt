@@ -703,6 +703,45 @@ class MethodInfoParserTest {
         assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
         assertTrue(failure.message.orEmpty().contains("must not declare Exceptions"), failure.message)
     }
+
+    @Test
+    fun `rejects AnnotationDefault attributes on concrete annotation interface methods`() {
+        val annotationDefaultAttribute = byteArrayOf(0, 3) + intBytes(3) + byteArrayOf('I'.code.toByte(), 0, 4)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(
+                            accessFlags = 0x0001,
+                            descriptorIndex = 2,
+                            attributes = listOf(annotationDefaultAttribute, codeAttribute(nameIndex = 5)),
+                        ),
+                    ),
+                    source = "bad-concrete-annotation-default.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ConstantUtf8Entry("AnnotationDefault", "AnnotationDefault".encodeToByteArray()),
+                        ConstantIntegerEntry(1),
+                        ConstantUtf8Entry("Code", "Code".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "AnnotationDefault" to AnnotationDefaultAttributeParser,
+                    "Code" to CodeAttributeParser,
+                ),
+                classKind = ClassFileKind.AnnotationInterface,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ACC_PUBLIC and ACC_ABSTRACT"), failure.message)
+    }
     @Test
     fun `rejects instance initialization methods in interfaces`() {
         val failure = assertFailsWith<ClassFileFormatException> {
@@ -855,7 +894,7 @@ class MethodInfoParserTest {
             attributes.size.toByte(),
         ) + attributes.fold(byteArrayOf()) { bytes, attribute -> bytes + attribute }
 
-    private fun codeAttribute(): ByteArray {
+    private fun codeAttribute(nameIndex: Int = 3): ByteArray {
         val body = byteArrayOf(
             0,
             0,
@@ -870,8 +909,8 @@ class MethodInfoParserTest {
                 0,
             )
         return byteArrayOf(
-            0,
-            3,
+            (nameIndex ushr 8).toByte(),
+            nameIndex.toByte(),
         ) + intBytes(body.size) + body
     }
 
