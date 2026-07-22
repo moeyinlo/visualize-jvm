@@ -36,6 +36,9 @@ data class ModuleProvides(
 )
 
 object ModuleAttributeParser : AttributeBodyParser {
+    private const val AccSynthetic = 0x1000
+    private const val JavaBaseModuleName = "java.base"
+
     override fun parse(context: AttributeParseContext): AttributeInfo {
         val moduleNameIndex = readRequiredIndex<ConstantModuleEntry>(context, "${context.ownerPath}.module_name_index")
         val moduleFlags = context.reader.readU2()
@@ -75,7 +78,25 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.requires",
             fieldName = "requires_index",
         )
+        requireJavaBaseRequiresAreNotSynthetic(context, requires)
         return requires
+    }
+
+    private fun requireJavaBaseRequiresAreNotSynthetic(
+        context: AttributeParseContext,
+        requires: List<ModuleRequires>,
+    ) {
+        requires.forEachIndexed { index, entry ->
+            if (moduleName(context, entry.requiresIndex, "${context.ownerPath}.requires[$index].requires_index") ==
+                JavaBaseModuleName &&
+                entry.requiresFlags and AccSynthetic != 0
+            ) {
+                throw ClassFileFormatException(
+                    "Invalid ${context.ownerPath}.requires[$index].requires_flags: " +
+                        "requires java.base must not set ACC_SYNTHETIC",
+                )
+            }
+        }
     }
 
     private fun parseExports(context: AttributeParseContext): List<ModuleExports> {
@@ -203,6 +224,15 @@ object ModuleAttributeParser : AttributeBodyParser {
         index: ConstantPoolIndex,
         expected: String,
     ) {
+        expectEntryValue<T>(context, role, index, expected)
+    }
+
+    private inline fun <reified T : ConstantPoolEntry> expectEntryValue(
+        context: AttributeParseContext,
+        role: String,
+        index: ConstantPoolIndex,
+        expected: String,
+    ): T {
         val entry = try {
             context.constantPool[index]
         } catch (exception: ConstantPoolFormatException) {
@@ -213,6 +243,26 @@ object ModuleAttributeParser : AttributeBodyParser {
                 "Invalid $role=$index: expected $expected but found ${entry.javaClass.simpleName}",
             )
         }
+        return entry
+    }
+
+    private fun moduleName(
+        context: AttributeParseContext,
+        index: ConstantPoolIndex,
+        role: String,
+    ): String {
+        val moduleEntry = expectEntryValue<ConstantModuleEntry>(
+            context = context,
+            role = role,
+            index = index,
+            expected = "CONSTANT_Module_info",
+        )
+        return expectEntryValue<ConstantUtf8Entry>(
+            context = context,
+            role = "$role.name_index",
+            index = moduleEntry.nameIndex,
+            expected = "CONSTANT_Utf8_info",
+        ).value
     }
 
     private fun requireUniqueConstantPoolIndexes(

@@ -98,6 +98,35 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects synthetic java base requires`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 22,
+                        0, 3, 0, 0, 0, 0,
+                        0, 1,
+                        0, 6, 0x10, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].requires[0].requires_flags"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("requires java.base must not set ACC_SYNTHETIC"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate Module exports indexes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(
