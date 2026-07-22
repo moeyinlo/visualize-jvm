@@ -31,6 +31,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethod
+import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodTable
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
@@ -53,6 +55,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
+import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
@@ -16415,7 +16418,7 @@ class JvmInterpreterTest {
         )
     }
     @Test
-    fun `invokedynamic resolves call site spec before bootstrap linkage`() {
+    fun `invokedynamic resolves bootstrap invocation inputs before bootstrap execution`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
                 code = byteArrayOf(
@@ -16426,29 +16429,79 @@ class JvmInterpreterTest {
                     0x00.toByte(),
                 ),
                 maxStack = 0,
-                constantPool = ConstantPool.fromEntries(
+                constantPool = invokedynamicBootstrapInvocationConstantPool(),
+                bootstrapMethods = JvmBootstrapMethodTable(
                     listOf(
-                        ConstantInvokeDynamicEntry(
-                            bootstrapMethodIndex = BootstrapMethodIndex(7),
-                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        JvmBootstrapMethod(
+                            bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                            bootstrapArguments = listOf(JvmRuntimeConstantPoolIndex(12)),
                         ),
-                        ConstantNameAndTypeEntry(
-                            nameIndex = ConstantPoolIndex(3),
-                            descriptorIndex = ConstantPoolIndex(4),
-                        ),
-                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
-                        ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
                     ),
                 ),
             )
         }
 
         assertEquals(
-            "Unsupported invokedynamic call site #1 run:(I)Ljava/lang/String; bootstrap #7 at offset 0: " +
-                "bootstrap linkage is not implemented yet",
+            "Unsupported invokedynamic call site #1 run:(I)Ljava/lang/String; bootstrap #0 " +
+                "with 1 static argument(s) at offset 0: bootstrap method execution is not implemented yet",
             exception.message,
         )
     }
+
+    @Test
+    fun `invokedynamic reports missing bootstrap method table entries`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = invokedynamicBootstrapInvocationConstantPool(),
+            )
+        }
+
+        assertEquals(
+            "Invalid invokedynamic call site #1 at offset 0: Bootstrap method index #0 is outside 0..-1",
+            exception.message,
+        )
+    }
+    private fun invokedynamicBootstrapInvocationConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = ConstantPoolIndex(6),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(7),
+                    nameAndTypeIndex = ConstantPoolIndex(9),
+                ),
+                ConstantClassEntry(ConstantPoolIndex(8)),
+                ConstantUtf8Entry("pkg/Bootstrap", "pkg/Bootstrap".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(10),
+                    descriptorIndex = ConstantPoolIndex(11),
+                ),
+                ConstantUtf8Entry("bootstrap", "bootstrap".encodeToByteArray()),
+                ConstantUtf8Entry("()Ljava/lang/invoke/CallSite;", "()Ljava/lang/invoke/CallSite;".encodeToByteArray()),
+                ConstantIntegerEntry(7),
+            ),
+        )
+
     private fun interfaceMethodConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(

@@ -20,6 +20,8 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodAccessException
+import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodTable
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
@@ -143,6 +145,7 @@ object JvmInterpreter {
         currentThreadId: String = "main",
         currentClassName: String? = null,
         exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
+        bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
     ): JvmExecutionResult {
         val frameResult = executeFrame(
             code = code,
@@ -158,6 +161,7 @@ object JvmInterpreter {
             currentClassName = currentClassName,
             allowReturn = false,
             exceptionHandlers = exceptionHandlers,
+            bootstrapMethods = bootstrapMethods,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -176,6 +180,7 @@ object JvmInterpreter {
         currentClassName: String?,
         allowReturn: Boolean,
         exceptionHandlers: List<JvmExceptionHandler>,
+        bootstrapMethods: JvmBootstrapMethodTable,
     ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
@@ -227,6 +232,7 @@ object JvmInterpreter {
                             monitors,
                             currentThreadId,
                             currentClassName,
+                            bootstrapMethods,
                         )
                         null
                     }
@@ -487,6 +493,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -660,6 +667,7 @@ object JvmInterpreter {
                 monitors,
                 currentThreadId,
                 currentClassName,
+                bootstrapMethods,
             )
             0xB7 -> executeInvokeSpecial(
                 instruction,
@@ -672,6 +680,7 @@ object JvmInterpreter {
                 monitors,
                 currentThreadId,
                 currentClassName,
+                bootstrapMethods,
             )
             0xB8 -> executeInvokeStatic(
                 instruction,
@@ -684,6 +693,7 @@ object JvmInterpreter {
                 monitors,
                 currentThreadId,
                 currentClassName,
+                bootstrapMethods,
             )
             0xB9 -> executeInvokeInterface(
                 instruction,
@@ -696,8 +706,9 @@ object JvmInterpreter {
                 monitors,
                 currentThreadId,
                 currentClassName,
+                bootstrapMethods,
             )
-            0xBA -> executeInvokeDynamic(instruction, constantPool)
+            0xBA -> executeInvokeDynamic(instruction, constantPool, bootstrapMethods)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -3795,6 +3806,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
@@ -3877,6 +3889,7 @@ object JvmInterpreter {
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,
+            bootstrapMethods = bootstrapMethods,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -3910,6 +3923,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
@@ -4033,6 +4047,7 @@ object JvmInterpreter {
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = targetMethod.exceptionHandlers,
+            bootstrapMethods = bootstrapMethods,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -4066,6 +4081,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
@@ -4180,6 +4196,7 @@ object JvmInterpreter {
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,
+            bootstrapMethods = bootstrapMethods,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -4208,6 +4225,7 @@ object JvmInterpreter {
     private fun executeInvokeDynamic(
         instruction: DecodedInstruction,
         constantPool: ConstantPool,
+        bootstrapMethods: JvmBootstrapMethodTable,
     ) {
         val thirdOperand = instruction.operands[2]
         val fourthOperand = instruction.operands[3]
@@ -4229,18 +4247,29 @@ object JvmInterpreter {
                     entry.javaClass.simpleName,
             )
         }
-        val spec = try {
-            JvmInvokeDynamicCallSiteResolver.resolveSpec(constantPool, instruction.constantPoolIndex())
+        val invocation = try {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapInvocation(
+                constantPool = constantPool,
+                index = instruction.constantPoolIndex(),
+                bootstrapMethods = bootstrapMethods,
+            )
+        } catch (exception: JvmBootstrapMethodAccessException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
+                    exception.message,
+            )
         } catch (exception: JvmInvokeDynamicLinkageException) {
             throw JvmUnsupportedInstructionException(
                 "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
                     exception.message,
             )
         }
+        val spec = invocation.callSite
         throw JvmUnsupportedInstructionException(
             "Unsupported invokedynamic call site ${instruction.constantPoolIndex()} " +
                 "${spec.name}:${spec.descriptor} bootstrap #${spec.bootstrapMethodIndex} " +
-                "at offset ${instruction.offset}: bootstrap linkage is not implemented yet",
+                "with ${invocation.staticArguments.size} static argument(s) at offset ${instruction.offset}: " +
+                "bootstrap method execution is not implemented yet",
         )
     }
 
@@ -4255,6 +4284,7 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         currentThreadId: String,
         currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         val count = instruction.operands[2]
@@ -4406,6 +4436,7 @@ object JvmInterpreter {
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = targetMethod.exceptionHandlers,
+            bootstrapMethods = bootstrapMethods,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -4559,6 +4590,7 @@ object JvmInterpreter {
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,
+            bootstrapMethods = JvmBootstrapMethodTable(),
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI static upcall",
@@ -4659,6 +4691,7 @@ object JvmInterpreter {
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = targetMethod.exceptionHandlers,
+            bootstrapMethods = JvmBootstrapMethodTable(),
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI instance upcall",
