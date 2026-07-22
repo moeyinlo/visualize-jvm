@@ -16435,7 +16435,7 @@ class JvmInterpreterTest {
                     0x00.toByte(),
                 ),
                 maxStack = 0,
-                constantPool = invokedynamicBootstrapInvocationConstantPool(),
+                constantPool = invokedynamicBootstrapInvocationConstantPool(MethodHandleReferenceKind.InvokeVirtual),
                 heap = heap,
                 currentClassName = "pkg/Caller",
                 bootstrapMethods = JvmBootstrapMethodTable(
@@ -16451,7 +16451,8 @@ class JvmInterpreterTest {
 
         assertEquals(
             "Unsupported invokedynamic call site #1 run:(I)Ljava/lang/String; bootstrap #0 " +
-                "with 4 bootstrap method argument(s) at offset 0: bootstrap method execution is not implemented yet",
+                "with 4 bootstrap method argument(s) at offset 0: bootstrap method handle InvokeVirtual execution " +
+                "is not implemented yet",
             exception.message,
         )
         assertEquals(
@@ -16673,6 +16674,94 @@ class JvmInterpreterTest {
         )
     }
 
+    @Test
+    fun `invokedynamic executes invoke static bootstrap method and dispatches linked target`() {
+        val heap = JvmHeap()
+        val bootstrapDescriptor =
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
+                "Ljava/lang/invoke/CallSite;"
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "bootstrap",
+                            descriptor = bootstrapDescriptor,
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Targets",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey(
+                ownerClassName = "pkg/Bootstrap",
+                name = "bootstrap",
+                descriptor = bootstrapDescriptor,
+                isStatic = true,
+            ) to JvmNativeMethodIntrinsic { context, invocation ->
+                assertEquals(3, invocation.arguments.size)
+                context.heap.allocateCallSite(
+                    context.heap.internMethodHandle(
+                        referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                        referenceIndex = 12,
+                    ),
+                )
+            },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicBootstrapExecutionConstantPool(bootstrapDescriptor),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
+            ),
+            invokeDynamicCallSites = callSites,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        assertEquals(
+            classHierarchy.resolveMethod("pkg/Targets", "answer", "()I"),
+            callSites.linked(JvmInvokeDynamicCallSiteKey("pkg/Caller", 0))?.targetMethod,
+        )
+    }
+
     private fun invokedynamicIntCallSiteConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
@@ -16705,7 +16794,52 @@ class JvmInterpreterTest {
             ),
         )
 
-    private fun invokedynamicBootstrapInvocationConstantPool(): ConstantPool =
+    private fun invokedynamicBootstrapExecutionConstantPool(bootstrapDescriptor: String): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = ConstantPoolIndex(6),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(7),
+                    nameAndTypeIndex = ConstantPoolIndex(9),
+                ),
+                ConstantClassEntry(ConstantPoolIndex(8)),
+                ConstantUtf8Entry("pkg/Bootstrap", "pkg/Bootstrap".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(10),
+                    descriptorIndex = ConstantPoolIndex(11),
+                ),
+                ConstantUtf8Entry("bootstrap", "bootstrap".encodeToByteArray()),
+                ConstantUtf8Entry(bootstrapDescriptor, bootstrapDescriptor.encodeToByteArray()),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(13),
+                    nameAndTypeIndex = ConstantPoolIndex(15),
+                ),
+                ConstantClassEntry(ConstantPoolIndex(14)),
+                ConstantUtf8Entry("pkg/Targets", "pkg/Targets".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(16),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+            ),
+        )
+
+    private fun invokedynamicBootstrapInvocationConstantPool(
+        bootstrapReferenceKind: MethodHandleReferenceKind = MethodHandleReferenceKind.InvokeStatic,
+    ): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
                 ConstantInvokeDynamicEntry(
@@ -16719,7 +16853,7 @@ class JvmInterpreterTest {
                 ConstantUtf8Entry("run", "run".encodeToByteArray()),
                 ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
                 ConstantMethodHandleEntry(
-                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceKind = bootstrapReferenceKind,
                     referenceIndex = ConstantPoolIndex(6),
                 ),
                 ConstantMethodRefEntry(

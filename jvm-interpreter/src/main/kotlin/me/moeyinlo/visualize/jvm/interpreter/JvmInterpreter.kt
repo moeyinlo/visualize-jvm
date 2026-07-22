@@ -42,6 +42,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmInvokeDynamicLinkageException
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLinkedInvokeDynamicCallSite
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
@@ -4371,24 +4372,13 @@ object JvmInterpreter {
             )
         }
         if (currentClassName != null) {
-            val linkedCallSite = invokeDynamicCallSites.linked(
-                JvmInvokeDynamicCallSiteKey(
-                    ownerClassName = currentClassName,
-                    bytecodeOffset = instruction.offset,
-                ),
+            val key = JvmInvokeDynamicCallSiteKey(
+                ownerClassName = currentClassName,
+                bytecodeOffset = instruction.offset,
             )
+            val linkedCallSite = invokeDynamicCallSites.linked(key)
             if (linkedCallSite != null) {
-                requireStaticMethod(instruction, linkedCallSite.targetMethod)
-                if (linkedCallSite.spec.descriptor != linkedCallSite.targetMethod.descriptor) {
-                    throw JvmUnsupportedInstructionException(
-                        "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
-                            "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
-                            "target ${linkedCallSite.targetMethod.ownerClassName}." +
-                            "${linkedCallSite.targetMethod.name}:${linkedCallSite.targetMethod.descriptor} " +
-                            "does not match call site descriptor",
-                    )
-                }
-                executeResolvedStaticMethod(
+                executeLinkedInvokeDynamicCallSite(
                     instruction = instruction,
                     operandStack = operandStack,
                     constantPool = constantPool,
@@ -4400,8 +4390,7 @@ object JvmInterpreter {
                     currentThreadId = currentThreadId,
                     bootstrapMethods = bootstrapMethods,
                     invokeDynamicCallSites = invokeDynamicCallSites,
-                    resolvedMethod = linkedCallSite.targetMethod,
-                    opcodeMnemonic = "invokedynamic",
+                    linkedCallSite = linkedCallSite,
                 )
                 return
             }
@@ -4424,14 +4413,15 @@ object JvmInterpreter {
             )
         }
         val spec = invocation.callSite
+        val ownerClassName = currentClassName
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset " +
+                    "${instruction.offset}: current class is required for MethodHandles.Lookup",
+            )
         val bootstrapArguments = try {
             invocation.materializeBootstrapMethodArguments(
                 heap = heap,
-                lookupClassName = currentClassName
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset " +
-                            "${instruction.offset}: current class is required for MethodHandles.Lookup",
-                    ),
+                lookupClassName = ownerClassName,
             )
         } catch (exception: JvmInvokeDynamicLinkageException) {
             throw JvmUnsupportedInstructionException(
@@ -4439,11 +4429,119 @@ object JvmInterpreter {
                     exception.message,
             )
         }
-        throw JvmUnsupportedInstructionException(
-            "Unsupported invokedynamic call site ${instruction.constantPoolIndex()} " +
-                "${spec.name}:${spec.descriptor} bootstrap #${spec.bootstrapMethodIndex} " +
-                "with ${bootstrapArguments.size} bootstrap method argument(s) at offset ${instruction.offset}: " +
-                "bootstrap method execution is not implemented yet",
+        if (invocation.bootstrapMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
+            throw JvmUnsupportedInstructionException(
+                "Unsupported invokedynamic call site ${instruction.constantPoolIndex()} " +
+                    "${spec.name}:${spec.descriptor} bootstrap #${spec.bootstrapMethodIndex} " +
+                    "with ${bootstrapArguments.size} bootstrap method argument(s) at offset ${instruction.offset}: " +
+                    "bootstrap method handle ${invocation.bootstrapMethodHandle.referenceKind} execution is not " +
+                    "implemented yet",
+            )
+        }
+        val bootstrapMethod = try {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = constantPool,
+                classHierarchy = classHierarchy,
+                methodHandle = invocation.bootstrapMethodHandle,
+            )
+        } catch (exception: JvmInvokeDynamicLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
+                    exception.message,
+            )
+        }
+        val bootstrapReturnValue = executeStaticMethodWithArguments(
+            instruction = instruction,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            resolvedMethod = bootstrapMethod,
+            arguments = bootstrapArguments,
+            opcodeMnemonic = "invokedynamic bootstrap",
+        ) ?: throw JvmUnsupportedInstructionException(
+            "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
+                "bootstrap method ${bootstrapMethod.ownerClassName}.${bootstrapMethod.name}:" +
+                "${bootstrapMethod.descriptor} completed without returning a value",
+        )
+        val linkedCallSite = try {
+            val bootstrapResult = invocation.extractBootstrapResult(heap, bootstrapReturnValue)
+            JvmInvokeDynamicCallSiteResolver.bindBootstrapResult(
+                key = JvmInvokeDynamicCallSiteKey(
+                    ownerClassName = ownerClassName,
+                    bytecodeOffset = instruction.offset,
+                ),
+                constantPool = constantPool,
+                classHierarchy = classHierarchy,
+                invocation = invocation,
+                bootstrapResult = bootstrapResult,
+                registry = invokeDynamicCallSites,
+            )
+        } catch (exception: JvmInvokeDynamicLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
+                    exception.message,
+            )
+        }
+        executeLinkedInvokeDynamicCallSite(
+            instruction = instruction,
+            operandStack = operandStack,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            linkedCallSite = linkedCallSite,
+        )
+    }
+
+    private fun executeLinkedInvokeDynamicCallSite(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
+        requireStaticMethod(instruction, linkedCallSite.targetMethod)
+        if (linkedCallSite.spec.descriptor != linkedCallSite.targetMethod.descriptor) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
+                    "target ${linkedCallSite.targetMethod.ownerClassName}." +
+                    "${linkedCallSite.targetMethod.name}:${linkedCallSite.targetMethod.descriptor} " +
+                    "does not match call site descriptor",
+            )
+        }
+        executeResolvedStaticMethod(
+            instruction = instruction,
+            operandStack = operandStack,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            resolvedMethod = linkedCallSite.targetMethod,
+            opcodeMnemonic = "invokedynamic",
         )
     }
 
