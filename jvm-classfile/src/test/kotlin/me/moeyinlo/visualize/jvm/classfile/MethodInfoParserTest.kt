@@ -742,6 +742,42 @@ class MethodInfoParserTest {
         assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
         assertTrue(failure.message.orEmpty().contains("ACC_PUBLIC and ACC_ABSTRACT"), failure.message)
     }
+
+    @Test
+    fun `rejects AnnotationDefault attributes on annotation interface methods returning nested arrays`() {
+        val annotationDefaultAttribute = byteArrayOf(0, 3) + intBytes(3) + byteArrayOf('['.code.toByte(), 0, 0)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(
+                            accessFlags = 0x0401,
+                            descriptorIndex = 2,
+                            attributes = listOf(annotationDefaultAttribute),
+                        ),
+                    ),
+                    source = "bad-nested-array-annotation-default.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()[[I", "()[[I".encodeToByteArray()),
+                        ConstantUtf8Entry("AnnotationDefault", "AnnotationDefault".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "AnnotationDefault" to AnnotationDefaultAttributeParser,
+                ),
+                classKind = ClassFileKind.AnnotationInterface,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("must not return nested arrays"), failure.message)
+    }
     @Test
     fun `rejects instance initialization methods in interfaces`() {
         val failure = assertFailsWith<ClassFileFormatException> {

@@ -216,6 +216,12 @@ object MethodInfoParser {
                     "must not return void but found $annotationDefaultPath",
             )
         }
+        if (annotationDefaultPath != null && returnDescriptor(descriptor).startsWith("[[")) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: AnnotationDefault annotation interface elements " +
+                    "must not return nested arrays but found $annotationDefaultPath",
+            )
+        }
         val exceptionsPath = exceptionsPaths.singleOrNull()
         if (annotationDefaultPath != null && exceptionsPath != null) {
             throw ClassFileFormatException(
@@ -224,6 +230,8 @@ object MethodInfoParser {
             )
         }
     }
+
+    private fun returnDescriptor(descriptor: String): String = descriptor.substringAfter(')')
 
     private fun requireAtMostOneAttribute(
         paths: List<String>,
