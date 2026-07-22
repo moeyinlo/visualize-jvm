@@ -33,7 +33,16 @@ data class JvmExceptionHandler(
     val endPc: Int,
     val handlerPc: Int,
     val catchClassName: String?,
-)
+) {
+    init {
+        require(startPc >= 0) { "exception handler start_pc must be non-negative: $startPc" }
+        require(endPc >= startPc) { "exception handler end_pc must be >= start_pc: $endPc < $startPc" }
+        require(handlerPc >= 0) { "exception handler handler_pc must be non-negative: $handlerPc" }
+        require(catchClassName == null || catchClassName.isNotBlank()) {
+            "exception handler catch class name must not be blank"
+        }
+    }
+}
 
 data class JvmMethodDefinition(
     val name: String,
