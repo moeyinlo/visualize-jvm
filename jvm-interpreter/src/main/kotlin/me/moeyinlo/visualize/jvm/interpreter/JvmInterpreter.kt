@@ -33,6 +33,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmInvokeDynamicCallSiteResolver
+import me.moeyinlo.visualize.jvm.runtime.JvmInvokeDynamicLinkageException
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
@@ -4227,11 +4229,21 @@ object JvmInterpreter {
                     entry.javaClass.simpleName,
             )
         }
+        val spec = try {
+            JvmInvokeDynamicCallSiteResolver.resolveSpec(constantPool, instruction.constantPoolIndex())
+        } catch (exception: JvmInvokeDynamicLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
+                    exception.message,
+            )
+        }
         throw JvmUnsupportedInstructionException(
-            "Unsupported invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
-                "bootstrap linkage is not implemented yet",
+            "Unsupported invokedynamic call site ${instruction.constantPoolIndex()} " +
+                "${spec.name}:${spec.descriptor} bootstrap #${spec.bootstrapMethodIndex} " +
+                "at offset ${instruction.offset}: bootstrap linkage is not implemented yet",
         )
     }
+
     private fun executeInvokeInterface(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,

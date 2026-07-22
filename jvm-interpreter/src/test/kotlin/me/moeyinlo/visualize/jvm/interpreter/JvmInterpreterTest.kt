@@ -1,10 +1,12 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.classfile.BootstrapMethodIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantInvokeDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
@@ -16409,6 +16411,41 @@ class JvmInterpreterTest {
         assertEquals(
             "Invalid invokedynamic constant pool entry #1 at offset 0: " +
                 "expected CONSTANT_InvokeDynamic_info but was ConstantIntegerEntry",
+            exception.message,
+        )
+    }
+    @Test
+    fun `invokedynamic resolves call site spec before bootstrap linkage`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantInvokeDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(7),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Unsupported invokedynamic call site #1 run:(I)Ljava/lang/String; bootstrap #7 at offset 0: " +
+                "bootstrap linkage is not implemented yet",
             exception.message,
         )
     }
