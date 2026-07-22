@@ -4297,6 +4297,39 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `iaload out of range index transfers control to matching ArrayIndexOutOfBoundsException handler`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateIntArray(3)
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x06.toByte(),
+                0x2E.toByte(),
+                0x4C.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 2,
+            heap = heap,
+            localVariables = locals,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 3,
+                    handlerPc = 3,
+                    catchClassName = "java/lang/ArrayIndexOutOfBoundsException",
+                ),
+            ),
+        )
+
+        val caught = locals.load(1) as JvmObjectReferenceValue
+        assertEquals("java/lang/ArrayIndexOutOfBoundsException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `laload loads a long from a long array`() {
         val heap = JvmHeap()
         val reference = heap.allocateLongArray(3)
