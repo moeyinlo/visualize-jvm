@@ -25,6 +25,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 
 class JvmInvokeDynamicCallSiteRegistryTest {
+    private val BOOTSTRAP_DESCRIPTOR =
+        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
+            "Ljava/lang/invoke/CallSite;"
+
     @Test
     fun `call site resolver reads bootstrap index name and descriptor from invoke dynamic constants`() {
         val spec = JvmInvokeDynamicCallSiteResolver.resolveSpec(
@@ -338,6 +342,61 @@ class JvmInvokeDynamicCallSiteRegistryTest {
             exception.message,
         )
     }
+
+
+    @Test
+    fun `method handle resolver resolves invoke static targets through the class hierarchy`() {
+        val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+            constantPool = bootstrapInvocationConstantPool(),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Bootstrap",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "bootstrap",
+                                descriptor = BOOTSTRAP_DESCRIPTOR,
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            methodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 6,
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "pkg/Bootstrap",
+                name = "bootstrap",
+                descriptor = BOOTSTRAP_DESCRIPTOR,
+                isStatic = true,
+            ),
+            resolvedMethod,
+        )
+    }
+
+    @Test
+    fun `method handle resolver keeps unsupported reference kinds explicit`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = bootstrapInvocationConstantPool(),
+                classHierarchy = JvmClassHierarchy(),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+                    referenceIndex = 6,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle reference kind InvokeVirtual target resolution is not implemented yet",
+            exception.message,
+        )
+    }
     @Test
     fun `call site resolver rejects non invoke dynamic constant pool entries`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
@@ -537,10 +596,8 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                 ),
                 ConstantUtf8Entry("bootstrap", "bootstrap".encodeToByteArray()),
                 ConstantUtf8Entry(
-                    "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
-                        "Ljava/lang/invoke/CallSite;",
-                    ("(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
-                        "Ljava/lang/invoke/CallSite;").encodeToByteArray(),
+                    BOOTSTRAP_DESCRIPTOR,
+                    BOOTSTRAP_DESCRIPTOR.encodeToByteArray(),
                 ),
                 ConstantIntegerEntry(42),
                 ConstantFloatEntry(1.5f),

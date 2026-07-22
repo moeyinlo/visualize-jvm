@@ -177,6 +177,39 @@ data class JvmLinkedInvokeDynamicCallSite(
 )
 
 object JvmInvokeDynamicCallSiteResolver {
+    fun resolveMethodHandleTargetMethod(
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+        methodHandle: JvmMethodHandlePayload,
+    ): JvmResolvedMethod {
+        if (methodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
+            )
+        }
+        val referenceIndex = ConstantPoolIndex(methodHandle.referenceIndex)
+        val methodReferenceEntry = constantPoolEntry(constantPool, referenceIndex)
+        if (methodReferenceEntry !is ConstantMethodRefEntry && methodReferenceEntry !is ConstantInterfaceMethodRefEntry) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle InvokeStatic reference index $referenceIndex expected method reference but found " +
+                    methodReferenceEntry.javaClass.simpleName,
+            )
+        }
+        val methodReference = methodReference(constantPool, methodReferenceEntry, referenceIndex)
+        val resolvedMethod = classHierarchy.resolveMethod(
+            ownerClassName = methodReference.ownerClassName,
+            name = methodReference.name,
+            descriptor = methodReference.descriptor,
+        )
+        if (!resolvedMethod.isStatic) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle InvokeStatic target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} resolved to a non-static method",
+            )
+        }
+        return resolvedMethod
+    }
+
     fun resolveBootstrapInvocation(
         constantPool: ConstantPool,
         index: ConstantPoolIndex,
@@ -329,6 +362,45 @@ object JvmInvokeDynamicCallSiteResolver {
         return JvmMethodHandlePayload(
             referenceKind = entry.referenceKind.toRuntimeReferenceKind(),
             referenceIndex = entry.referenceIndex.value,
+        )
+    }
+
+    private data class MethodReference(
+        val ownerClassName: String,
+        val name: String,
+        val descriptor: String,
+    )
+
+    private fun methodReference(
+        constantPool: ConstantPool,
+        entry: ConstantPoolEntry,
+        referenceIndex: ConstantPoolIndex,
+    ): MethodReference {
+        val classIndex = when (entry) {
+            is ConstantMethodRefEntry -> entry.classIndex
+            is ConstantInterfaceMethodRefEntry -> entry.classIndex
+            else -> error("Unsupported method reference entry ${entry.javaClass.simpleName}")
+        }
+        val nameAndTypeIndex = when (entry) {
+            is ConstantMethodRefEntry -> entry.nameAndTypeIndex
+            is ConstantInterfaceMethodRefEntry -> entry.nameAndTypeIndex
+        }
+        val classEntry = constantPoolEntry(constantPool, classIndex)
+        if (classEntry !is ConstantClassEntry) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle reference index $referenceIndex class_index $classIndex " +
+                    "expected CONSTANT_Class_info but found ${classEntry.javaClass.simpleName}",
+            )
+        }
+        val nameAndDescriptor = nameAndDescriptor(
+            constantPool = constantPool,
+            index = nameAndTypeIndex,
+            role = "MethodHandle reference name_and_type_index",
+        )
+        return MethodReference(
+            ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "MethodHandle reference class name_index"),
+            name = nameAndDescriptor.name,
+            descriptor = nameAndDescriptor.descriptor,
         )
     }
 
