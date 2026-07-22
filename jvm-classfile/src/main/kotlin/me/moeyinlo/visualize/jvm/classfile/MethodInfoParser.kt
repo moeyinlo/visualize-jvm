@@ -223,16 +223,17 @@ object MethodInfoParser {
             )
         }
         val annotationDefault = annotationDefaultAttribute(method.attributes)
-        val expectedPrimitiveTag = scalarElementValueTag(returnDescriptor(descriptor))
+        val expectedDefaultTags = elementValueTags(returnDescriptor(descriptor))
         if (
             annotationDefaultPath != null &&
             annotationDefault != null &&
-            expectedPrimitiveTag != null &&
-            annotationDefault.defaultValue.tag != expectedPrimitiveTag
+            expectedDefaultTags != null &&
+            annotationDefault.defaultValue.tag !in expectedDefaultTags
         ) {
             throw ClassFileFormatException(
                 "Invalid $ownerPath attributes: AnnotationDefault for return descriptor " +
-                    "'${returnDescriptor(descriptor)}' must use element_value tag '$expectedPrimitiveTag' " +
+                    "'${returnDescriptor(descriptor)}' must use element_value " +
+                    "${formatElementValueTags(expectedDefaultTags)} " +
                     "but found tag '${annotationDefault.defaultValue.tag}' at $annotationDefaultPath",
             )
         }
@@ -265,20 +266,29 @@ object MethodInfoParser {
     private fun annotationDefaultAttribute(attributes: List<AttributeInfo>): AnnotationDefaultAttribute? =
         attributes.filterIsInstance<AnnotationDefaultAttribute>().singleOrNull()
 
-    private fun scalarElementValueTag(descriptor: String): Char? =
+    private fun elementValueTags(descriptor: String): Set<Char>? =
         when (descriptor) {
-            "B" -> 'B'
-            "C" -> 'C'
-            "D" -> 'D'
-            "F" -> 'F'
-            "I" -> 'I'
-            "J" -> 'J'
-            "S" -> 'S'
-            "Z" -> 'Z'
-            "Ljava/lang/String;" -> 's'
-            "Ljava/lang/Class;" -> 'c'
-            else -> if (descriptor.startsWith("[")) '[' else null
+            "B" -> setOf('B')
+            "C" -> setOf('C')
+            "D" -> setOf('D')
+            "F" -> setOf('F')
+            "I" -> setOf('I')
+            "J" -> setOf('J')
+            "S" -> setOf('S')
+            "Z" -> setOf('Z')
+            "Ljava/lang/String;" -> setOf('s')
+            "Ljava/lang/Class;" -> setOf('c')
+            else -> when {
+                descriptor.startsWith("[") -> setOf('[')
+                descriptor.startsWith("L") && descriptor.endsWith(";") -> setOf('e', '@')
+                else -> null
+            }
         }
+
+    private fun scalarElementValueTag(descriptor: String): Char? = elementValueTags(descriptor)?.singleOrNull()
+
+    private fun formatElementValueTags(tags: Set<Char>): String =
+        tags.joinToString(separator = " or ") { "tag '$it'" }
 
     private fun arrayElementValueTag(descriptor: String): Char? =
         if (descriptor.startsWith("[") && !descriptor.startsWith("[[")) {
