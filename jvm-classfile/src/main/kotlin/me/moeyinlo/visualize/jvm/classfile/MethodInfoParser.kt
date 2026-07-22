@@ -222,6 +222,20 @@ object MethodInfoParser {
                     "must not return nested arrays but found $annotationDefaultPath",
             )
         }
+        val annotationDefault = annotationDefaultAttribute(method.attributes)
+        val expectedPrimitiveTag = primitiveElementValueTag(returnDescriptor(descriptor))
+        if (
+            annotationDefaultPath != null &&
+            annotationDefault != null &&
+            expectedPrimitiveTag != null &&
+            annotationDefault.defaultValue.tag != expectedPrimitiveTag
+        ) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: AnnotationDefault for return descriptor " +
+                    "'${returnDescriptor(descriptor)}' must use element_value tag '$expectedPrimitiveTag' " +
+                    "but found tag '${annotationDefault.defaultValue.tag}' at $annotationDefaultPath",
+            )
+        }
         val exceptionsPath = exceptionsPaths.singleOrNull()
         if (annotationDefaultPath != null && exceptionsPath != null) {
             throw ClassFileFormatException(
@@ -230,6 +244,22 @@ object MethodInfoParser {
             )
         }
     }
+
+    private fun annotationDefaultAttribute(attributes: List<AttributeInfo>): AnnotationDefaultAttribute? =
+        attributes.filterIsInstance<AnnotationDefaultAttribute>().singleOrNull()
+
+    private fun primitiveElementValueTag(descriptor: String): Char? =
+        when (descriptor) {
+            "B" -> 'B'
+            "C" -> 'C'
+            "D" -> 'D'
+            "F" -> 'F'
+            "I" -> 'I'
+            "J" -> 'J'
+            "S" -> 'S'
+            "Z" -> 'Z'
+            else -> null
+        }
 
     private fun returnDescriptor(descriptor: String): String = descriptor.substringAfter(')')
 
