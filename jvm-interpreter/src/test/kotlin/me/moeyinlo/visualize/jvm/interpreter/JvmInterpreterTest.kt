@@ -1189,6 +1189,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `idiv by zero transfers control to matching ArithmeticException handler`() {
+        val heap = JvmHeap()
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x07.toByte(),
+                0x03.toByte(),
+                0x6C.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 2,
+            heap = heap,
+            localVariables = localVariables,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 3,
+                    handlerPc = 3,
+                    catchClassName = "java/lang/ArithmeticException",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/ArithmeticException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `irem divides the next int operand stack value by the top value and pushes the remainder`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
