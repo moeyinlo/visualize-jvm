@@ -39,12 +39,19 @@ object ModuleAttributeParser : AttributeBodyParser {
     private const val AccOpen = 0x0020
     private const val AccStaticPhase = 0x0040
     private const val AccSynthetic = 0x1000
+    private const val AccMandated = 0x8000
     private const val JavaBaseModuleName = "java.base"
     private const val Java10MajorVersion = 54
+    private const val AllowedModuleFlags = AccOpen or AccSynthetic or AccMandated
 
     override fun parse(context: AttributeParseContext): AttributeInfo {
         val moduleNameIndex = readRequiredIndex<ConstantModuleEntry>(context, "${context.ownerPath}.module_name_index")
         val moduleFlags = context.reader.readU2()
+        requireAllowedFlags(
+            flags = moduleFlags,
+            allowedMask = AllowedModuleFlags,
+            role = "${context.ownerPath}.module_flags",
+        )
         val moduleVersionIndex = readOptionalIndex<ConstantUtf8Entry>(
             context = context,
             role = "${context.ownerPath}.module_version_index",
@@ -88,6 +95,19 @@ object ModuleAttributeParser : AttributeBodyParser {
         requireJavaBaseRequiresAreNotSynthetic(context, requires)
         requireJavaBaseRequiresAreNotStaticPhase(context, requires)
         return requires
+    }
+
+    private fun requireAllowedFlags(
+        flags: Int,
+        allowedMask: Int,
+        role: String,
+    ) {
+        val invalidBits = flags and allowedMask.inv() and 0xFFFF
+        if (invalidBits != 0) {
+            throw ClassFileFormatException(
+                "Invalid $role=0x${flags.toU2Hex()}: unknown flag bits 0x${invalidBits.toU2Hex()}",
+            )
+        }
     }
 
     private fun requireJavaBaseModuleHasNoRequires(
@@ -344,4 +364,6 @@ object ModuleAttributeParser : AttributeBodyParser {
             ConstantUtf8Entry::class -> "CONSTANT_Utf8_info"
             else -> T::class.java.simpleName
         }
+
+    private fun Int.toU2Hex(): String = toString(16).uppercase().padStart(4, '0')
 }

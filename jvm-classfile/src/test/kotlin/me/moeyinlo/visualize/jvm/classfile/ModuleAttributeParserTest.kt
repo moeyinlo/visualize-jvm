@@ -68,6 +68,29 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects unknown Module flags`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 6,
+                        0, 3, 0, 1, 0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].module_flags=0x0001"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unknown flag bits 0x0001"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate Module requires indexes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(

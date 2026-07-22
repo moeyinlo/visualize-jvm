@@ -193,6 +193,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.24 | `MethodParameters` formal parameter name grammar | `jvm-classfile` | `MethodParametersAttributeParserTest` | IMPLEMENTED |
 | 4.7.25 | `Module` classfile structure | `jvm-classfile` | `ModuleAttributeParserTest` | IMPLEMENTED |
 | 4.7.25 | `Module` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
+| 4.7.25 | `Module` rejects unknown `module_flags` bits | `jvm-classfile` | `ModuleAttributeParserTest.rejects unknown Module flags` | IMPLEMENTED |
 | 4.7.25 | `Module` `requires` table rejects duplicate `requires_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module requires indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `exports` table rejects duplicate `exports_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `opens` table rejects duplicate `opens_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module opens indexes` | IMPLEMENTED |
