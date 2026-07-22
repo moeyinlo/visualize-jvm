@@ -682,6 +682,7 @@ object JvmInterpreter {
                 currentThreadId,
                 currentClassName,
             )
+            0xB9 -> executeInvokeInterface(instruction, constantPool, classHierarchy)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -4189,6 +4190,35 @@ object JvmInterpreter {
         operandStack.push(returnValue)
     }
 
+    private fun executeInvokeInterface(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+    ) {
+        val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
+        val count = instruction.operands[2]
+        val zero = instruction.operands[3]
+        val expectedCount = 1 + resolvedMethod.descriptor.methodParameterDescriptors().sumOf { descriptor ->
+            descriptor.parameterSlotWidth()
+        }
+        if (count != expectedCount) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokeinterface count $count at offset ${instruction.offset}: " +
+                    "expected $expectedCount for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    resolvedMethod.descriptor,
+            )
+        }
+        if (zero != 0) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokeinterface fourth operand $zero at offset ${instruction.offset}: expected 0",
+            )
+        }
+        throw JvmUnsupportedInstructionException(
+            "Unsupported invokeinterface execution for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                resolvedMethod.descriptor,
+        )
+    }
+
     private fun executeNativeMethod(
         instruction: DecodedInstruction,
         method: JvmResolvedMethod,
@@ -5202,6 +5232,13 @@ object JvmInterpreter {
         return returnDescriptor
     }
 
+    private fun String.parameterSlotWidth(): Int =
+        if (this == "J" || this == "D") {
+            2
+        } else {
+            1
+        }
+
     private fun String.fieldDescriptorEndIndex(startIndex: Int): Int {
         if (startIndex !in indices) {
             throw JvmUnsupportedInstructionException("Invalid descriptor $this at index $startIndex")
@@ -5501,6 +5538,7 @@ object JvmInterpreter {
             0xB6,
             0xB7,
             0xB8,
+            0xB9,
             0xBB,
             0xBD,
             0xC5,

@@ -15913,6 +15913,82 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokeinterface rejects count that does not match descriptor slots`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB9.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x02.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = interfaceMethodConstantPool(),
+                classHierarchy = interfaceMethodHierarchy(),
+            )
+        }
+
+        assertEquals(
+            "Invalid invokeinterface count 2 at offset 0: expected 3 for pkg/Face.value:(J)I",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokeinterface rejects nonzero fourth operand`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB9.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = interfaceMethodConstantPool(),
+                classHierarchy = interfaceMethodHierarchy(),
+            )
+        }
+
+        assertEquals(
+            "Invalid invokeinterface fourth operand 1 at offset 0: expected 0",
+            exception.message,
+        )
+    }
+
+    private fun interfaceMethodConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Face", "pkg/Face".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                ConstantUtf8Entry("(J)I", "(J)I".encodeToByteArray()),
+            ),
+        )
+
+    private fun interfaceMethodHierarchy(): JvmClassHierarchy =
+        JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Face",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "(J)I",
+                            isStatic = false,
+                            isAbstract = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
