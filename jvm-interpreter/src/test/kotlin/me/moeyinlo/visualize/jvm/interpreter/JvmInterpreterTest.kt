@@ -16386,6 +16386,32 @@ class JvmInterpreterTest {
 
         assertEquals("Invalid invokedynamic fourth operand 1 at offset 0: expected 0", exception.message)
     }
+    @Test
+    fun `invokedynamic rejects non invoke dynamic constant pool entries`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantIntegerEntry(1),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid invokedynamic constant pool entry #1 at offset 0: " +
+                "expected CONSTANT_InvokeDynamic_info but was ConstantIntegerEntry",
+            exception.message,
+        )
+    }
     private fun interfaceMethodConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
