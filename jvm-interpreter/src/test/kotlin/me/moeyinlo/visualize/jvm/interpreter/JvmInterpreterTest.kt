@@ -15784,6 +15784,32 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `multianewarray rejects zero dimensions`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xC5.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("[[I", "[[I".encodeToByteArray()),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid multianewarray dimensions 0 at offset 0: dimensions must be greater than zero",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(

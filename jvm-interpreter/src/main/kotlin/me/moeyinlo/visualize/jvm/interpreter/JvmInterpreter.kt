@@ -691,6 +691,7 @@ object JvmInterpreter {
             0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, currentThreadId)
             0xC3 -> executeMonitorExit(instruction, operandStack, heap, monitors, currentThreadId)
+            0xC5 -> executeMultiANewArray(instruction, constantPool)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -5357,6 +5358,24 @@ object JvmInterpreter {
         operandStack.push(reference)
     }
 
+    private fun executeMultiANewArray(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+    ) {
+        val dimensions = instruction.operands[2]
+        if (dimensions == 0) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} dimensions 0 at offset ${instruction.offset}: " +
+                    "dimensions must be greater than zero",
+            )
+        }
+        val arrayClassName = resolveConstantClassName(instruction, constantPool)
+        throw JvmUnsupportedInstructionException(
+            "Unsupported ${instruction.metadata.mnemonic} allocation for $arrayClassName " +
+                "with $dimensions dimension(s) at offset ${instruction.offset}",
+        )
+    }
+
     private fun executeArrayLength(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -5409,6 +5428,7 @@ object JvmInterpreter {
             0xB8,
             0xBB,
             0xBD,
+            0xC5,
             0xC0,
             0xC1,
             -> ConstantPoolIndex((operands[0] shl 8) or operands[1])
