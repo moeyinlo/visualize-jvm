@@ -279,6 +279,13 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.uses",
             fieldName = "uses_index",
         )
+        requireUniqueNames(
+            names = uses.mapIndexed { index, entry ->
+                className(context, entry, "${context.ownerPath}.uses_index[$index]")
+            },
+            role = "${context.ownerPath}.uses",
+            fieldName = "uses_index class name",
+        )
         return uses
     }
 
@@ -407,6 +414,25 @@ object ModuleAttributeParser : AttributeBodyParser {
             context = context,
             role = "$role.name_index",
             index = packageEntry.nameIndex,
+            expected = "CONSTANT_Utf8_info",
+        ).value
+    }
+
+    private fun className(
+        context: AttributeParseContext,
+        index: ConstantPoolIndex,
+        role: String,
+    ): String {
+        val classEntry = expectEntryValue<ConstantClassEntry>(
+            context = context,
+            role = role,
+            index = index,
+            expected = "CONSTANT_Class_info",
+        )
+        return expectEntryValue<ConstantUtf8Entry>(
+            context = context,
+            role = "$role.name_index",
+            index = classEntry.nameIndex,
             expected = "CONSTANT_Utf8_info",
         ).value
     }

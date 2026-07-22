@@ -450,6 +450,37 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects duplicate Module uses class names`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 26,
+                        0, 3, 0, 0, 0, 0,
+                        0, 1,
+                        0, 6, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 2,
+                        0, 12,
+                        0, 17,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].uses"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("duplicate uses_index class name 'service/Api'"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate Module uses indexes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(
@@ -705,6 +736,7 @@ class ModuleAttributeParserTest {
                 ConstantClassEntry(ConstantPoolIndex(13)),
                 ConstantPackageEntry(ConstantPoolIndex(7)),
                 ConstantModuleEntry(ConstantPoolIndex(9)),
+                ConstantClassEntry(ConstantPoolIndex(11)),
             ),
         )
 
