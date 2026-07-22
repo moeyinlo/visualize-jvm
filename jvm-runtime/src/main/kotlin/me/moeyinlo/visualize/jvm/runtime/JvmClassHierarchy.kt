@@ -322,6 +322,7 @@ class JvmClassHierarchy(
             "java/lang/ArrayIndexOutOfBoundsException" to "java/lang/IndexOutOfBoundsException",
             "java/lang/ArrayStoreException" to "java/lang/RuntimeException",
             "java/lang/ClassCastException" to "java/lang/RuntimeException",
+            "java/lang/IllegalMonitorStateException" to "java/lang/RuntimeException",
             "java/lang/NegativeArraySizeException" to "java/lang/RuntimeException",
             "java/lang/NullPointerException" to "java/lang/RuntimeException",
             "java/lang/AbstractMethodError" to "java/lang/IncompatibleClassChangeError",

@@ -36,6 +36,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
@@ -97,6 +98,11 @@ class JvmClassCastException(
     val guestClassName: String,
     message: String,
 ) : ClassCastException(message)
+
+class JvmIllegalMonitorStateException(
+    val guestClassName: String,
+    message: String,
+) : IllegalMonitorStateException(message)
 
 class JvmIncompatibleClassChangeError(
     val guestClassName: String,
@@ -298,6 +304,17 @@ object JvmInterpreter {
                     instructionIndexByOffset = instructionIndexByOffset,
                 )
             } catch (exception: JvmArrayStoreException) {
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
+                    classHierarchy = classHierarchy,
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
+            } catch (exception: JvmIllegalMonitorStateException) {
                 instructionIndex = dispatchCreatedGuestThrowableToHandler(
                     instruction = instruction,
                     guestClassName = exception.guestClassName,
@@ -3581,7 +3598,14 @@ object JvmInterpreter {
         }
 
         heap.get(objectref)
-        monitors.exit(objectref, currentThreadId)
+        try {
+            monitors.exit(objectref, currentThreadId)
+        } catch (exception: JvmMonitorOwnershipException) {
+            throw JvmIllegalMonitorStateException(
+                guestClassName = "java/lang/IllegalMonitorStateException",
+                message = exception.message ?: "Current thread does not own monitor",
+            )
+        }
     }
 
     private fun executeCheckCast(
