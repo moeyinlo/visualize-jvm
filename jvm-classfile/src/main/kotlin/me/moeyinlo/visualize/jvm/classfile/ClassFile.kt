@@ -79,6 +79,7 @@ object ClassFileParser {
         val runtimeVisibleAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleAnnotationsPaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
         val modulePackagesPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, source, index)) {
@@ -96,6 +97,7 @@ object ClassFileParser {
                 "RuntimeVisibleAnnotations" -> runtimeVisibleAnnotationsPaths += "ClassFile.attributes[$index]"
                 "RuntimeInvisibleAnnotations" -> runtimeInvisibleAnnotationsPaths += "ClassFile.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "ClassFile.attributes[$index]"
+                "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "ClassFile.attributes[$index]"
                 "ModulePackages" -> modulePackagesPaths += "ClassFile.attributes[$index]"
             }
         }
@@ -120,6 +122,7 @@ object ClassFileParser {
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", source)
         requireAtMostOneAttribute(runtimeInvisibleAnnotationsPaths, "RuntimeInvisibleAnnotations", source)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", source)
+        requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", source)
         requireAtMostOneAttribute(modulePackagesPaths, "ModulePackages", source)
         val nestHostPath = nestHostPaths.singleOrNull()
         val nestMembersPath = nestMembersPaths.singleOrNull()
