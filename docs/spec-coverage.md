@@ -185,7 +185,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.22 | `AnnotationDefault` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` classfile structure | `jvm-classfile`, `jvm-runtime` | `BootstrapMethodsAttributeParserTest` | IMPLEMENTED |
 | 4.7.23 | `BootstrapMethods` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
-| 4.7.23 | `BootstrapMethods` bootstrap argument resolution semantics | `jvm-runtime` | TBD | PENDING |
+| 4.7.23 | `BootstrapMethods` bootstrap argument resolution semantics materializes the bootstrap method handle plus every loadable static-argument kind into invocation input records while leaving nested `CONSTANT_Dynamic` evaluation to dynamic-constant linkage | `jvm-runtime` | `JvmInvokeDynamicCallSiteRegistryTest.call site resolver materializes bootstrap method handle and static arguments` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` classfile structure | `jvm-classfile` | `MethodParametersAttributeParserTest` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` formal parameter name grammar | `jvm-classfile` | `MethodParametersAttributeParserTest` | IMPLEMENTED |

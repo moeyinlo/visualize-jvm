@@ -2,12 +2,22 @@ package me.moeyinlo.visualize.jvm.runtime
 
 import me.moeyinlo.visualize.jvm.classfile.BootstrapMethodIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantInvokeDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -104,6 +114,89 @@ class JvmInvokeDynamicCallSiteRegistryTest {
         }
 
         assertEquals("Bootstrap method index #7 is outside 0..-1", exception.message)
+    }
+
+    @Test
+    fun `call site resolver materializes bootstrap method handle and static arguments`() {
+        val invocation = JvmInvokeDynamicCallSiteResolver.resolveBootstrapInvocation(
+            constantPool = bootstrapInvocationConstantPool(),
+            index = ConstantPoolIndex(1),
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                        bootstrapArguments = listOf(
+                            JvmRuntimeConstantPoolIndex(12),
+                            JvmRuntimeConstantPoolIndex(13),
+                            JvmRuntimeConstantPoolIndex(14),
+                            JvmRuntimeConstantPoolIndex(16),
+                            JvmRuntimeConstantPoolIndex(18),
+                            JvmRuntimeConstantPoolIndex(20),
+                            JvmRuntimeConstantPoolIndex(22),
+                            JvmRuntimeConstantPoolIndex(24),
+                            JvmRuntimeConstantPoolIndex(29),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 6,
+            ),
+            invocation.bootstrapMethodHandle,
+        )
+        assertEquals(
+            listOf(
+                JvmBootstrapArgument.IntegerConstant(JvmRuntimeConstantPoolIndex(12), JvmIntValue(42)),
+                JvmBootstrapArgument.FloatConstant(JvmRuntimeConstantPoolIndex(13), JvmFloatValue(1.5f)),
+                JvmBootstrapArgument.LongConstant(JvmRuntimeConstantPoolIndex(14), JvmLongValue(9L)),
+                JvmBootstrapArgument.DoubleConstant(JvmRuntimeConstantPoolIndex(16), JvmDoubleValue(2.25)),
+                JvmBootstrapArgument.StringConstant(JvmRuntimeConstantPoolIndex(18), "static"),
+                JvmBootstrapArgument.ClassConstant(JvmRuntimeConstantPoolIndex(20), "pkg/Arg"),
+                JvmBootstrapArgument.MethodTypeConstant(JvmRuntimeConstantPoolIndex(22), "(I)V"),
+                JvmBootstrapArgument.MethodHandleConstant(
+                    JvmRuntimeConstantPoolIndex(24),
+                    JvmMethodHandlePayload(
+                        referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                        referenceIndex = 25,
+                    ),
+                ),
+                JvmBootstrapArgument.DynamicConstant(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(29),
+                    bootstrapMethodIndex = 0,
+                    name = "dyn",
+                    descriptor = "I",
+                ),
+            ),
+            invocation.staticArguments,
+        )
+    }
+
+    @Test
+    fun `call site resolver rejects non method handle bootstrap method refs`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapInvocation(
+                constantPool = bootstrapInvocationConstantPool(),
+                index = ConstantPoolIndex(1),
+                bootstrapMethods = JvmBootstrapMethodTable(
+                    listOf(
+                        JvmBootstrapMethod(
+                            bootstrapMethodRef = JvmRuntimeConstantPoolIndex(12),
+                            bootstrapArguments = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "invokedynamic bootstrap_method_ref index #12 expected CONSTANT_MethodHandle_info but found " +
+                "ConstantIntegerEntry",
+            exception.message,
+        )
     }
     @Test
     fun `call site resolver rejects non invoke dynamic constant pool entries`() {
@@ -258,6 +351,77 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                 ),
                 ConstantUtf8Entry("run", "run".encodeToByteArray()),
                 ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+            ),
+        )
+
+    private fun bootstrapInvocationConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = ConstantPoolIndex(6),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(7),
+                    nameAndTypeIndex = ConstantPoolIndex(9),
+                ),
+                ConstantClassEntry(ConstantPoolIndex(8)),
+                ConstantUtf8Entry("pkg/Bootstrap", "pkg/Bootstrap".encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(10),
+                    descriptorIndex = ConstantPoolIndex(11),
+                ),
+                ConstantUtf8Entry("bootstrap", "bootstrap".encodeToByteArray()),
+                ConstantUtf8Entry(
+                    "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
+                        "Ljava/lang/invoke/CallSite;",
+                    ("(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
+                        "Ljava/lang/invoke/CallSite;").encodeToByteArray(),
+                ),
+                ConstantIntegerEntry(42),
+                ConstantFloatEntry(1.5f),
+                ConstantLongEntry(9L),
+                ConstantDoubleEntry(2.25),
+                ConstantStringEntry(ConstantPoolIndex(19)),
+                ConstantUtf8Entry("static", "static".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(21)),
+                ConstantUtf8Entry("pkg/Arg", "pkg/Arg".encodeToByteArray()),
+                ConstantMethodTypeEntry(ConstantPoolIndex(23)),
+                ConstantUtf8Entry("(I)V", "(I)V".encodeToByteArray()),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.GetStatic,
+                    referenceIndex = ConstantPoolIndex(25),
+                ),
+                ConstantFieldRefEntry(
+                    classIndex = ConstantPoolIndex(20),
+                    nameAndTypeIndex = ConstantPoolIndex(26),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(27),
+                    descriptorIndex = ConstantPoolIndex(28),
+                ),
+                ConstantUtf8Entry("field", "field".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ConstantDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(30),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(31),
+                    descriptorIndex = ConstantPoolIndex(32),
+                ),
+                ConstantUtf8Entry("dyn", "dyn".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
             ),
         )
 }
