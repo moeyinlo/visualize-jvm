@@ -90,16 +90,19 @@ object FieldInfoParser {
         val constantValuePaths = mutableListOf<String>()
         val signaturePaths = mutableListOf<String>()
         val runtimeVisibleAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleAnnotationsPaths = mutableListOf<String>()
         field.attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, "$ownerPath.attributes[$index].attribute_name_index")) {
                 "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$index]"
                 "Signature" -> signaturePaths += "$ownerPath.attributes[$index]"
                 "RuntimeVisibleAnnotations" -> runtimeVisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
+                "RuntimeInvisibleAnnotations" -> runtimeInvisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
             }
         }
         requireAtMostOneAttribute(constantValuePaths, "ConstantValue", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
+        requireAtMostOneAttribute(runtimeInvisibleAnnotationsPaths, "RuntimeInvisibleAnnotations", ownerPath)
     }
 
     private fun requireAtMostOneAttribute(
