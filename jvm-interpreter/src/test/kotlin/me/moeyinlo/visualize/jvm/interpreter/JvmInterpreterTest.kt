@@ -11236,6 +11236,99 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc rejects dynamic constant bootstrap when current class is missing`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = dynamicConstantBootstrapExecutionConstantPool("I", dynamicConstantIntBootstrapDescriptor),
+                bootstrapMethods = JvmBootstrapMethodTable(
+                    listOf(
+                        JvmBootstrapMethod(
+                            bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                            bootstrapArguments = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(exception.message!!.contains("Invalid CONSTANT_Dynamic #1"))
+        assertTrue(exception.message!!.contains("current class is required for MethodHandles.Lookup"))
+    }
+
+    @Test
+    fun `ldc rejects dynamic constant bootstrap method handles that are not invoke static`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = dynamicConstantBootstrapExecutionConstantPool(
+                    constantDescriptor = "I",
+                    bootstrapDescriptor = dynamicConstantIntBootstrapDescriptor,
+                    bootstrapReferenceKind = MethodHandleReferenceKind.InvokeVirtual,
+                ),
+                currentClassName = "pkg/Caller",
+                bootstrapMethods = JvmBootstrapMethodTable(
+                    listOf(
+                        JvmBootstrapMethod(
+                            bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                            bootstrapArguments = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(exception.message!!.contains("Unsupported CONSTANT_Dynamic #1 answer:I"))
+        assertTrue(exception.message!!.contains("bootstrap method handle InvokeVirtual execution is not implemented yet"))
+    }
+
+    @Test
+    fun `ldc rejects dynamic constant bootstrap results that do not match the constant descriptor`() {
+        val floatBootstrapDescriptor =
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;)F"
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = dynamicConstantBootstrapExecutionConstantPool("I", floatBootstrapDescriptor),
+                classHierarchy = dynamicConstantBootstrapHierarchy(
+                    descriptor = floatBootstrapDescriptor,
+                    code = byteArrayOf(
+                        0x0C.toByte(),
+                        0xAE.toByte(),
+                    ),
+                    maxStack = 1,
+                ),
+                currentClassName = "pkg/Caller",
+                bootstrapMethods = JvmBootstrapMethodTable(
+                    listOf(
+                        JvmBootstrapMethod(
+                            bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                            bootstrapArguments = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid CONSTANT_Dynamic #1 value at offset 0: expected I but was JvmFloatValue",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `ldc pushes string constants as guest string references`() {
         val heap = JvmHeap()
 
@@ -17757,6 +17850,7 @@ class JvmInterpreterTest {
     private fun dynamicConstantBootstrapExecutionConstantPool(
         constantDescriptor: String,
         bootstrapDescriptor: String,
+        bootstrapReferenceKind: MethodHandleReferenceKind = MethodHandleReferenceKind.InvokeStatic,
     ): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
@@ -17783,7 +17877,7 @@ class JvmInterpreterTest {
                     nameAndTypeIndex = ConstantPoolIndex(9),
                 ),
                 ConstantMethodHandleEntry(
-                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceKind = bootstrapReferenceKind,
                     referenceIndex = ConstantPoolIndex(10),
                 ),
             ),
