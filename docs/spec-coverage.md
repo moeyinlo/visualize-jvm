@@ -241,7 +241,8 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.31 | `PermittedSubclasses` classfile structure | `jvm-classfile` | `PermittedSubclassesAttributeParserTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
-| 4.7.31 | `PermittedSubclasses` final-class and loading constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+| 4.7.31 | `PermittedSubclasses` disallowed on `ACC_FINAL` classes | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
+| 4.7.31 | `PermittedSubclasses` loading constraints | `jvm-runtime` | TBD | PENDING |
 | 4.8 | Format checking | `jvm-classfile` | TBD | PENDING |
 | 4.8 | Parser diagnostics carry source path and byte offset for attribute bodies | `jvm-classfile` | `AttributeParserRegistryTest`, `CodeNestedAttributesParserTest`, `ClassFileByteReaderTest` | IMPLEMENTED |
 | 4.8 | Constant pool reference type and index checks | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |

@@ -40,7 +40,7 @@ object ClassFileParser {
             ownerPath = "ClassFile",
             majorVersion = version.major,
         )
-        validateClassAttributes(attributes, constantPool, reader.source)
+        validateClassAttributes(attributes, constantPool, accessFlags, reader.source)
         if (reader.remaining != 0) {
             throw ClassFileFormatException(
                 "Trailing bytes after ClassFile source=${reader.source} offset=${reader.currentOffset} " +
@@ -62,6 +62,7 @@ object ClassFileParser {
     private fun validateClassAttributes(
         attributes: List<AttributeInfo>,
         constantPool: ConstantPool,
+        accessFlags: ClassAccessFlags,
         source: String,
     ) {
         val nestHostPaths = mutableListOf<String>()
@@ -90,6 +91,13 @@ object ClassFileParser {
             throw ClassFileFormatException(
                 "Invalid ClassFile attributes source=$source: at most one PermittedSubclasses attribute is permitted " +
                     "but found ${permittedSubclassesPaths.size} at ${permittedSubclassesPaths.joinToString()}",
+            )
+        }
+        val permittedSubclassesPath = permittedSubclassesPaths.singleOrNull()
+        if (permittedSubclassesPath != null && accessFlags.has(ClassAccessFlag.Final)) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: ACC_FINAL class must not declare " +
+                    "PermittedSubclasses ($permittedSubclassesPath)",
             )
         }
         val nestHostPath = nestHostPaths.singleOrNull()
