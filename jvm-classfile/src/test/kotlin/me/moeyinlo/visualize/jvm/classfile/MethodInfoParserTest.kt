@@ -365,6 +365,39 @@ class MethodInfoParserTest {
         assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
+
+    @Test
+    fun `rejects duplicate method RuntimeInvisibleTypeAnnotations attributes`() {
+        val annotationsAttribute = byteArrayOf(0, 3) + intBytes(2) + byteArrayOf(0, 0)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(annotationsAttribute, annotationsAttribute)),
+                    ),
+                    source = "bad-method-runtime-invisible-type-annotations.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("RuntimeInvisibleTypeAnnotations", "RuntimeInvisibleTypeAnnotations".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "RuntimeInvisibleTypeAnnotations" to RuntimeInvisibleTypeAnnotationsAttributeParser,
+                ),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("RuntimeInvisibleTypeAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
     @Test
     fun `rejects instance initialization methods in interfaces`() {
         val failure = assertFailsWith<ClassFileFormatException> {
