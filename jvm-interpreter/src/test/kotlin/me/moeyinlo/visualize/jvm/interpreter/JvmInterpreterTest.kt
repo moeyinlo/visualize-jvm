@@ -41,6 +41,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlesLookupPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
@@ -16418,7 +16419,8 @@ class JvmInterpreterTest {
         )
     }
     @Test
-    fun `invokedynamic resolves bootstrap invocation inputs before bootstrap execution`() {
+    fun `invokedynamic materializes bootstrap method guest arguments before bootstrap execution`() {
+        val heap = JvmHeap()
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
                 code = byteArrayOf(
@@ -16430,6 +16432,8 @@ class JvmInterpreterTest {
                 ),
                 maxStack = 0,
                 constantPool = invokedynamicBootstrapInvocationConstantPool(),
+                heap = heap,
+                currentClassName = "pkg/Caller",
                 bootstrapMethods = JvmBootstrapMethodTable(
                     listOf(
                         JvmBootstrapMethod(
@@ -16443,8 +16447,17 @@ class JvmInterpreterTest {
 
         assertEquals(
             "Unsupported invokedynamic call site #1 run:(I)Ljava/lang/String; bootstrap #0 " +
-                "with 1 static argument(s) at offset 0: bootstrap method execution is not implemented yet",
+                "with 4 bootstrap method argument(s) at offset 0: bootstrap method execution is not implemented yet",
             exception.message,
+        )
+        assertEquals(
+            JvmMethodHandlesLookupPayload("pkg/Caller"),
+            heap.get(heap.internMethodHandlesLookup("pkg/Caller")).payload,
+        )
+        assertEquals(JvmStringPayload("run"), heap.get(heap.internString("run")).payload)
+        assertEquals(
+            JvmMethodTypePayload("(I)Ljava/lang/String;"),
+            heap.get(heap.internMethodType("(I)Ljava/lang/String;")).payload,
         )
     }
 

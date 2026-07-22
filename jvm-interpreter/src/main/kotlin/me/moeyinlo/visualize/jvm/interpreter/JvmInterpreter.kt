@@ -708,7 +708,7 @@ object JvmInterpreter {
                 currentClassName,
                 bootstrapMethods,
             )
-            0xBA -> executeInvokeDynamic(instruction, constantPool, bootstrapMethods)
+            0xBA -> executeInvokeDynamic(instruction, constantPool, heap, currentClassName, bootstrapMethods)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -4225,6 +4225,8 @@ object JvmInterpreter {
     private fun executeInvokeDynamic(
         instruction: DecodedInstruction,
         constantPool: ConstantPool,
+        heap: JvmHeap,
+        currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
     ) {
         val thirdOperand = instruction.operands[2]
@@ -4265,10 +4267,25 @@ object JvmInterpreter {
             )
         }
         val spec = invocation.callSite
+        val bootstrapArguments = try {
+            invocation.materializeBootstrapMethodArguments(
+                heap = heap,
+                lookupClassName = currentClassName
+                    ?: throw JvmUnsupportedInstructionException(
+                        "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset " +
+                            "${instruction.offset}: current class is required for MethodHandles.Lookup",
+                    ),
+            )
+        } catch (exception: JvmInvokeDynamicLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
+                    exception.message,
+            )
+        }
         throw JvmUnsupportedInstructionException(
             "Unsupported invokedynamic call site ${instruction.constantPoolIndex()} " +
                 "${spec.name}:${spec.descriptor} bootstrap #${spec.bootstrapMethodIndex} " +
-                "with ${invocation.staticArguments.size} static argument(s) at offset ${instruction.offset}: " +
+                "with ${bootstrapArguments.size} bootstrap method argument(s) at offset ${instruction.offset}: " +
                 "bootstrap method execution is not implemented yet",
         )
     }
