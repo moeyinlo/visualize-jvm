@@ -127,6 +127,12 @@ object ClassFileParser {
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", source)
         requireAtMostOneAttribute(modulePackagesPaths, "ModulePackages", source)
         requireAtMostOneAttribute(bootstrapMethodsPaths, "BootstrapMethods", source)
+        if (bootstrapMethodsPaths.isEmpty() && requiresBootstrapMethodsAttribute(constantPool)) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: exactly one BootstrapMethods attribute is required " +
+                    "when constant_pool contains a CONSTANT_Dynamic_info or CONSTANT_InvokeDynamic_info entry",
+            )
+        }
         val nestHostPath = nestHostPaths.singleOrNull()
         val nestMembersPath = nestMembersPaths.singleOrNull()
         if (nestHostPath != null && nestMembersPath != null) {
@@ -136,6 +142,15 @@ object ClassFileParser {
             )
         }
     }
+
+    private fun requiresBootstrapMethodsAttribute(constantPool: ConstantPool): Boolean =
+        (1 until constantPool.constantPoolCount).any { rawIndex ->
+            when (val slot = constantPool.slotAt(ConstantPoolIndex(rawIndex))) {
+                is ConstantPoolSlot.Entry ->
+                    slot.value is ConstantDynamicEntry || slot.value is ConstantInvokeDynamicEntry
+                ConstantPoolSlot.Unusable -> false
+            }
+        }
 
     private fun requireAtMostOneAttribute(
         paths: List<String>,

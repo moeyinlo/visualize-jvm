@@ -181,6 +181,22 @@ class ClassFileParserTest {
         assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
+
+    @Test
+    fun `rejects ClassFile with dynamic constant but no BootstrapMethods attribute`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDynamicConstantWithoutBootstrapMethodsBytes(),
+                source = "MissingBootstrapMethods.class",
+                attributeParsers = AttributeParserRegistry.of("BootstrapMethods" to BootstrapMethodsAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("BootstrapMethods"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("exactly one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Dynamic"), failure.message)
+    }
+
     @Test
     fun `rejects ClassFile with duplicate Signature attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
@@ -672,6 +688,32 @@ class ClassFileParserTest {
             0, 6,
         )
 
+
+    private fun classFileWithDynamicConstantWithoutBootstrapMethodsBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 9,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 5, 'v'.code, 'a'.code, 'l'.code, 'u'.code, 'e'.code,
+            1, 0, 1, 'I'.code,
+            12, 0, 5, 0, 6,
+            17, 0, 0, 0, 7,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
 
     private fun classFileWithDuplicateBootstrapMethodsBytes(): ByteArray =
         bytes(
