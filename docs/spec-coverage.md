@@ -33,7 +33,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.5.4 | Method area stores per-class runtime metadata, static field storage, duplicate definition checks, and hierarchy views | `jvm-runtime` | `JvmMethodAreaTest` | IMPLEMENTED |
 | 2.5.5 | Run-time constant pool stores per-class one-based literal and symbolic entries plus resolved constant cache | `jvm-runtime` | `JvmRuntimeConstantPoolTest` | IMPLEMENTED |
 | 2.5.6 | Native method stack model stores native frames with guest method identity, entry point metadata, execution environment, and overflow/underflow behavior | `jvm-native` | `JvmNativeMethodStackTest` | IMPLEMENTED |
-| 2.6 | Frames | `jvm-runtime` | TBD | PENDING |
+| 2.6 | Execution frame model binds a resolved method to local variables, operand stack, runtime constant pool, and pc state | `jvm-runtime` | `JvmExecutionFrameTest` | IMPLEMENTED |
 | 2.6.1 | Local variables | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.6.1 | Runtime local variable array stores category-one values and category-two values in consecutive slots with lower-index addressing | `jvm-runtime` | `JvmLocalVariablesTest` | IMPLEMENTED |
 | 2.6.2 | Operand stacks | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
