@@ -182,7 +182,7 @@ internal object AnnotationParser {
             'J' -> ElementValue.Const(tag, readConstValueIndex<ConstantLongEntry>(context, ownerPath, tag))
             's' -> ElementValue.Const(tag, readConstValueIndex<ConstantUtf8Entry>(context, ownerPath, tag))
             'e' -> ElementValue.EnumConst(
-                typeNameIndex = readUtf8Index(context, "$ownerPath.enum_const_value.type_name_index"),
+                typeNameIndex = readFieldDescriptorIndex(context, "$ownerPath.enum_const_value.type_name_index"),
                 constNameIndex = readUtf8Index(context, "$ownerPath.enum_const_value.const_name_index"),
             )
             'c' -> ElementValue.ClassInfo(
@@ -248,6 +248,16 @@ internal object AnnotationParser {
                 "Invalid $role=$index: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
             )
         }
+        return index
+    }
+
+    private fun readFieldDescriptorIndex(
+        context: AttributeParseContext,
+        role: String,
+    ): ConstantPoolIndex {
+        val index = readUtf8Index(context, role)
+        val entry = context.constantPool[index] as ConstantUtf8Entry
+        DescriptorValidator.validateFieldDescriptor(index, role, entry.value)
         return index
     }
 

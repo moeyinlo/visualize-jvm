@@ -208,4 +208,54 @@ class RuntimeVisibleAnnotationsAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("const_value_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Integer"), failure.message)
     }
+
+    @Test
+    fun `rejects enum element value with invalid type descriptor`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/Example;", byteArrayOf()),
+                ConstantUtf8Entry("enumValue", byteArrayOf()),
+                ConstantUtf8Entry("not-a-descriptor", byteArrayOf()),
+                ConstantUtf8Entry("FAST", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        13,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        1,
+                        0,
+                        3,
+                        'e'.code.toByte(),
+                        0,
+                        4,
+                        0,
+                        5,
+                    ),
+                    source = "bad-enum-annotation-element.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("RuntimeVisibleAnnotations" to RuntimeVisibleAnnotationsAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("enum_const_value.type_name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
 }
