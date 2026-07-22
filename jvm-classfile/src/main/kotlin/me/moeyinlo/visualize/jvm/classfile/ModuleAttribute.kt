@@ -307,6 +307,13 @@ object ModuleAttributeParser : AttributeBodyParser {
                 role = "$ownerPath.provides_with",
                 fieldName = "provides_with_index",
             )
+            requireUniqueNames(
+                names = providesWithIndexes.mapIndexed { withIndex, implementation ->
+                    className(context, implementation, "$ownerPath.provides_with_index[$withIndex]")
+                },
+                role = "$ownerPath.provides_with",
+                fieldName = "provides_with_index class name",
+            )
             ModuleProvides(
                 providesIndex = providesIndex,
                 providesWithIndexes = providesWithIndexes,
