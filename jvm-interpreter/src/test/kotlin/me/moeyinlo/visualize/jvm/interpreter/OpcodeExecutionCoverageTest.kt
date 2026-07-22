@@ -23,10 +23,7 @@ class OpcodeExecutionCoverageTest {
             .map(OpcodeExecutionCoverageEntry::mnemonic)
 
         assertEquals(
-            listOf(
-                "invokeinterface",
-                "invokedynamic",
-            ),
+            listOf("invokedynamic"),
             unsupported,
         )
     }
