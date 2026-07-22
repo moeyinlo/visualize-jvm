@@ -237,18 +237,19 @@ object MethodInfoParser {
                     "but found tag '${annotationDefault.defaultValue.tag}' at $annotationDefaultPath",
             )
         }
-        val expectedArrayElementTag = arrayElementValueTag(returnDescriptor(descriptor))
+        val expectedArrayElementTags = arrayElementValueTags(returnDescriptor(descriptor))
         if (
             annotationDefaultPath != null &&
             annotationDefault != null &&
-            expectedArrayElementTag != null &&
+            expectedArrayElementTags != null &&
             annotationDefault.defaultValue is ElementValue.ArrayValue
         ) {
             annotationDefault.defaultValue.values.forEachIndexed { index, value ->
-                if (value.tag != expectedArrayElementTag) {
+                if (value.tag !in expectedArrayElementTags) {
                     throw ClassFileFormatException(
                         "Invalid $ownerPath attributes: AnnotationDefault array element for return descriptor " +
-                            "'${returnDescriptor(descriptor)}' must use element_value tag '$expectedArrayElementTag' " +
+                            "'${returnDescriptor(descriptor)}' must use element_value " +
+                            "${formatElementValueTags(expectedArrayElementTags)} " +
                             "but found tag '${value.tag}' at $annotationDefaultPath.values[$index]",
                     )
                 }
@@ -285,14 +286,12 @@ object MethodInfoParser {
             }
         }
 
-    private fun scalarElementValueTag(descriptor: String): Char? = elementValueTags(descriptor)?.singleOrNull()
-
     private fun formatElementValueTags(tags: Set<Char>): String =
         tags.joinToString(separator = " or ") { "tag '$it'" }
 
-    private fun arrayElementValueTag(descriptor: String): Char? =
+    private fun arrayElementValueTags(descriptor: String): Set<Char>? =
         if (descriptor.startsWith("[") && !descriptor.startsWith("[[")) {
-            scalarElementValueTag(descriptor.removePrefix("["))
+            elementValueTags(descriptor.removePrefix("["))
         } else {
             null
         }

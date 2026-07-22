@@ -1011,6 +1011,49 @@ class MethodInfoParserTest {
         assertTrue(failure.message.orEmpty().contains("tag 'I'"), failure.message)
         assertTrue(failure.message.orEmpty().contains("tag 's'"), failure.message)
     }
+
+    @Test
+    fun `rejects AnnotationDefault string array element for object array annotation interface methods`() {
+        val annotationDefaultAttribute = byteArrayOf(
+            0,
+            3,
+        ) + intBytes(6) + byteArrayOf('['.code.toByte(), 0, 1, 's'.code.toByte(), 0, 4)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(
+                            accessFlags = 0x0401,
+                            descriptorIndex = 2,
+                            attributes = listOf(annotationDefaultAttribute),
+                        ),
+                    ),
+                    source = "bad-object-array-element-annotation-default.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("()[Lpkg/Mode;", "()[Lpkg/Mode;".encodeToByteArray()),
+                        ConstantUtf8Entry("AnnotationDefault", "AnnotationDefault".encodeToByteArray()),
+                        ConstantUtf8Entry("not an enum or annotation", "not an enum or annotation".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "AnnotationDefault" to AnnotationDefaultAttributeParser,
+                ),
+                classKind = ClassFileKind.AnnotationInterface,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("AnnotationDefault"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("array element"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("tag 'e'"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("tag '@'"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("tag 's'"), failure.message)
+    }
     @Test
     fun `rejects instance initialization methods in interfaces`() {
         val failure = assertFailsWith<ClassFileFormatException> {
