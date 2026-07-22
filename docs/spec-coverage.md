@@ -150,6 +150,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.5 | `Exceptions` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method Exceptions attributes` | IMPLEMENTED |
 | 4.7.5 | `Exceptions` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
+| 4.7.6 | `InnerClasses` class attribute duplicate rejection | `jvm-classfile` | `ClassFileParserTest.rejects ClassFile with duplicate InnerClasses attributes` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
