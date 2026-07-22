@@ -16521,6 +16521,10 @@ class JvmInterpreterTest {
                     name = "answer",
                     descriptor = "()I",
                 ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
                 targetMethod = classHierarchy.resolveMethod(
                     ownerClassName = "pkg/Targets",
                     name = "answer",
@@ -16580,6 +16584,10 @@ class JvmInterpreterTest {
                     bootstrapMethodIndex = 0,
                     name = "increment",
                     descriptor = "(I)I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
                 ),
                 targetMethod = classHierarchy.resolveMethod(
                     ownerClassName = "pkg/Targets",
@@ -16642,6 +16650,10 @@ class JvmInterpreterTest {
                     name = "answer",
                     descriptor = "()J",
                 ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
                 targetMethod = classHierarchy.resolveMethod(
                     ownerClassName = "pkg/Targets",
                     name = "answer",
@@ -16670,6 +16682,75 @@ class JvmInterpreterTest {
         assertEquals(
             "Invalid invokedynamic linked target for answer:()J at offset 0: " +
                 "target pkg/Targets.answer:()I does not match call site descriptor",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `invokedynamic keeps non static linked target method handles explicit`() {
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Targets",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Targets",
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicIntCallSiteConstantPool(),
+                classHierarchy = classHierarchy,
+                currentClassName = "pkg/Caller",
+                invokeDynamicCallSites = callSites,
+            )
+        }
+
+        assertEquals(
+            "Unsupported invokedynamic linked target for answer:()I at offset 0: " +
+                "target method handle InvokeVirtual execution is not implemented yet",
             exception.message,
         )
     }

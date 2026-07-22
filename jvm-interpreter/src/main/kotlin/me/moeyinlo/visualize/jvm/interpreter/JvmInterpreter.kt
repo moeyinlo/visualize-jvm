@@ -4518,6 +4518,14 @@ object JvmInterpreter {
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
+        if (linkedCallSite.targetMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
+            throw JvmUnsupportedInstructionException(
+                "Unsupported invokedynamic linked target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
+                    "target method handle ${linkedCallSite.targetMethodHandle.referenceKind} execution is not " +
+                    "implemented yet",
+            )
+        }
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
         if (linkedCallSite.spec.descriptor != linkedCallSite.targetMethod.descriptor) {
             throw JvmUnsupportedInstructionException(

@@ -472,6 +472,10 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                 name = "run",
                 descriptor = "()I",
             ),
+            targetMethodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 1,
+            ),
             targetMethod = JvmResolvedMethod(
                 ownerClassName = "pkg/BootstrapTarget",
                 name = "run",
@@ -501,6 +505,10 @@ class JvmInvokeDynamicCallSiteRegistryTest {
             key,
             JvmLinkedInvokeDynamicCallSite(
                 spec = spec,
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
                 targetMethod = JvmResolvedMethod(
                     ownerClassName = "pkg/FirstTarget",
                     name = "run",
@@ -515,6 +523,10 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                 key,
                 JvmLinkedInvokeDynamicCallSite(
                     spec = spec,
+                    targetMethodHandle = JvmMethodHandlePayload(
+                        referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                        referenceIndex = 2,
+                    ),
                     targetMethod = JvmResolvedMethod(
                         ownerClassName = "pkg/SecondTarget",
                         name = "run",

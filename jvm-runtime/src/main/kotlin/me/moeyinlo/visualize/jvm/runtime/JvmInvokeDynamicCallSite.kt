@@ -173,6 +173,7 @@ private fun JvmBootstrapArgument.materialize(heap: JvmHeap): JvmValue =
 
 data class JvmLinkedInvokeDynamicCallSite(
     val spec: JvmInvokeDynamicCallSiteSpec,
+    val targetMethodHandle: JvmMethodHandlePayload,
     val targetMethod: JvmResolvedMethod,
 )
 
@@ -194,6 +195,7 @@ object JvmInvokeDynamicCallSiteResolver {
             key = key,
             callSite = JvmLinkedInvokeDynamicCallSite(
                 spec = invocation.callSite,
+                targetMethodHandle = bootstrapResult.targetMethodHandlePayload,
                 targetMethod = targetMethod,
             ),
         )
