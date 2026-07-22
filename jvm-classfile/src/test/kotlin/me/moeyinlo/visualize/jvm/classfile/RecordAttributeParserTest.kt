@@ -169,6 +169,47 @@ class RecordAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
+
+    @Test
+    fun `rejects component with duplicate RuntimeVisibleTypeAnnotations attributes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Record", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+                ConstantUtf8Entry("RuntimeVisibleTypeAnnotations", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 24,
+                        0, 1,
+                        0, 2, 0, 3,
+                        0, 2,
+                        0, 4, 0, 0, 0, 2, 0, 0,
+                        0, 4, 0, 0, 0, 2, 0, 0,
+                    ),
+                    source = "bad-record-runtime-visible-type-annotations.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Record" to RecordAttributeParser,
+                    "RuntimeVisibleTypeAnnotations" to RuntimeVisibleTypeAnnotationsAttributeParser,
+                ),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("components[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("RuntimeVisibleTypeAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
     @Test
     fun `rejects component name index that is not UTF-8`() {
         val constantPool = ConstantPool.fromEntries(
