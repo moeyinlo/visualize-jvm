@@ -126,6 +126,93 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `interface method target resolution uses receiver class implementation before defaults`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("DefaultFace"),
+                    methods = listOf(
+                        JvmMethodDefinition(name = "value", descriptor = "()I", isStatic = false),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "DefaultFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(0x05),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+            ),
+            hierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
+    fun `interface method target resolution finds direct interface default method`() {
+        val defaultCode = byteArrayOf(0x05)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("DefaultFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "DefaultFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = defaultCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "DefaultFace",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                code = defaultCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `class initialization method lookup returns declared static void clinit only`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

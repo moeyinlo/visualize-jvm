@@ -191,6 +191,27 @@ class JvmClassHierarchy(
             )
     }
 
+    fun resolveInterfaceMethodTarget(
+        receiverClassName: String,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod {
+        val receiverClass = classesByName[receiverClassName]
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = receiverClassName,
+            )
+        return receiverClass.findDeclaredMethod(name, descriptor)
+            ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
+            ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
+            ?: findInterfaceMethod(receiverClass.interfaceNames, name, descriptor)
+                ?.takeIf { method -> !method.isAbstract }
+            ?: throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$receiverClassName.$name:$descriptor",
+            )
+    }
+
     fun classInitializationMethod(ownerClassName: String): JvmResolvedMethod? {
         val ownerClass = classesByName[ownerClassName]
             ?: throw JvmNoClassDefFoundError(
@@ -264,6 +285,23 @@ class JvmClassHierarchy(
             val interfaceClass = classesByName[interfaceName] ?: continue
             interfaceClass.findDeclaredField(name, descriptor)?.let { resolved -> return resolved }
             findInterfaceField(interfaceClass.interfaceNames, name, descriptor, visited)?.let { resolved -> return resolved }
+        }
+        return null
+    }
+
+    private fun findInterfaceMethod(
+        interfaceNames: List<String>,
+        name: String,
+        descriptor: String,
+        visited: MutableSet<String> = linkedSetOf(),
+    ): JvmResolvedMethod? {
+        for (interfaceName in interfaceNames) {
+            if (!visited.add(interfaceName)) {
+                continue
+            }
+            val interfaceClass = classesByName[interfaceName] ?: continue
+            interfaceClass.findDeclaredMethod(name, descriptor)?.let { resolved -> return resolved }
+            findInterfaceMethod(interfaceClass.interfaceNames, name, descriptor, visited)?.let { resolved -> return resolved }
         }
         return null
     }
