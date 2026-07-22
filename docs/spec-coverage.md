@@ -198,6 +198,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.25 | `Module` rejects unknown `exports_flags` bits | `jvm-classfile` | `ModuleAttributeParserTest.rejects unknown Module exports flags` | IMPLEMENTED |
 | 4.7.25 | `Module` rejects unknown `opens_flags` bits | `jvm-classfile` | `ModuleAttributeParserTest.rejects unknown Module opens flags` | IMPLEMENTED |
 | 4.7.25 | `Module` `requires` table rejects duplicate `requires_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module requires indexes` | IMPLEMENTED |
+| 4.7.25 | `Module` `requires` table rejects duplicate module names through different indexes | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module requires module names` | IMPLEMENTED |
 | 4.7.25 | `Module` `exports` table rejects duplicate `exports_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `exports` table rejects duplicate package names even through different `exports_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports package names` | IMPLEMENTED |
 | 4.7.25 | `Module` `opens` table rejects duplicate `opens_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module opens indexes` | IMPLEMENTED |

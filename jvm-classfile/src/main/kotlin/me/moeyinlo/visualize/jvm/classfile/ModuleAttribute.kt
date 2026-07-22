@@ -102,6 +102,13 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.requires",
             fieldName = "requires_index",
         )
+        requireUniqueNames(
+            names = requires.mapIndexed { index, entry ->
+                moduleName(context, entry.requiresIndex, "${context.ownerPath}.requires[$index].requires_index")
+            },
+            role = "${context.ownerPath}.requires",
+            fieldName = "requires_index module name",
+        )
         requireJavaBaseModuleHasNoRequires(context, moduleNameIndex, requires)
         requireJavaBaseRequiresAreNotSynthetic(context, requires)
         requireJavaBaseRequiresAreNotStaticPhase(context, requires)
