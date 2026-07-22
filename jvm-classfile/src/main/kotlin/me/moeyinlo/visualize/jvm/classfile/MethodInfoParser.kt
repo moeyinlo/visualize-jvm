@@ -236,6 +236,23 @@ object MethodInfoParser {
                     "but found tag '${annotationDefault.defaultValue.tag}' at $annotationDefaultPath",
             )
         }
+        val expectedArrayElementTag = arrayElementValueTag(returnDescriptor(descriptor))
+        if (
+            annotationDefaultPath != null &&
+            annotationDefault != null &&
+            expectedArrayElementTag != null &&
+            annotationDefault.defaultValue is ElementValue.ArrayValue
+        ) {
+            annotationDefault.defaultValue.values.forEachIndexed { index, value ->
+                if (value.tag != expectedArrayElementTag) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath attributes: AnnotationDefault array element for return descriptor " +
+                            "'${returnDescriptor(descriptor)}' must use element_value tag '$expectedArrayElementTag' " +
+                            "but found tag '${value.tag}' at $annotationDefaultPath.values[$index]",
+                    )
+                }
+            }
+        }
         val exceptionsPath = exceptionsPaths.singleOrNull()
         if (annotationDefaultPath != null && exceptionsPath != null) {
             throw ClassFileFormatException(
@@ -261,6 +278,13 @@ object MethodInfoParser {
             "Ljava/lang/String;" -> 's'
             "Ljava/lang/Class;" -> 'c'
             else -> if (descriptor.startsWith("[")) '[' else null
+        }
+
+    private fun arrayElementValueTag(descriptor: String): Char? =
+        if (descriptor.startsWith("[") && !descriptor.startsWith("[[")) {
+            scalarElementValueTag(descriptor.removePrefix("["))
+        } else {
+            null
         }
 
     private fun returnDescriptor(descriptor: String): String = descriptor.substringAfter(')')
