@@ -476,6 +476,42 @@ class MethodInfoParserTest {
         assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
+
+    @Test
+    fun `rejects duplicate method MethodParameters attributes`() {
+        val methodParametersAttribute = byteArrayOf(0, 3) + intBytes(1) + byteArrayOf(0)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(
+                            accessFlags = 0x0101,
+                            attributes = listOf(methodParametersAttribute, methodParametersAttribute),
+                        ),
+                    ),
+                    source = "bad-method-parameters.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("MethodParameters", "MethodParameters".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "MethodParameters" to MethodParametersAttributeParser,
+                ),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("MethodParameters"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
     @Test
     fun `rejects instance initialization methods in interfaces`() {
         val failure = assertFailsWith<ClassFileFormatException> {
