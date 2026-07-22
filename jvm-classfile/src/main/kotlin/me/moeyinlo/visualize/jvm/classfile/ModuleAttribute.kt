@@ -37,12 +37,14 @@ data class ModuleProvides(
 
 object ModuleAttributeParser : AttributeBodyParser {
     private const val AccOpen = 0x0020
+    private const val AccTransitive = 0x0020
     private const val AccStaticPhase = 0x0040
     private const val AccSynthetic = 0x1000
     private const val AccMandated = 0x8000
     private const val JavaBaseModuleName = "java.base"
     private const val Java10MajorVersion = 54
     private const val AllowedModuleFlags = AccOpen or AccSynthetic or AccMandated
+    private const val AllowedRequiresFlags = AccTransitive or AccStaticPhase or AccSynthetic or AccMandated
 
     override fun parse(context: AttributeParseContext): AttributeInfo {
         val moduleNameIndex = readRequiredIndex<ConstantModuleEntry>(context, "${context.ownerPath}.module_name_index")
@@ -76,9 +78,16 @@ object ModuleAttributeParser : AttributeBodyParser {
     ): List<ModuleRequires> {
         val requires = List(context.reader.readU2()) { index ->
             val ownerPath = "${context.ownerPath}.requires[$index]"
+            val requiresIndex = readRequiredIndex<ConstantModuleEntry>(context, "$ownerPath.requires_index")
+            val requiresFlags = context.reader.readU2()
+            requireAllowedFlags(
+                flags = requiresFlags,
+                allowedMask = AllowedRequiresFlags,
+                role = "$ownerPath.requires_flags",
+            )
             ModuleRequires(
-                requiresIndex = readRequiredIndex<ConstantModuleEntry>(context, "$ownerPath.requires_index"),
-                requiresFlags = context.reader.readU2(),
+                requiresIndex = requiresIndex,
+                requiresFlags = requiresFlags,
                 requiresVersionIndex = readOptionalIndex<ConstantUtf8Entry>(
                     context = context,
                     role = "$ownerPath.requires_version_index",
