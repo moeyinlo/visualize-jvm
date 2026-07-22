@@ -282,6 +282,62 @@ class JvmInvokeDynamicCallSiteRegistryTest {
             exception.message,
         )
     }
+
+
+    @Test
+    fun `bootstrap invocation extracts call site target method handle from bootstrap result`() {
+        val heap = JvmHeap()
+        val invocation = simpleBootstrapInvocation()
+        val target = heap.internMethodHandle(
+            referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+            referenceIndex = 6,
+        )
+        val returnedCallSite = heap.allocateCallSite(target)
+
+        val result = invocation.extractBootstrapResult(heap, returnedCallSite)
+
+        assertEquals(returnedCallSite, result.callSiteReference)
+        assertEquals(target, result.targetMethodHandle)
+        assertEquals(
+            JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 6,
+            ),
+            result.targetMethodHandlePayload,
+        )
+    }
+
+    @Test
+    fun `bootstrap invocation rejects non call site bootstrap results`() {
+        val heap = JvmHeap()
+        val invocation = simpleBootstrapInvocation()
+        val stringReference = heap.internString("not-call-site")
+
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            invocation.extractBootstrapResult(heap, stringReference)
+        }
+
+        assertEquals(
+            "invokedynamic bootstrap method returned java/lang/String, expected java/lang/invoke/CallSite",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `bootstrap invocation rejects call sites without target payloads`() {
+        val heap = JvmHeap()
+        val invocation = simpleBootstrapInvocation()
+        val emptyCallSite = heap.allocateObject("java/lang/invoke/CallSite")
+
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            invocation.extractBootstrapResult(heap, emptyCallSite)
+        }
+
+        assertEquals(
+            "invokedynamic bootstrap method returned CallSite without a target MethodHandle payload",
+            exception.message,
+        )
+    }
     @Test
     fun `call site resolver rejects non invoke dynamic constant pool entries`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
@@ -435,6 +491,20 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                 ),
                 ConstantUtf8Entry("run", "run".encodeToByteArray()),
                 ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+            ),
+        )
+
+    private fun simpleBootstrapInvocation(): JvmInvokeDynamicBootstrapInvocation =
+        JvmInvokeDynamicCallSiteResolver.resolveBootstrapInvocation(
+            constantPool = bootstrapInvocationConstantPool(),
+            index = ConstantPoolIndex(1),
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
             ),
         )
 

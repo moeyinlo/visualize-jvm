@@ -64,7 +64,43 @@ data class JvmInvokeDynamicBootstrapInvocation(
             add(heap.internMethodType(callSite.descriptor))
             addAll(staticArguments.map { argument -> argument.materialize(heap) })
         }
+
+    fun extractBootstrapResult(
+        heap: JvmHeap,
+        returnValue: JvmValue,
+    ): JvmInvokeDynamicBootstrapResult {
+        val callSiteReference = returnValue as? JvmObjectReferenceValue
+            ?: throw JvmInvokeDynamicLinkageException(
+                "invokedynamic bootstrap method must return a java/lang/invoke/CallSite reference but returned " +
+                    returnValue.javaClass.simpleName,
+            )
+        val callSiteObject = heap.get(callSiteReference)
+        if (callSiteObject.className != "java/lang/invoke/CallSite") {
+            throw JvmInvokeDynamicLinkageException(
+                "invokedynamic bootstrap method returned ${callSiteObject.className}, expected java/lang/invoke/CallSite",
+            )
+        }
+        val callSitePayload = callSiteObject.payload as? JvmCallSitePayload
+            ?: throw JvmInvokeDynamicLinkageException(
+                "invokedynamic bootstrap method returned CallSite without a target MethodHandle payload",
+            )
+        val targetPayload = heap.get(callSitePayload.targetMethodHandle).payload as? JvmMethodHandlePayload
+            ?: throw JvmInvokeDynamicLinkageException(
+                "invokedynamic bootstrap method returned CallSite target without MethodHandle payload",
+            )
+        return JvmInvokeDynamicBootstrapResult(
+            callSiteReference = callSiteReference,
+            targetMethodHandle = callSitePayload.targetMethodHandle,
+            targetMethodHandlePayload = targetPayload,
+        )
+    }
 }
+
+data class JvmInvokeDynamicBootstrapResult(
+    val callSiteReference: JvmObjectReferenceValue,
+    val targetMethodHandle: JvmObjectReferenceValue,
+    val targetMethodHandlePayload: JvmMethodHandlePayload,
+)
 
 sealed interface JvmBootstrapArgument {
     val constantPoolIndex: JvmRuntimeConstantPoolIndex
