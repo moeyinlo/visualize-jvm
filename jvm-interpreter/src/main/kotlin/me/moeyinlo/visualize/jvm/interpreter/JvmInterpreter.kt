@@ -3811,6 +3811,36 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        executeResolvedStaticMethod(
+            instruction = instruction,
+            operandStack = operandStack,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            bootstrapMethods = bootstrapMethods,
+            resolvedMethod = resolvedMethod,
+            opcodeMnemonic = "invokestatic",
+        )
+    }
+
+    private fun executeResolvedStaticMethod(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        resolvedMethod: JvmResolvedMethod,
+        opcodeMnemonic: String,
+    ) {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
@@ -3846,7 +3876,7 @@ object JvmInterpreter {
             if (returnDescriptor == "V") {
                 if (nativeReturnValue != null) {
                     throw JvmUnsupportedInstructionException(
-                        "Invalid invokestatic native return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                        "Invalid $opcodeMnemonic native return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
                             "${resolvedMethod.descriptor}: expected void but returned " +
                             nativeReturnValue.javaClass.simpleName,
                     )
@@ -3866,7 +3896,7 @@ object JvmInterpreter {
         val methodCode = resolvedMethod.code
             ?: throw JvmUnsupportedInstructionException(
                 "Resolved static method ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                    "${resolvedMethod.descriptor} has no Code attribute for invokestatic",
+                    "${resolvedMethod.descriptor} has no Code attribute for $opcodeMnemonic",
             )
         val calleeLocals = JvmLocalVariables(maxLocals = resolvedMethod.maxLocals)
         var localIndex = 0
@@ -3895,7 +3925,7 @@ object JvmInterpreter {
         if (returnDescriptor == "V") {
             if (frameResult.returnValue != null) {
                 throw JvmUnsupportedInstructionException(
-                    "Invalid invokestatic return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "Invalid $opcodeMnemonic return for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
                         "${resolvedMethod.descriptor}: expected void but returned " +
                         frameResult.returnValue.javaClass.simpleName,
                 )
