@@ -72,6 +72,7 @@ object ClassFileParser {
         val sourceDebugExtensionPaths = mutableListOf<String>()
         val enclosingMethodPaths = mutableListOf<String>()
         val recordPaths = mutableListOf<String>()
+        val modulePaths = mutableListOf<String>()
         val moduleMainClassPaths = mutableListOf<String>()
         val signaturePaths = mutableListOf<String>()
         val modulePackagesPaths = mutableListOf<String>()
@@ -84,6 +85,7 @@ object ClassFileParser {
                 "SourceDebugExtension" -> sourceDebugExtensionPaths += "ClassFile.attributes[$index]"
                 "EnclosingMethod" -> enclosingMethodPaths += "ClassFile.attributes[$index]"
                 "Record" -> recordPaths += "ClassFile.attributes[$index]"
+                "Module" -> modulePaths += "ClassFile.attributes[$index]"
                 "ModuleMainClass" -> moduleMainClassPaths += "ClassFile.attributes[$index]"
                 "Signature" -> signaturePaths += "ClassFile.attributes[$index]"
                 "ModulePackages" -> modulePackagesPaths += "ClassFile.attributes[$index]"
@@ -103,6 +105,7 @@ object ClassFileParser {
         requireAtMostOneAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", source)
         requireAtMostOneAttribute(enclosingMethodPaths, "EnclosingMethod", source)
         requireAtMostOneAttribute(recordPaths, "Record", source)
+        requireAtMostOneAttribute(modulePaths, "Module", source)
         requireAtMostOneAttribute(moduleMainClassPaths, "ModuleMainClass", source)
         requireAtMostOneAttribute(signaturePaths, "Signature", source)
         requireAtMostOneAttribute(modulePackagesPaths, "ModulePackages", source)

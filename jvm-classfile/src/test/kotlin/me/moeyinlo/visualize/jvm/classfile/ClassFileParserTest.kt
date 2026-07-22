@@ -137,6 +137,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects ClassFile with duplicate Module attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDuplicateModuleBytes(),
+                source = "DuplicateModule.class",
+                attributeParsers = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Module"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
+
+    @Test
     fun `rejects ClassFile with duplicate Signature attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -414,6 +429,53 @@ class ClassFileParserTest {
             0, 0,
             0, 5,
             0, 0, 0, 2,
+            0, 0,
+        )
+
+    private fun classFileWithDuplicateModuleBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 8,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 6, 'M'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code, 'e'.code,
+            1, 0, 11,
+            't'.code, 'e'.code, 's'.code, 't'.code, '.'.code, 'm'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code,
+            'e'.code,
+            19, 0, 6,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 2,
+            0, 5,
+            0, 0, 0, 16,
+            0, 7,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 5,
+            0, 0, 0, 16,
+            0, 7,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
             0, 0,
         )
 
