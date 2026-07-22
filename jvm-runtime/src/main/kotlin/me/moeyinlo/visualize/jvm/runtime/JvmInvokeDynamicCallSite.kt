@@ -174,8 +174,25 @@ private fun JvmBootstrapArgument.materialize(heap: JvmHeap): JvmValue =
 data class JvmLinkedInvokeDynamicCallSite(
     val spec: JvmInvokeDynamicCallSiteSpec,
     val targetMethodHandle: JvmMethodHandlePayload,
-    val targetMethod: JvmResolvedMethod,
-)
+    val target: JvmMethodHandleTarget,
+) {
+    constructor(
+        spec: JvmInvokeDynamicCallSiteSpec,
+        targetMethodHandle: JvmMethodHandlePayload,
+        targetMethod: JvmResolvedMethod,
+    ) : this(
+        spec = spec,
+        targetMethodHandle = targetMethodHandle,
+        target = JvmMethodHandleTarget.Method(targetMethod),
+    )
+
+    val targetMethod: JvmResolvedMethod
+        get() = (target as JvmMethodHandleTarget.Method).method
+}
+
+sealed interface JvmMethodHandleTarget {
+    data class Method(val method: JvmResolvedMethod) : JvmMethodHandleTarget
+}
 
 object JvmInvokeDynamicCallSiteResolver {
     fun bindBootstrapResult(
@@ -196,7 +213,7 @@ object JvmInvokeDynamicCallSiteResolver {
             callSite = JvmLinkedInvokeDynamicCallSite(
                 spec = invocation.callSite,
                 targetMethodHandle = bootstrapResult.targetMethodHandlePayload,
-                targetMethod = targetMethod,
+                target = JvmMethodHandleTarget.Method(targetMethod),
             ),
         )
     }
