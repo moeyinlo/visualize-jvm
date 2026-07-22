@@ -80,7 +80,7 @@ object MethodInfoParser {
             validateSpecialMethodDescriptor(name.value, descriptor.value, method.descriptorIndex, ownerPath, majorVersion)
             validateAccessFlags(method.accessFlags, name.value, classKind, ownerPath, majorVersion)
             validateCodeAttributeCardinality(method, constantPool, name.value, ownerPath)
-            validateMethodAttributeCardinality(method, constantPool, classKind, ownerPath)
+            validateMethodAttributeCardinality(method, constantPool, classKind, descriptor.value, ownerPath)
 
             val duplicateOf = seenMethods.putIfAbsent(name.value to descriptor.value, index)
             if (duplicateOf != null) {
@@ -135,6 +135,7 @@ object MethodInfoParser {
         method: MethodInfo,
         constantPool: ConstantPool,
         classKind: ClassFileKind,
+        descriptor: String,
         ownerPath: String,
     ) {
         val exceptionsPaths = mutableListOf<String>()
@@ -189,6 +190,15 @@ object MethodInfoParser {
             throw ClassFileFormatException(
                 "Invalid $ownerPath attributes: AnnotationDefault is permitted only on an annotation " +
                     "interface element but found $annotationDefaultPath",
+            )
+        }
+        if (
+            annotationDefaultPath != null &&
+            DescriptorValidator.methodParameterUnits(method.descriptorIndex, "$ownerPath.descriptor_index", descriptor) != 0
+        ) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: AnnotationDefault annotation interface elements " +
+                    "must not declare parameters but found $annotationDefaultPath",
             )
         }
     }
