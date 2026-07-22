@@ -47,6 +47,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlesLookupPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleTarget
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
@@ -59,6 +60,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmOperandStackOverflowException
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
@@ -16552,6 +16554,58 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic executes cached get static field target`() {
+        val staticFields = JvmStaticFields()
+        val field = JvmFieldReference(
+            ownerClassName = "pkg/Targets",
+            name = "answer",
+            descriptor = "I",
+        )
+        staticFields.put(field, JvmIntValue(42))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                    referenceIndex = 1,
+                ),
+                target = JvmMethodHandleTarget.Field(
+                    JvmResolvedField(
+                        ownerClassName = "pkg/Targets",
+                        name = "answer",
+                        descriptor = "I",
+                        isStatic = true,
+                    ),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicIntCallSiteConstantPool(),
+            staticFields = staticFields,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokedynamic passes descriptor arguments to cached linked static targets`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(
@@ -16958,7 +17012,7 @@ class JvmInterpreterTest {
                     descriptor = "()I",
                 ),
                 targetMethodHandle = JvmMethodHandlePayload(
-                    referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                    referenceKind = JvmMethodHandleReferenceKind.PutStatic,
                     referenceIndex = 1,
                 ),
                 targetMethod = classHierarchy.resolveMethod(
@@ -16988,7 +17042,7 @@ class JvmInterpreterTest {
 
         assertEquals(
             "Unsupported invokedynamic linked target for answer:()I at offset 0: " +
-                "target method handle GetStatic execution is not implemented yet",
+                "target method handle PutStatic execution is not implemented yet",
             exception.message,
         )
     }

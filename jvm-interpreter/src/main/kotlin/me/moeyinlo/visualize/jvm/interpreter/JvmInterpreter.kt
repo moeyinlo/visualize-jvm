@@ -44,6 +44,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLinkedInvokeDynamicCallSite
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleTarget
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
@@ -4578,6 +4579,14 @@ object JvmInterpreter {
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         when (linkedCallSite.targetMethodHandle.referenceKind) {
+            JvmMethodHandleReferenceKind.GetStatic -> executeLinkedInvokeDynamicGetStaticTarget(
+                instruction = instruction,
+                operandStack = operandStack,
+                staticFields = staticFields,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                linkedCallSite = linkedCallSite,
+            )
             JvmMethodHandleReferenceKind.InvokeStatic -> executeLinkedInvokeDynamicStaticTarget(
                 instruction = instruction,
                 operandStack = operandStack,
@@ -4658,6 +4667,40 @@ object JvmInterpreter {
                     "implemented yet",
             )
         }
+    }
+
+    private fun executeLinkedInvokeDynamicGetStaticTarget(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        staticFields: JvmStaticFields,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
+        val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic getstatic target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: linked target is not a field",
+            )
+        val resolvedField = target.field
+        val expectedDescriptor = "()${resolvedField.descriptor}"
+        if (linkedCallSite.spec.descriptor != expectedDescriptor) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: target " +
+                    "${resolvedField.ownerClassName}.${resolvedField.name}:${resolvedField.descriptor} " +
+                    "does not match call site descriptor",
+            )
+        }
+        val field = JvmFieldReference(
+            ownerClassName = resolvedField.ownerClassName,
+            name = resolvedField.name,
+            descriptor = resolvedField.descriptor,
+        )
+        val value = staticFields.get(field)
+        requireFieldValue(instruction, field, value)
+        requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
+        operandStack.push(value)
     }
 
     private fun executeLinkedInvokeDynamicStaticTarget(
