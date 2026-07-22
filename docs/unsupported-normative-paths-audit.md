@@ -5,12 +5,12 @@ This audit is derived from `docs/spec-coverage.md` after the Phase 20 documentat
 ## Ledger status summary
 
 - DIFFERENTIAL: 1
-- IMPLEMENTED: 1056
-- PENDING: 69
+- IMPLEMENTED: 1057
+- PENDING: 68
 
 ## Pending rows by section
 
-- Chapter 2 - JVM Structure: 5 pending row(s)
+- Chapter 2 - JVM Structure: 4 pending row(s)
 - Chapter 4 - Class File Format: 14 pending row(s)
 - Chapter 5 - Loading, Linking, and Initializing: 22 pending row(s)
 - Chapters 6 and 7 - Instruction Set and Opcode Mnemonics: 23 pending row(s)
@@ -22,7 +22,6 @@ These are the first pending rows in ledger order and should be converted into im
 
 | Section | Requirement | Module | Tests |
 | --- | --- | --- | --- |
-| Chapter 2 - JVM Structure | Reference types and values | `jvm-runtime` | TBD |
 | Chapter 2 - JVM Structure | Exceptions | `jvm-runtime`, `jvm-interpreter` | TBD |
 | Chapter 2 - JVM Structure | Instruction set summary | `jvm-interpreter`, `jvm-verifier` | TBD |
 | Chapter 2 - JVM Structure | Class libraries interface assumptions | `jvm-host`, `jvm-native`, `jvm-jni` | TBD |
