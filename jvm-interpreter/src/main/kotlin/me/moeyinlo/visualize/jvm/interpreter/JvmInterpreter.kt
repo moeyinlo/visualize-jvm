@@ -351,6 +351,21 @@ object JvmInterpreter {
                     ?: throw JvmUnsupportedInstructionException(
                         "Invalid exception handler target ${handler.handlerPc} for " +
                             "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
+                        "target is not an instruction offset",
+                    )
+            } catch (exception: JvmAbstractMethodError) {
+                val handler = JvmExceptionHandlerTable.findHandler(
+                    handlers = exceptionHandlers,
+                    thrownAtPc = instruction.offset,
+                    throwableClassName = exception.guestClassName,
+                    classHierarchy = classHierarchy,
+                ) ?: throw exception
+                val throwable = heap.allocateObject(exception.guestClassName)
+                resetOperandStackForExceptionHandler(operandStack, throwable)
+                instructionIndex = instructionIndexByOffset[handler.handlerPc]
+                    ?: throw JvmUnsupportedInstructionException(
+                        "Invalid exception handler target ${handler.handlerPc} for " +
+                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
                             "target is not an instruction offset",
                     )
             }

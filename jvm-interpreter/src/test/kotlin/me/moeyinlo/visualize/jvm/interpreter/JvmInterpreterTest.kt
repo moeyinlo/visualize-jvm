@@ -13056,6 +13056,66 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual abstract selected method transfers control to matching AbstractMethodError handler`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "value",
+                                descriptor = "()I",
+                                isStatic = false,
+                                isAbstract = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            currentClassName = "Caller",
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 4,
+                    handlerPc = 4,
+                    catchClassName = "java/lang/AbstractMethodError",
+                ),
+            ),
+        )
+
+        val caught = callerLocals.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/AbstractMethodError", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokevirtual throws guest UnsatisfiedLinkError for unbound native methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")
