@@ -5407,6 +5407,46 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `checkcast incompatible reference transfers control to matching ClassCastException handler`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("java/lang/Integer")
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC0.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x4C.toByte(),
+                0x07.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("java/lang/String", "java/lang/String".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 4,
+                    handlerPc = 4,
+                    catchClassName = "java/lang/ClassCastException",
+                ),
+            ),
+        )
+
+        val caught = locals.load(1) as JvmObjectReferenceValue
+        assertEquals("java/lang/ClassCastException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(4)), result.operandStack.toList())
+    }
+
+    @Test
     fun `instanceof pushes zero for null reference`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
