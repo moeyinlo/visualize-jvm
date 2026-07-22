@@ -11236,6 +11236,39 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc resolves nested dynamic constant bootstrap static arguments`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = nestedDynamicConstantBootstrapExecutionConstantPool(),
+            classHierarchy = nestedDynamicConstantBootstrapHierarchy(),
+            currentClassName = "pkg/Caller",
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(15),
+                        bootstrapArguments = listOf(JvmRuntimeConstantPoolIndex(5)),
+                    ),
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(20),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
+            ),
+            dynamicConstants = dynamicConstants,
+        )
+
+        assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
+        assertEquals(JvmIntValue(7), dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(1)))
+        assertEquals(JvmIntValue(7), dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(5)))
+    }
+
+    @Test
     fun `ldc rejects dynamic constant bootstrap when current class is missing`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
@@ -17844,6 +17877,9 @@ class JvmInterpreterTest {
     private val dynamicConstantIntBootstrapDescriptor =
         "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;)I"
 
+    private val dynamicConstantIntBootstrapDescriptorWithIntArgument =
+        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;I)I"
+
     private val dynamicConstantLongBootstrapDescriptor =
         "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;)J"
 
@@ -17899,6 +17935,102 @@ class JvmInterpreterTest {
                             isStatic = true,
                             code = code,
                             maxStack = maxStack,
+                            maxLocals = 3,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+    private fun nestedDynamicConstantBootstrapExecutionConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ConstantDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(1),
+                    nameAndTypeIndex = ConstantPoolIndex(6),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(7),
+                    descriptorIndex = ConstantPoolIndex(8),
+                ),
+                ConstantUtf8Entry("seed", "seed".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ConstantUtf8Entry("pkg/Bootstrap", "pkg/Bootstrap".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(9)),
+                ConstantUtf8Entry("outerBootstrap", "outerBootstrap".encodeToByteArray()),
+                ConstantUtf8Entry(
+                    dynamicConstantIntBootstrapDescriptorWithIntArgument,
+                    dynamicConstantIntBootstrapDescriptorWithIntArgument.encodeToByteArray(),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(11),
+                    descriptorIndex = ConstantPoolIndex(12),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(10),
+                    nameAndTypeIndex = ConstantPoolIndex(13),
+                ),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = ConstantPoolIndex(14),
+                ),
+                ConstantUtf8Entry("nestedBootstrap", "nestedBootstrap".encodeToByteArray()),
+                ConstantUtf8Entry(
+                    dynamicConstantIntBootstrapDescriptor,
+                    dynamicConstantIntBootstrapDescriptor.encodeToByteArray(),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(16),
+                    descriptorIndex = ConstantPoolIndex(17),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(10),
+                    nameAndTypeIndex = ConstantPoolIndex(18),
+                ),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = ConstantPoolIndex(19),
+                ),
+            ),
+        )
+
+    private fun nestedDynamicConstantBootstrapHierarchy(): JvmClassHierarchy =
+        JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "outerBootstrap",
+                            descriptor = dynamicConstantIntBootstrapDescriptorWithIntArgument,
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x1D.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 4,
+                        ),
+                        JvmMethodDefinition(
+                            name = "nestedBootstrap",
+                            descriptor = dynamicConstantIntBootstrapDescriptor,
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x07.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
                             maxLocals = 3,
                         ),
                     ),

@@ -21,6 +21,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapArgument
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodAccessException
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodTable
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
@@ -28,6 +29,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantBootstrapInvocation
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantLinkageException
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantResolver
@@ -3725,16 +3727,21 @@ object JvmInterpreter {
                 "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: " +
                     "current class is required for MethodHandles.Lookup",
             )
-        val bootstrapArguments = try {
-            invocation.materializeBootstrapMethodArguments(
-                heap = heap,
-                lookupClassName = ownerClassName,
-            )
-        } catch (exception: JvmDynamicConstantLinkageException) {
-            throw JvmUnsupportedInstructionException(
-                "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: ${exception.message}",
-            )
-        }
+        val bootstrapArguments = materializeDynamicConstantBootstrapArguments(
+            instruction = instruction,
+            invocation = invocation,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            currentClassName = ownerClassName,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
+        )
         if (invocation.bootstrapMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
             throw JvmUnsupportedInstructionException(
                 "Unsupported CONSTANT_Dynamic $index ${invocation.constant.name}:${invocation.constant.descriptor} " +
@@ -3790,6 +3797,107 @@ object JvmInterpreter {
             )
         }
     }
+
+    private fun materializeDynamicConstantBootstrapArguments(
+        instruction: DecodedInstruction,
+        invocation: JvmDynamicConstantBootstrapInvocation,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
+    ): List<JvmValue> =
+        buildList {
+            add(heap.internMethodHandlesLookup(currentClassName))
+            add(heap.internString(invocation.constant.name))
+            add(heap.internClassMirror(invocation.constant.descriptor.dynamicConstantClassMirrorName()))
+            invocation.staticArguments.forEach { argument ->
+                add(
+                    materializeDynamicConstantBootstrapStaticArgument(
+                        instruction = instruction,
+                        argument = argument,
+                        constantPool = constantPool,
+                        heap = heap,
+                        classHierarchy = classHierarchy,
+                        staticFields = staticFields,
+                        nativeMethods = nativeMethods,
+                        monitors = monitors,
+                        currentThreadId = currentThreadId,
+                        currentClassName = currentClassName,
+                        bootstrapMethods = bootstrapMethods,
+                        invokeDynamicCallSites = invokeDynamicCallSites,
+                        dynamicConstants = dynamicConstants,
+                    ),
+                )
+            }
+        }
+
+    private fun materializeDynamicConstantBootstrapStaticArgument(
+        instruction: DecodedInstruction,
+        argument: JvmBootstrapArgument,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
+    ): JvmValue =
+        when (argument) {
+            is JvmBootstrapArgument.ClassConstant -> heap.internClassMirror(argument.internalName)
+            is JvmBootstrapArgument.DoubleConstant -> argument.value
+            is JvmBootstrapArgument.DynamicConstant -> resolveDynamicConstant(
+                instruction = instruction,
+                index = ConstantPoolIndex(argument.constantPoolIndex.value),
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+            )
+            is JvmBootstrapArgument.FloatConstant -> argument.value
+            is JvmBootstrapArgument.IntegerConstant -> argument.value
+            is JvmBootstrapArgument.LongConstant -> argument.value
+            is JvmBootstrapArgument.MethodHandleConstant -> heap.internMethodHandle(
+                referenceKind = argument.payload.referenceKind,
+                referenceIndex = argument.payload.referenceIndex,
+            )
+            is JvmBootstrapArgument.MethodTypeConstant -> heap.internMethodType(argument.descriptor)
+            is JvmBootstrapArgument.StringConstant -> heap.internString(argument.value)
+        }
+
+    private fun String.dynamicConstantClassMirrorName(): String =
+        when (this) {
+            "Z" -> "boolean"
+            "B" -> "byte"
+            "C" -> "char"
+            "S" -> "short"
+            "I" -> "int"
+            "J" -> "long"
+            "F" -> "float"
+            "D" -> "double"
+            else -> when {
+                startsWith("L") && endsWith(";") -> substring(1, lastIndex)
+                startsWith("[") -> this
+                else -> this
+            }
+        }
 
     private fun requireDynamicConstantValue(
         instruction: DecodedInstruction,
