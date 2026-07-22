@@ -43,6 +43,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects ClassFile with duplicate SourceFile attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDuplicateSourceFileBytes(),
+                source = "DuplicateSourceFile.class",
+                attributeParsers = AttributeParserRegistry.of("SourceFile" to SourceFileAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("SourceFile"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
+
+    @Test
     fun `rejects ClassFile with both NestHost and NestMembers attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -148,6 +163,38 @@ class ClassFileParserTest {
             0, 0,
             0, 0,
             0, 1,
+            0, 5,
+            0, 0, 0, 2,
+            0, 6,
+        )
+
+    private fun classFileWithDuplicateSourceFileBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 7,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 10,
+            'S'.code, 'o'.code, 'u'.code, 'r'.code, 'c'.code, 'e'.code, 'F'.code, 'i'.code, 'l'.code, 'e'.code,
+            1, 0, 9,
+            'T'.code, 'e'.code, 's'.code, 't'.code, '.'.code, 'j'.code, 'a'.code, 'v'.code, 'a'.code,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 2,
+            0, 5,
+            0, 0, 0, 2,
+            0, 6,
             0, 5,
             0, 0, 0, 2,
             0, 6,
