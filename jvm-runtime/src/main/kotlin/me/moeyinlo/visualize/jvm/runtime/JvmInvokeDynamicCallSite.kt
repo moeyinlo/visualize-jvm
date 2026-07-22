@@ -234,6 +234,15 @@ object JvmInvokeDynamicCallSiteResolver {
                     expectStatic = false,
                 ),
             )
+            JvmMethodHandleReferenceKind.PutField -> JvmMethodHandleTarget.Field(
+                resolveFieldMethodHandleTarget(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodHandle = methodHandle,
+                    operationName = "PutField",
+                    expectStatic = false,
+                ),
+            )
             JvmMethodHandleReferenceKind.GetStatic -> JvmMethodHandleTarget.Field(
                 resolveFieldMethodHandleTarget(
                     constantPool = constantPool,
@@ -264,10 +273,6 @@ object JvmInvokeDynamicCallSiteResolver {
                     classHierarchy = classHierarchy,
                     methodHandle = methodHandle,
                 ),
-            )
-
-            JvmMethodHandleReferenceKind.PutField -> throw JvmInvokeDynamicLinkageException(
-                "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
             )
         }
 
