@@ -4277,11 +4277,23 @@ object JvmInterpreter {
         }
         requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
-        val targetMethod = classHierarchy.resolveInterfaceMethodTarget(
-            receiverClassName = receiverClassName,
-            name = resolvedMethod.name,
-            descriptor = resolvedMethod.descriptor,
-        )
+        val targetMethod = try {
+            classHierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = receiverClassName,
+                name = resolvedMethod.name,
+                descriptor = resolvedMethod.descriptor,
+            )
+        } catch (exception: me.moeyinlo.visualize.jvm.runtime.JvmIncompatibleClassChangeError) {
+            throw JvmIncompatibleClassChangeError(
+                guestClassName = exception.guestClassName,
+                message = exception.message ?: "$receiverClassName.${resolvedMethod.name}:${resolvedMethod.descriptor}",
+            )
+        } catch (exception: me.moeyinlo.visualize.jvm.runtime.JvmAbstractMethodError) {
+            throw JvmAbstractMethodError(
+                guestClassName = exception.guestClassName,
+                message = exception.message ?: "$receiverClassName.${resolvedMethod.name}:${resolvedMethod.descriptor}",
+            )
+        }
         requireInstanceMethod(instruction, targetMethod)
         if (targetMethod.isAbstract) {
             throw JvmAbstractMethodError(

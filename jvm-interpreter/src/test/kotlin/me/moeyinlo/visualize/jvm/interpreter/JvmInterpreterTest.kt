@@ -1,4 +1,4 @@
-﻿package me.moeyinlo.visualize.jvm.interpreter
+package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
@@ -16186,6 +16186,92 @@ class JvmInterpreterTest {
         assertEquals(1, result.operandStack.slotDepth)
     }
 
+    @Test
+    fun `invokeinterface throws guest IncompatibleClassChangeError for conflicting defaults`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/ConflictImpl")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmIncompatibleClassChangeError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x0A.toByte(),
+                    0xB9.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 3,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/LeftFace", "pkg/LeftFace".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("(J)I", "(J)I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/LeftFace",
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "(J)I",
+                                    isStatic = false,
+                                    code = byteArrayOf(
+                                        0x1F.toByte(),
+                                        0x88.toByte(),
+                                        0x04.toByte(),
+                                        0x60.toByte(),
+                                        0xAC.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 3,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(
+                            internalName = "pkg/RightFace",
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "(J)I",
+                                    isStatic = false,
+                                    code = byteArrayOf(
+                                        0x1F.toByte(),
+                                        0x88.toByte(),
+                                        0x05.toByte(),
+                                        0x60.toByte(),
+                                        0xAC.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 3,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(
+                            internalName = "pkg/ConflictImpl",
+                            interfaceNames = listOf("pkg/LeftFace", "pkg/RightFace"),
+                        ),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
+        assertEquals("pkg/ConflictImpl.value:(J)I", exception.message)
+    }
     private fun interfaceMethodConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
