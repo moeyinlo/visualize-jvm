@@ -126,6 +126,63 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `class initialization method lookup returns declared static void clinit only`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    methods = listOf(
+                        JvmMethodDefinition(name = "<clinit>", descriptor = "()V", isStatic = true, maxStack = 1),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "Example",
+                name = "<clinit>",
+                descriptor = "()V",
+                isStatic = true,
+                maxStack = 1,
+            ),
+            hierarchy.classInitializationMethod("Example"),
+        )
+    }
+
+    @Test
+    fun `class initialization method lookup does not inherit superclass clinit`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(internalName = "Example", superclassName = "Parent"),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    methods = listOf(JvmMethodDefinition(name = "<clinit>", descriptor = "()V", isStatic = true)),
+                ),
+            ),
+        )
+
+        assertNull(hierarchy.classInitializationMethod("Example"))
+    }
+
+    @Test
+    fun `class initialization method lookup ignores invalid clinit shapes already rejected by classfile validation`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    methods = listOf(
+                        JvmMethodDefinition(name = "<clinit>", descriptor = "(I)V", isStatic = true),
+                        JvmMethodDefinition(name = "<clinit>", descriptor = "()V", isStatic = false),
+                    ),
+                ),
+            ),
+        )
+
+        assertNull(hierarchy.classInitializationMethod("Example"))
+    }
+
+    @Test
     fun `class hierarchy exposes only the direct superclass name`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

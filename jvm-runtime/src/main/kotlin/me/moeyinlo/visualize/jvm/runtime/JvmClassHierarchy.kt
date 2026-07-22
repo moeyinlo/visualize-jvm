@@ -158,6 +158,16 @@ class JvmClassHierarchy(
             )
     }
 
+    fun classInitializationMethod(ownerClassName: String): JvmResolvedMethod? {
+        val ownerClass = classesByName[ownerClassName]
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = ownerClassName,
+            )
+        return ownerClass.findDeclaredMethod(name = "<clinit>", descriptor = "()V")
+            ?.takeIf { method -> method.isStatic }
+    }
+
     private fun JvmClassDefinition.findDeclaredField(name: String, descriptor: String): JvmResolvedField? =
         fields.firstOrNull { field -> field.name == name && field.descriptor == descriptor }
             ?.let { field ->
