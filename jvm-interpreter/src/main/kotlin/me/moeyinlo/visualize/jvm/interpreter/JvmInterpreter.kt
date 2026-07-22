@@ -6,6 +6,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantFieldRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantInterfaceMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantInvokeDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
@@ -694,6 +695,7 @@ object JvmInterpreter {
                 currentThreadId,
                 currentClassName,
             )
+            0xBA -> executeInvokeDynamic(instruction, constantPool)
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
@@ -4201,6 +4203,35 @@ object JvmInterpreter {
         operandStack.push(returnValue)
     }
 
+    private fun executeInvokeDynamic(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+    ) {
+        val thirdOperand = instruction.operands[2]
+        val fourthOperand = instruction.operands[3]
+        if (thirdOperand != 0) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic third operand $thirdOperand at offset ${instruction.offset}: expected 0",
+            )
+        }
+        if (fourthOperand != 0) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic fourth operand $fourthOperand at offset ${instruction.offset}: expected 0",
+            )
+        }
+        val entry = constantPool[instruction.constantPoolIndex()]
+        if (entry !is ConstantInvokeDynamicEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic constant pool entry ${instruction.constantPoolIndex()} at offset " +
+                    "${instruction.offset}: expected CONSTANT_InvokeDynamic_info but was " +
+                    entry.javaClass.simpleName,
+            )
+        }
+        throw JvmUnsupportedInstructionException(
+            "Unsupported invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
+                "bootstrap linkage is not implemented yet",
+        )
+    }
     private fun executeInvokeInterface(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -5705,6 +5736,7 @@ object JvmInterpreter {
             0xB7,
             0xB8,
             0xB9,
+            0xBA,
             0xBB,
             0xBD,
             0xC5,

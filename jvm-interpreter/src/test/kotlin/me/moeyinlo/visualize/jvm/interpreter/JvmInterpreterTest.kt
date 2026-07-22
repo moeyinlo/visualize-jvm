@@ -16351,6 +16351,41 @@ class JvmInterpreterTest {
         assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
         assertEquals("pkg/ConflictImpl.value:(J)I", exception.message)
     }
+    @Test
+    fun `invokedynamic rejects nonzero third operand`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 0,
+            )
+        }
+
+        assertEquals("Invalid invokedynamic third operand 1 at offset 0: expected 0", exception.message)
+    }
+
+    @Test
+    fun `invokedynamic rejects nonzero fourth operand`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 0,
+            )
+        }
+
+        assertEquals("Invalid invokedynamic fourth operand 1 at offset 0: expected 0", exception.message)
+    }
     private fun interfaceMethodConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
