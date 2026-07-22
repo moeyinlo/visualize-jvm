@@ -36,8 +36,10 @@ data class ModuleProvides(
 )
 
 object ModuleAttributeParser : AttributeBodyParser {
+    private const val AccStaticPhase = 0x0040
     private const val AccSynthetic = 0x1000
     private const val JavaBaseModuleName = "java.base"
+    private const val Java10MajorVersion = 54
 
     override fun parse(context: AttributeParseContext): AttributeInfo {
         val moduleNameIndex = readRequiredIndex<ConstantModuleEntry>(context, "${context.ownerPath}.module_name_index")
@@ -79,6 +81,7 @@ object ModuleAttributeParser : AttributeBodyParser {
             fieldName = "requires_index",
         )
         requireJavaBaseRequiresAreNotSynthetic(context, requires)
+        requireJavaBaseRequiresAreNotStaticPhase(context, requires)
         return requires
     }
 
@@ -94,6 +97,26 @@ object ModuleAttributeParser : AttributeBodyParser {
                 throw ClassFileFormatException(
                     "Invalid ${context.ownerPath}.requires[$index].requires_flags: " +
                         "requires java.base must not set ACC_SYNTHETIC",
+                )
+            }
+        }
+    }
+
+    private fun requireJavaBaseRequiresAreNotStaticPhase(
+        context: AttributeParseContext,
+        requires: List<ModuleRequires>,
+    ) {
+        if (context.majorVersion < Java10MajorVersion) {
+            return
+        }
+        requires.forEachIndexed { index, entry ->
+            if (moduleName(context, entry.requiresIndex, "${context.ownerPath}.requires[$index].requires_index") ==
+                JavaBaseModuleName &&
+                entry.requiresFlags and AccStaticPhase != 0
+            ) {
+                throw ClassFileFormatException(
+                    "Invalid ${context.ownerPath}.requires[$index].requires_flags: " +
+                        "requires java.base must not set ACC_STATIC_PHASE for classfile major >= $Java10MajorVersion",
                 )
             }
         }
