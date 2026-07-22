@@ -15849,6 +15849,34 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `multianewarray allocates one dimensional primitive arrays`() {
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0xC5.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("[I", "[I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+        )
+
+        val arrayReference = result.operandStack.toList().single() as JvmObjectReferenceValue
+        val arrayObject = heap.get(arrayReference)
+        assertEquals("[I", arrayObject.className)
+        assertEquals(listOf(0, 0, 0), (arrayObject.payload as JvmIntArrayPayload).elements)
+    }
+
+    @Test
     fun `unsupported instructions fail explicitly`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(

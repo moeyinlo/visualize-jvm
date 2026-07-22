@@ -691,7 +691,7 @@ object JvmInterpreter {
             0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, currentThreadId)
             0xC3 -> executeMonitorExit(instruction, operandStack, heap, monitors, currentThreadId)
-            0xC5 -> executeMultiANewArray(instruction, operandStack, constantPool)
+            0xC5 -> executeMultiANewArray(instruction, operandStack, constantPool, heap)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -5362,6 +5362,7 @@ object JvmInterpreter {
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
+        heap: JvmHeap,
     ) {
         val dimensions = instruction.operands[2]
         if (dimensions == 0) {
@@ -5389,10 +5390,41 @@ object JvmInterpreter {
             )
         }
         val arrayClassName = resolveConstantClassName(instruction, constantPool)
-        throw JvmUnsupportedInstructionException(
-            "Unsupported ${instruction.metadata.mnemonic} allocation for $arrayClassName " +
-                "with $dimensions dimension(s) at offset ${instruction.offset}",
-        )
+        if (dimensions != 1) {
+            throw JvmUnsupportedInstructionException(
+                "Unsupported ${instruction.metadata.mnemonic} allocation for $arrayClassName " +
+                    "with $dimensions dimension(s) at offset ${instruction.offset}",
+            )
+        }
+        operandStack.push(allocateOneDimensionalArray(arrayClassName, counts.single(), heap, instruction))
+    }
+
+    private fun allocateOneDimensionalArray(
+        arrayClassName: String,
+        count: Int,
+        heap: JvmHeap,
+        instruction: DecodedInstruction,
+    ): JvmObjectReferenceValue {
+        return when (arrayClassName) {
+            "[Z" -> heap.allocateBooleanArray(count)
+            "[B" -> heap.allocateByteArray(count)
+            "[C" -> heap.allocateCharArray(count)
+            "[D" -> heap.allocateDoubleArray(count)
+            "[F" -> heap.allocateFloatArray(count)
+            "[I" -> heap.allocateIntArray(count)
+            "[J" -> heap.allocateLongArray(count)
+            "[S" -> heap.allocateShortArray(count)
+            else -> when {
+                arrayClassName.startsWith("[L") && arrayClassName.endsWith(";") ->
+                    heap.allocateReferenceArray(arrayClassName.substring(2, arrayClassName.length - 1), count)
+                arrayClassName.startsWith("[[") ->
+                    heap.allocateReferenceArray(arrayClassName.substring(1), count)
+                else -> throw JvmUnsupportedInstructionException(
+                    "Invalid ${instruction.metadata.mnemonic} array class $arrayClassName at offset " +
+                        "${instruction.offset}: expected array class descriptor",
+                )
+            }
+        }
     }
 
     private fun executeArrayLength(
