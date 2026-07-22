@@ -43,7 +43,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.6.5 | Abrupt method invocation completion exposes frame completion results carrying guest throwable references | `jvm-runtime` | `JvmMethodCompletionTest`, `JvmExecutionFrameTest` | IMPLEMENTED |
 | 2.7 | Objects are represented as heap entries with opaque identities, class names, VM-owned payloads, initialization state, and per-reference instance fields | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.8 | Floating-point arithmetic implements float and double add, subtract, multiply, divide, remainder, negation, and comparison with IEEE 754 edge-case behavior | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
-| 2.9.1 | Instance initialization methods | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| 2.9.1 | Instance initialization methods create uninitialized guest objects, restrict `<init>` lookup/invocation, verify uninitialized `this`/`new` transitions, and mark receivers initialized after constructor completion | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | `JvmHeapTest`, `JvmMethodResolutionTest`, `JvmInterpreterTest.*invokespecial*`, `InvokeSpecialInstructionVerifierTest`, `ObjectInitializationRulesTest`, `UninitializedThisRulesTest` | IMPLEMENTED |
 | 2.9.2 | Class initialization methods | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.9.3 | Signature polymorphic methods | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 2.11.10 | Guest monitor ownership state tracks object monitor owner thread and reentrant hold count | `jvm-runtime` | `JvmMonitorStateTest` | IMPLEMENTED |
