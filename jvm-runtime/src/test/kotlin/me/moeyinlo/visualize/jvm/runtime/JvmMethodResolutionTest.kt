@@ -273,6 +273,59 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `interface method target resolution rejects unrelated default method conflict`() {
+        val leftCode = byteArrayOf(0x05)
+        val rightCode = byteArrayOf(0x06)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("LeftFace", "RightFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "LeftFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = leftCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "RightFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = rightCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIncompatibleClassChangeError> {
+            hierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+            )
+        }
+
+        assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
+        assertEquals("Example.value:()I", exception.message)
+    }
+
+    @Test
     fun `class initialization method lookup returns declared static void clinit only`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

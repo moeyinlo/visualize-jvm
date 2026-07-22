@@ -204,12 +204,7 @@ class JvmClassHierarchy(
         return receiverClass.findDeclaredMethod(name, descriptor)
             ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
             ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
-            ?: findMaximallySpecificInterfaceMethod(receiverClass.interfaceNames, name, descriptor)
-                ?.takeIf { method -> !method.isAbstract }
-            ?: throw JvmNoSuchMethodError(
-                guestClassName = "java/lang/NoSuchMethodError",
-                message = "$receiverClassName.$name:$descriptor",
-            )
+            ?: selectMaximallySpecificInterfaceMethod(receiverClassName, receiverClass.interfaceNames, name, descriptor)
     }
 
     fun classInitializationMethod(ownerClassName: String): JvmResolvedMethod? {
@@ -289,18 +284,30 @@ class JvmClassHierarchy(
         return null
     }
 
-    private fun findMaximallySpecificInterfaceMethod(
+    private fun selectMaximallySpecificInterfaceMethod(
+        receiverClassName: String,
         interfaceNames: List<String>,
         name: String,
         descriptor: String,
-    ): JvmResolvedMethod? {
+    ): JvmResolvedMethod {
         val candidates = collectInterfaceMethods(interfaceNames, name, descriptor)
-            .filterNot { method -> method.isAbstract }
-        return candidates.singleOrNull { candidate ->
+        val maximallySpecificMethods = candidates.filter { candidate ->
             candidates.none { other ->
                 other.ownerClassName != candidate.ownerClassName &&
                     isAssignable(other.ownerClassName, candidate.ownerClassName)
             }
+        }
+        val concreteMethods = maximallySpecificMethods.filterNot { method -> method.isAbstract }
+        return when (concreteMethods.size) {
+            1 -> concreteMethods.single()
+            0 -> throw JvmAbstractMethodError(
+                guestClassName = "java/lang/AbstractMethodError",
+                message = "$receiverClassName.$name:$descriptor",
+            )
+            else -> throw JvmIncompatibleClassChangeError(
+                guestClassName = "java/lang/IncompatibleClassChangeError",
+                message = "$receiverClassName.$name:$descriptor",
+            )
         }
     }
 
@@ -406,3 +413,13 @@ class JvmNoSuchMethodError(
     val guestClassName: String,
     message: String,
 ) : NoSuchMethodError(message)
+
+class JvmIncompatibleClassChangeError(
+    val guestClassName: String,
+    message: String,
+) : IncompatibleClassChangeError(message)
+
+class JvmAbstractMethodError(
+    val guestClassName: String,
+    message: String,
+) : AbstractMethodError(message)
