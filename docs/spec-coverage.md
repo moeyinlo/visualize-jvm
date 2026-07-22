@@ -41,7 +41,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.6.3 | Dynamic linking resolves runtime constant pool symbolic class, field, method, literal, and string entries and caches resolved constants | `jvm-runtime` | `JvmRuntimeDynamicLinkerTest` | IMPLEMENTED |
 | 2.6.4 | Normal method invocation completion validates void and value returns against method descriptors and exposes frame completion results | `jvm-runtime` | `JvmMethodCompletionTest`, `JvmExecutionFrameTest` | IMPLEMENTED |
 | 2.6.5 | Abrupt method invocation completion exposes frame completion results carrying guest throwable references | `jvm-runtime` | `JvmMethodCompletionTest`, `JvmExecutionFrameTest` | IMPLEMENTED |
-| 2.7 | Representation of objects | `jvm-runtime` | TBD | PENDING |
+| 2.7 | Objects are represented as heap entries with opaque identities, class names, VM-owned payloads, initialization state, and per-reference instance fields | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.8 | Floating-point arithmetic | `jvm-interpreter` | TBD | PENDING |
 | 2.9.1 | Instance initialization methods | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | 2.9.2 | Class initialization methods | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
