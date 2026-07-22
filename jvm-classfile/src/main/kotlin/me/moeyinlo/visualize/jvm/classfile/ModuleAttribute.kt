@@ -46,6 +46,7 @@ object ModuleAttributeParser : AttributeBodyParser {
     private const val AllowedModuleFlags = AccOpen or AccSynthetic or AccMandated
     private const val AllowedRequiresFlags = AccTransitive or AccStaticPhase or AccSynthetic or AccMandated
     private const val AllowedExportsFlags = AccSynthetic or AccMandated
+    private const val AllowedOpensFlags = AccSynthetic or AccMandated
 
     override fun parse(context: AttributeParseContext): AttributeInfo {
         val moduleNameIndex = readRequiredIndex<ConstantModuleEntry>(context, "${context.ownerPath}.module_name_index")
@@ -210,6 +211,11 @@ object ModuleAttributeParser : AttributeBodyParser {
             val ownerPath = "${context.ownerPath}.opens[$index]"
             val opensIndex = readRequiredIndex<ConstantPackageEntry>(context, "$ownerPath.opens_index")
             val opensFlags = context.reader.readU2()
+            requireAllowedFlags(
+                flags = opensFlags,
+                allowedMask = AllowedOpensFlags,
+                role = "$ownerPath.opens_flags",
+            )
             val opensToIndexes = parseModuleIndexList(context, "$ownerPath.opens_to_index", context.reader.readU2())
             requireUniqueConstantPoolIndexes(
                 indexes = opensToIndexes,
