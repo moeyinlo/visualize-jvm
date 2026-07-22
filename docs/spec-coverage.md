@@ -36,7 +36,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.6 | Execution frame model binds a resolved method to local variables, operand stack, runtime constant pool, and pc state | `jvm-runtime` | `JvmExecutionFrameTest` | IMPLEMENTED |
 | 2.6.1 | Local variable arrays are frame-scoped slot arrays used by interpreter load/store instructions with category-one and category-two slot rules | `jvm-runtime`, `jvm-interpreter` | `JvmLocalVariablesTest`, `JvmInterpreterTest` | IMPLEMENTED |
 | 2.6.1 | Runtime local variable array stores category-one values and category-two values in consecutive slots with lower-index addressing | `jvm-runtime` | `JvmLocalVariablesTest` | IMPLEMENTED |
-| 2.6.2 | Operand stacks | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.6.2 | Operand stacks are frame-scoped LIFO slot stacks used by interpreter execution with category-one/category-two depth accounting | `jvm-runtime`, `jvm-interpreter` | `JvmOperandStackTest`, `JvmInterpreterTest` | IMPLEMENTED |
 | 2.6.2 | Runtime operand stack LIFO, slot depth, underflow, and `max_stack` bounds | `jvm-runtime` | `JvmOperandStackTest` | IMPLEMENTED |
 | 2.6.3 | Dynamic linking | `jvm-runtime` | TBD | PENDING |
 | 2.6.4 | Normal method invocation completion | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
