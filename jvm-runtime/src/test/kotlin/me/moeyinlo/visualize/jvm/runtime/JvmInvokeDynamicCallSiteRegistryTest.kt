@@ -489,6 +489,49 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `method handle resolver resolves get field targets through the class hierarchy`() {
+        val target = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTarget(
+            constantPool = bootstrapInvocationConstantPool(),
+            classHierarchy = staticFieldTargetHierarchy(isStatic = false),
+            methodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.GetField,
+                referenceIndex = 25,
+            ),
+        )
+
+        assertEquals(
+            JvmMethodHandleTarget.Field(
+                JvmResolvedField(
+                    ownerClassName = "pkg/Arg",
+                    name = "field",
+                    descriptor = "I",
+                    isStatic = false,
+                ),
+            ),
+            target,
+        )
+    }
+
+    @Test
+    fun `method handle resolver rejects get field targets that resolve to static fields`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTarget(
+                constantPool = bootstrapInvocationConstantPool(),
+                classHierarchy = staticFieldTargetHierarchy(isStatic = true),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.GetField,
+                    referenceIndex = 25,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle GetField target pkg/Arg.field:I resolved to a static field",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `method handle resolver rejects invoke virtual targets that resolve to static methods`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
@@ -704,14 +747,14 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                 constantPool = bootstrapInvocationConstantPool(),
                 classHierarchy = JvmClassHierarchy(),
                 methodHandle = JvmMethodHandlePayload(
-                    referenceKind = JvmMethodHandleReferenceKind.GetField,
+                    referenceKind = JvmMethodHandleReferenceKind.PutField,
                     referenceIndex = 25,
                 ),
             )
         }
 
         assertEquals(
-            "MethodHandle reference kind GetField target resolution is not implemented yet",
+            "MethodHandle reference kind PutField target resolution is not implemented yet",
             exception.message,
         )
     }

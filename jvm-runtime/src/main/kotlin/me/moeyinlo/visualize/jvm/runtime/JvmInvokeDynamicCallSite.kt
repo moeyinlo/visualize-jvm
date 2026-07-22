@@ -225,20 +225,31 @@ object JvmInvokeDynamicCallSiteResolver {
         methodHandle: JvmMethodHandlePayload,
     ): JvmMethodHandleTarget =
         when (methodHandle.referenceKind) {
+            JvmMethodHandleReferenceKind.GetField -> JvmMethodHandleTarget.Field(
+                resolveFieldMethodHandleTarget(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodHandle = methodHandle,
+                    operationName = "GetField",
+                    expectStatic = false,
+                ),
+            )
             JvmMethodHandleReferenceKind.GetStatic -> JvmMethodHandleTarget.Field(
-                resolveStaticMethodHandleTargetField(
+                resolveFieldMethodHandleTarget(
                     constantPool = constantPool,
                     classHierarchy = classHierarchy,
                     methodHandle = methodHandle,
                     operationName = "GetStatic",
+                    expectStatic = true,
                 ),
             )
             JvmMethodHandleReferenceKind.PutStatic -> JvmMethodHandleTarget.Field(
-                resolveStaticMethodHandleTargetField(
+                resolveFieldMethodHandleTarget(
                     constantPool = constantPool,
                     classHierarchy = classHierarchy,
                     methodHandle = methodHandle,
                     operationName = "PutStatic",
+                    expectStatic = true,
                 ),
             )
 
@@ -255,9 +266,7 @@ object JvmInvokeDynamicCallSiteResolver {
                 ),
             )
 
-            JvmMethodHandleReferenceKind.GetField,
-            JvmMethodHandleReferenceKind.PutField,
-            -> throw JvmInvokeDynamicLinkageException(
+            JvmMethodHandleReferenceKind.PutField -> throw JvmInvokeDynamicLinkageException(
                 "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
             )
         }
@@ -392,11 +401,12 @@ object JvmInvokeDynamicCallSiteResolver {
         }
     }
 
-    private fun resolveStaticMethodHandleTargetField(
+    private fun resolveFieldMethodHandleTarget(
         constantPool: ConstantPool,
         classHierarchy: JvmClassHierarchy,
         methodHandle: JvmMethodHandlePayload,
         operationName: String,
+        expectStatic: Boolean,
     ): JvmResolvedField {
         val referenceIndex = ConstantPoolIndex(methodHandle.referenceIndex)
         val fieldReferenceEntry = constantPoolEntry(constantPool, referenceIndex)
@@ -412,10 +422,16 @@ object JvmInvokeDynamicCallSiteResolver {
             fieldReferenceEntry = fieldReferenceEntry,
             referenceIndex = referenceIndex,
         )
-        if (!resolvedField.isStatic) {
+        if (expectStatic && !resolvedField.isStatic) {
             throw JvmInvokeDynamicLinkageException(
                 "MethodHandle $operationName target ${resolvedField.ownerClassName}.${resolvedField.name}:" +
                     "${resolvedField.descriptor} resolved to a non-static field",
+            )
+        }
+        if (!expectStatic && resolvedField.isStatic) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle $operationName target ${resolvedField.ownerClassName}.${resolvedField.name}:" +
+                    "${resolvedField.descriptor} resolved to a static field",
             )
         }
         return resolvedField
