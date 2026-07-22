@@ -11575,6 +11575,101 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc2_w pushes category two cached dynamic constants`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+        dynamicConstants.bind(JvmRuntimeConstantPoolIndex(4), JvmLongValue(9_876_543_210L))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x04.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("wideLong", "wideLong".encodeToByteArray()),
+                    ConstantUtf8Entry("J", "J".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(nameIndex = ConstantPoolIndex(1), descriptorIndex = ConstantPoolIndex(2)),
+                    ConstantDynamicEntry(
+                        bootstrapMethodIndex = BootstrapMethodIndex(0),
+                        nameAndTypeIndex = ConstantPoolIndex(3),
+                    ),
+                ),
+            ),
+            dynamicConstants = dynamicConstants,
+        )
+
+        assertEquals(listOf(JvmLongValue(9_876_543_210L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `ldc2_w rejects unresolved dynamic constants with bootstrap resolution diagnostic`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x14.toByte(),
+                    0x00.toByte(),
+                    0x04.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("unresolvedLong", "unresolvedLong".encodeToByteArray()),
+                        ConstantUtf8Entry("J", "J".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(1),
+                            descriptorIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(3),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(exception.message!!.contains("CONSTANT_Dynamic #4"))
+        assertTrue(exception.message!!.contains("requires bootstrap resolution"))
+    }
+
+    @Test
+    fun `ldc2_w rejects category one cached dynamic constants`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+        dynamicConstants.bind(JvmRuntimeConstantPoolIndex(4), JvmIntValue(42))
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x14.toByte(),
+                    0x00.toByte(),
+                    0x04.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("narrowInt", "narrowInt".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(1),
+                            descriptorIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(3),
+                        ),
+                    ),
+                ),
+                dynamicConstants = dynamicConstants,
+            )
+        }
+
+        assertTrue(exception.message!!.contains("expected category 2 value but was category 1"))
+    }
+
+    @Test
     fun `constant execution respects max stack bounds`() {
         assertFailsWith<JvmOperandStackOverflowException> {
             JvmInterpreter.execute(

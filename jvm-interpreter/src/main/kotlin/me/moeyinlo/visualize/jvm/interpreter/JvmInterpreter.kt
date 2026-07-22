@@ -526,7 +526,7 @@ object JvmInterpreter {
             0x12,
             0x13,
             -> executeLdc(instruction, operandStack, constantPool, heap, dynamicConstants)
-            0x14 -> executeLdc2(instruction, operandStack, constantPool)
+            0x14 -> executeLdc2(instruction, operandStack, constantPool, dynamicConstants)
             0x15,
             in 0x1A..0x1D,
             -> executeIntLoad(instruction, operandStack, localVariables)
@@ -3585,6 +3585,7 @@ object JvmInterpreter {
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
+        dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -3596,6 +3597,19 @@ object JvmInterpreter {
         }
         when (entry) {
             is ConstantDoubleEntry -> operandStack.push(JvmDoubleValue(entry.value))
+            is ConstantDynamicEntry -> {
+                val value = dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(index.value))
+                    ?: throw JvmUnsupportedInstructionException(
+                        "CONSTANT_Dynamic $index at offset ${instruction.offset} requires bootstrap resolution",
+                    )
+                if (value.category.slotWidth != 2) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc2_w CONSTANT_Dynamic $index at offset ${instruction.offset}: " +
+                            "expected category 2 value but was category ${value.category.slotWidth}",
+                    )
+                }
+                operandStack.push(value)
+            }
             is ConstantLongEntry -> operandStack.push(JvmLongValue(entry.value))
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ldc2_w constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
