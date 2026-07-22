@@ -5,15 +5,15 @@ This audit is derived from `docs/spec-coverage.md` after the Phase 20 documentat
 ## Ledger status summary
 
 - DIFFERENTIAL: 1
-- IMPLEMENTED: 1057
-- PENDING: 68
+- IMPLEMENTED: 1058
+- PENDING: 67
 
 ## Pending rows by section
 
 - Chapter 2 - JVM Structure: 4 pending row(s)
 - Chapter 4 - Class File Format: 14 pending row(s)
 - Chapter 5 - Loading, Linking, and Initializing: 22 pending row(s)
-- Chapters 6 and 7 - Instruction Set and Opcode Mnemonics: 23 pending row(s)
+- Chapters 6 and 7 - Instruction Set and Opcode Mnemonics: 22 pending row(s)
 - Project-Specific Native and Host Coverage: 5 pending row(s)
 
 ## Highest-priority pending normative paths

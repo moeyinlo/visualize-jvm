@@ -12828,6 +12828,66 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `athrow throws a non null guest throwable reference`() {
+        val heap = JvmHeap()
+        val throwable = heap.allocateObject("java/lang/RuntimeException")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, throwable)
+
+        val exception = assertFailsWith<JvmThrownException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xBF.toByte(),
+                ),
+                maxStack = 1,
+                heap = heap,
+                localVariables = localVariables,
+            )
+        }
+
+        assertEquals(throwable, exception.throwable)
+        assertEquals(
+            "Unhandled guest exception java/lang/RuntimeException thrown by athrow at offset 1",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `athrow of null throws guest NullPointerException`() {
+        val exception = assertFailsWith<JvmNullPointerException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0xBF.toByte(),
+                ),
+                maxStack = 1,
+            )
+        }
+
+        assertEquals("java/lang/NullPointerException", exception.guestClassName)
+        assertEquals("athrow of null objectref at offset 1", exception.message)
+    }
+
+    @Test
+    fun `athrow rejects non reference operand stack values`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x03.toByte(),
+                    0xBF.toByte(),
+                ),
+                maxStack = 1,
+            )
+        }
+
+        assertEquals(
+            "Invalid athrow objectref at offset 1: expected JvmReferenceValue but was JvmIntValue",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `invokevirtual executes bound native intrinsic methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")

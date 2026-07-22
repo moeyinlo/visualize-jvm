@@ -1034,7 +1034,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `newarray` with `atype=T_SHORT` pops an int count and allocates a zero-initialized guest `short[]` heap object | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Object and arrays | `new`, `newarray`, `anewarray`, `arraylength`, `multianewarray` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Type checks | `checkcast`, `instanceof` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
-| Exceptions | `athrow` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
+| Exceptions | `athrow` throws non-null guest throwable references as escaped guest exceptions, converts null objectrefs to guest `NullPointerException`, rejects non-reference operands, and is marked executable in opcode coverage | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | `JvmInterpreterTest.*athrow*`, `OpcodeExecutionCoverageTest`, `AthrowInstructionVerifierTest` | IMPLEMENTED |
 | Synchronization | `monitorenter`, `monitorexit` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Extended | `wide` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Reserved | `breakpoint`, `impdep1`, `impdep2` | `jvm-interpreter` | TBD | PENDING |

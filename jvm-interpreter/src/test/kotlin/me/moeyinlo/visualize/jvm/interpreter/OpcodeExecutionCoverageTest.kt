@@ -26,7 +26,6 @@ class OpcodeExecutionCoverageTest {
             listOf(
                 "invokeinterface",
                 "invokedynamic",
-                "athrow",
                 "monitorenter",
                 "monitorexit",
                 "multianewarray",

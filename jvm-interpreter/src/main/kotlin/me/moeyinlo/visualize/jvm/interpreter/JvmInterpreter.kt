@@ -57,6 +57,11 @@ private data class JvmFrameExecutionResult(
 
 class JvmUnsupportedInstructionException(message: String) : IllegalStateException(message)
 
+class JvmThrownException(
+    val throwable: JvmObjectReferenceValue,
+    message: String,
+) : RuntimeException(message)
+
 class JvmArithmeticException(
     val guestClassName: String,
     message: String,
@@ -418,6 +423,7 @@ object JvmInterpreter {
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
             0xBE -> executeArrayLength(instruction, operandStack, heap)
+            0xBF -> executeAThrow(instruction, operandStack, heap)
             0xC0 -> executeCheckCast(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
@@ -3249,6 +3255,33 @@ object JvmInterpreter {
                 "Unsupported ldc2_w constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
             )
         }
+    }
+
+    private fun executeAThrow(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+    ) {
+        val value = operandStack.pop()
+        if (value !is JvmReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} objectref at offset " +
+                    "${instruction.offset}: expected JvmReferenceValue but was ${value.javaClass.simpleName}",
+            )
+        }
+        if (value == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "athrow of null objectref at offset ${instruction.offset}",
+            )
+        }
+
+        val throwable = value as JvmObjectReferenceValue
+        val throwableClassName = heap.get(throwable).className
+        throw JvmThrownException(
+            throwable = throwable,
+            message = "Unhandled guest exception $throwableClassName thrown by athrow at offset ${instruction.offset}",
+        )
     }
 
     private fun executeCheckCast(
