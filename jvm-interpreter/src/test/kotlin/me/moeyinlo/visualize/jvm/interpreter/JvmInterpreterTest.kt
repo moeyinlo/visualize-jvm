@@ -12890,6 +12890,72 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual executes signature polymorphic method handle native call sites`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("java/lang/invoke/MethodHandle")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x06.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry(
+                        "java/lang/invoke/MethodHandle",
+                        "java/lang/invoke/MethodHandle".encodeToByteArray(),
+                    ),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("invokeExact", "invokeExact".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)J", "(I)J".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "java/lang/invoke/MethodHandle",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "invokeExact",
+                                descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                                isStatic = false,
+                                isNative = true,
+                                isVarargs = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey(
+                    ownerClassName = "java/lang/invoke/MethodHandle",
+                    name = "invokeExact",
+                    descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                    isStatic = false,
+                ) to JvmNativeMethodIntrinsic { _, invocation ->
+                    assertEquals(receiver, invocation.receiver)
+                    assertEquals(listOf(JvmIntValue(3)), invocation.arguments)
+                    JvmLongValue(11L)
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmLongValue(11L)), result.operandStack.toList())
+        assertEquals(2, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokevirtual passes int arguments into callee locals after receiver`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")

@@ -162,6 +162,7 @@ class JvmClassHierarchy(
                 message = receiverClassName,
             )
         return receiverClass.findDeclaredMethod(name, descriptor)
+            ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
             ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
             ?: throw JvmNoSuchMethodError(
                 guestClassName = "java/lang/NoSuchMethodError",
