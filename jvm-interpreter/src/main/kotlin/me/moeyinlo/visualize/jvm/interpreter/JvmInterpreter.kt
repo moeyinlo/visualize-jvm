@@ -4621,6 +4621,21 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 linkedCallSite = linkedCallSite,
             )
+            JvmMethodHandleReferenceKind.InvokeInterface -> executeLinkedInvokeDynamicInterfaceTarget(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                linkedCallSite = linkedCallSite,
+            )
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported invokedynamic linked target for ${linkedCallSite.spec.name}:" +
                     "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
@@ -4887,6 +4902,179 @@ object JvmInterpreter {
         val returnValue = frameResult.returnValue
             ?: throw JvmUnsupportedInstructionException(
                 "Instance method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} completed without returning a value",
+            )
+        requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
+        requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
+        operandStack.push(returnValue)
+    }
+
+    private fun executeLinkedInvokeDynamicInterfaceTarget(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
+        val resolvedMethod = linkedCallSite.targetMethod
+        requireInstanceMethod(instruction, resolvedMethod)
+        requireVirtualMethodName(resolvedMethod)
+        val expectedDescriptor = resolvedMethod.invokeVirtualMethodHandleDescriptor()
+        requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, expectedDescriptor)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
+        val arguments = argumentDescriptors
+            .asReversed()
+            .map { descriptor ->
+                val value = operandStack.pop()
+                requireMethodArgumentValue(instruction, resolvedMethod, descriptor, value)
+                requireReferenceMethodArgumentAssignable(
+                    instruction,
+                    resolvedMethod,
+                    descriptor,
+                    value,
+                    heap,
+                    classHierarchy,
+                )
+                value
+            }
+            .asReversed()
+        val receiver = operandStack.pop()
+        if (receiver == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "Cannot invoke dynamic interface target " +
+                    "${resolvedMethod.ownerClassName}.${resolvedMethod.name}:${resolvedMethod.descriptor} " +
+                    "on null object reference",
+            )
+        }
+        if (receiver !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic interface receiver for ${resolvedMethod.ownerClassName}." +
+                    "${resolvedMethod.name}:${resolvedMethod.descriptor} at offset ${instruction.offset}: " +
+                    "expected reference but was ${receiver.javaClass.simpleName}",
+            )
+        }
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, resolvedMethod.ownerClassName)) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic interface receiver for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} at offset ${instruction.offset}: " +
+                    "$receiverClassName is not assignable to ${resolvedMethod.ownerClassName}",
+            )
+        }
+        requireNonConstructorReceiverInitialized(resolvedMethod, receiver, heap)
+        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        val targetMethod = try {
+            classHierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = receiverClassName,
+                name = resolvedMethod.name,
+                descriptor = resolvedMethod.descriptor,
+            )
+        } catch (exception: me.moeyinlo.visualize.jvm.runtime.JvmIncompatibleClassChangeError) {
+            throw JvmIncompatibleClassChangeError(
+                guestClassName = exception.guestClassName,
+                message = exception.message ?: "$receiverClassName.${resolvedMethod.name}:${resolvedMethod.descriptor}",
+            )
+        } catch (exception: me.moeyinlo.visualize.jvm.runtime.JvmAbstractMethodError) {
+            throw JvmAbstractMethodError(
+                guestClassName = exception.guestClassName,
+                message = exception.message ?: "$receiverClassName.${resolvedMethod.name}:${resolvedMethod.descriptor}",
+            )
+        }
+        requireInstanceMethod(instruction, targetMethod)
+        if (targetMethod.isAbstract) {
+            throw JvmAbstractMethodError(
+                guestClassName = "java/lang/AbstractMethodError",
+                message = "${targetMethod.ownerClassName}.${targetMethod.name}:${targetMethod.descriptor}",
+            )
+        }
+        if (targetMethod.isNative) {
+            val nativeReturnValue = executeNativeMethod(
+                instruction = instruction,
+                method = targetMethod,
+                receiver = receiver,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = targetMethod.ownerClassName,
+            )
+            val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
+            if (returnDescriptor == "V") {
+                if (nativeReturnValue != null) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid invokedynamic interface native return for ${targetMethod.ownerClassName}." +
+                            "${targetMethod.name}:${targetMethod.descriptor}: expected void but returned " +
+                            nativeReturnValue.javaClass.simpleName,
+                    )
+                }
+                return
+            }
+            val returnValue = nativeReturnValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Native method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                        "${targetMethod.descriptor} completed without returning a value",
+                )
+            requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
+            requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
+            operandStack.push(returnValue)
+            return
+        }
+        val methodCode = targetMethod.code
+            ?: throw JvmUnsupportedInstructionException(
+                "Resolved interface target method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "${targetMethod.descriptor} has no Code attribute for invokedynamic interface",
+            )
+        val calleeLocals = JvmLocalVariables(maxLocals = targetMethod.maxLocals)
+        calleeLocals.store(0, receiver)
+        var localIndex = 1
+        for (argument in arguments) {
+            calleeLocals.store(localIndex, argument)
+            localIndex += argument.category.slotWidth
+        }
+        val frameResult = executeFrame(
+            code = methodCode,
+            maxStack = targetMethod.maxStack,
+            constantPool = constantPool,
+            heap = heap,
+            localVariables = calleeLocals,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            currentClassName = targetMethod.ownerClassName,
+            allowReturn = true,
+            exceptionHandlers = targetMethod.exceptionHandlers,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+        )
+        val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
+        if (returnDescriptor == "V") {
+            if (frameResult.returnValue != null) {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid invokedynamic interface return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                        "${targetMethod.descriptor}: expected void but returned " +
+                        frameResult.returnValue.javaClass.simpleName,
+                )
+            }
+            return
+        }
+        val returnValue = frameResult.returnValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Interface target method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
                     "${targetMethod.descriptor} completed without returning a value",
             )
         requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)

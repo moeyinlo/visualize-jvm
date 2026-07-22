@@ -16774,6 +16774,94 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic executes cached invoke interface target using receiver dispatch`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Impl")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/TargetInterface",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x04.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Impl",
+                    interfaceNames = listOf("pkg/TargetInterface"),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 1),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "value",
+                    descriptor = "(Lpkg/TargetInterface;)I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/TargetInterface",
+                    name = "value",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicInterfaceReceiverCallSiteConstantPool(),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokedynamic keeps unsupported linked target method handles explicit`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(
@@ -16807,7 +16895,7 @@ class JvmInterpreterTest {
                     descriptor = "()I",
                 ),
                 targetMethodHandle = JvmMethodHandlePayload(
-                    referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
                     referenceIndex = 1,
                 ),
                 targetMethod = classHierarchy.resolveMethod(
@@ -16837,7 +16925,7 @@ class JvmInterpreterTest {
 
         assertEquals(
             "Unsupported invokedynamic linked target for answer:()I at offset 0: " +
-                "target method handle InvokeInterface execution is not implemented yet",
+                "target method handle NewInvokeSpecial execution is not implemented yet",
             exception.message,
         )
     }
@@ -17127,6 +17215,25 @@ class JvmInterpreterTest {
                 ),
                 ConstantUtf8Entry("value", "value".encodeToByteArray()),
                 ConstantUtf8Entry("(Lpkg/Base;)I", "(Lpkg/Base;)I".encodeToByteArray()),
+            ),
+        )
+
+    private fun invokedynamicInterfaceReceiverCallSiteConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                ConstantUtf8Entry(
+                    "(Lpkg/TargetInterface;)I",
+                    "(Lpkg/TargetInterface;)I".encodeToByteArray(),
+                ),
             ),
         )
 
