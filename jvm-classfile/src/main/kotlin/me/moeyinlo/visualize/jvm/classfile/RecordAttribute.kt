@@ -48,20 +48,32 @@ object RecordAttributeParser : AttributeBodyParser {
         ownerPath: String,
     ) {
         val signaturePaths = mutableListOf<String>()
+        val runtimeVisibleAnnotationsPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
-            if (name == "Signature") {
-                signaturePaths += "$ownerPath.attributes[$index]"
+            when (name) {
+                "Signature" -> signaturePaths += "$ownerPath.attributes[$index]"
+                "RuntimeVisibleAnnotations" -> runtimeVisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
             }
         }
-        if (signaturePaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid $ownerPath attributes: at most one Signature attribute is permitted " +
-                    "but found ${signaturePaths.size} at ${signaturePaths.joinToString()}",
-            )
-        }
+        requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
+        requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
     }
 
+
+    private fun requireAtMostOneAttribute(
+        paths: List<String>,
+        attributeName: String,
+        ownerPath: String,
+    ) {
+        if (paths.size <= 1) {
+            return
+        }
+        throw ClassFileFormatException(
+            "Invalid $ownerPath attributes: at most one $attributeName attribute is permitted " +
+                "but found ${paths.size} at ${paths.joinToString()}",
+        )
+    }
     private fun attributeName(
         context: AttributeParseContext,
         attribute: AttributeInfo,
