@@ -4586,6 +4586,13 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 linkedCallSite = linkedCallSite,
             )
+            JvmMethodHandleReferenceKind.PutField -> executeLinkedInvokeDynamicPutFieldTarget(
+                instruction = instruction,
+                operandStack = operandStack,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                linkedCallSite = linkedCallSite,
+            )
             JvmMethodHandleReferenceKind.GetStatic -> executeLinkedInvokeDynamicGetStaticTarget(
                 instruction = instruction,
                 operandStack = operandStack,
@@ -4675,12 +4682,6 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 linkedCallSite = linkedCallSite,
             )
-            else -> throw JvmUnsupportedInstructionException(
-                "Unsupported invokedynamic linked target for ${linkedCallSite.spec.name}:" +
-                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
-                    "target method handle ${linkedCallSite.targetMethodHandle.referenceKind} execution is not " +
-                    "implemented yet",
-            )
         }
     }
 
@@ -4739,6 +4740,63 @@ object JvmInterpreter {
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
         operandStack.push(value)
+    }
+
+    private fun executeLinkedInvokeDynamicPutFieldTarget(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+    ) {
+        val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic putfield target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: linked target is not a field",
+            )
+        val resolvedField = target.field
+        val expectedDescriptor = "(L${resolvedField.ownerClassName};${resolvedField.descriptor})V"
+        if (linkedCallSite.spec.descriptor != expectedDescriptor) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
+                    "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: target " +
+                    "${resolvedField.ownerClassName}.${resolvedField.name}:${resolvedField.descriptor} " +
+                    "does not match call site descriptor",
+            )
+        }
+        val value = operandStack.pop()
+        val receiver = operandStack.pop()
+        if (receiver == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "Cannot invoke dynamic putfield target " +
+                    "${resolvedField.ownerClassName}.${resolvedField.name}:${resolvedField.descriptor} " +
+                    "on null object reference",
+            )
+        }
+        if (receiver !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic putfield receiver for ${resolvedField.ownerClassName}." +
+                    "${resolvedField.name}:${resolvedField.descriptor} at offset ${instruction.offset}: " +
+                    "expected reference but was ${receiver.javaClass.simpleName}",
+            )
+        }
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, resolvedField.ownerClassName)) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid invokedynamic putfield receiver for ${resolvedField.ownerClassName}.${resolvedField.name}:" +
+                    "${resolvedField.descriptor} at offset ${instruction.offset}: " +
+                    "$receiverClassName is not assignable to ${resolvedField.ownerClassName}",
+            )
+        }
+        val field = JvmFieldReference(
+            ownerClassName = resolvedField.ownerClassName,
+            name = resolvedField.name,
+            descriptor = resolvedField.descriptor,
+        )
+        requireFieldValue(instruction, field, value)
+        requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
+        heap.putInstanceField(receiver, field, value)
     }
 
     private fun executeLinkedInvokeDynamicGetStaticTarget(
