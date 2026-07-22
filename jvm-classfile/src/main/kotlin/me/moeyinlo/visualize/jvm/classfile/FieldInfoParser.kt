@@ -70,6 +70,7 @@ object FieldInfoParser {
             val descriptor = expectUtf8(constantPool, field.descriptorIndex, "$ownerPath.descriptor_index")
             ClassNameValidator.validateUnqualifiedName(field.nameIndex, "$ownerPath.name_index", name.value)
             DescriptorValidator.validateFieldDescriptor(field.descriptorIndex, "$ownerPath.descriptor_index", descriptor.value)
+            validateFieldAttributes(field, constantPool, ownerPath)
 
             val duplicateOf = seenFields.putIfAbsent(name.value to descriptor.value, index)
             if (duplicateOf != null) {
@@ -80,6 +81,40 @@ object FieldInfoParser {
             }
         }
     }
+
+    private fun validateFieldAttributes(
+        field: FieldInfo,
+        constantPool: ConstantPool,
+        ownerPath: String,
+    ) {
+        val signaturePaths = mutableListOf<String>()
+        field.attributes.forEachIndexed { index, attribute ->
+            when (attributeName(attribute, constantPool, "$ownerPath.attributes[$index].attribute_name_index")) {
+                "Signature" -> signaturePaths += "$ownerPath.attributes[$index]"
+            }
+        }
+        requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
+    }
+
+    private fun requireAtMostOneAttribute(
+        paths: List<String>,
+        attributeName: String,
+        ownerPath: String,
+    ) {
+        if (paths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: at most one $attributeName attribute is permitted " +
+                    "but found ${paths.size} at ${paths.joinToString()}",
+            )
+        }
+    }
+
+    private fun attributeName(
+        attribute: AttributeInfo,
+        constantPool: ConstantPool,
+        role: String,
+    ): String =
+        expectUtf8(constantPool, attribute.nameIndex, role).value
 
     private fun validateAccessFlags(
         accessFlags: Int,

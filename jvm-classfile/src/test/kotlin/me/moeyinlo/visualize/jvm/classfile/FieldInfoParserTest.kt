@@ -150,6 +150,38 @@ class FieldInfoParserTest {
     }
 
     @Test
+    fun `rejects duplicate field Signature attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            FieldInfoParser.parseFields(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1, 0, 1, 0, 2, 0, 2,
+                        0, 3, 0, 0, 0, 2, 0, 4,
+                        0, 3, 0, 0, 0, 2, 0, 4,
+                    ),
+                    source = "bad-field-signature.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("Ljava/lang/Object;", "Ljava/lang/Object;".encodeToByteArray()),
+                        ConstantUtf8Entry("Signature", "Signature".encodeToByteArray()),
+                        ConstantUtf8Entry("Ljava/lang/String;", "Ljava/lang/String;".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+                classKind = ClassFileKind.Class,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("fields[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("Signature"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
+
+    @Test
     fun `rejects class fields with multiple access visibility flags`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             FieldInfoParser.parseFields(
