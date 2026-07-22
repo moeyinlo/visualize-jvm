@@ -182,6 +182,38 @@ class FieldInfoParserTest {
     }
 
     @Test
+    fun `rejects duplicate field ConstantValue attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            FieldInfoParser.parseFields(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1, 0, 1, 0, 2, 0, 2,
+                        0, 3, 0, 0, 0, 2, 0, 4,
+                        0, 3, 0, 0, 0, 2, 0, 4,
+                    ),
+                    source = "bad-field-constant-value.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantUtf8Entry("ConstantValue", "ConstantValue".encodeToByteArray()),
+                        ConstantIntegerEntry(1),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("ConstantValue" to ConstantValueAttributeParser),
+                classKind = ClassFileKind.Class,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("fields[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ConstantValue"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
+
+    @Test
     fun `rejects class fields with multiple access visibility flags`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             FieldInfoParser.parseFields(

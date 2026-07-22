@@ -87,12 +87,15 @@ object FieldInfoParser {
         constantPool: ConstantPool,
         ownerPath: String,
     ) {
+        val constantValuePaths = mutableListOf<String>()
         val signaturePaths = mutableListOf<String>()
         field.attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, "$ownerPath.attributes[$index].attribute_name_index")) {
+                "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$index]"
                 "Signature" -> signaturePaths += "$ownerPath.attributes[$index]"
             }
         }
+        requireAtMostOneAttribute(constantValuePaths, "ConstantValue", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
     }
 
