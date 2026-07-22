@@ -189,6 +189,13 @@ object ModuleAttributeParser : AttributeBodyParser {
                 role = "$ownerPath.exports_to",
                 fieldName = "exports_to_index",
             )
+            requireUniqueNames(
+                names = exportsToIndexes.mapIndexed { targetIndex, target ->
+                    moduleName(context, target, "$ownerPath.exports_to_index[$targetIndex]")
+                },
+                role = "$ownerPath.exports_to",
+                fieldName = "exports_to_index module name",
+            )
             ModuleExports(
                 exportsIndex = exportsIndex,
                 exportsFlags = exportsFlags,
