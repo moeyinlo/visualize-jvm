@@ -19,7 +19,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.3 | Primitive types and values | `jvm-runtime` | TBD | PENDING |
 | 2.3 | Primitive value runtime model and JVM slot categories | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
 | 2.3.1 | Integral runtime values cover `boolean`, `byte`, `char`, `short`, `int`, and `long`, including narrowed range checks and category-one/category-two slot widths | `jvm-runtime` | `JvmIntegralValueTest`, `JvmPrimitiveValueTest`, `JvmDataTypeModelTest` | IMPLEMENTED |
-| 2.3.2 | Floating-point types and values | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
+| 2.3.2 | Floating-point runtime values preserve IEEE 754 float and double values including infinities, NaN payloads, and signed zero bit patterns, and interpreter arithmetic covers floating-point value behavior | `jvm-runtime`, `jvm-interpreter` | `JvmFloatingPointValueTest`, `JvmInterpreterTest.*fadd*`, `JvmInterpreterTest.*dadd*`, `JvmInterpreterTest.*fsub*`, `JvmInterpreterTest.*dsub*`, `JvmInterpreterTest.*fmul*`, `JvmInterpreterTest.*dmul*`, `JvmInterpreterTest.*fdiv*`, `JvmInterpreterTest.*ddiv*`, `JvmInterpreterTest.*frem*`, `JvmInterpreterTest.*drem*`, `JvmInterpreterTest.*fcmp*`, `JvmInterpreterTest.*dcmp*` | IMPLEMENTED |
 | 2.3.3 | `returnAddress` runtime value model stores non-negative bytecode targets as category-one JVM values | `jvm-runtime` | `JvmReturnAddressValueTest` | IMPLEMENTED |
 | 2.3.4 | `boolean` runtime value model stores true/false as category-one JVM values | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
 | 2.4 | Reference types and values | `jvm-runtime` | TBD | PENDING |
