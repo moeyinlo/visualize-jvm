@@ -5209,6 +5209,42 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `aastore incompatible element transfers control to matching ArrayStoreException handler`() {
+        val heap = JvmHeap()
+        val arrayReference = heap.allocateReferenceArray("java/lang/Integer", 1)
+        val valueReference = heap.allocateObject("java/lang/String")
+        val locals = JvmLocalVariables(maxLocals = 3)
+        locals.store(0, arrayReference)
+        locals.store(1, valueReference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x03.toByte(),
+                0x2B.toByte(),
+                0x53.toByte(),
+                0x4D.toByte(),
+                0x06.toByte(),
+            ),
+            maxStack = 3,
+            heap = heap,
+            localVariables = locals,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 4,
+                    handlerPc = 4,
+                    catchClassName = "java/lang/ArrayStoreException",
+                ),
+            ),
+        )
+
+        val caught = locals.load(2) as JvmObjectReferenceValue
+        assertEquals("java/lang/ArrayStoreException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(3)), result.operandStack.toList())
+    }
+
+    @Test
     fun `aastore stores subclass object into superclass reference array`() {
         val heap = JvmHeap()
         val arrayReference = heap.allocateReferenceArray("java/lang/Number", 1)
