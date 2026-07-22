@@ -21,6 +21,13 @@ object ModulePackagesAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.packages",
             fieldName = "package_index",
         )
+        requireUniqueNames(
+            names = packageIndexes.mapIndexed { index, packageIndex ->
+                packageName(context, packageIndex, "${context.ownerPath}.package_index[$index]")
+            },
+            role = "${context.ownerPath}.packages",
+            fieldName = "package_index package name",
+        )
         return ModulePackagesAttribute(
             nameIndex = context.nameIndex,
             packageIndexes = packageIndexes,
@@ -60,6 +67,44 @@ private inline fun <reified T : ConstantPoolEntry> readRequiredIndex(
     return index
 }
 
+private fun packageName(
+    context: AttributeParseContext,
+    index: ConstantPoolIndex,
+    role: String,
+): String {
+    val packageEntry = expectEntryValue<ConstantPackageEntry>(
+        context = context,
+        role = role,
+        index = index,
+        expected = "CONSTANT_Package_info",
+    )
+    return expectEntryValue<ConstantUtf8Entry>(
+        context = context,
+        role = "$role.name_index",
+        index = packageEntry.nameIndex,
+        expected = "CONSTANT_Utf8_info",
+    ).value
+}
+
+private inline fun <reified T : ConstantPoolEntry> expectEntryValue(
+    context: AttributeParseContext,
+    role: String,
+    index: ConstantPoolIndex,
+    expected: String,
+): T {
+    val entry = try {
+        context.constantPool[index]
+    } catch (exception: ConstantPoolFormatException) {
+        throw ClassFileFormatException("Invalid $role=$index: ${exception.message}")
+    }
+    if (entry !is T) {
+        throw ClassFileFormatException(
+            "Invalid $role=$index: expected $expected but found ${entry.javaClass.simpleName}",
+        )
+    }
+    return entry
+}
+
 private fun requireUniqueConstantPoolIndexes(
     indexes: List<ConstantPoolIndex>,
     role: String,
@@ -69,6 +114,19 @@ private fun requireUniqueConstantPoolIndexes(
     indexes.forEach { index ->
         if (!seen.add(index)) {
             throw ClassFileFormatException("Invalid $role: duplicate $fieldName $index")
+        }
+    }
+}
+
+private fun requireUniqueNames(
+    names: List<String>,
+    role: String,
+    fieldName: String,
+) {
+    val seen = mutableSetOf<String>()
+    names.forEach { name ->
+        if (!seen.add(name)) {
+            throw ClassFileFormatException("Invalid $role: duplicate $fieldName '$name'")
         }
     }
 }
