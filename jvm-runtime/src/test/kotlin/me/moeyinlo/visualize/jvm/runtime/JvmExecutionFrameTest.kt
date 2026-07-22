@@ -52,6 +52,20 @@ class JvmExecutionFrameTest {
     }
 
     @Test
+    fun `execution frame completes normally through the resolved method descriptor`() {
+        val method = resolvedMethod(descriptor = "()I")
+        val frame = JvmExecutionFrame.create(
+            method = method,
+            runtimeConstantPool = JvmRuntimeConstantPool(ownerClassName = "Example", entries = emptyList()),
+        )
+
+        assertEquals(
+            JvmMethodCompletion.Normal(method = method, returnValue = JvmIntValue(42)),
+            frame.completeNormally(JvmIntValue(42)),
+        )
+    }
+
+    @Test
     fun `native execution frame has undefined pc and rejects bytecode pc moves`() {
         val frame = JvmExecutionFrame.create(
             method = resolvedMethod(isNative = true),
@@ -67,13 +81,14 @@ class JvmExecutionFrameTest {
     }
 
     private fun resolvedMethod(
+        descriptor: String = "()V",
         maxLocals: Int = 4,
         maxStack: Int = 4,
         isNative: Boolean = false,
     ): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "Example",
         name = "run",
-        descriptor = "()V",
+        descriptor = descriptor,
         isStatic = true,
         isNative = isNative,
         code = if (isNative) null else byteArrayOf(0xB1.toByte()),

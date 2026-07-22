@@ -19,6 +19,9 @@ class JvmExecutionFrame private constructor(
         programCounter = JvmProgramCounter.BytecodeOffset(offset)
     }
 
+    fun completeNormally(returnValue: JvmValue? = null): JvmMethodCompletion.Normal =
+        method.normalCompletion(returnValue)
+
     companion object {
         fun create(
             method: JvmResolvedMethod,
