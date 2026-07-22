@@ -57,8 +57,8 @@ object ModuleAttributeParser : AttributeBodyParser {
         )
     }
 
-    private fun parseRequires(context: AttributeParseContext): List<ModuleRequires> =
-        List(context.reader.readU2()) { index ->
+    private fun parseRequires(context: AttributeParseContext): List<ModuleRequires> {
+        val requires = List(context.reader.readU2()) { index ->
             val ownerPath = "${context.ownerPath}.requires[$index]"
             ModuleRequires(
                 requiresIndex = readRequiredIndex<ConstantModuleEntry>(context, "$ownerPath.requires_index"),
@@ -70,6 +70,13 @@ object ModuleAttributeParser : AttributeBodyParser {
                 ),
             )
         }
+        requireUniqueConstantPoolIndexes(
+            indexes = requires.map { it.requiresIndex },
+            role = "${context.ownerPath}.requires",
+            fieldName = "requires_index",
+        )
+        return requires
+    }
 
     private fun parseExports(context: AttributeParseContext): List<ModuleExports> =
         List(context.reader.readU2()) { index ->
@@ -154,6 +161,19 @@ object ModuleAttributeParser : AttributeBodyParser {
             throw ClassFileFormatException(
                 "Invalid $role=$index: expected $expected but found ${entry.javaClass.simpleName}",
             )
+        }
+    }
+
+    private fun requireUniqueConstantPoolIndexes(
+        indexes: List<ConstantPoolIndex>,
+        role: String,
+        fieldName: String,
+    ) {
+        val seen = mutableSetOf<ConstantPoolIndex>()
+        indexes.forEach { index ->
+            if (!seen.add(index)) {
+                throw ClassFileFormatException("Invalid $role: duplicate $fieldName $index")
+            }
         }
     }
 

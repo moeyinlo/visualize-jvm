@@ -67,6 +67,36 @@ class ModuleAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Module"), failure.message)
     }
 
+    @Test
+    fun `rejects duplicate Module requires indexes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 28,
+                        0, 3, 0, 0, 0, 0,
+                        0, 2,
+                        0, 6, 0, 0, 0, 0,
+                        0, 6, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].requires"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("duplicate requires_index #6"), failure.message)
+    }
+
     private fun moduleConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
