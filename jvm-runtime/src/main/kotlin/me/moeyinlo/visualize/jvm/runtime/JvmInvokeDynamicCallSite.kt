@@ -226,10 +226,19 @@ object JvmInvokeDynamicCallSiteResolver {
     ): JvmMethodHandleTarget =
         when (methodHandle.referenceKind) {
             JvmMethodHandleReferenceKind.GetStatic -> JvmMethodHandleTarget.Field(
-                resolveGetStaticMethodHandleTargetField(
+                resolveStaticMethodHandleTargetField(
                     constantPool = constantPool,
                     classHierarchy = classHierarchy,
                     methodHandle = methodHandle,
+                    operationName = "GetStatic",
+                ),
+            )
+            JvmMethodHandleReferenceKind.PutStatic -> JvmMethodHandleTarget.Field(
+                resolveStaticMethodHandleTargetField(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodHandle = methodHandle,
+                    operationName = "PutStatic",
                 ),
             )
 
@@ -246,7 +255,9 @@ object JvmInvokeDynamicCallSiteResolver {
                 ),
             )
 
-            else -> throw JvmInvokeDynamicLinkageException(
+            JvmMethodHandleReferenceKind.GetField,
+            JvmMethodHandleReferenceKind.PutField,
+            -> throw JvmInvokeDynamicLinkageException(
                 "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
             )
         }
@@ -381,16 +392,17 @@ object JvmInvokeDynamicCallSiteResolver {
         }
     }
 
-    private fun resolveGetStaticMethodHandleTargetField(
+    private fun resolveStaticMethodHandleTargetField(
         constantPool: ConstantPool,
         classHierarchy: JvmClassHierarchy,
         methodHandle: JvmMethodHandlePayload,
+        operationName: String,
     ): JvmResolvedField {
         val referenceIndex = ConstantPoolIndex(methodHandle.referenceIndex)
         val fieldReferenceEntry = constantPoolEntry(constantPool, referenceIndex)
         if (fieldReferenceEntry !is ConstantFieldRefEntry) {
             throw JvmInvokeDynamicLinkageException(
-                "MethodHandle GetStatic reference index $referenceIndex expected field reference but found " +
+                "MethodHandle $operationName reference index $referenceIndex expected field reference but found " +
                     fieldReferenceEntry.javaClass.simpleName,
             )
         }
@@ -402,7 +414,7 @@ object JvmInvokeDynamicCallSiteResolver {
         )
         if (!resolvedField.isStatic) {
             throw JvmInvokeDynamicLinkageException(
-                "MethodHandle GetStatic target ${resolvedField.ownerClassName}.${resolvedField.name}:" +
+                "MethodHandle $operationName target ${resolvedField.ownerClassName}.${resolvedField.name}:" +
                     "${resolvedField.descriptor} resolved to a non-static field",
             )
         }
