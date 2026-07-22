@@ -17,7 +17,7 @@ class ModuleAttributeParserTest {
                     0, 1,
                     0, 1,
                     0, 0, 0, 44,
-                    0, 3, 0, 0x20, 0, 4,
+                    0, 3, 0, 0, 0, 4,
                     0, 1, 0, 6, 0x80, 0x20, 0, 4,
                     0, 1, 0, 8, 0x10, 0, 0, 1, 0, 10,
                     0, 1, 0, 8, 0x80, 0, 0, 0,
@@ -33,7 +33,7 @@ class ModuleAttributeParserTest {
 
         val attribute = assertIs<ModuleAttribute>(attributes.single())
         assertEquals(ConstantPoolIndex(3), attribute.moduleNameIndex)
-        assertEquals(0x0020, attribute.moduleFlags)
+        assertEquals(0x0000, attribute.moduleFlags)
         assertEquals(ConstantPoolIndex(4), attribute.moduleVersionIndex)
         assertEquals(ModuleRequires(ConstantPoolIndex(6), 0x8020, ConstantPoolIndex(4)), attribute.requires.single())
         assertEquals(ModuleExports(ConstantPoolIndex(8), 0x1000, listOf(ConstantPoolIndex(10))), attribute.exports.single())
@@ -183,6 +183,36 @@ class ModuleAttributeParserTest {
 
         assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].requires_count=1"), failure.message)
         assertTrue(failure.message.orEmpty().contains("java.base module must not declare requires entries"), failure.message)
+    }
+
+    @Test
+    fun `rejects open module with opens entries`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 28,
+                        0, 3, 0, 0x20, 0, 0,
+                        0, 1,
+                        0, 6, 0, 0, 0, 0,
+                        0, 0,
+                        0, 1,
+                        0, 8, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].opens_count=1"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("open modules must not declare opens entries"), failure.message)
     }
 
     @Test

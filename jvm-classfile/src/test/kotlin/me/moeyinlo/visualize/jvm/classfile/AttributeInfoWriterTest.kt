@@ -765,7 +765,7 @@ class AttributeInfoWriterTest {
         val attribute = ModuleAttribute(
             nameIndex = ConstantPoolIndex(1),
             moduleNameIndex = ConstantPoolIndex(3),
-            moduleFlags = 0x0020,
+            moduleFlags = 0x0000,
             moduleVersionIndex = ConstantPoolIndex(4),
             requires = listOf(ModuleRequires(ConstantPoolIndex(6), 0x8020, ConstantPoolIndex(4))),
             exports = listOf(ModuleExports(ConstantPoolIndex(8), 0x1000, listOf(ConstantPoolIndex(10)))),
@@ -782,7 +782,7 @@ class AttributeInfoWriterTest {
                 0, 1,
                 0, 0, 0, 44,
                 0, 3,
-                0, 0x20,
+                0, 0,
                 0, 4,
                 0, 1,
                 0, 6,

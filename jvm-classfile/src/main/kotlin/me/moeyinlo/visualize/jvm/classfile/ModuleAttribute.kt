@@ -36,6 +36,7 @@ data class ModuleProvides(
 )
 
 object ModuleAttributeParser : AttributeBodyParser {
+    private const val AccOpen = 0x0020
     private const val AccStaticPhase = 0x0040
     private const val AccSynthetic = 0x1000
     private const val JavaBaseModuleName = "java.base"
@@ -56,7 +57,7 @@ object ModuleAttributeParser : AttributeBodyParser {
             moduleVersionIndex = moduleVersionIndex,
             requires = parseRequires(context, moduleNameIndex),
             exports = parseExports(context),
-            opens = parseOpens(context),
+            opens = parseOpens(context, moduleFlags),
             uses = parseUses(context),
             provides = parseProvides(context),
         )
@@ -166,7 +167,10 @@ object ModuleAttributeParser : AttributeBodyParser {
         return exports
     }
 
-    private fun parseOpens(context: AttributeParseContext): List<ModuleOpens> {
+    private fun parseOpens(
+        context: AttributeParseContext,
+        moduleFlags: Int,
+    ): List<ModuleOpens> {
         val opens = List(context.reader.readU2()) { index ->
             val ownerPath = "${context.ownerPath}.opens[$index]"
             val opensIndex = readRequiredIndex<ConstantPackageEntry>(context, "$ownerPath.opens_index")
@@ -188,6 +192,12 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.opens",
             fieldName = "opens_index",
         )
+        if (opens.isNotEmpty() && moduleFlags and AccOpen != 0) {
+            throw ClassFileFormatException(
+                "Invalid ${context.ownerPath}.opens_count=${opens.size}: " +
+                    "open modules must not declare opens entries",
+            )
+        }
         return opens
     }
 
