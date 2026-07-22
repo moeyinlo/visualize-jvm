@@ -223,7 +223,7 @@ object MethodInfoParser {
             )
         }
         val annotationDefault = annotationDefaultAttribute(method.attributes)
-        val expectedPrimitiveTag = primitiveElementValueTag(returnDescriptor(descriptor))
+        val expectedPrimitiveTag = scalarElementValueTag(returnDescriptor(descriptor))
         if (
             annotationDefaultPath != null &&
             annotationDefault != null &&
@@ -248,7 +248,7 @@ object MethodInfoParser {
     private fun annotationDefaultAttribute(attributes: List<AttributeInfo>): AnnotationDefaultAttribute? =
         attributes.filterIsInstance<AnnotationDefaultAttribute>().singleOrNull()
 
-    private fun primitiveElementValueTag(descriptor: String): Char? =
+    private fun scalarElementValueTag(descriptor: String): Char? =
         when (descriptor) {
             "B" -> 'B'
             "C" -> 'C'
@@ -258,6 +258,7 @@ object MethodInfoParser {
             "J" -> 'J'
             "S" -> 'S'
             "Z" -> 'Z'
+            "Ljava/lang/String;" -> 's'
             else -> null
         }
 
