@@ -70,20 +70,32 @@ object CodeAttributeParser : AttributeBodyParser {
         attributes: List<AttributeInfo>,
     ) {
         val stackMapTablePaths = mutableListOf<String>()
+        val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "${context.ownerPath}.attributes[$index].attribute_name_index")
-            if (name == "StackMapTable") {
-                stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
+            when (name) {
+                "StackMapTable" -> stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
+                "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "${context.ownerPath}.attributes[$index]"
             }
         }
-        if (stackMapTablePaths.size > 1) {
-            throw ClassFileFormatException(
-                "Invalid ${context.ownerPath} attributes: at most one StackMapTable attribute is permitted " +
-                    "but found ${stackMapTablePaths.size} at ${stackMapTablePaths.joinToString()}",
-            )
-        }
+        requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
+        requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
     }
 
+
+    private fun requireAtMostOneAttribute(
+        paths: List<String>,
+        attributeName: String,
+        ownerPath: String,
+    ) {
+        if (paths.size <= 1) {
+            return
+        }
+        throw ClassFileFormatException(
+            "Invalid $ownerPath attributes: at most one $attributeName attribute is permitted " +
+                "but found ${paths.size} at ${paths.joinToString()}",
+        )
+    }
     private fun attributeName(
         context: AttributeParseContext,
         attribute: AttributeInfo,
