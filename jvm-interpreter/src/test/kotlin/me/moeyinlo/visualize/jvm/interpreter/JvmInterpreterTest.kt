@@ -9277,6 +9277,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `newarray negative count transfers control to matching NegativeArraySizeException handler`() {
+        val heap = JvmHeap()
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x02.toByte(),
+                0xBC.toByte(),
+                0x0A.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 3,
+                    handlerPc = 3,
+                    catchClassName = "java/lang/NegativeArraySizeException",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/NegativeArraySizeException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `fadd adds the top two float operand stack values`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
