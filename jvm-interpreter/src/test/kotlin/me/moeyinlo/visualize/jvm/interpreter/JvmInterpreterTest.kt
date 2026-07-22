@@ -16762,6 +16762,71 @@ class JvmInterpreterTest {
         )
     }
 
+    @Test
+    fun `invokedynamic rejects bootstrap results that are not call sites`() {
+        val heap = JvmHeap()
+        val bootstrapDescriptor =
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
+                "Ljava/lang/Object;"
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "bootstrap",
+                            descriptor = bootstrapDescriptor,
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey(
+                ownerClassName = "pkg/Bootstrap",
+                name = "bootstrap",
+                descriptor = bootstrapDescriptor,
+                isStatic = true,
+            ) to JvmNativeMethodIntrinsic { context, _ ->
+                context.heap.internString("not a call site")
+            },
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicBootstrapExecutionConstantPool(bootstrapDescriptor),
+                heap = heap,
+                classHierarchy = classHierarchy,
+                nativeMethods = nativeMethods,
+                currentClassName = "pkg/Caller",
+                bootstrapMethods = JvmBootstrapMethodTable(
+                    listOf(
+                        JvmBootstrapMethod(
+                            bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                            bootstrapArguments = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid invokedynamic call site #1 at offset 0: invokedynamic bootstrap method returned " +
+                "java/lang/String, expected java/lang/invoke/CallSite",
+            exception.message,
+        )
+    }
+
     private fun invokedynamicIntCallSiteConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
