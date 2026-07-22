@@ -290,6 +290,72 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `method resolution maps signature polymorphic call site descriptors to the erased declaration`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/invoke/MethodHandle",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "invokeExact",
+                            descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                            isStatic = false,
+                            isNative = true,
+                            isVarargs = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val resolved = hierarchy.resolveMethod(
+            ownerClassName = "java/lang/invoke/MethodHandle",
+            name = "invokeExact",
+            descriptor = "(Ljava/lang/String;I)J",
+        )
+
+        assertEquals("java/lang/invoke/MethodHandle", resolved.ownerClassName)
+        assertEquals("invokeExact", resolved.name)
+        assertEquals("(Ljava/lang/String;I)J", resolved.descriptor)
+        assertEquals("([Ljava/lang/Object;)Ljava/lang/Object;", resolved.signaturePolymorphicDeclarationDescriptor)
+        assertEquals(true, resolved.isSignaturePolymorphic)
+    }
+
+    @Test
+    fun `method resolution does not apply signature polymorphic fallback to ordinary method handle methods`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/invoke/MethodHandle",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "invokeExact",
+                            descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+                            isStatic = false,
+                            isNative = true,
+                            isVarargs = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmNoSuchMethodError> {
+            hierarchy.resolveMethod(
+                ownerClassName = "java/lang/invoke/MethodHandle",
+                name = "bindTo",
+                descriptor = "(Ljava/lang/Object;)Ljava/lang/invoke/MethodHandle;",
+            )
+        }
+
+        assertEquals("java/lang/NoSuchMethodError", exception.guestClassName)
+        assertEquals(
+            "java/lang/invoke/MethodHandle.bindTo:(Ljava/lang/Object;)Ljava/lang/invoke/MethodHandle;",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `class hierarchy exposes only the direct superclass name`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

@@ -54,6 +54,7 @@ data class JvmResolvedMethod(
     val isAbstract: Boolean = false,
     val isNative: Boolean = false,
     val isVarargs: Boolean = false,
+    val signaturePolymorphicDeclarationDescriptor: String? = null,
     val code: ByteArray? = null,
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
@@ -61,7 +62,7 @@ data class JvmResolvedMethod(
     val isSignaturePolymorphic: Boolean
         get() = ownerClassName == "java/lang/invoke/MethodHandle" &&
             (name == "invoke" || name == "invokeExact") &&
-            descriptor == "([Ljava/lang/Object;)Ljava/lang/Object;" &&
+            (signaturePolymorphicDeclarationDescriptor ?: descriptor) == "([Ljava/lang/Object;)Ljava/lang/Object;" &&
             isNative &&
             isVarargs
 }
@@ -140,6 +141,7 @@ class JvmClassHierarchy(
                 message = ownerClassName,
             )
         ownerClass.findDeclaredMethod(name, descriptor)?.let { method -> return method }
+        ownerClass.findSignaturePolymorphicDeclaration(name, descriptor)?.let { method -> return method }
         if (name != "<init>") {
             findSuperclassMethod(ownerClass.superclassName, name, descriptor)?.let { method -> return method }
         }
@@ -210,6 +212,21 @@ class JvmClassHierarchy(
                     maxLocals = method.maxLocals,
                 )
             }
+
+    private fun JvmClassDefinition.findSignaturePolymorphicDeclaration(
+        name: String,
+        callSiteDescriptor: String,
+    ): JvmResolvedMethod? {
+        if (internalName != "java/lang/invoke/MethodHandle" || name !in setOf("invoke", "invokeExact")) {
+            return null
+        }
+        return findDeclaredMethod(name, "([Ljava/lang/Object;)Ljava/lang/Object;")
+            ?.takeIf { method -> method.isSignaturePolymorphic }
+            ?.copy(
+                descriptor = callSiteDescriptor,
+                signaturePolymorphicDeclarationDescriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+            )
+    }
 
     private fun findInterfaceField(
         interfaceNames: List<String>,
