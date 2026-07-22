@@ -166,6 +166,21 @@ class ClassFileParserTest {
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
 
+
+    @Test
+    fun `rejects ClassFile with duplicate BootstrapMethods attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDuplicateBootstrapMethodsBytes(),
+                source = "DuplicateBootstrapMethods.class",
+                attributeParsers = AttributeParserRegistry.of("BootstrapMethods" to BootstrapMethodsAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("BootstrapMethods"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
     @Test
     fun `rejects ClassFile with duplicate Signature attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
@@ -657,6 +672,37 @@ class ClassFileParserTest {
             0, 6,
         )
 
+
+    private fun classFileWithDuplicateBootstrapMethodsBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 6,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 16,
+            'B'.code, 'o'.code, 'o'.code, 't'.code, 's'.code, 't'.code, 'r'.code, 'a'.code, 'p'.code,
+            'M'.code, 'e'.code, 't'.code, 'h'.code, 'o'.code, 'd'.code, 's'.code,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 2,
+            0, 5,
+            0, 0, 0, 2,
+            0, 0,
+            0, 5,
+            0, 0, 0, 2,
+            0, 0,
+        )
     private fun classFileWithDuplicateRuntimeVisibleAnnotationsBytes(): ByteArray =
         bytes(
             0xCA, 0xFE, 0xBA, 0xBE,
