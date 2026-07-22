@@ -5679,6 +5679,55 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic instance field error transfers control to matching IncompatibleClassChangeError handler`() {
+        val heap = JvmHeap()
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = false)),
+                    ),
+                ),
+            ),
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 3,
+                    handlerPc = 3,
+                    catchClassName = "java/lang/IncompatibleClassChangeError",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/IncompatibleClassChangeError", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `getstatic throws guest IllegalAccessError for private fields from another class`() {
         val exception = assertFailsWith<JvmIllegalAccessError> {
             JvmInterpreter.execute(
