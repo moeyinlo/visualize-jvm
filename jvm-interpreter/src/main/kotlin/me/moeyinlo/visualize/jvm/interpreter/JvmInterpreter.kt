@@ -28,7 +28,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantLinkageException
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
+import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantResolver
 import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandler
 import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandlerTable
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
@@ -525,8 +527,36 @@ object JvmInterpreter {
             )
             0x12,
             0x13,
-            -> executeLdc(instruction, operandStack, constantPool, heap, dynamicConstants)
-            0x14 -> executeLdc2(instruction, operandStack, constantPool, dynamicConstants)
+            -> executeLdc(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+            )
+            0x14 -> executeLdc2(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+            )
             0x15,
             in 0x1A..0x1D,
             -> executeIntLoad(instruction, operandStack, localVariables)
@@ -3472,6 +3502,14 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
         heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val index = instruction.constantPoolIndex()
@@ -3502,10 +3540,21 @@ object JvmInterpreter {
                 operandStack.push(heap.internClassMirror(nameEntry.value))
             }
             is ConstantDynamicEntry -> {
-                val value = dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(index.value))
-                    ?: throw JvmUnsupportedInstructionException(
-                        "CONSTANT_Dynamic $index at offset ${instruction.offset} requires bootstrap resolution",
-                    )
+                val value = resolveDynamicConstant(
+                    instruction = instruction,
+                    index = index,
+                    constantPool = constantPool,
+                    heap = heap,
+                    classHierarchy = classHierarchy,
+                    staticFields = staticFields,
+                    nativeMethods = nativeMethods,
+                    monitors = monitors,
+                    currentThreadId = currentThreadId,
+                    currentClassName = currentClassName,
+                    bootstrapMethods = bootstrapMethods,
+                    invokeDynamicCallSites = invokeDynamicCallSites,
+                    dynamicConstants = dynamicConstants,
+                )
                 if (value.category.slotWidth != 1) {
                     throw JvmUnsupportedInstructionException(
                         "Invalid ldc CONSTANT_Dynamic $index at offset ${instruction.offset}: " +
@@ -3585,6 +3634,15 @@ object JvmInterpreter {
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
     ) {
         val index = instruction.constantPoolIndex()
@@ -3598,10 +3656,21 @@ object JvmInterpreter {
         when (entry) {
             is ConstantDoubleEntry -> operandStack.push(JvmDoubleValue(entry.value))
             is ConstantDynamicEntry -> {
-                val value = dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(index.value))
-                    ?: throw JvmUnsupportedInstructionException(
-                        "CONSTANT_Dynamic $index at offset ${instruction.offset} requires bootstrap resolution",
-                    )
+                val value = resolveDynamicConstant(
+                    instruction = instruction,
+                    index = index,
+                    constantPool = constantPool,
+                    heap = heap,
+                    classHierarchy = classHierarchy,
+                    staticFields = staticFields,
+                    nativeMethods = nativeMethods,
+                    monitors = monitors,
+                    currentThreadId = currentThreadId,
+                    currentClassName = currentClassName,
+                    bootstrapMethods = bootstrapMethods,
+                    invokeDynamicCallSites = invokeDynamicCallSites,
+                    dynamicConstants = dynamicConstants,
+                )
                 if (value.category.slotWidth != 2) {
                     throw JvmUnsupportedInstructionException(
                         "Invalid ldc2_w CONSTANT_Dynamic $index at offset ${instruction.offset}: " +
@@ -3615,6 +3684,140 @@ object JvmInterpreter {
                 "Unsupported ldc2_w constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
             )
         }
+    }
+
+    private fun resolveDynamicConstant(
+        instruction: DecodedInstruction,
+        index: ConstantPoolIndex,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
+    ): JvmValue {
+        val runtimeIndex = JvmRuntimeConstantPoolIndex(index.value)
+        dynamicConstants.resolved(runtimeIndex)?.let { value -> return value }
+
+        val invocation = try {
+            JvmDynamicConstantResolver.resolveBootstrapInvocation(
+                constantPool = constantPool,
+                index = index,
+                bootstrapMethods = bootstrapMethods,
+            )
+        } catch (exception: JvmBootstrapMethodAccessException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: ${exception.message}",
+            )
+        } catch (exception: JvmDynamicConstantLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: ${exception.message}",
+            )
+        }
+
+        val ownerClassName = currentClassName
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: " +
+                    "current class is required for MethodHandles.Lookup",
+            )
+        val bootstrapArguments = try {
+            invocation.materializeBootstrapMethodArguments(
+                heap = heap,
+                lookupClassName = ownerClassName,
+            )
+        } catch (exception: JvmDynamicConstantLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: ${exception.message}",
+            )
+        }
+        if (invocation.bootstrapMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
+            throw JvmUnsupportedInstructionException(
+                "Unsupported CONSTANT_Dynamic $index ${invocation.constant.name}:${invocation.constant.descriptor} " +
+                    "bootstrap #${invocation.constant.bootstrapMethodIndex} with ${bootstrapArguments.size} " +
+                    "bootstrap method argument(s) at offset ${instruction.offset}: bootstrap method handle " +
+                    "${invocation.bootstrapMethodHandle.referenceKind} execution is not implemented yet",
+            )
+        }
+        val bootstrapMethod = try {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = constantPool,
+                classHierarchy = classHierarchy,
+                methodHandle = invocation.bootstrapMethodHandle,
+            )
+        } catch (exception: JvmInvokeDynamicLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: ${exception.message}",
+            )
+        }
+        val bootstrapReturnValue = executeStaticMethodWithArguments(
+            instruction = instruction,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            dynamicConstants = dynamicConstants,
+            resolvedMethod = bootstrapMethod,
+            arguments = bootstrapArguments,
+            opcodeMnemonic = "CONSTANT_Dynamic bootstrap",
+        ) ?: throw JvmUnsupportedInstructionException(
+            "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: bootstrap method " +
+                "${bootstrapMethod.ownerClassName}.${bootstrapMethod.name}:${bootstrapMethod.descriptor} " +
+                "completed without returning a value",
+        )
+        requireDynamicConstantValue(
+            instruction = instruction,
+            index = index,
+            descriptor = invocation.constant.descriptor,
+            value = bootstrapReturnValue,
+            heap = heap,
+            classHierarchy = classHierarchy,
+        )
+        return try {
+            dynamicConstants.bind(runtimeIndex, bootstrapReturnValue)
+        } catch (exception: JvmDynamicConstantLinkageException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: ${exception.message}",
+            )
+        }
+    }
+
+    private fun requireDynamicConstantValue(
+        instruction: DecodedInstruction,
+        index: ConstantPoolIndex,
+        descriptor: String,
+        value: JvmValue,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+    ) {
+        if (!value.matchesFieldDescriptor(descriptor)) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid CONSTANT_Dynamic $index value at offset ${instruction.offset}: " +
+                    "expected $descriptor but was ${value.javaClass.simpleName}",
+            )
+        }
+        if (!descriptor.isReferenceDescriptor() || value == JvmNullValue) {
+            return
+        }
+        val reference = value as JvmObjectReferenceValue
+        val sourceClassName = heap.get(reference).className
+        val targetClassName = descriptor.referenceDescriptorClassName()
+        if (classHierarchy.isAssignable(sourceClassName, targetClassName)) {
+            return
+        }
+        throw JvmUnsupportedInstructionException(
+            "Invalid CONSTANT_Dynamic $index value at offset ${instruction.offset}: " +
+                "$sourceClassName is not assignable to $targetClassName",
+        )
     }
 
     private fun executeAThrow(

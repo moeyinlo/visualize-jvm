@@ -11162,8 +11162,8 @@ class JvmInterpreterTest {
             )
         }
 
-        assertTrue(exception.message!!.contains("CONSTANT_Dynamic #4"))
-        assertTrue(exception.message!!.contains("requires bootstrap resolution"))
+        assertTrue(exception.message!!.contains("Invalid CONSTANT_Dynamic #4"))
+        assertTrue(exception.message!!.contains("Bootstrap method index #0 is outside"))
     }
 
     @Test
@@ -11197,6 +11197,42 @@ class JvmInterpreterTest {
         }
 
         assertTrue(exception.message!!.contains("expected category 1 value but was category 2"))
+    }
+
+    @Test
+    fun `ldc executes invoke static dynamic constant bootstrap and caches the value`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = dynamicConstantBootstrapExecutionConstantPool("I", dynamicConstantIntBootstrapDescriptor),
+            classHierarchy = dynamicConstantBootstrapHierarchy(
+                descriptor = dynamicConstantIntBootstrapDescriptor,
+                code = byteArrayOf(
+                    0x10.toByte(),
+                    0x2A.toByte(),
+                    0xAC.toByte(),
+                ),
+                maxStack = 1,
+            ),
+            currentClassName = "pkg/Caller",
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
+            ),
+            dynamicConstants = dynamicConstants,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        assertEquals(JvmIntValue(42), dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(1)))
     }
 
     @Test
@@ -11631,8 +11667,8 @@ class JvmInterpreterTest {
             )
         }
 
-        assertTrue(exception.message!!.contains("CONSTANT_Dynamic #4"))
-        assertTrue(exception.message!!.contains("requires bootstrap resolution"))
+        assertTrue(exception.message!!.contains("Invalid CONSTANT_Dynamic #4"))
+        assertTrue(exception.message!!.contains("Bootstrap method index #0 is outside"))
     }
 
     @Test
@@ -11667,6 +11703,42 @@ class JvmInterpreterTest {
         }
 
         assertTrue(exception.message!!.contains("expected category 2 value but was category 1"))
+    }
+
+    @Test
+    fun `ldc2_w executes invoke static dynamic constant bootstrap and caches the value`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = dynamicConstantBootstrapExecutionConstantPool("J", dynamicConstantLongBootstrapDescriptor),
+            classHierarchy = dynamicConstantBootstrapHierarchy(
+                descriptor = dynamicConstantLongBootstrapDescriptor,
+                code = byteArrayOf(
+                    0x0A.toByte(),
+                    0xAD.toByte(),
+                ),
+                maxStack = 2,
+            ),
+            currentClassName = "pkg/Caller",
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
+            ),
+            dynamicConstants = dynamicConstants,
+        )
+
+        assertEquals(listOf(JvmLongValue(1L)), result.operandStack.toList())
+        assertEquals(JvmLongValue(1L), dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(1)))
     }
 
     @Test
@@ -17675,6 +17747,70 @@ class JvmInterpreterTest {
             exception.message,
         )
     }
+
+    private val dynamicConstantIntBootstrapDescriptor =
+        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;)I"
+
+    private val dynamicConstantLongBootstrapDescriptor =
+        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;)J"
+
+    private fun dynamicConstantBootstrapExecutionConstantPool(
+        constantDescriptor: String,
+        bootstrapDescriptor: String,
+    ): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                ConstantUtf8Entry(constantDescriptor, constantDescriptor.encodeToByteArray()),
+                ConstantUtf8Entry("pkg/Bootstrap", "pkg/Bootstrap".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("bootstrap", "bootstrap".encodeToByteArray()),
+                ConstantUtf8Entry(bootstrapDescriptor, bootstrapDescriptor.encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(7),
+                    descriptorIndex = ConstantPoolIndex(8),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(6),
+                    nameAndTypeIndex = ConstantPoolIndex(9),
+                ),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = ConstantPoolIndex(10),
+                ),
+            ),
+        )
+
+    private fun dynamicConstantBootstrapHierarchy(
+        descriptor: String,
+        code: ByteArray,
+        maxStack: Int,
+    ): JvmClassHierarchy =
+        JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "bootstrap",
+                            descriptor = descriptor,
+                            isStatic = true,
+                            code = code,
+                            maxStack = maxStack,
+                            maxLocals = 3,
+                        ),
+                    ),
+                ),
+            ),
+        )
 
     private fun invokedynamicIntCallSiteConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
