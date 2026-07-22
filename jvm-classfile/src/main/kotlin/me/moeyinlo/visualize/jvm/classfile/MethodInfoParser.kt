@@ -201,6 +201,12 @@ object MethodInfoParser {
                     "must not declare parameters but found $annotationDefaultPath",
             )
         }
+        if (annotationDefaultPath != null && descriptor.endsWith("V")) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: AnnotationDefault annotation interface elements " +
+                    "must not return void but found $annotationDefaultPath",
+            )
+        }
     }
 
     private fun requireAtMostOneAttribute(
