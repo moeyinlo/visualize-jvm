@@ -306,6 +306,36 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects Module provides entry without implementations`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 26,
+                        0, 3, 0, 0, 0, 0,
+                        0, 1,
+                        0, 6, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 1,
+                        0, 12, 0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].provides[0].provides_with_count=0"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("provides_with_count must be nonzero"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate Module provides indexes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(
@@ -313,15 +343,15 @@ class ModuleAttributeParserTest {
                     bytes(
                         0, 1,
                         0, 1,
-                        0, 0, 0, 24,
+                        0, 0, 0, 28,
                         0, 3, 0, 0, 0, 0,
                         0, 0,
                         0, 0,
                         0, 0,
                         0, 0,
                         0, 2,
-                        0, 12, 0, 0,
-                        0, 12, 0, 0,
+                        0, 12, 0, 1, 0, 14,
+                        0, 12, 0, 1, 0, 14,
                     ),
                     source = "bad-module.class",
                 ),

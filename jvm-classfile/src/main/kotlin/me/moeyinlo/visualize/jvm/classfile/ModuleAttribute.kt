@@ -217,7 +217,13 @@ object ModuleAttributeParser : AttributeBodyParser {
         val provides = List(context.reader.readU2()) { index ->
             val ownerPath = "${context.ownerPath}.provides[$index]"
             val providesIndex = readRequiredIndex<ConstantClassEntry>(context, "$ownerPath.provides_index")
-            val providesWithIndexes = List(context.reader.readU2()) { withIndex ->
+            val providesWithCount = context.reader.readU2()
+            if (providesWithCount == 0) {
+                throw ClassFileFormatException(
+                    "Invalid $ownerPath.provides_with_count=0: provides_with_count must be nonzero",
+                )
+            }
+            val providesWithIndexes = List(providesWithCount) { withIndex ->
                 readRequiredIndex<ConstantClassEntry>(context, "$ownerPath.provides_with_index[$withIndex]")
             }
             requireUniqueConstantPoolIndexes(
