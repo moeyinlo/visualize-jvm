@@ -80,6 +80,33 @@ object JvmDynamicConstantResolver {
         )
     }
 
+    fun resolveBootstrapInvocation(
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        bootstrapMethods: JvmBootstrapMethodTable,
+    ): JvmDynamicConstantBootstrapInvocation {
+        val linkageSpec = resolveLinkageSpec(constantPool, index, bootstrapMethods)
+        return try {
+            JvmDynamicConstantBootstrapInvocation(
+                constant = linkageSpec.constant,
+                bootstrapMethodHandle = JvmInvokeDynamicCallSiteResolver.resolveMethodHandle(
+                    constantPool = constantPool,
+                    index = linkageSpec.bootstrapMethod.bootstrapMethodRef,
+                    role = "dynamic constant bootstrap_method_ref",
+                ),
+                staticArguments = linkageSpec.bootstrapMethod.bootstrapArguments.map { argumentIndex ->
+                    JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                        constantPool = constantPool,
+                        index = argumentIndex,
+                        bootstrapKind = "dynamic constant",
+                    )
+                },
+            )
+        } catch (exception: JvmInvokeDynamicLinkageException) {
+            throw JvmDynamicConstantLinkageException(exception.message ?: "Invalid dynamic constant bootstrap linkage")
+        }
+    }
+
     private data class NameAndDescriptor(
         val name: String,
         val descriptor: String,

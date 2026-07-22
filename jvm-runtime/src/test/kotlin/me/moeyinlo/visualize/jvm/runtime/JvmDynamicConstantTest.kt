@@ -4,10 +4,13 @@ import me.moeyinlo.visualize.jvm.classfile.BootstrapMethodIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodHandleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantMethodRefEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -205,6 +208,68 @@ class JvmDynamicConstantTest {
     }
 
     @Test
+    fun `dynamic constant resolver creates bootstrap invocation from bootstrap method table`() {
+        val invocation = JvmDynamicConstantResolver.resolveBootstrapInvocation(
+            constantPool = dynamicConstantBootstrapPool(),
+            index = ConstantPoolIndex(1),
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                        bootstrapArguments = listOf(JvmRuntimeConstantPoolIndex(12)),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmDynamicConstantBootstrapInvocation(
+                constant = JvmDynamicConstantSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "I",
+                ),
+                bootstrapMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 10,
+                ),
+                staticArguments = listOf(
+                    JvmBootstrapArgument.IntegerConstant(
+                        constantPoolIndex = JvmRuntimeConstantPoolIndex(12),
+                        value = JvmIntValue(42),
+                    ),
+                ),
+            ),
+            invocation,
+        )
+    }
+
+    @Test
+    fun `dynamic constant resolver reports invalid bootstrap method handles as dynamic linkage errors`() {
+        val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
+            JvmDynamicConstantResolver.resolveBootstrapInvocation(
+                constantPool = dynamicConstantBootstrapPool(),
+                index = ConstantPoolIndex(1),
+                bootstrapMethods = JvmBootstrapMethodTable(
+                    listOf(
+                        JvmBootstrapMethod(
+                            bootstrapMethodRef = JvmRuntimeConstantPoolIndex(12),
+                            bootstrapArguments = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "dynamic constant bootstrap_method_ref index #12 expected CONSTANT_MethodHandle_info but found " +
+                "ConstantIntegerEntry",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `dynamic constant resolver rejects non dynamic constant entries`() {
         val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
             JvmDynamicConstantResolver.resolveSpec(
@@ -281,6 +346,46 @@ class JvmDynamicConstantTest {
                 ),
                 ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
                 ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+
+    private fun dynamicConstantBootstrapPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ConstantUtf8Entry("Bootstrap", "Bootstrap".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("bootstrap", "bootstrap".encodeToByteArray()),
+                ConstantUtf8Entry(
+                    "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;I)" +
+                        "Ljava/lang/Integer;",
+                    (
+                        "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/Class;I)" +
+                            "Ljava/lang/Integer;"
+                        ).encodeToByteArray(),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(7),
+                    descriptorIndex = ConstantPoolIndex(8),
+                ),
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(6),
+                    nameAndTypeIndex = ConstantPoolIndex(9),
+                ),
+                ConstantMethodHandleEntry(
+                    referenceKind = MethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = ConstantPoolIndex(10),
+                ),
+                ConstantIntegerEntry(42),
             ),
         )
 }

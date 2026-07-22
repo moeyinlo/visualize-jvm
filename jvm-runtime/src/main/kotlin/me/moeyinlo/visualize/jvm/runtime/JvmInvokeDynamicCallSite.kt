@@ -571,9 +571,10 @@ object JvmInvokeDynamicCallSiteResolver {
         )
     }
 
-    private fun resolveBootstrapArgument(
+    internal fun resolveBootstrapArgument(
         constantPool: ConstantPool,
         index: JvmRuntimeConstantPoolIndex,
+        bootstrapKind: String = "invokedynamic",
     ): JvmBootstrapArgument {
         val constantPoolIndex = ConstantPoolIndex(index.value)
         return when (val entry = constantPoolEntry(constantPool, constantPoolIndex)) {
@@ -623,13 +624,13 @@ object JvmInvokeDynamicCallSiteResolver {
                 value = utf8Value(constantPool, entry.stringIndex, "bootstrap string argument string_index"),
             )
             else -> throw JvmInvokeDynamicLinkageException(
-                "invokedynamic bootstrap argument index $constantPoolIndex expected a loadable constant but found " +
+                "$bootstrapKind bootstrap argument index $constantPoolIndex expected a loadable constant but found " +
                     entry.javaClass.simpleName,
             )
         }
     }
 
-    private fun resolveMethodHandle(
+    internal fun resolveMethodHandle(
         constantPool: ConstantPool,
         index: JvmRuntimeConstantPoolIndex,
         role: String,
