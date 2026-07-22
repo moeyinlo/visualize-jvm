@@ -206,6 +206,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `ClassFile` attribute rule | `jvm-classfile` | `ClassFileParserTest.rejects ClassFile with duplicate RuntimeInvisibleTypeAnnotations attributes` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `field_info` attribute rule | `jvm-classfile` | `FieldInfoParserTest.rejects duplicate field RuntimeInvisibleTypeAnnotations attributes` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method RuntimeInvisibleTypeAnnotations attributes` | IMPLEMENTED |
+| 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `record_component_info` attribute rule | `jvm-classfile` | `RecordAttributeParserTest.rejects component with duplicate RuntimeInvisibleTypeAnnotations attributes` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.22 | `AnnotationDefault` | `jvm-classfile` | `AnnotationDefaultAttributeParserTest` | IMPLEMENTED |
 | 4.7.22 | `AnnotationDefault` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |

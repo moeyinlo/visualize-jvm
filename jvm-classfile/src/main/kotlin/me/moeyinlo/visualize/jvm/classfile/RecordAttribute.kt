@@ -51,6 +51,7 @@ object RecordAttributeParser : AttributeBodyParser {
         val runtimeVisibleAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleAnnotationsPaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
             when (name) {
@@ -58,12 +59,14 @@ object RecordAttributeParser : AttributeBodyParser {
                 "RuntimeVisibleAnnotations" -> runtimeVisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeInvisibleAnnotations" -> runtimeInvisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
+                "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
             }
         }
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleAnnotationsPaths, "RuntimeInvisibleAnnotations", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", ownerPath)
+        requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", ownerPath)
     }
 
 
