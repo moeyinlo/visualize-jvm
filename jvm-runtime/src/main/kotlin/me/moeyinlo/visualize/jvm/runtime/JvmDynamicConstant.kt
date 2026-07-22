@@ -26,6 +26,23 @@ data class JvmDynamicConstantLinkageSpec(
     val bootstrapMethod: JvmBootstrapMethod,
 )
 
+data class JvmDynamicConstantBootstrapInvocation(
+    val constant: JvmDynamicConstantSpec,
+    val bootstrapMethodHandle: JvmMethodHandlePayload,
+    val staticArguments: List<JvmBootstrapArgument>,
+) {
+    fun materializeBootstrapMethodArguments(
+        heap: JvmHeap,
+        lookupClassName: String,
+    ): List<JvmValue> =
+        buildList {
+            add(heap.internMethodHandlesLookup(lookupClassName))
+            add(heap.internString(constant.name))
+            add(heap.internClassMirror(constant.descriptor.dynamicConstantClassMirrorName()))
+            addAll(staticArguments.map { argument -> argument.materializeDynamicBootstrapArgument(heap) })
+        }
+}
+
 object JvmDynamicConstantResolver {
     fun resolveSpec(
         constantPool: ConstantPool,
@@ -129,5 +146,40 @@ class JvmDynamicConstantRegistry {
         return value
     }
 }
+
+private fun JvmBootstrapArgument.materializeDynamicBootstrapArgument(heap: JvmHeap): JvmValue =
+    when (this) {
+        is JvmBootstrapArgument.ClassConstant -> heap.internClassMirror(internalName)
+        is JvmBootstrapArgument.DoubleConstant -> value
+        is JvmBootstrapArgument.DynamicConstant -> throw JvmDynamicConstantLinkageException(
+            "CONSTANT_Dynamic bootstrap argument $constantPoolIndex requires dynamic-constant resolution",
+        )
+        is JvmBootstrapArgument.FloatConstant -> value
+        is JvmBootstrapArgument.IntegerConstant -> value
+        is JvmBootstrapArgument.LongConstant -> value
+        is JvmBootstrapArgument.MethodHandleConstant -> heap.internMethodHandle(
+            referenceKind = payload.referenceKind,
+            referenceIndex = payload.referenceIndex,
+        )
+        is JvmBootstrapArgument.MethodTypeConstant -> heap.internMethodType(descriptor)
+        is JvmBootstrapArgument.StringConstant -> heap.internString(value)
+    }
+
+private fun String.dynamicConstantClassMirrorName(): String =
+    when (this) {
+        "Z" -> "boolean"
+        "B" -> "byte"
+        "C" -> "char"
+        "S" -> "short"
+        "I" -> "int"
+        "J" -> "long"
+        "F" -> "float"
+        "D" -> "double"
+        else -> when {
+            startsWith("L") && endsWith(";") -> substring(1, lastIndex)
+            startsWith("[") -> this
+            else -> this
+        }
+    }
 
 class JvmDynamicConstantLinkageException(message: String) : IllegalStateException(message)

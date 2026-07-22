@@ -67,6 +67,144 @@ class JvmDynamicConstantTest {
     }
 
     @Test
+    fun `dynamic constant bootstrap invocation materializes lookup name class and static arguments`() {
+        val heap = JvmHeap()
+        val invocation = JvmDynamicConstantBootstrapInvocation(
+            constant = JvmDynamicConstantSpec(
+                constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                bootstrapMethodIndex = 0,
+                name = "answer",
+                descriptor = "Ljava/lang/Integer;",
+            ),
+            bootstrapMethodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 5,
+            ),
+            staticArguments = listOf(
+                JvmBootstrapArgument.IntegerConstant(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(6),
+                    value = JvmIntValue(42),
+                ),
+                JvmBootstrapArgument.StringConstant(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(7),
+                    value = "seed",
+                ),
+            ),
+        )
+
+        val arguments = invocation.materializeBootstrapMethodArguments(
+            heap = heap,
+            lookupClassName = "Example",
+        )
+
+        val lookupReference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val nameReference = JvmObjectReferenceValue(JvmReferenceId(2))
+        val classReference = JvmObjectReferenceValue(JvmReferenceId(3))
+        val staticStringReference = JvmObjectReferenceValue(JvmReferenceId(4))
+        assertEquals(
+            listOf(lookupReference, nameReference, classReference, JvmIntValue(42), staticStringReference),
+            arguments,
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/MethodHandles\$Lookup",
+                payload = JvmMethodHandlesLookupPayload("Example"),
+            ),
+            heap.get(lookupReference),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/String",
+                payload = JvmStringPayload("answer"),
+            ),
+            heap.get(nameReference),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/Class",
+                payload = JvmClassPayload("java/lang/Integer"),
+            ),
+            heap.get(classReference),
+        )
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/String",
+                payload = JvmStringPayload("seed"),
+            ),
+            heap.get(staticStringReference),
+        )
+    }
+
+    @Test
+    fun `dynamic constant bootstrap invocation materializes primitive class mirrors`() {
+        val heap = JvmHeap()
+        val invocation = JvmDynamicConstantBootstrapInvocation(
+            constant = JvmDynamicConstantSpec(
+                constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                bootstrapMethodIndex = 0,
+                name = "answer",
+                descriptor = "I",
+            ),
+            bootstrapMethodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 5,
+            ),
+            staticArguments = emptyList(),
+        )
+
+        val arguments = invocation.materializeBootstrapMethodArguments(
+            heap = heap,
+            lookupClassName = "Example",
+        )
+
+        val classReference = JvmObjectReferenceValue(JvmReferenceId(3))
+        assertEquals(classReference, arguments[2])
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/Class",
+                payload = JvmClassPayload("int"),
+            ),
+            heap.get(classReference),
+        )
+    }
+
+    @Test
+    fun `dynamic constant bootstrap invocation leaves nested dynamic static arguments unresolved`() {
+        val invocation = JvmDynamicConstantBootstrapInvocation(
+            constant = JvmDynamicConstantSpec(
+                constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                bootstrapMethodIndex = 0,
+                name = "answer",
+                descriptor = "I",
+            ),
+            bootstrapMethodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 5,
+            ),
+            staticArguments = listOf(
+                JvmBootstrapArgument.DynamicConstant(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(9),
+                    bootstrapMethodIndex = 1,
+                    name = "nested",
+                    descriptor = "I",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
+            invocation.materializeBootstrapMethodArguments(
+                heap = JvmHeap(),
+                lookupClassName = "Example",
+            )
+        }
+
+        assertEquals(
+            "CONSTANT_Dynamic bootstrap argument #9 requires dynamic-constant resolution",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `dynamic constant resolver rejects non dynamic constant entries`() {
         val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
             JvmDynamicConstantResolver.resolveSpec(
