@@ -16546,6 +16546,133 @@ class JvmInterpreterTest {
         assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
     }
 
+    @Test
+    fun `invokedynamic passes descriptor arguments to cached linked static targets`() {
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Targets",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "increment",
+                            descriptor = "(I)I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x1A.toByte(),
+                                0x04.toByte(),
+                                0x60.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 2,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 2),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "increment",
+                    descriptor = "(I)I",
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Targets",
+                    name = "increment",
+                    descriptor = "(I)I",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x29.toByte(),
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = invokedynamicIntArgumentCallSiteConstantPool(),
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
+    fun `invokedynamic rejects cached linked targets with mismatched descriptors`() {
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Targets",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()J",
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Targets",
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicIntCallSiteConstantPool(),
+                classHierarchy = classHierarchy,
+                currentClassName = "pkg/Caller",
+                invokeDynamicCallSites = callSites,
+            )
+        }
+
+        assertEquals(
+            "Invalid invokedynamic linked target for answer:()J at offset 0: " +
+                "target pkg/Targets.answer:()I does not match call site descriptor",
+            exception.message,
+        )
+    }
+
     private fun invokedynamicIntCallSiteConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
@@ -16559,6 +16686,22 @@ class JvmInterpreterTest {
                 ),
                 ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
                 ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+            ),
+        )
+
+    private fun invokedynamicIntArgumentCallSiteConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantInvokeDynamicEntry(
+                    bootstrapMethodIndex = BootstrapMethodIndex(0),
+                    nameAndTypeIndex = ConstantPoolIndex(2),
+                ),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(3),
+                    descriptorIndex = ConstantPoolIndex(4),
+                ),
+                ConstantUtf8Entry("increment", "increment".encodeToByteArray()),
+                ConstantUtf8Entry("(I)I", "(I)I".encodeToByteArray()),
             ),
         )
 

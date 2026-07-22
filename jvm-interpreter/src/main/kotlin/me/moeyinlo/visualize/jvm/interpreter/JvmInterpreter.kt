@@ -4327,6 +4327,15 @@ object JvmInterpreter {
             )
             if (linkedCallSite != null) {
                 requireStaticMethod(instruction, linkedCallSite.targetMethod)
+                if (linkedCallSite.spec.descriptor != linkedCallSite.targetMethod.descriptor) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
+                            "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: " +
+                            "target ${linkedCallSite.targetMethod.ownerClassName}." +
+                            "${linkedCallSite.targetMethod.name}:${linkedCallSite.targetMethod.descriptor} " +
+                            "does not match call site descriptor",
+                    )
+                }
                 executeResolvedStaticMethod(
                     instruction = instruction,
                     operandStack = operandStack,
