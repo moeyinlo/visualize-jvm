@@ -223,217 +223,217 @@ object JvmInterpreter {
                         )
                 }
             } catch (exception: JvmThrownException) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = heap.get(exception.throwable).className,
+                instructionIndex = dispatchExistingGuestThrowableToHandler(
+                    instruction = instruction,
+                    throwable = exception.throwable,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                resetOperandStackForExceptionHandler(operandStack, exception.throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmNullPointerException) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmArithmeticException) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmNegativeArraySizeException) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmArrayIndexOutOfBoundsException) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmClassCastException) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmArrayStoreException) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmIncompatibleClassChangeError) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmIllegalAccessError) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmAbstractMethodError) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmUnsatisfiedLinkError) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmNoClassDefFoundError) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmNoSuchFieldError) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             } catch (exception: JvmNoSuchMethodError) {
-                val handler = JvmExceptionHandlerTable.findHandler(
-                    handlers = exceptionHandlers,
-                    thrownAtPc = instruction.offset,
-                    throwableClassName = exception.guestClassName,
+                instructionIndex = dispatchCreatedGuestThrowableToHandler(
+                    instruction = instruction,
+                    guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
                     classHierarchy = classHierarchy,
-                ) ?: throw exception
-                val throwable = heap.allocateObject(exception.guestClassName)
-                resetOperandStackForExceptionHandler(operandStack, throwable)
-                instructionIndex = instructionIndexByOffset[handler.handlerPc]
-                    ?: throw JvmUnsupportedInstructionException(
-                        "Invalid exception handler target ${handler.handlerPc} for " +
-                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
-                            "target is not an instruction offset",
-                    )
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
             }
         }
         return JvmFrameExecutionResult(operandStack = operandStack)
+    }
+
+    private fun dispatchExistingGuestThrowableToHandler(
+        instruction: DecodedInstruction,
+        throwable: JvmObjectReferenceValue,
+        originalException: Throwable,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        exceptionHandlers: List<JvmExceptionHandler>,
+        instructionIndexByOffset: Map<Int, Int>,
+    ): Int {
+        val throwableClassName = heap.get(throwable).className
+        val handler = JvmExceptionHandlerTable.findHandler(
+            handlers = exceptionHandlers,
+            thrownAtPc = instruction.offset,
+            throwableClassName = throwableClassName,
+            classHierarchy = classHierarchy,
+        ) ?: throw originalException
+        resetOperandStackForExceptionHandler(operandStack, throwable)
+        return exceptionHandlerInstructionIndex(instruction, handler, instructionIndexByOffset)
+    }
+
+    private fun dispatchCreatedGuestThrowableToHandler(
+        instruction: DecodedInstruction,
+        guestClassName: String,
+        originalException: Throwable,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        exceptionHandlers: List<JvmExceptionHandler>,
+        instructionIndexByOffset: Map<Int, Int>,
+    ): Int {
+        val handler = JvmExceptionHandlerTable.findHandler(
+            handlers = exceptionHandlers,
+            thrownAtPc = instruction.offset,
+            throwableClassName = guestClassName,
+            classHierarchy = classHierarchy,
+        ) ?: throw originalException
+        val throwable = heap.allocateObject(guestClassName)
+        resetOperandStackForExceptionHandler(operandStack, throwable)
+        return exceptionHandlerInstructionIndex(instruction, handler, instructionIndexByOffset)
+    }
+
+    private fun exceptionHandlerInstructionIndex(
+        instruction: DecodedInstruction,
+        handler: JvmExceptionHandler,
+        instructionIndexByOffset: Map<Int, Int>,
+    ): Int {
+        return instructionIndexByOffset[handler.handlerPc]
+            ?: throw JvmUnsupportedInstructionException(
+                "Invalid exception handler target ${handler.handlerPc} for " +
+                    "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
+                    "target is not an instruction offset",
+            )
     }
 
     private fun resetOperandStackForExceptionHandler(
