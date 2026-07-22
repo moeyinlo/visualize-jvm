@@ -15,7 +15,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | JVMS | Requirement | Module | Tests | Status |
 | --- | --- | --- | --- | --- |
 | 2.1 | Parsed `ClassFile` structures map into runtime class definitions and method-area entries with identity, hierarchy, fields, method flags, and `Code` execution metadata preserved | `jvm-classfile`, `jvm-runtime` | `JvmClassfileRuntimeAdapterTest` | IMPLEMENTED |
-| 2.2 | Data types | `jvm-runtime` | TBD | PENDING |
+| 2.2 | Runtime data type model partitions JVM values into primitive values, reference values, and `returnAddress` values with JVMS category-one/category-two slot widths | `jvm-runtime` | `JvmDataTypeModelTest`, `JvmPrimitiveValueTest`, `JvmReferenceValueTest`, `JvmReturnAddressValueTest` | IMPLEMENTED |
 | 2.3 | Primitive types and values | `jvm-runtime` | TBD | PENDING |
 | 2.3 | Primitive value runtime model and JVM slot categories | `jvm-runtime` | `JvmPrimitiveValueTest` | IMPLEMENTED |
 | 2.3.1 | Integral types and values | `jvm-runtime` | TBD | PENDING |
