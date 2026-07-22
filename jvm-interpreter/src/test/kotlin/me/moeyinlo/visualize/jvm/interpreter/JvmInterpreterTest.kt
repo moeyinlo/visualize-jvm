@@ -16187,6 +16187,85 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokeinterface throws guest AbstractMethodError when abstract child suppresses default`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/AbstractSpecificImpl")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmAbstractMethodError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x0A.toByte(),
+                    0xB9.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 3,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/ParentFace", "pkg/ParentFace".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("(J)I", "(J)I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/ParentFace",
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "(J)I",
+                                    isStatic = false,
+                                    code = byteArrayOf(
+                                        0x1F.toByte(),
+                                        0x88.toByte(),
+                                        0x04.toByte(),
+                                        0x60.toByte(),
+                                        0xAC.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 3,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(
+                            internalName = "pkg/ChildFace",
+                            interfaceNames = listOf("pkg/ParentFace"),
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "(J)I",
+                                    isStatic = false,
+                                    isAbstract = true,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(
+                            internalName = "pkg/AbstractSpecificImpl",
+                            interfaceNames = listOf("pkg/ParentFace", "pkg/ChildFace"),
+                        ),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+            )
+        }
+
+        assertEquals("java/lang/AbstractMethodError", exception.guestClassName)
+        assertEquals("pkg/AbstractSpecificImpl.value:(J)I", exception.message)
+    }
+    @Test
     fun `invokeinterface throws guest IncompatibleClassChangeError for conflicting defaults`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/ConflictImpl")
