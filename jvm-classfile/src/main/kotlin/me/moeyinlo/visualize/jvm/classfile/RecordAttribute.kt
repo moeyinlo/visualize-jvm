@@ -25,17 +25,60 @@ object RecordAttributeParser : AttributeBodyParser {
     private fun parseComponent(
         context: AttributeParseContext,
         ownerPath: String,
-    ): RecordComponentInfo =
-        RecordComponentInfo(
-            nameIndex = readNameIndex(context, "$ownerPath.name_index"),
-            descriptorIndex = readDescriptorIndex(context, "$ownerPath.descriptor_index"),
-            attributes = AttributeInfoParser.parseAttributes(
-                reader = context.reader,
-                constantPool = context.constantPool,
-                registry = context.registry,
-                ownerPath = ownerPath,
-            ),
+    ): RecordComponentInfo {
+        val nameIndex = readNameIndex(context, "$ownerPath.name_index")
+        val descriptorIndex = readDescriptorIndex(context, "$ownerPath.descriptor_index")
+        val attributes = AttributeInfoParser.parseAttributes(
+            reader = context.reader,
+            constantPool = context.constantPool,
+            registry = context.registry,
+            ownerPath = ownerPath,
         )
+        validateComponentAttributes(context, attributes, ownerPath)
+        return RecordComponentInfo(
+            nameIndex = nameIndex,
+            descriptorIndex = descriptorIndex,
+            attributes = attributes,
+        )
+    }
+
+    private fun validateComponentAttributes(
+        context: AttributeParseContext,
+        attributes: List<AttributeInfo>,
+        ownerPath: String,
+    ) {
+        val signaturePaths = mutableListOf<String>()
+        attributes.forEachIndexed { index, attribute ->
+            val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
+            if (name == "Signature") {
+                signaturePaths += "$ownerPath.attributes[$index]"
+            }
+        }
+        if (signaturePaths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: at most one Signature attribute is permitted " +
+                    "but found ${signaturePaths.size} at ${signaturePaths.joinToString()}",
+            )
+        }
+    }
+
+    private fun attributeName(
+        context: AttributeParseContext,
+        attribute: AttributeInfo,
+        role: String,
+    ): String {
+        val entry = try {
+            context.constantPool[attribute.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException("Invalid $role=${attribute.nameIndex}: ${exception.message}")
+        }
+        if (entry !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $role=${attribute.nameIndex}: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
+            )
+        }
+        return entry.value
+    }
 
     private fun readNameIndex(
         context: AttributeParseContext,
