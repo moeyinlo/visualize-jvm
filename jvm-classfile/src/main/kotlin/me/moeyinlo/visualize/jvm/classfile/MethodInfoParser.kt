@@ -138,6 +138,7 @@ object MethodInfoParser {
     ) {
         val exceptionsPaths = mutableListOf<String>()
         val signaturePaths = mutableListOf<String>()
+        val runtimeVisibleAnnotationsPaths = mutableListOf<String>()
         method.attributes.forEachIndexed { attributeIndex, attribute ->
             val name = expectUtf8(
                 constantPool = constantPool,
@@ -147,10 +148,12 @@ object MethodInfoParser {
             when (name.value) {
                 "Exceptions" -> exceptionsPaths += "$ownerPath.attributes[$attributeIndex]"
                 "Signature" -> signaturePaths += "$ownerPath.attributes[$attributeIndex]"
+                "RuntimeVisibleAnnotations" -> runtimeVisibleAnnotationsPaths += "$ownerPath.attributes[$attributeIndex]"
             }
         }
         requireAtMostOneAttribute(exceptionsPaths, "Exceptions", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
+        requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
     }
 
     private fun requireAtMostOneAttribute(
