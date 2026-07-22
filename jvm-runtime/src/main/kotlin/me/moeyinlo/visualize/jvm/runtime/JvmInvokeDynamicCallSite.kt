@@ -177,6 +177,28 @@ data class JvmLinkedInvokeDynamicCallSite(
 )
 
 object JvmInvokeDynamicCallSiteResolver {
+    fun bindBootstrapResult(
+        key: JvmInvokeDynamicCallSiteKey,
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+        invocation: JvmInvokeDynamicBootstrapInvocation,
+        bootstrapResult: JvmInvokeDynamicBootstrapResult,
+        registry: JvmInvokeDynamicCallSiteRegistry,
+    ): JvmLinkedInvokeDynamicCallSite {
+        val targetMethod = resolveMethodHandleTargetMethod(
+            constantPool = constantPool,
+            classHierarchy = classHierarchy,
+            methodHandle = bootstrapResult.targetMethodHandlePayload,
+        )
+        return registry.bind(
+            key = key,
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = invocation.callSite,
+                targetMethod = targetMethod,
+            ),
+        )
+    }
+
     fun resolveMethodHandleTargetMethod(
         constantPool: ConstantPool,
         classHierarchy: JvmClassHierarchy,

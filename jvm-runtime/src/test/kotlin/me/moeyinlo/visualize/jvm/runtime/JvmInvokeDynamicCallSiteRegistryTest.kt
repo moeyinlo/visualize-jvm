@@ -348,20 +348,7 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     fun `method handle resolver resolves invoke static targets through the class hierarchy`() {
         val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
             constantPool = bootstrapInvocationConstantPool(),
-            classHierarchy = JvmClassHierarchy(
-                listOf(
-                    JvmClassDefinition(
-                        internalName = "pkg/Bootstrap",
-                        methods = listOf(
-                            JvmMethodDefinition(
-                                name = "bootstrap",
-                                descriptor = BOOTSTRAP_DESCRIPTOR,
-                                isStatic = true,
-                            ),
-                        ),
-                    ),
-                ),
-            ),
+            classHierarchy = bootstrapTargetHierarchy(),
             methodHandle = JvmMethodHandlePayload(
                 referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
                 referenceIndex = 6,
@@ -395,6 +382,44 @@ class JvmInvokeDynamicCallSiteRegistryTest {
         assertEquals(
             "MethodHandle reference kind InvokeVirtual target resolution is not implemented yet",
             exception.message,
+        )
+    }
+
+
+    @Test
+    fun `bootstrap result binding caches invokedynamic target methods by call site key`() {
+        val heap = JvmHeap()
+        val invocation = simpleBootstrapInvocation()
+        val targetHandle = heap.internMethodHandle(
+            referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+            referenceIndex = 6,
+        )
+        val bootstrapResult = invocation.extractBootstrapResult(
+            heap = heap,
+            returnValue = heap.allocateCallSite(targetHandle),
+        )
+        val registry = JvmInvokeDynamicCallSiteRegistry()
+        val key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 4)
+
+        val linked = JvmInvokeDynamicCallSiteResolver.bindBootstrapResult(
+            key = key,
+            constantPool = bootstrapInvocationConstantPool(),
+            classHierarchy = bootstrapTargetHierarchy(),
+            invocation = invocation,
+            bootstrapResult = bootstrapResult,
+            registry = registry,
+        )
+
+        assertSame(linked, registry.linked(key))
+        assertEquals(invocation.callSite, linked.spec)
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "pkg/Bootstrap",
+                name = "bootstrap",
+                descriptor = BOOTSTRAP_DESCRIPTOR,
+                isStatic = true,
+            ),
+            linked.targetMethod,
         )
     }
     @Test
@@ -550,6 +575,22 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                 ),
                 ConstantUtf8Entry("run", "run".encodeToByteArray()),
                 ConstantUtf8Entry("(I)Ljava/lang/String;", "(I)Ljava/lang/String;".encodeToByteArray()),
+            ),
+        )
+
+    private fun bootstrapTargetHierarchy(): JvmClassHierarchy =
+        JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "bootstrap",
+                            descriptor = BOOTSTRAP_DESCRIPTOR,
+                            isStatic = true,
+                        ),
+                    ),
+                ),
             ),
         )
 
