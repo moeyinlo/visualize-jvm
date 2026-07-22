@@ -124,4 +124,45 @@ class CodeAttributeHeaderParserTest {
         assertTrue(failure.message.orEmpty().contains("code_length"), failure.message)
         assertTrue(failure.message.orEmpty().contains("greater than zero"), failure.message)
     }
+
+    @Test
+    fun `rejects duplicate StackMapTable attributes in Code`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("StackMapTable", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 29,
+                        0, 0,
+                        0, 1,
+                        0, 0, 0, 1,
+                        0xB1.toByte(),
+                        0, 0,
+                        0, 2,
+                        0, 2, 0, 0, 0, 2, 0, 0,
+                        0, 2, 0, 0, 0, 2, 0, 0,
+                    ),
+                    source = "duplicate-stack-map-code.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "StackMapTable" to StackMapTableAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("StackMapTable"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
 }

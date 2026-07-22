@@ -53,6 +53,7 @@ object CodeAttributeParser : AttributeBodyParser {
             ownerPath = context.ownerPath,
             majorVersion = context.majorVersion,
         )
+        validateCodeAttributes(context, attributes)
 
         return CodeAttribute(
             nameIndex = context.nameIndex,
@@ -62,6 +63,43 @@ object CodeAttributeParser : AttributeBodyParser {
             exceptionTable = exceptionTable,
             attributes = attributes,
         )
+    }
+
+    private fun validateCodeAttributes(
+        context: AttributeParseContext,
+        attributes: List<AttributeInfo>,
+    ) {
+        val stackMapTablePaths = mutableListOf<String>()
+        attributes.forEachIndexed { index, attribute ->
+            val name = attributeName(context, attribute, "${context.ownerPath}.attributes[$index].attribute_name_index")
+            if (name == "StackMapTable") {
+                stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
+            }
+        }
+        if (stackMapTablePaths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid ${context.ownerPath} attributes: at most one StackMapTable attribute is permitted " +
+                    "but found ${stackMapTablePaths.size} at ${stackMapTablePaths.joinToString()}",
+            )
+        }
+    }
+
+    private fun attributeName(
+        context: AttributeParseContext,
+        attribute: AttributeInfo,
+        role: String,
+    ): String {
+        val entry = try {
+            context.constantPool[attribute.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException("Invalid $role=${attribute.nameIndex}: ${exception.message}")
+        }
+        if (entry !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $role=${attribute.nameIndex}: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
+            )
+        }
+        return entry.value
     }
 
     private fun parseExceptionTable(
