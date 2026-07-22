@@ -71,15 +71,18 @@ object CodeAttributeParser : AttributeBodyParser {
     ) {
         val stackMapTablePaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "${context.ownerPath}.attributes[$index].attribute_name_index")
             when (name) {
                 "StackMapTable" -> stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "${context.ownerPath}.attributes[$index]"
+                "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "${context.ownerPath}.attributes[$index]"
             }
         }
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
+        requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
     }
 
 

@@ -206,4 +206,45 @@ class CodeAttributeHeaderParserTest {
         assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
+
+    @Test
+    fun `rejects duplicate RuntimeInvisibleTypeAnnotations attributes in Code`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("RuntimeInvisibleTypeAnnotations", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 29,
+                        0, 0,
+                        0, 1,
+                        0, 0, 0, 1,
+                        0xB1.toByte(),
+                        0, 0,
+                        0, 2,
+                        0, 2, 0, 0, 0, 2, 0, 0,
+                        0, 2, 0, 0, 0, 2, 0, 0,
+                    ),
+                    source = "duplicate-runtime-invisible-type-annotations-code.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "RuntimeInvisibleTypeAnnotations" to RuntimeInvisibleTypeAnnotationsAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeInvisibleTypeAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
 }
