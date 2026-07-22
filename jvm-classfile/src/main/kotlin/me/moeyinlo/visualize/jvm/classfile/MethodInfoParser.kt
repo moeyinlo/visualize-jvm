@@ -259,6 +259,7 @@ object MethodInfoParser {
             "S" -> 'S'
             "Z" -> 'Z'
             "Ljava/lang/String;" -> 's'
+            "Ljava/lang/Class;" -> 'c'
             else -> null
         }
 
