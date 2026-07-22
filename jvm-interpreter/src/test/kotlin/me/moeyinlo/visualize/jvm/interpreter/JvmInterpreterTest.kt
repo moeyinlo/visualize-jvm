@@ -15665,6 +15665,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `monitorenter throws guest NullPointerException for null object references`() {
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, JvmNullValue)
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC2.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 2,
+                    handlerPc = 2,
+                    catchClassName = "java/lang/NullPointerException",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/NullPointerException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `monitorexit releases the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()
@@ -15687,6 +15718,37 @@ class JvmInterpreterTest {
 
         assertEquals(emptyList(), result.operandStack.toList())
         assertEquals(0, monitor.holdCount(receiver, "worker-1"))
+    }
+
+    @Test
+    fun `monitorexit throws guest NullPointerException for null object references`() {
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, JvmNullValue)
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC3.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 2,
+                    handlerPc = 2,
+                    catchClassName = "java/lang/NullPointerException",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/NullPointerException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
     }
 
     @Test
