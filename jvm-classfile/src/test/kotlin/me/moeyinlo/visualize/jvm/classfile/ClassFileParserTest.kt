@@ -75,6 +75,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects ClassFile with duplicate EnclosingMethod attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDuplicateEnclosingMethodBytes(),
+                source = "DuplicateEnclosingMethod.class",
+                attributeParsers = AttributeParserRegistry.of("EnclosingMethod" to EnclosingMethodAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("EnclosingMethod"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
+
+    @Test
     fun `rejects ClassFile with both NestHost and NestMembers attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -214,6 +229,39 @@ class ClassFileParserTest {
             0, 5,
             0, 0, 0, 1,
             'B'.code,
+        )
+
+    private fun classFileWithDuplicateEnclosingMethodBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 6,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 15,
+            'E'.code, 'n'.code, 'c'.code, 'l'.code, 'o'.code, 's'.code, 'i'.code, 'n'.code, 'g'.code,
+            'M'.code, 'e'.code, 't'.code, 'h'.code, 'o'.code, 'd'.code,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 2,
+            0, 5,
+            0, 0, 0, 4,
+            0, 4,
+            0, 0,
+            0, 5,
+            0, 0, 0, 4,
+            0, 4,
+            0, 0,
         )
 
     private fun classFileWithDuplicateSourceFileBytes(): ByteArray =
