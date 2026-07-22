@@ -36,6 +36,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
@@ -129,6 +130,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
         staticFields: JvmStaticFields = JvmStaticFields(),
         nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
+        monitors: JvmMonitorState = JvmMonitorState(),
+        currentThreadId: String = "main",
         currentClassName: String? = null,
         exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
     ): JvmExecutionResult {
@@ -141,6 +144,8 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             staticFields = staticFields,
             nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
             currentClassName = currentClassName,
             allowReturn = false,
             exceptionHandlers = exceptionHandlers,
@@ -157,6 +162,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
         allowReturn: Boolean,
         exceptionHandlers: List<JvmExceptionHandler>,
@@ -208,6 +215,8 @@ object JvmInterpreter {
                             classHierarchy,
                             staticFields,
                             nativeMethods,
+                            monitors,
+                            currentThreadId,
                             currentClassName,
                         )
                         null
@@ -455,6 +464,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
     ) {
         when (instruction.metadata.opcode) {
@@ -626,6 +637,8 @@ object JvmInterpreter {
                 classHierarchy,
                 staticFields,
                 nativeMethods,
+                monitors,
+                currentThreadId,
                 currentClassName,
             )
             0xB7 -> executeInvokeSpecial(
@@ -636,6 +649,8 @@ object JvmInterpreter {
                 classHierarchy,
                 staticFields,
                 nativeMethods,
+                monitors,
+                currentThreadId,
                 currentClassName,
             )
             0xB8 -> executeInvokeStatic(
@@ -646,6 +661,8 @@ object JvmInterpreter {
                 classHierarchy,
                 staticFields,
                 nativeMethods,
+                monitors,
+                currentThreadId,
                 currentClassName,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
@@ -655,6 +672,7 @@ object JvmInterpreter {
             0xBF -> executeAThrow(instruction, operandStack, heap)
             0xC0 -> executeCheckCast(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
+            0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, currentThreadId)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -3513,6 +3531,32 @@ object JvmInterpreter {
         )
     }
 
+    private fun executeMonitorEnter(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+    ) {
+        val objectref = operandStack.pop()
+        if (objectref == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "monitorenter on null objectref at offset ${instruction.offset}",
+            )
+        }
+        if (objectref !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} objectref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    objectref.javaClass.simpleName,
+            )
+        }
+
+        heap.get(objectref)
+        monitors.enter(objectref, currentThreadId)
+    }
+
     private fun executeCheckCast(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -3680,6 +3724,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
@@ -3712,6 +3758,8 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
                 nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
                 currentClassName = resolvedMethod.ownerClassName,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
@@ -3756,6 +3804,8 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             staticFields = staticFields,
             nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,
@@ -3789,6 +3839,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
@@ -3860,6 +3912,8 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
                 nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
@@ -3906,6 +3960,8 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             staticFields = staticFields,
             nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = targetMethod.exceptionHandlers,
@@ -3939,6 +3995,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
@@ -4001,6 +4059,8 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
                 nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
                 currentClassName = resolvedMethod.ownerClassName,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
@@ -4047,6 +4107,8 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             staticFields = staticFields,
             nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,
@@ -4084,6 +4146,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
     ): JvmValue? {
         val intrinsic = nativeMethods.resolve(method)
@@ -4098,6 +4162,8 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
                 currentClassName = currentClassName,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
                 callStaticMethodHandler = { ownerClassName, name, descriptor, upcallArguments ->
                     executeStaticMethodUpcall(
                         ownerClassName = ownerClassName,
@@ -4108,6 +4174,8 @@ object JvmInterpreter {
                         classHierarchy = classHierarchy,
                         staticFields = staticFields,
                         nativeMethods = nativeMethods,
+                        monitors = monitors,
+                        currentThreadId = currentThreadId,
                         currentClassName = currentClassName,
                     )
                 },
@@ -4122,6 +4190,8 @@ object JvmInterpreter {
                         classHierarchy = classHierarchy,
                         staticFields = staticFields,
                         nativeMethods = nativeMethods,
+                        monitors = monitors,
+                        currentThreadId = currentThreadId,
                         currentClassName = currentClassName,
                     )
                 },
@@ -4142,6 +4212,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
@@ -4191,6 +4263,8 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             staticFields = staticFields,
             nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,
@@ -4214,6 +4288,8 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
         nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
         currentClassName: String?,
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
@@ -4287,6 +4363,8 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             staticFields = staticFields,
             nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = targetMethod.exceptionHandlers,

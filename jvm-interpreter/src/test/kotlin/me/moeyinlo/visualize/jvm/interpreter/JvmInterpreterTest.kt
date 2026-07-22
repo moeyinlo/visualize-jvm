@@ -40,6 +40,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandlePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
@@ -15637,6 +15638,30 @@ class JvmInterpreterTest {
                 "other/NotOwner is not assignable to pkg/Owner",
             exception.message,
         )
+    }
+
+    @Test
+    fun `monitorenter acquires the object monitor for the current thread`() {
+        val heap = JvmHeap()
+        val monitor = JvmMonitorState()
+        val receiver = heap.allocateObject("pkg/Lock")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC2.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            monitors = monitor,
+            currentThreadId = "worker-1",
+        )
+
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(1, monitor.holdCount(receiver, "worker-1"))
     }
 
     @Test
