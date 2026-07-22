@@ -24,6 +24,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandler
+import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandlerTable
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
@@ -125,6 +127,7 @@ object JvmInterpreter {
         staticFields: JvmStaticFields = JvmStaticFields(),
         nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
         currentClassName: String? = null,
+        exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
     ): JvmExecutionResult {
         val frameResult = executeFrame(
             code = code,
@@ -137,6 +140,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             currentClassName = currentClassName,
             allowReturn = false,
+            exceptionHandlers = exceptionHandlers,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -152,6 +156,7 @@ object JvmInterpreter {
         nativeMethods: JvmNativeMethodRegistry,
         currentClassName: String?,
         allowReturn: Boolean,
+        exceptionHandlers: List<JvmExceptionHandler>,
     ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
@@ -161,60 +166,86 @@ object JvmInterpreter {
         var instructionIndex = 0
         while (instructionIndex < instructions.size) {
             val instruction = instructions[instructionIndex]
-            if (allowReturn && instruction.metadata.opcode in 0xAC..0xB1) {
-                return executeReturnInstruction(instruction, operandStack)
-            }
-            val branchTargetOffset = when (instruction.metadata.opcode) {
-                0x99 -> executeIntBranch(instruction, operandStack) { value -> value == 0 }
-                0x9A -> executeIntBranch(instruction, operandStack) { value -> value != 0 }
-                0x9B -> executeIntBranch(instruction, operandStack) { value -> value < 0 }
-                0x9C -> executeIntBranch(instruction, operandStack) { value -> value >= 0 }
-                0x9D -> executeIntBranch(instruction, operandStack) { value -> value > 0 }
-                0x9E -> executeIntBranch(instruction, operandStack) { value -> value <= 0 }
-                0x9F -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
-                0xA0 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
-                0xA1 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 < value2 }
-                0xA2 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 >= value2 }
-                0xA3 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 > value2 }
-                0xA4 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 <= value2 }
-                0xA5 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
-                0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
-                0xA7 -> instruction.branchTargetOffset()
-                0xA8 -> executeSubroutineBranch(instruction, operandStack)
-                0xA9 -> executeSubroutineReturn(instruction, localVariables)
-                0xAA -> executeTableSwitch(instruction, operandStack)
-                0xAB -> executeLookupSwitch(instruction, operandStack)
-                0xC4 -> executeWideOrSubroutineReturn(instruction, operandStack, localVariables)
-                0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
-                0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
-                0xC8 -> instruction.wideBranchTargetOffset()
-                0xC9 -> executeWideSubroutineBranch(instruction, operandStack)
-                else -> {
-                    executeInstruction(
-                        instruction,
-                        operandStack,
-                        constantPool,
-                        heap,
-                        localVariables,
-                        classHierarchy,
-                        staticFields,
-                        nativeMethods,
-                        currentClassName,
-                    )
-                    null
+            try {
+                if (allowReturn && instruction.metadata.opcode in 0xAC..0xB1) {
+                    return executeReturnInstruction(instruction, operandStack)
                 }
-            }
-            instructionIndex = if (branchTargetOffset == null) {
-                instructionIndex + 1
-            } else {
-                instructionIndexByOffset[branchTargetOffset]
+                val branchTargetOffset = when (instruction.metadata.opcode) {
+                    0x99 -> executeIntBranch(instruction, operandStack) { value -> value == 0 }
+                    0x9A -> executeIntBranch(instruction, operandStack) { value -> value != 0 }
+                    0x9B -> executeIntBranch(instruction, operandStack) { value -> value < 0 }
+                    0x9C -> executeIntBranch(instruction, operandStack) { value -> value >= 0 }
+                    0x9D -> executeIntBranch(instruction, operandStack) { value -> value > 0 }
+                    0x9E -> executeIntBranch(instruction, operandStack) { value -> value <= 0 }
+                    0x9F -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
+                    0xA0 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
+                    0xA1 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 < value2 }
+                    0xA2 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 >= value2 }
+                    0xA3 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 > value2 }
+                    0xA4 -> executeIntCompareBranch(instruction, operandStack) { value1, value2 -> value1 <= value2 }
+                    0xA5 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 == value2 }
+                    0xA6 -> executeReferenceCompareBranch(instruction, operandStack) { value1, value2 -> value1 != value2 }
+                    0xA7 -> instruction.branchTargetOffset()
+                    0xA8 -> executeSubroutineBranch(instruction, operandStack)
+                    0xA9 -> executeSubroutineReturn(instruction, localVariables)
+                    0xAA -> executeTableSwitch(instruction, operandStack)
+                    0xAB -> executeLookupSwitch(instruction, operandStack)
+                    0xC4 -> executeWideOrSubroutineReturn(instruction, operandStack, localVariables)
+                    0xC6 -> executeReferenceBranch(instruction, operandStack) { value -> value == JvmNullValue }
+                    0xC7 -> executeReferenceBranch(instruction, operandStack) { value -> value != JvmNullValue }
+                    0xC8 -> instruction.wideBranchTargetOffset()
+                    0xC9 -> executeWideSubroutineBranch(instruction, operandStack)
+                    else -> {
+                        executeInstruction(
+                            instruction,
+                            operandStack,
+                            constantPool,
+                            heap,
+                            localVariables,
+                            classHierarchy,
+                            staticFields,
+                            nativeMethods,
+                            currentClassName,
+                        )
+                        null
+                    }
+                }
+                instructionIndex = if (branchTargetOffset == null) {
+                    instructionIndex + 1
+                } else {
+                    instructionIndexByOffset[branchTargetOffset]
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Invalid ${instruction.metadata.mnemonic} branch target $branchTargetOffset " +
+                                "at offset ${instruction.offset}: target is not an instruction offset",
+                        )
+                }
+            } catch (exception: JvmThrownException) {
+                val handler = JvmExceptionHandlerTable.findHandler(
+                    handlers = exceptionHandlers,
+                    thrownAtPc = instruction.offset,
+                    throwableClassName = heap.get(exception.throwable).className,
+                    classHierarchy = classHierarchy,
+                ) ?: throw exception
+                resetOperandStackForExceptionHandler(operandStack, exception.throwable)
+                instructionIndex = instructionIndexByOffset[handler.handlerPc]
                     ?: throw JvmUnsupportedInstructionException(
-                        "Invalid ${instruction.metadata.mnemonic} branch target $branchTargetOffset " +
-                            "at offset ${instruction.offset}: target is not an instruction offset",
+                        "Invalid exception handler target ${handler.handlerPc} for " +
+                            "${instruction.metadata.mnemonic} at offset ${instruction.offset}: " +
+                            "target is not an instruction offset",
                     )
             }
         }
         return JvmFrameExecutionResult(operandStack = operandStack)
+    }
+
+    private fun resetOperandStackForExceptionHandler(
+        operandStack: JvmOperandStack,
+        throwable: JvmObjectReferenceValue,
+    ) {
+        while (operandStack.valueCount > 0) {
+            operandStack.pop()
+        }
+        operandStack.push(throwable)
     }
 
     private fun executeInstruction(
@@ -3529,6 +3560,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
+            exceptionHandlers = resolvedMethod.exceptionHandlers,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -3678,6 +3710,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
+            exceptionHandlers = targetMethod.exceptionHandlers,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -3818,6 +3851,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
+            exceptionHandlers = resolvedMethod.exceptionHandlers,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -3961,6 +3995,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
+            exceptionHandlers = resolvedMethod.exceptionHandlers,
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI static upcall",
@@ -4056,6 +4091,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             currentClassName = targetMethod.ownerClassName,
             allowReturn = true,
+            exceptionHandlers = targetMethod.exceptionHandlers,
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI instance upcall",

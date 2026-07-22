@@ -21,6 +21,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandler
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
@@ -12885,6 +12886,106 @@ class JvmInterpreterTest {
             "Invalid athrow objectref at offset 1: expected JvmReferenceValue but was JvmIntValue",
             exception.message,
         )
+    }
+
+    @Test
+    fun `athrow transfers control to a matching exception handler`() {
+        val heap = JvmHeap()
+        val throwable = heap.allocateObject("java/lang/RuntimeException")
+        val localVariables = JvmLocalVariables(maxLocals = 2)
+        localVariables.store(0, throwable)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xBF.toByte(),
+                0x4C.toByte(),
+                0x05.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 2,
+                    handlerPc = 2,
+                    catchClassName = "java/lang/RuntimeException",
+                ),
+            ),
+        )
+
+        assertEquals(throwable, localVariables.load(1))
+        assertEquals(listOf(JvmIntValue(2)), result.operandStack.toList())
+    }
+
+    @Test
+    fun `caller exception handler catches guest exception thrown by invoked method`() {
+        val heap = JvmHeap()
+        val throwable = heap.allocateObject("java/lang/RuntimeException")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, throwable)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x03.toByte(),
+                0x4B.toByte(),
+                0x08.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("thrower", "thrower".encodeToByteArray()),
+                    ConstantUtf8Entry("(Ljava/lang/Throwable;)V", "(Ljava/lang/Throwable;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Throwable", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/RuntimeException",
+                        superclassName = "java/lang/Throwable",
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "thrower",
+                                descriptor = "(Ljava/lang/Throwable;)V",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x2A.toByte(),
+                                    0xBF.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 4,
+                    handlerPc = 5,
+                    catchClassName = "java/lang/RuntimeException",
+                ),
+            ),
+        )
+
+        assertEquals(throwable, callerLocals.load(0))
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
     }
 
     @Test
