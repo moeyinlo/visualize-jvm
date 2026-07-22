@@ -224,6 +224,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.25 | `Module` rejects non-empty `opens` tables on open modules | `jvm-classfile` | `ModuleAttributeParserTest.rejects open module with opens entries` | IMPLEMENTED |
 | 4.7.25 | `Module` uniqueness and module relationship constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 4.7.26 | `ModulePackages` classfile structure | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
+| 4.7.26 | `ModulePackages` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` package table rejects duplicate `package_index` entries | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package indexes` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` package table rejects duplicate package names through different indexes | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package names` | IMPLEMENTED |

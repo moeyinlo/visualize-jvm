@@ -74,6 +74,7 @@ object ClassFileParser {
         val recordPaths = mutableListOf<String>()
         val moduleMainClassPaths = mutableListOf<String>()
         val signaturePaths = mutableListOf<String>()
+        val modulePackagesPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, source, index)) {
                 "NestHost" -> nestHostPaths += "ClassFile.attributes[$index]"
@@ -85,6 +86,7 @@ object ClassFileParser {
                 "Record" -> recordPaths += "ClassFile.attributes[$index]"
                 "ModuleMainClass" -> moduleMainClassPaths += "ClassFile.attributes[$index]"
                 "Signature" -> signaturePaths += "ClassFile.attributes[$index]"
+                "ModulePackages" -> modulePackagesPaths += "ClassFile.attributes[$index]"
             }
         }
         requireAtMostOneAttribute(nestHostPaths, "NestHost", source)
@@ -103,6 +105,7 @@ object ClassFileParser {
         requireAtMostOneAttribute(recordPaths, "Record", source)
         requireAtMostOneAttribute(moduleMainClassPaths, "ModuleMainClass", source)
         requireAtMostOneAttribute(signaturePaths, "Signature", source)
+        requireAtMostOneAttribute(modulePackagesPaths, "ModulePackages", source)
         val nestHostPath = nestHostPaths.singleOrNull()
         val nestMembersPath = nestMembersPaths.singleOrNull()
         if (nestHostPath != null && nestMembersPath != null) {
