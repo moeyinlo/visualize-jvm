@@ -192,6 +192,7 @@ data class JvmLinkedInvokeDynamicCallSite(
 
 sealed interface JvmMethodHandleTarget {
     data class Method(val method: JvmResolvedMethod) : JvmMethodHandleTarget
+    data class Field(val field: JvmResolvedField) : JvmMethodHandleTarget
 }
 
 object JvmInvokeDynamicCallSiteResolver {
@@ -203,7 +204,7 @@ object JvmInvokeDynamicCallSiteResolver {
         bootstrapResult: JvmInvokeDynamicBootstrapResult,
         registry: JvmInvokeDynamicCallSiteRegistry,
     ): JvmLinkedInvokeDynamicCallSite {
-        val targetMethod = resolveMethodHandleTargetMethod(
+        val target = resolveMethodHandleTarget(
             constantPool = constantPool,
             classHierarchy = classHierarchy,
             methodHandle = bootstrapResult.targetMethodHandlePayload,
@@ -213,10 +214,42 @@ object JvmInvokeDynamicCallSiteResolver {
             callSite = JvmLinkedInvokeDynamicCallSite(
                 spec = invocation.callSite,
                 targetMethodHandle = bootstrapResult.targetMethodHandlePayload,
-                target = JvmMethodHandleTarget.Method(targetMethod),
+                target = target,
             ),
         )
     }
+
+    fun resolveMethodHandleTarget(
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+        methodHandle: JvmMethodHandlePayload,
+    ): JvmMethodHandleTarget =
+        when (methodHandle.referenceKind) {
+            JvmMethodHandleReferenceKind.GetStatic -> JvmMethodHandleTarget.Field(
+                resolveGetStaticMethodHandleTargetField(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodHandle = methodHandle,
+                ),
+            )
+
+            JvmMethodHandleReferenceKind.InvokeStatic,
+            JvmMethodHandleReferenceKind.InvokeVirtual,
+            JvmMethodHandleReferenceKind.InvokeSpecial,
+            JvmMethodHandleReferenceKind.InvokeInterface,
+            JvmMethodHandleReferenceKind.NewInvokeSpecial,
+            -> JvmMethodHandleTarget.Method(
+                resolveMethodHandleTargetMethod(
+                    constantPool = constantPool,
+                    classHierarchy = classHierarchy,
+                    methodHandle = methodHandle,
+                ),
+            )
+
+            else -> throw JvmInvokeDynamicLinkageException(
+                "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
+            )
+        }
 
     fun resolveMethodHandleTargetMethod(
         constantPool: ConstantPool,
@@ -348,6 +381,34 @@ object JvmInvokeDynamicCallSiteResolver {
         }
     }
 
+    private fun resolveGetStaticMethodHandleTargetField(
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+        methodHandle: JvmMethodHandlePayload,
+    ): JvmResolvedField {
+        val referenceIndex = ConstantPoolIndex(methodHandle.referenceIndex)
+        val fieldReferenceEntry = constantPoolEntry(constantPool, referenceIndex)
+        if (fieldReferenceEntry !is ConstantFieldRefEntry) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle GetStatic reference index $referenceIndex expected field reference but found " +
+                    fieldReferenceEntry.javaClass.simpleName,
+            )
+        }
+        val resolvedField = resolveMethodHandleReferenceField(
+            constantPool = constantPool,
+            classHierarchy = classHierarchy,
+            fieldReferenceEntry = fieldReferenceEntry,
+            referenceIndex = referenceIndex,
+        )
+        if (!resolvedField.isStatic) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle GetStatic target ${resolvedField.ownerClassName}.${resolvedField.name}:" +
+                    "${resolvedField.descriptor} resolved to a non-static field",
+            )
+        }
+        return resolvedField
+    }
+
     private fun resolveMethodHandleReferenceMethod(
         constantPool: ConstantPool,
         classHierarchy: JvmClassHierarchy,
@@ -359,6 +420,50 @@ object JvmInvokeDynamicCallSiteResolver {
             ownerClassName = methodReference.ownerClassName,
             name = methodReference.name,
             descriptor = methodReference.descriptor,
+        )
+    }
+
+    private fun resolveMethodHandleReferenceField(
+        constantPool: ConstantPool,
+        classHierarchy: JvmClassHierarchy,
+        fieldReferenceEntry: ConstantFieldRefEntry,
+        referenceIndex: ConstantPoolIndex,
+    ): JvmResolvedField {
+        val fieldReference = fieldReference(constantPool, fieldReferenceEntry, referenceIndex)
+        return classHierarchy.resolveField(
+            ownerClassName = fieldReference.ownerClassName,
+            name = fieldReference.name,
+            descriptor = fieldReference.descriptor,
+        )
+    }
+
+    private data class FieldReference(
+        val ownerClassName: String,
+        val name: String,
+        val descriptor: String,
+    )
+
+    private fun fieldReference(
+        constantPool: ConstantPool,
+        entry: ConstantFieldRefEntry,
+        referenceIndex: ConstantPoolIndex,
+    ): FieldReference {
+        val classEntry = constantPoolEntry(constantPool, entry.classIndex)
+        if (classEntry !is ConstantClassEntry) {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle field reference index $referenceIndex class_index ${entry.classIndex} " +
+                    "expected CONSTANT_Class_info but found ${classEntry.javaClass.simpleName}",
+            )
+        }
+        val nameAndDescriptor = nameAndDescriptor(
+            constantPool = constantPool,
+            index = entry.nameAndTypeIndex,
+            role = "MethodHandle field reference name_and_type_index",
+        )
+        return FieldReference(
+            ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "MethodHandle field reference class name_index"),
+            name = nameAndDescriptor.name,
+            descriptor = nameAndDescriptor.descriptor,
         )
     }
 
