@@ -4074,15 +4074,72 @@ object JvmInterpreter {
                     objectref.javaClass.simpleName,
             )
         }
-        val receiverClassName = heap.get(objectref).className
+        executeVirtualMethodWithArguments(
+            instruction = instruction,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = currentThreadId,
+            currentClassName = currentClassName,
+            bootstrapMethods = bootstrapMethods,
+            invokeDynamicCallSites = invokeDynamicCallSites,
+            resolvedMethod = resolvedMethod,
+            receiver = objectref,
+            arguments = arguments,
+            opcodeMnemonic = "invokevirtual",
+        )?.let { returnValue ->
+            operandStack.push(returnValue)
+        }
+    }
+
+    private fun executeVirtualMethodWithArguments(
+        instruction: DecodedInstruction,
+        constantPool: ConstantPool,
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+        currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        resolvedMethod: JvmResolvedMethod,
+        receiver: JvmObjectReferenceValue,
+        arguments: List<JvmValue>,
+        opcodeMnemonic: String,
+    ): JvmValue? {
+        val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
+        if (arguments.size != argumentDescriptors.size) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid $opcodeMnemonic arguments for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor}: expected ${argumentDescriptors.size} arguments but was " +
+                    arguments.size,
+            )
+        }
+        for ((argument, descriptor) in arguments.zip(argumentDescriptors)) {
+            requireMethodArgumentValue(instruction, resolvedMethod, descriptor, argument)
+            requireReferenceMethodArgumentAssignable(
+                instruction,
+                resolvedMethod,
+                descriptor,
+                argument,
+                heap,
+                classHierarchy,
+            )
+        }
+        val receiverClassName = heap.get(receiver).className
         if (!classHierarchy.isAssignable(receiverClassName, resolvedMethod.ownerClassName)) {
             throw JvmUnsupportedInstructionException(
-                "Invalid invokevirtual receiver for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                "Invalid $opcodeMnemonic receiver for ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
                     "${resolvedMethod.descriptor} at offset ${instruction.offset}: " +
                     "$receiverClassName is not assignable to ${resolvedMethod.ownerClassName}",
             )
         }
-        requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
+        requireNonConstructorReceiverInitialized(resolvedMethod, receiver, heap)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
         val targetMethod = classHierarchy.resolveVirtualMethod(
             receiverClassName = receiverClassName,
@@ -4100,7 +4157,7 @@ object JvmInterpreter {
             val nativeReturnValue = executeNativeMethod(
                 instruction = instruction,
                 method = targetMethod,
-                receiver = objectref,
+                receiver = receiver,
                 arguments = arguments,
                 heap = heap,
                 classHierarchy = classHierarchy,
@@ -4114,12 +4171,12 @@ object JvmInterpreter {
             if (returnDescriptor == "V") {
                 if (nativeReturnValue != null) {
                     throw JvmUnsupportedInstructionException(
-                        "Invalid invokevirtual native return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                        "Invalid $opcodeMnemonic native return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
                             "${targetMethod.descriptor}: expected void but returned " +
                             nativeReturnValue.javaClass.simpleName,
                     )
                 }
-                return
+                return null
             }
             val returnValue = nativeReturnValue
                 ?: throw JvmUnsupportedInstructionException(
@@ -4128,17 +4185,16 @@ object JvmInterpreter {
                 )
             requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
             requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
-            operandStack.push(returnValue)
-            return
+            return returnValue
         }
         val methodCode = targetMethod.code
             ?: throw JvmUnsupportedInstructionException(
                 "Resolved instance method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
-                    "${targetMethod.descriptor} has no Code attribute for invokevirtual",
+                    "${targetMethod.descriptor} has no Code attribute for $opcodeMnemonic",
             )
         val calleeLocals = JvmLocalVariables(maxLocals = targetMethod.maxLocals)
 
-        calleeLocals.store(0, objectref)
+        calleeLocals.store(0, receiver)
         var localIndex = 1
         for (argument in arguments) {
             calleeLocals.store(localIndex, argument)
@@ -4166,12 +4222,12 @@ object JvmInterpreter {
         if (returnDescriptor == "V") {
             if (frameResult.returnValue != null) {
                 throw JvmUnsupportedInstructionException(
-                    "Invalid invokevirtual return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                    "Invalid $opcodeMnemonic return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
                         "${targetMethod.descriptor}: expected void but returned " +
                         frameResult.returnValue.javaClass.simpleName,
                 )
             }
-            return
+            return null
         }
         val returnValue = frameResult.returnValue
             ?: throw JvmUnsupportedInstructionException(
@@ -4180,7 +4236,7 @@ object JvmInterpreter {
             )
         requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
         requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
-        operandStack.push(returnValue)
+        return returnValue
     }
 
     private fun executeInvokeSpecial(
