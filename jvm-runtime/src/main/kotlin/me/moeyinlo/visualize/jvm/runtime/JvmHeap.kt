@@ -62,6 +62,8 @@ data class JvmMethodHandlePayload(
     val referenceIndex: Int,
 ) : JvmHeapPayload
 
+data class JvmCallSitePayload(val targetMethodHandle: JvmObjectReferenceValue) : JvmHeapPayload
+
 data class JvmReferenceArrayPayload(val elements: MutableList<JvmReferenceValue>) : JvmHeapPayload
 
 private data class JvmMethodHandleKey(
@@ -209,6 +211,19 @@ class JvmHeap {
         ),
     )
 
+    fun allocateCallSite(targetMethodHandle: JvmObjectReferenceValue): JvmObjectReferenceValue {
+        val target = get(targetMethodHandle)
+        require(target.className == "java/lang/invoke/MethodHandle") {
+            "call site target must be a java/lang/invoke/MethodHandle object: ${target.className}"
+        }
+        return allocate(
+            JvmHeapObject(
+                className = "java/lang/invoke/CallSite",
+                payload = JvmCallSitePayload(targetMethodHandle),
+            ),
+        )
+    }
+
     fun internString(value: String): JvmObjectReferenceValue =
         internedStrings.getOrPut(value) { allocateString(value) }
 
@@ -341,6 +356,7 @@ private fun JvmHeapPayload.shallowClonePayload(): JvmHeapPayload =
     when (this) {
         is JvmBooleanArrayPayload -> JvmBooleanArrayPayload(elements.toMutableList())
         is JvmByteArrayPayload -> JvmByteArrayPayload(elements.toMutableList())
+        is JvmCallSitePayload -> copy()
         is JvmCharArrayPayload -> JvmCharArrayPayload(elements.toMutableList())
         is JvmClassPayload -> copy()
         is JvmDoubleArrayPayload -> JvmDoubleArrayPayload(elements.toMutableList())

@@ -176,6 +176,55 @@ class JvmHeapTest {
     }
 
     @Test
+    fun `heap allocates call site objects with target method handle payloads`() {
+        val heap = JvmHeap()
+        val target = heap.internMethodHandle(
+            referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+            referenceIndex = 9,
+        )
+
+        val callSite = heap.allocateCallSite(target)
+
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/invoke/CallSite",
+                payload = JvmCallSitePayload(target),
+            ),
+            heap.get(callSite),
+        )
+    }
+
+    @Test
+    fun `heap rejects call site targets that are not method handles`() {
+        val heap = JvmHeap()
+        val notMethodHandle = heap.allocateObject("java/lang/String")
+
+        val exception = kotlin.test.assertFailsWith<IllegalArgumentException> {
+            heap.allocateCallSite(notMethodHandle)
+        }
+
+        assertEquals(
+            "call site target must be a java/lang/invoke/MethodHandle object: java/lang/String",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `heap shallow clones call site payloads while preserving target identity`() {
+        val heap = JvmHeap()
+        val target = heap.internMethodHandle(
+            referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+            referenceIndex = 9,
+        )
+        val callSite = heap.allocateCallSite(target)
+
+        val cloned = heap.shallowClone(callSite)
+
+        assertNotEquals(callSite, cloned)
+        assertEquals(JvmCallSitePayload(target), heap.get(cloned).payload)
+    }
+
+    @Test
     fun `heap shallow clones objects with copied instance fields`() {
         val heap = JvmHeap()
         val original = heap.allocateObject("Example")
