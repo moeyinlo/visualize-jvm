@@ -15987,6 +15987,63 @@ class JvmInterpreterTest {
         assertEquals(1, result.operandStack.slotDepth)
     }
 
+    @Test
+    fun `invokeinterface executes receiver class native implementation`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/NativeImpl")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x0A.toByte(),
+                0xB9.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x03.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = interfaceMethodConstantPool(),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    interfaceMethodDefinition(),
+                    JvmClassDefinition(
+                        internalName = "pkg/NativeImpl",
+                        interfaceNames = listOf("pkg/Face"),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "value",
+                                descriptor = "(J)I",
+                                isStatic = false,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey(
+                    ownerClassName = "pkg/NativeImpl",
+                    name = "value",
+                    descriptor = "(J)I",
+                    isStatic = false,
+                ) to JvmNativeMethodIntrinsic { _, invocation ->
+                    assertEquals(receiver, invocation.receiver)
+                    assertEquals(listOf(JvmLongValue(1)), invocation.arguments)
+                    JvmIntValue(9)
+                },
+            ),
+            currentClassName = "pkg/Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(9)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
     private fun interfaceMethodConstantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
@@ -16002,18 +16059,7 @@ class JvmInterpreterTest {
     private fun interfaceMethodHierarchy(): JvmClassHierarchy =
         JvmClassHierarchy(
             listOf(
-                JvmClassDefinition(
-                    internalName = "pkg/Face",
-                    isInterface = true,
-                    methods = listOf(
-                        JvmMethodDefinition(
-                            name = "value",
-                            descriptor = "(J)I",
-                            isStatic = false,
-                            isAbstract = true,
-                        ),
-                    ),
-                ),
+                interfaceMethodDefinition(),
                 JvmClassDefinition(
                     internalName = "pkg/Impl",
                     interfaceNames = listOf("pkg/Face"),
@@ -16033,6 +16079,20 @@ class JvmInterpreterTest {
                             maxLocals = 3,
                         ),
                     ),
+                ),
+            ),
+        )
+
+    private fun interfaceMethodDefinition(): JvmClassDefinition =
+        JvmClassDefinition(
+            internalName = "pkg/Face",
+            isInterface = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "value",
+                    descriptor = "(J)I",
+                    isStatic = false,
+                    isAbstract = true,
                 ),
             ),
         )

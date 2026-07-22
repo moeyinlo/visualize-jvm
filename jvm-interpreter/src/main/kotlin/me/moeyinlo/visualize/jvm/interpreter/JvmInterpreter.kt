@@ -4290,10 +4290,39 @@ object JvmInterpreter {
             )
         }
         if (targetMethod.isNative) {
-            throw JvmUnsupportedInstructionException(
-                "Native invokeinterface target ${targetMethod.ownerClassName}.${targetMethod.name}:" +
-                    "${targetMethod.descriptor} is not implemented yet",
+            val nativeReturnValue = executeNativeMethod(
+                instruction = instruction,
+                method = targetMethod,
+                receiver = objectref,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = targetMethod.ownerClassName,
             )
+            val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
+            if (returnDescriptor == "V") {
+                if (nativeReturnValue != null) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid invokeinterface native return for ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                            "${targetMethod.descriptor}: expected void but returned " +
+                            nativeReturnValue.javaClass.simpleName,
+                    )
+                }
+                return
+            }
+            val returnValue = nativeReturnValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Native method ${targetMethod.ownerClassName}.${targetMethod.name}:" +
+                        "${targetMethod.descriptor} completed without returning a value",
+                )
+            requireMethodReturnValue(instruction, targetMethod, returnDescriptor, returnValue)
+            requireReferenceMethodReturnAssignable(instruction, targetMethod, returnDescriptor, returnValue, heap, classHierarchy)
+            operandStack.push(returnValue)
+            return
         }
         val methodCode = targetMethod.code
             ?: throw JvmUnsupportedInstructionException(
