@@ -186,7 +186,7 @@ internal object AnnotationParser {
                 constNameIndex = readUtf8Index(context, "$ownerPath.enum_const_value.const_name_index"),
             )
             'c' -> ElementValue.ClassInfo(
-                classInfoIndex = readUtf8Index(context, "$ownerPath.class_info_index"),
+                classInfoIndex = readReturnDescriptorIndex(context, "$ownerPath.class_info_index"),
             )
             '@' -> ElementValue.NestedAnnotation(
                 annotation = parseAnnotation(context, "$ownerPath.annotation_value"),
@@ -258,6 +258,24 @@ internal object AnnotationParser {
         val index = readUtf8Index(context, role)
         val entry = context.constantPool[index] as ConstantUtf8Entry
         DescriptorValidator.validateFieldDescriptor(index, role, entry.value)
+        return index
+    }
+
+    private fun readReturnDescriptorIndex(
+        context: AttributeParseContext,
+        role: String,
+    ): ConstantPoolIndex {
+        val index = readUtf8Index(context, role)
+        val entry = context.constantPool[index] as ConstantUtf8Entry
+        if (entry.value != "V") {
+            try {
+                DescriptorValidator.validateFieldDescriptor(index, role, entry.value)
+            } catch (exception: ClassFileFormatException) {
+                throw ClassFileFormatException(
+                    "Invalid $role=$index: '${entry.value}' is not a valid return descriptor: ${exception.message}",
+                )
+            }
+        }
         return index
     }
 

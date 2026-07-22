@@ -258,4 +258,51 @@ class RuntimeVisibleAnnotationsAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("enum_const_value.type_name_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
     }
+
+    @Test
+    fun `rejects class element value with invalid return descriptor`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/Example;", byteArrayOf()),
+                ConstantUtf8Entry("classValue", byteArrayOf()),
+                ConstantUtf8Entry("not-a-descriptor", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        11,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        1,
+                        0,
+                        3,
+                        'c'.code.toByte(),
+                        0,
+                        4,
+                    ),
+                    source = "bad-class-annotation-element.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("RuntimeVisibleAnnotations" to RuntimeVisibleAnnotationsAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("class_info_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("return descriptor"), failure.message)
+    }
 }
