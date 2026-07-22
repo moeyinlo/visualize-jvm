@@ -66,10 +66,12 @@ object ClassFileParser {
     ) {
         val nestHostPaths = mutableListOf<String>()
         val nestMembersPaths = mutableListOf<String>()
+        val permittedSubclassesPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, source, index)) {
                 "NestHost" -> nestHostPaths += "ClassFile.attributes[$index]"
                 "NestMembers" -> nestMembersPaths += "ClassFile.attributes[$index]"
+                "PermittedSubclasses" -> permittedSubclassesPaths += "ClassFile.attributes[$index]"
             }
         }
         if (nestHostPaths.size > 1) {
@@ -82,6 +84,12 @@ object ClassFileParser {
             throw ClassFileFormatException(
                 "Invalid ClassFile attributes source=$source: at most one NestMembers attribute is permitted " +
                     "but found ${nestMembersPaths.size} at ${nestMembersPaths.joinToString()}",
+            )
+        }
+        if (permittedSubclassesPaths.size > 1) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: at most one PermittedSubclasses attribute is permitted " +
+                    "but found ${permittedSubclassesPaths.size} at ${permittedSubclassesPaths.joinToString()}",
             )
         }
         val nestHostPath = nestHostPaths.singleOrNull()

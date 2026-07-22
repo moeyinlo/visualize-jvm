@@ -90,6 +90,23 @@ class ClassFileParserTest {
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
 
+    @Test
+    fun `rejects ClassFile with duplicate PermittedSubclasses attributes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDuplicatePermittedSubclassesBytes(),
+                source = "DuplicatePermittedSubclasses.class",
+                attributeParsers = AttributeParserRegistry.of(
+                    "PermittedSubclasses" to PermittedSubclassesAttributeParser,
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("PermittedSubclasses"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
+    }
+
     private fun minimalClassFileBytes(): ByteArray =
         bytes(
             0xCA, 0xFE, 0xBA, 0xBE,
@@ -202,6 +219,42 @@ class ClassFileParserTest {
             1, 0, 11,
             'N'.code, 'e'.code, 's'.code, 't'.code, 'M'.code, 'e'.code, 'm'.code, 'b'.code, 'e'.code, 'r'.code,
             's'.code,
+            1, 0, 10,
+            'p'.code, 'k'.code, 'g'.code, '/'.code, 'M'.code, 'e'.code, 'm'.code, 'b'.code, 'e'.code, 'r'.code,
+            7, 0, 6,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 2,
+            0, 5,
+            0, 0, 0, 4,
+            0, 1,
+            0, 7,
+            0, 5,
+            0, 0, 0, 4,
+            0, 1,
+            0, 7,
+        )
+
+    private fun classFileWithDuplicatePermittedSubclassesBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 8,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 19,
+            'P'.code, 'e'.code, 'r'.code, 'm'.code, 'i'.code, 't'.code, 't'.code, 'e'.code, 'd'.code,
+            'S'.code, 'u'.code, 'b'.code, 'c'.code, 'l'.code, 'a'.code, 's'.code, 's'.code, 'e'.code, 's'.code,
             1, 0, 10,
             'p'.code, 'k'.code, 'g'.code, '/'.code, 'M'.code, 'e'.code, 'm'.code, 'b'.code, 'e'.code, 'r'.code,
             7, 0, 6,
