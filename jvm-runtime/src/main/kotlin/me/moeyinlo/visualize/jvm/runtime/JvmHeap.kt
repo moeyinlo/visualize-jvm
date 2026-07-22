@@ -43,6 +43,8 @@ data class JvmShortArrayPayload(val elements: MutableList<Short>) : JvmHeapPaylo
 
 data class JvmMethodTypePayload(val descriptor: String) : JvmHeapPayload
 
+data class JvmMethodHandlesLookupPayload(val lookupClassName: String) : JvmHeapPayload
+
 enum class JvmMethodHandleReferenceKind {
     GetField,
     GetStatic,
@@ -73,6 +75,7 @@ class JvmHeap {
     private val internedStrings = linkedMapOf<String, JvmObjectReferenceValue>()
     private val classMirrors = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodTypes = linkedMapOf<String, JvmObjectReferenceValue>()
+    private val methodHandleLookups = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodHandles = linkedMapOf<JvmMethodHandleKey, JvmObjectReferenceValue>()
     private val threads = linkedMapOf<String, JvmObjectReferenceValue>()
     private var nextReferenceId = 1
@@ -248,6 +251,19 @@ class JvmHeap {
         }
     }
 
+    fun internMethodHandlesLookup(lookupClassName: String): JvmObjectReferenceValue {
+        require(lookupClassName.isNotBlank()) { "lookup class name must not be blank" }
+
+        return methodHandleLookups.getOrPut(lookupClassName) {
+            allocate(
+                JvmHeapObject(
+                    className = "java/lang/invoke/MethodHandles\$Lookup",
+                    payload = JvmMethodHandlesLookupPayload(lookupClassName),
+                ),
+            )
+        }
+    }
+
     fun internMethodHandle(
         referenceKind: JvmMethodHandleReferenceKind,
         referenceIndex: Int,
@@ -332,6 +348,7 @@ private fun JvmHeapPayload.shallowClonePayload(): JvmHeapPayload =
         is JvmIntArrayPayload -> JvmIntArrayPayload(elements.toMutableList())
         is JvmLongArrayPayload -> JvmLongArrayPayload(elements.toMutableList())
         is JvmMethodHandlePayload -> copy()
+        is JvmMethodHandlesLookupPayload -> copy()
         is JvmMethodTypePayload -> copy()
         JvmHeapPayload.None -> JvmHeapPayload.None
         is JvmReferenceArrayPayload -> JvmReferenceArrayPayload(elements.toMutableList())

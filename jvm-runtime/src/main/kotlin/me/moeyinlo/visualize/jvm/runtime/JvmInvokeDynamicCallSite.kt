@@ -53,7 +53,18 @@ data class JvmInvokeDynamicBootstrapInvocation(
     val callSite: JvmInvokeDynamicCallSiteSpec,
     val bootstrapMethodHandle: JvmMethodHandlePayload,
     val staticArguments: List<JvmBootstrapArgument>,
-)
+) {
+    fun materializeBootstrapMethodArguments(
+        heap: JvmHeap,
+        lookupClassName: String,
+    ): List<JvmValue> =
+        buildList {
+            add(heap.internMethodHandlesLookup(lookupClassName))
+            add(heap.internString(callSite.name))
+            add(heap.internMethodType(callSite.descriptor))
+            addAll(staticArguments.map { argument -> argument.materialize(heap) })
+        }
+}
 
 sealed interface JvmBootstrapArgument {
     val constantPoolIndex: JvmRuntimeConstantPoolIndex
@@ -105,6 +116,24 @@ sealed interface JvmBootstrapArgument {
         val descriptor: String,
     ) : JvmBootstrapArgument
 }
+
+private fun JvmBootstrapArgument.materialize(heap: JvmHeap): JvmValue =
+    when (this) {
+        is JvmBootstrapArgument.ClassConstant -> heap.internClassMirror(internalName)
+        is JvmBootstrapArgument.DoubleConstant -> value
+        is JvmBootstrapArgument.DynamicConstant -> throw JvmInvokeDynamicLinkageException(
+            "CONSTANT_Dynamic bootstrap argument $constantPoolIndex requires dynamic-constant resolution",
+        )
+        is JvmBootstrapArgument.FloatConstant -> value
+        is JvmBootstrapArgument.IntegerConstant -> value
+        is JvmBootstrapArgument.LongConstant -> value
+        is JvmBootstrapArgument.MethodHandleConstant -> heap.internMethodHandle(
+            referenceKind = payload.referenceKind,
+            referenceIndex = payload.referenceIndex,
+        )
+        is JvmBootstrapArgument.MethodTypeConstant -> heap.internMethodType(descriptor)
+        is JvmBootstrapArgument.StringConstant -> heap.internString(value)
+    }
 
 data class JvmLinkedInvokeDynamicCallSite(
     val spec: JvmInvokeDynamicCallSiteSpec,

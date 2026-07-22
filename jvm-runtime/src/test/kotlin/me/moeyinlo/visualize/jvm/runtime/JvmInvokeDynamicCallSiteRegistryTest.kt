@@ -198,6 +198,90 @@ class JvmInvokeDynamicCallSiteRegistryTest {
             exception.message,
         )
     }
+
+
+    @Test
+    fun `bootstrap invocation materializes lookup name type and resolved static arguments as guest values`() {
+        val heap = JvmHeap()
+        val invocation = JvmInvokeDynamicCallSiteResolver.resolveBootstrapInvocation(
+            constantPool = bootstrapInvocationConstantPool(),
+            index = ConstantPoolIndex(1),
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                        bootstrapArguments = listOf(
+                            JvmRuntimeConstantPoolIndex(12),
+                            JvmRuntimeConstantPoolIndex(13),
+                            JvmRuntimeConstantPoolIndex(14),
+                            JvmRuntimeConstantPoolIndex(16),
+                            JvmRuntimeConstantPoolIndex(18),
+                            JvmRuntimeConstantPoolIndex(20),
+                            JvmRuntimeConstantPoolIndex(22),
+                            JvmRuntimeConstantPoolIndex(24),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val arguments = invocation.materializeBootstrapMethodArguments(
+            heap = heap,
+            lookupClassName = "pkg/Caller",
+        )
+
+        assertEquals(11, arguments.size)
+        val lookup = arguments[0] as JvmObjectReferenceValue
+        assertEquals("java/lang/invoke/MethodHandles\$Lookup", heap.get(lookup).className)
+        assertEquals(JvmMethodHandlesLookupPayload("pkg/Caller"), heap.get(lookup).payload)
+        assertEquals(JvmStringPayload("run"), heap.get(arguments[1] as JvmObjectReferenceValue).payload)
+        assertEquals(
+            JvmMethodTypePayload("(I)Ljava/lang/String;"),
+            heap.get(arguments[2] as JvmObjectReferenceValue).payload,
+        )
+        assertEquals(JvmIntValue(42), arguments[3])
+        assertEquals(JvmFloatValue(1.5f), arguments[4])
+        assertEquals(JvmLongValue(9L), arguments[5])
+        assertEquals(JvmDoubleValue(2.25), arguments[6])
+        assertEquals(JvmStringPayload("static"), heap.get(arguments[7] as JvmObjectReferenceValue).payload)
+        assertEquals(JvmClassPayload("pkg/Arg"), heap.get(arguments[8] as JvmObjectReferenceValue).payload)
+        assertEquals(JvmMethodTypePayload("(I)V"), heap.get(arguments[9] as JvmObjectReferenceValue).payload)
+        assertEquals(
+            JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                referenceIndex = 25,
+            ),
+            heap.get(arguments[10] as JvmObjectReferenceValue).payload,
+        )
+    }
+
+    @Test
+    fun `bootstrap invocation leaves dynamic static arguments to dynamic constant resolution`() {
+        val invocation = JvmInvokeDynamicCallSiteResolver.resolveBootstrapInvocation(
+            constantPool = bootstrapInvocationConstantPool(),
+            index = ConstantPoolIndex(1),
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                        bootstrapArguments = listOf(JvmRuntimeConstantPoolIndex(29)),
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            invocation.materializeBootstrapMethodArguments(
+                heap = JvmHeap(),
+                lookupClassName = "pkg/Caller",
+            )
+        }
+
+        assertEquals(
+            "CONSTANT_Dynamic bootstrap argument #29 requires dynamic-constant resolution",
+            exception.message,
+        )
+    }
     @Test
     fun `call site resolver rejects non invoke dynamic constant pool entries`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
