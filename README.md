@@ -1,10 +1,5 @@
 # visualize-jvm
 
-可视化JVM执行流程，支持从jar、class文件添加到classpath，完整的类加载流程，支持单步调试标准jvm字节码，支持可视化indy bsm的CallSite绑定。
+visualize-jvm is a modular JVM implementation and execution visualizer written in Kotlin. It follows the Java Virtual Machine Specification and separates class-file parsing, bytecode verification, runtime state, interpretation, host integration, and native/JNI support into focused modules.
 
-特色功能：
-严格按照specification用Pure-Kotlin实现jvm执行引擎，同时通过panama支持jni。
-
-GUI基于javafx实现，风格参考https://github.com/Col-E/Recaf，没有花里胡哨的设计，以简洁、实用为主
-
-GUI和执行引擎分多模块管理，执行引擎可单独作为library导入到其他项目使用，通过Event Listener interface实现指令级别的event监听
+The JavaFX desktop interface can load JAR and class files and is designed for inspecting JVM behavior at the instruction level, including class loading, bytecode stepping, and `invokedynamic` bootstrap and `CallSite` binding. The execution engine is independent of the GUI, so it can also be embedded as a library in other projects and observed through instruction-level events.
