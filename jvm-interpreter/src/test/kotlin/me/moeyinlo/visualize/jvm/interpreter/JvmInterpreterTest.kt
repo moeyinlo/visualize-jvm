@@ -12871,6 +12871,36 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `athrow of null transfers control to matching NullPointerException handler`() {
+        val heap = JvmHeap()
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x01.toByte(),
+                0xBF.toByte(),
+                0x4B.toByte(),
+                0x06.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 2,
+                    handlerPc = 2,
+                    catchClassName = "java/lang/NullPointerException",
+                ),
+            ),
+        )
+
+        val caught = localVariables.load(0) as JvmObjectReferenceValue
+        assertEquals("java/lang/NullPointerException", heap.get(caught).className)
+        assertEquals(listOf(JvmIntValue(3)), result.operandStack.toList())
+    }
+
+    @Test
     fun `athrow rejects non reference operand stack values`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(
