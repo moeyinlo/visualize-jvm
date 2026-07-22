@@ -673,6 +673,7 @@ object JvmInterpreter {
             0xC0 -> executeCheckCast(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, currentThreadId)
+            0xC3 -> executeMonitorExit(instruction, operandStack, heap, monitors, currentThreadId)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -3555,6 +3556,32 @@ object JvmInterpreter {
 
         heap.get(objectref)
         monitors.enter(objectref, currentThreadId)
+    }
+
+    private fun executeMonitorExit(
+        instruction: DecodedInstruction,
+        operandStack: JvmOperandStack,
+        heap: JvmHeap,
+        monitors: JvmMonitorState,
+        currentThreadId: String,
+    ) {
+        val objectref = operandStack.pop()
+        if (objectref == JvmNullValue) {
+            throw JvmNullPointerException(
+                guestClassName = "java/lang/NullPointerException",
+                message = "monitorexit on null objectref at offset ${instruction.offset}",
+            )
+        }
+        if (objectref !is JvmObjectReferenceValue) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ${instruction.metadata.mnemonic} objectref at offset " +
+                    "${instruction.offset}: expected JvmObjectReferenceValue but was " +
+                    objectref.javaClass.simpleName,
+            )
+        }
+
+        heap.get(objectref)
+        monitors.exit(objectref, currentThreadId)
     }
 
     private fun executeCheckCast(

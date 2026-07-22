@@ -1052,7 +1052,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Object and arrays | `new`, `newarray`, `anewarray`, `arraylength`, `multianewarray` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Type checks | `checkcast`, `instanceof` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Exceptions | `athrow` throws non-null guest throwable references as escaped guest exceptions, converts null objectrefs to guest `NullPointerException`, rejects non-reference operands, and is marked executable in opcode coverage | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | `JvmInterpreterTest.*athrow*`, `OpcodeExecutionCoverageTest`, `AthrowInstructionVerifierTest` | IMPLEMENTED |
-| Synchronization | `monitorenter` acquires non-null guest object references in shared interpreter monitor state for the current thread; `monitorexit` remains TBD | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | `JvmInterpreterTest.monitorenter acquires the object monitor for the current thread` | PENDING |
+| Synchronization | `monitorenter` acquires non-null guest object references in shared interpreter monitor state; `monitorexit` releases owned guest object monitors; unowned `IllegalMonitorStateException` conversion remains TBD | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | `JvmInterpreterTest.monitorenter acquires the object monitor for the current thread`, `JvmInterpreterTest.monitorexit releases the object monitor for the current thread` | PENDING |
 | Extended | `wide` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Reserved | `breakpoint`, `impdep1`, `impdep2` | `jvm-interpreter` | TBD | PENDING |
 
