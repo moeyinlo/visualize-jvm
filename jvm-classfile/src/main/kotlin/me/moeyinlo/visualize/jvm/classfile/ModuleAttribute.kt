@@ -200,6 +200,13 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.exports",
             fieldName = "exports_index",
         )
+        requireUniqueNames(
+            names = exports.mapIndexed { index, entry ->
+                packageName(context, entry.exportsIndex, "${context.ownerPath}.exports[$index].exports_index")
+            },
+            role = "${context.ownerPath}.exports",
+            fieldName = "exports_index package name",
+        )
         return exports
     }
 
@@ -364,6 +371,25 @@ object ModuleAttributeParser : AttributeBodyParser {
         ).value
     }
 
+    private fun packageName(
+        context: AttributeParseContext,
+        index: ConstantPoolIndex,
+        role: String,
+    ): String {
+        val packageEntry = expectEntryValue<ConstantPackageEntry>(
+            context = context,
+            role = role,
+            index = index,
+            expected = "CONSTANT_Package_info",
+        )
+        return expectEntryValue<ConstantUtf8Entry>(
+            context = context,
+            role = "$role.name_index",
+            index = packageEntry.nameIndex,
+            expected = "CONSTANT_Utf8_info",
+        ).value
+    }
+
     private fun requireUniqueConstantPoolIndexes(
         indexes: List<ConstantPoolIndex>,
         role: String,
@@ -373,6 +399,19 @@ object ModuleAttributeParser : AttributeBodyParser {
         indexes.forEach { index ->
             if (!seen.add(index)) {
                 throw ClassFileFormatException("Invalid $role: duplicate $fieldName $index")
+            }
+        }
+    }
+
+    private fun requireUniqueNames(
+        names: List<String>,
+        role: String,
+        fieldName: String,
+    ) {
+        val seen = mutableSetOf<String>()
+        names.forEach { name ->
+            if (!seen.add(name)) {
+                throw ClassFileFormatException("Invalid $role: duplicate $fieldName '$name'")
             }
         }
     }
