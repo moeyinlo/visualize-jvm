@@ -35,7 +35,7 @@ data class JvmNativeMethodKey(
             JvmNativeMethodKey(
                 ownerClassName = method.ownerClassName,
                 name = method.name,
-                descriptor = method.descriptor,
+                descriptor = method.signaturePolymorphicDeclarationDescriptor ?: method.descriptor,
                 isStatic = method.isStatic,
             )
     }

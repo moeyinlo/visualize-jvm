@@ -26,6 +26,50 @@ import kotlin.test.assertNotNull
 
 class JvmVmIntrinsicsTest {
     @Test
+    fun `native registry resolves signature polymorphic call sites through the erased declaration key`() {
+        val erasedKey = JvmNativeMethodKey(
+            ownerClassName = "java/lang/invoke/MethodHandle",
+            name = "invokeExact",
+            descriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+            isStatic = false,
+        )
+        val intrinsic = JvmNativeMethodIntrinsic { _, _ -> JvmLongValue(7L) }
+        val registry = JvmNativeMethodRegistry.from(erasedKey to intrinsic)
+        val callSiteMethod = JvmResolvedMethod(
+            ownerClassName = "java/lang/invoke/MethodHandle",
+            name = "invokeExact",
+            descriptor = "(Ljava/lang/String;I)J",
+            isStatic = false,
+            isNative = true,
+            isVarargs = true,
+            signaturePolymorphicDeclarationDescriptor = "([Ljava/lang/Object;)Ljava/lang/Object;",
+        )
+
+        assertEquals(intrinsic, registry.resolve(callSiteMethod))
+    }
+
+    @Test
+    fun `native registry keeps ordinary native method keys descriptor exact`() {
+        val erasedKey = JvmNativeMethodKey(
+            ownerClassName = "Example",
+            name = "nativeValue",
+            descriptor = "()I",
+            isStatic = false,
+        )
+        val intrinsic = JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(42) }
+        val registry = JvmNativeMethodRegistry.from(erasedKey to intrinsic)
+        val mismatchedMethod = JvmResolvedMethod(
+            ownerClassName = "Example",
+            name = "nativeValue",
+            descriptor = "()J",
+            isStatic = false,
+            isNative = true,
+        )
+
+        assertEquals(null, registry.resolve(mismatchedMethod))
+    }
+
+    @Test
     fun `Object getClass intrinsic returns an interned guest class mirror for the receiver class`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Example")
