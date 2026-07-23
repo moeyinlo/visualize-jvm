@@ -45,12 +45,15 @@ class JvmSimulatedJniEnvironment(
     private var pendingException: JvmObjectReferenceValue? = null
 
     fun throwObject(throwableHandle: JvmJniHandleId): Int {
-        pendingException = handles.resolveObject(throwableHandle)
+        val throwableReference = handles.resolveObject(throwableHandle)
+        requireThrowableClass(heap.get(throwableReference).className)
+        pendingException = throwableReference
         return 0
     }
 
     fun throwNew(throwableClassHandle: JvmJniHandleId, message: String?): Int {
-        val throwableReference = heap.allocateObject(handles.resolveClass(throwableClassHandle))
+        val throwableClassName = requireThrowableClass(handles.resolveClass(throwableClassHandle))
+        val throwableReference = heap.allocateObject(throwableClassName)
         val detailMessageValue = message
             ?.let { value -> heap.allocateString(value) }
             ?: JvmNullValue
@@ -73,6 +76,15 @@ class JvmSimulatedJniEnvironment(
         val throwable = pendingException
         pendingException = null
         return throwable
+    }
+
+    private fun requireThrowableClass(className: String): String {
+        if (!classHierarchy.isAssignable(className, "java/lang/Throwable")) {
+            throw JvmJniExceptionAccessException(
+                "JNI exception helper requires java/lang/Throwable, got $className",
+            )
+        }
+        return className
     }
 
     fun findClass(className: String): JvmJniHandleId {
@@ -1507,6 +1519,8 @@ class JvmJniFieldAccessException(message: String) : IllegalStateException(messag
 class JvmJniStringAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniArrayAccessException(message: String) : IllegalStateException(message)
+
+class JvmJniExceptionAccessException(message: String) : IllegalStateException(message)
 
 enum class JvmJniArrayReleaseMode {
     CopyBackAndRelease,

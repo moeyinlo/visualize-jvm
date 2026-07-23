@@ -5944,6 +5944,52 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `Throw rejects non throwable guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "NotThrowable", superclassName = "java/lang/Object"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("NotThrowable"))
+
+        val exception = assertFailsWith<JvmJniExceptionAccessException> {
+            environment.throwObject(objectHandle)
+        }
+
+        assertEquals("JNI exception helper requires java/lang/Throwable, got NotThrowable", exception.message)
+        assertEquals(false, environment.exceptionCheck())
+    }
+
+    @Test
+    fun `ThrowNew rejects non throwable guest class handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "NotThrowable", superclassName = "java/lang/Object"),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("NotThrowable")
+
+        val exception = assertFailsWith<JvmJniExceptionAccessException> {
+            environment.throwNew(classHandle, "bad")
+        }
+
+        assertEquals("JNI exception helper requires java/lang/Throwable, got NotThrowable", exception.message)
+        assertEquals(false, environment.exceptionCheck())
+    }
+
+    @Test
     fun `MonitorEnter records reentrant guest monitor ownership`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
