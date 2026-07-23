@@ -188,6 +188,53 @@ class RuntimeVisibleAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects annotation element name index with invalid simple name`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/Example;", byteArrayOf()),
+                ConstantUtf8Entry("bad/name", byteArrayOf()),
+                ConstantIntegerEntry(1),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        11,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        1,
+                        0,
+                        3,
+                        'I'.code.toByte(),
+                        0,
+                        4,
+                    ),
+                    source = "bad-annotation-element-name.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("RuntimeVisibleAnnotations" to RuntimeVisibleAnnotationsAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("element_name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
     fun `rejects const element value with wrong constant type`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

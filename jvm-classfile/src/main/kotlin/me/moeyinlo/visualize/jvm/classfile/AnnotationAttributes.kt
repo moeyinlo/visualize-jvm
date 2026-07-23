@@ -160,7 +160,7 @@ internal object AnnotationParser {
         ownerPath: String,
     ): ElementValuePair =
         ElementValuePair(
-            elementNameIndex = readUtf8Index(context, "$ownerPath.element_name_index"),
+            elementNameIndex = readUnqualifiedNameIndex(context, "$ownerPath.element_name_index"),
             value = parseElementValue(context, "$ownerPath.value"),
         )
 
