@@ -53,7 +53,7 @@ object CodeAttributeParser : AttributeBodyParser {
             ownerPath = context.ownerPath,
             majorVersion = context.majorVersion,
         )
-        validateCodeAttributes(context, attributes)
+        validateCodeAttributes(context, attributes, exceptionTable.size)
 
         return CodeAttribute(
             nameIndex = context.nameIndex,
@@ -68,21 +68,52 @@ object CodeAttributeParser : AttributeBodyParser {
     private fun validateCodeAttributes(
         context: AttributeParseContext,
         attributes: List<AttributeInfo>,
+        exceptionTableLength: Int,
     ) {
         val stackMapTablePaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
-            val name = attributeName(context, attribute, "${context.ownerPath}.attributes[$index].attribute_name_index")
+            val attributePath = "${context.ownerPath}.attributes[$index]"
+            val name = attributeName(context, attribute, "$attributePath.attribute_name_index")
             when (name) {
                 "StackMapTable" -> stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
-                "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "${context.ownerPath}.attributes[$index]"
-                "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "${context.ownerPath}.attributes[$index]"
+                "RuntimeVisibleTypeAnnotations" -> {
+                    runtimeVisibleTypeAnnotationsPaths += attributePath
+                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength)
+                }
+                "RuntimeInvisibleTypeAnnotations" -> {
+                    runtimeInvisibleTypeAnnotationsPaths += attributePath
+                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength)
+                }
             }
         }
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
+    }
+
+    private fun validateCodeTypeAnnotationTargets(
+        attributePath: String,
+        attribute: AttributeInfo,
+        exceptionTableLength: Int,
+    ) {
+        val annotations = when (attribute) {
+            is RuntimeVisibleTypeAnnotationsAttribute -> attribute.annotations
+            is RuntimeInvisibleTypeAnnotationsAttribute -> attribute.annotations
+            else -> return
+        }
+        annotations.forEachIndexed { index, annotation ->
+            val targetInfo = annotation.targetInfo
+            if (targetInfo is TypeAnnotationTargetInfo.CatchTarget &&
+                targetInfo.exceptionTableIndex !in 0 until exceptionTableLength
+            ) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.annotations[$index].target_info.exception_table_index=" +
+                        "${targetInfo.exceptionTableIndex}: must be less than exception_table_length=$exceptionTableLength",
+                )
+            }
+        }
     }
 
 
