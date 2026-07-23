@@ -37,6 +37,23 @@ class JvmSimulatedJniEnvironment(
     private val monitors: JvmMonitorState = JvmMonitorState(),
     private val currentThreadId: String = "main",
 ) {
+    private var pendingException: JvmObjectReferenceValue? = null
+
+    fun throwObject(throwableHandle: JvmJniHandleId): Int {
+        pendingException = handles.resolveObject(throwableHandle)
+        return 0
+    }
+
+    fun exceptionOccurred(): JvmJniHandleId? =
+        pendingException?.let(handles::newObjectHandle)
+
+    fun exceptionCheck(): Boolean =
+        pendingException != null
+
+    fun exceptionClear() {
+        pendingException = null
+    }
+
     fun findClass(className: String): JvmJniHandleId {
         if (!classHierarchy.hasClass(className)) {
             throw JvmNoClassDefFoundError(

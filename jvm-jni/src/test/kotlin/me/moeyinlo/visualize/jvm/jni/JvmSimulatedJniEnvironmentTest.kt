@@ -5857,6 +5857,55 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `Throw records a pending guest throwable until ExceptionClear`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val throwableReference = heap.allocateObject("java/lang/IllegalStateException")
+        val throwableHandle = handles.newObjectHandle(throwableReference)
+
+        assertEquals(false, environment.exceptionCheck())
+        assertEquals(null, environment.exceptionOccurred())
+
+        assertEquals(0, environment.throwObject(throwableHandle))
+
+        assertEquals(true, environment.exceptionCheck())
+        val occurredHandle = environment.exceptionOccurred()
+        assertEquals(throwableReference, handles.resolveObject(occurredHandle!!))
+
+        environment.exceptionClear()
+
+        assertEquals(false, environment.exceptionCheck())
+        assertEquals(null, environment.exceptionOccurred())
+    }
+
+    @Test
+    fun `ExceptionOccurred returns local handles without clearing the pending exception`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val throwableReference = heap.allocateObject("java/lang/RuntimeException")
+        val throwableHandle = handles.newObjectHandle(throwableReference)
+
+        environment.throwObject(throwableHandle)
+
+        val firstOccurredHandle = environment.exceptionOccurred()
+        val secondOccurredHandle = environment.exceptionOccurred()
+
+        assertEquals(throwableReference, handles.resolveObject(firstOccurredHandle!!))
+        assertEquals(throwableReference, handles.resolveObject(secondOccurredHandle!!))
+        assertEquals(true, environment.exceptionCheck())
+    }
+
+    @Test
     fun `MonitorEnter records reentrant guest monitor ownership`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
