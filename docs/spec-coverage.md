@@ -215,6 +215,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.20 | `RuntimeVisibleTypeAnnotations` at-most-one `Code` attribute rule | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects duplicate RuntimeVisibleTypeAnnotations attributes in Code` | IMPLEMENTED |
 | 4.7.20 | `RuntimeVisibleTypeAnnotations` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` | `jvm-classfile` | `TypeAnnotationsAttributeParserTest` | IMPLEMENTED |
+| 4.7.21 | `RuntimeInvisibleTypeAnnotations` in a `ClassFile` attributes table accepts only class-level `target_type` values `0x00`, `0x10`, and `0x11` | `jvm-classfile` | `TypeAnnotationsAttributeParserTest.rejects code target type in ClassFile invisible type annotations` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `ClassFile` attribute rule | `jvm-classfile` | `ClassFileParserTest.rejects ClassFile with duplicate RuntimeInvisibleTypeAnnotations attributes` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `field_info` attribute rule | `jvm-classfile` | `FieldInfoParserTest.rejects duplicate field RuntimeInvisibleTypeAnnotations attributes` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method RuntimeInvisibleTypeAnnotations attributes` | IMPLEMENTED |

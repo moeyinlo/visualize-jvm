@@ -143,6 +143,23 @@ class TypeAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects code target type in ClassFile invisible type annotations`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseTypeAttribute(
+                attributeName = "RuntimeInvisibleTypeAnnotations",
+                parser = RuntimeInvisibleTypeAnnotationsAttributeParser,
+                constantPool = typeAnnotationConstantPool("RuntimeInvisibleTypeAnnotations"),
+                info = bytes(0, 1, *typeAnnotation(0x40, 0, 0)),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("target_type"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("0x40"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects method target type in field type annotations`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseTypeAttribute(
