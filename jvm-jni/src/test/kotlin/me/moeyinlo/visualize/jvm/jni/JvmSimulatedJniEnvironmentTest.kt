@@ -5990,6 +5990,38 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `ExceptionDescribe reports pending throwable without clearing it`() {
+        val reported = mutableListOf<String>()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            handles = handles,
+            exceptionReporter = { text -> reported += text },
+        )
+        val throwableClassHandle = handles.newClassHandle("java/lang/IllegalStateException")
+        environment.throwNew(throwableClassHandle, "broken")
+
+        environment.exceptionDescribe()
+
+        assertEquals(listOf("java/lang/IllegalStateException: broken"), reported)
+        assertEquals(true, environment.exceptionCheck())
+    }
+
+    @Test
+    fun `ExceptionDescribe is a no op when there is no pending exception`() {
+        val reported = mutableListOf<String>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            exceptionReporter = { text -> reported += text },
+        )
+
+        environment.exceptionDescribe()
+
+        assertEquals(emptyList(), reported)
+        assertEquals(false, environment.exceptionCheck())
+    }
+
+    @Test
     fun `MonitorEnter records reentrant guest monitor ownership`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

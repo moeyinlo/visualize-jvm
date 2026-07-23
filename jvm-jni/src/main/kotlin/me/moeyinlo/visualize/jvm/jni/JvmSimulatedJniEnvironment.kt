@@ -36,6 +36,7 @@ class JvmSimulatedJniEnvironment(
     val handles: JvmJniHandleTable = JvmJniHandleTable(),
     private val monitors: JvmMonitorState = JvmMonitorState(),
     private val currentThreadId: String = "main",
+    private val exceptionReporter: (String) -> Unit = {},
 ) {
     private val throwableDetailMessageField = JvmFieldReference(
         ownerClassName = "java/lang/Throwable",
@@ -72,10 +73,28 @@ class JvmSimulatedJniEnvironment(
         pendingException = null
     }
 
+    fun exceptionDescribe() {
+        pendingException?.let { throwable ->
+            exceptionReporter(describeThrowable(throwable))
+        }
+    }
+
     internal fun takePendingException(): JvmObjectReferenceValue? {
         val throwable = pendingException
         pendingException = null
         return throwable
+    }
+
+    private fun describeThrowable(throwable: JvmObjectReferenceValue): String {
+        val className = heap.get(throwable).className
+        val detailMessage = (heap.getInstanceField(throwable, throwableDetailMessageField) as? JvmObjectReferenceValue)
+            ?.let { messageReference -> heap.get(messageReference).payload as? JvmStringPayload }
+            ?.value
+        return if (detailMessage == null) {
+            className
+        } else {
+            "$className: $detailMessage"
+        }
     }
 
     private fun requireThrowableClass(className: String): String {
