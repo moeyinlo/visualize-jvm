@@ -53,7 +53,7 @@ object CodeAttributeParser : AttributeBodyParser {
             ownerPath = context.ownerPath,
             majorVersion = context.majorVersion,
         )
-        validateCodeAttributes(context, attributes, exceptionTable.size)
+        validateCodeAttributes(context, attributes, exceptionTable.size, instructionLayout)
 
         return CodeAttribute(
             nameIndex = context.nameIndex,
@@ -69,6 +69,7 @@ object CodeAttributeParser : AttributeBodyParser {
         context: AttributeParseContext,
         attributes: List<AttributeInfo>,
         exceptionTableLength: Int,
+        instructionLayout: CodeInstructionLayout,
     ) {
         val stackMapTablePaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
@@ -80,11 +81,11 @@ object CodeAttributeParser : AttributeBodyParser {
                 "StackMapTable" -> stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
-                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength)
+                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout)
                 }
                 "RuntimeInvisibleTypeAnnotations" -> {
                     runtimeInvisibleTypeAnnotationsPaths += attributePath
-                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength)
+                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout)
                 }
             }
         }
@@ -97,6 +98,7 @@ object CodeAttributeParser : AttributeBodyParser {
         attributePath: String,
         attribute: AttributeInfo,
         exceptionTableLength: Int,
+        instructionLayout: CodeInstructionLayout,
     ) {
         val annotations = when (attribute) {
             is RuntimeVisibleTypeAnnotationsAttribute -> attribute.annotations
@@ -111,6 +113,14 @@ object CodeAttributeParser : AttributeBodyParser {
                 throw ClassFileFormatException(
                     "Invalid $attributePath.annotations[$index].target_info.exception_table_index=" +
                         "${targetInfo.exceptionTableIndex}: must be less than exception_table_length=$exceptionTableLength",
+                )
+            }
+            if (targetInfo is TypeAnnotationTargetInfo.OffsetTarget &&
+                targetInfo.offset !in instructionLayout.instructionOffsets
+            ) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.annotations[$index].target_info.offset=${targetInfo.offset}: " +
+                        "must point to the opcode of an instruction",
                 )
             }
         }
