@@ -70,6 +70,13 @@ object RuntimeInvisibleTypeAnnotationsAttributeParser : AttributeBodyParser {
 
 private object TypeAnnotationParser {
     private val ClassFileTargetTypes = setOf(0x00, 0x10, 0x11)
+    private val FieldOrRecordComponentTargetTypes = setOf(0x13)
+    private val ClassFileAttributeAnnotationPath =
+        Regex("""^ClassFile\.attributes\[\d+\]\.annotations\[\d+\]$""")
+    private val FieldAttributeAnnotationPath =
+        Regex("""^fields\[\d+\]\.attributes\[\d+\]\.annotations\[\d+\]$""")
+    private val RecordComponentAttributeAnnotationPath =
+        Regex("""^ClassFile\.attributes\[\d+\]\.components\[\d+\]\.attributes\[\d+\]\.annotations\[\d+\]$""")
 
     fun parseTypeAnnotations(
         context: AttributeParseContext,
@@ -99,16 +106,30 @@ private object TypeAnnotationParser {
         ownerPath: String,
         targetType: Int,
     ) {
-        if (isClassFileAttribute(ownerPath) && targetType !in ClassFileTargetTypes) {
-            throw ClassFileFormatException(
-                "Invalid type_annotation target_type=0x${targetType.toString(16).padStart(2, '0')} " +
-                    "at $ownerPath: ClassFile type annotations allow only target_type 0x00, 0x10, or 0x11",
-            )
+        when {
+            isClassFileAttribute(ownerPath) && targetType !in ClassFileTargetTypes -> {
+                throw ClassFileFormatException(
+                    "Invalid type_annotation target_type=${targetType.toHex()} at $ownerPath: " +
+                        "ClassFile type annotations allow only target_type 0x00, 0x10, or 0x11",
+                )
+            }
+            isFieldOrRecordComponentAttribute(ownerPath) && targetType !in FieldOrRecordComponentTargetTypes -> {
+                throw ClassFileFormatException(
+                    "Invalid type_annotation target_type=${targetType.toHex()} at $ownerPath: " +
+                        "field_info and record_component_info type annotations allow only target_type 0x13",
+                )
+            }
         }
     }
 
     private fun isClassFileAttribute(ownerPath: String): Boolean =
-        ownerPath.startsWith("ClassFile.attributes[")
+        ClassFileAttributeAnnotationPath.matches(ownerPath)
+
+    private fun isFieldOrRecordComponentAttribute(ownerPath: String): Boolean =
+        FieldAttributeAnnotationPath.matches(ownerPath) ||
+            RecordComponentAttributeAnnotationPath.matches(ownerPath)
+
+    private fun Int.toHex(): String = "0x${toString(16).padStart(2, '0')}"
 
     private fun parseTargetInfo(
         context: AttributeParseContext,

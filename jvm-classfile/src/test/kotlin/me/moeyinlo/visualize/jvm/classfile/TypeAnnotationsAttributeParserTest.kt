@@ -141,6 +141,37 @@ class TypeAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects method target type in field type annotations`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseTypeAttribute(
+                attributeName = "RuntimeVisibleTypeAnnotations",
+                parser = RuntimeVisibleTypeAnnotationsAttributeParser,
+                constantPool = typeAnnotationConstantPool("RuntimeVisibleTypeAnnotations"),
+                info = bytes(0, 1, *typeAnnotation(0x14)),
+                ownerPath = "fields[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("target_type"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("0x14"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field_info"), failure.message)
+    }
+
+    @Test
+    fun `parses record component field target type annotations`() {
+        val attribute = parseTypeAttribute(
+            attributeName = "RuntimeVisibleTypeAnnotations",
+            parser = RuntimeVisibleTypeAnnotationsAttributeParser,
+            constantPool = typeAnnotationConstantPool("RuntimeVisibleTypeAnnotations"),
+            info = bytes(0, 1, *typeAnnotation(0x13)),
+            ownerPath = "ClassFile.attributes[0].components[0]",
+        )
+
+        val visible = assertIs<RuntimeVisibleTypeAnnotationsAttribute>(attribute)
+        assertEquals(0x13, visible.annotations.single().targetType)
+    }
+
+    @Test
     fun `rejects invalid type path entry`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseTypeAttribute(
