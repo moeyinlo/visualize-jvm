@@ -75,7 +75,7 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "exception helpers",
             specSection = "JNI exception operations",
-            currentComponent = "JvmSimulatedJniEnvironment pending exception state covers Throw/ExceptionOccurred/ExceptionCheck/ExceptionClear",
+            currentComponent = "JvmSimulatedJniEnvironment pending exception state covers Throw/ThrowNew/ExceptionOccurred/ExceptionCheck/ExceptionClear",
             status = SimulatedJniCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),

@@ -26,6 +26,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
+import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
@@ -5902,6 +5903,43 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertEquals(throwableReference, handles.resolveObject(firstOccurredHandle!!))
         assertEquals(throwableReference, handles.resolveObject(secondOccurredHandle!!))
+        assertEquals(true, environment.exceptionCheck())
+    }
+
+    @Test
+    fun `ThrowNew allocates a guest throwable with a detail message and records it pending`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "java/lang/Throwable", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/IllegalArgumentException",
+                        superclassName = "java/lang/Throwable",
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val throwableClassHandle = environment.findClass("java/lang/IllegalArgumentException")
+
+        assertEquals(0, environment.throwNew(throwableClassHandle, "bad argument"))
+
+        val pendingHandle = environment.exceptionOccurred()
+        val pendingReference = handles.resolveObject(pendingHandle!!)
+        val pendingObject = heap.get(pendingReference)
+        val detailMessageField = JvmFieldReference(
+            ownerClassName = "java/lang/Throwable",
+            name = "detailMessage",
+            descriptor = "Ljava/lang/String;",
+        )
+        val detailMessageReference = heap.getInstanceField(pendingReference, detailMessageField) as JvmObjectReferenceValue
+
+        assertEquals("java/lang/IllegalArgumentException", pendingObject.className)
+        assertEquals(JvmStringPayload("bad argument"), heap.get(detailMessageReference).payload)
         assertEquals(true, environment.exceptionCheck())
     }
 

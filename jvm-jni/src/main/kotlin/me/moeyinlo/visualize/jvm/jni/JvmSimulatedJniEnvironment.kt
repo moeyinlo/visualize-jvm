@@ -37,10 +37,25 @@ class JvmSimulatedJniEnvironment(
     private val monitors: JvmMonitorState = JvmMonitorState(),
     private val currentThreadId: String = "main",
 ) {
+    private val throwableDetailMessageField = JvmFieldReference(
+        ownerClassName = "java/lang/Throwable",
+        name = "detailMessage",
+        descriptor = "Ljava/lang/String;",
+    )
     private var pendingException: JvmObjectReferenceValue? = null
 
     fun throwObject(throwableHandle: JvmJniHandleId): Int {
         pendingException = handles.resolveObject(throwableHandle)
+        return 0
+    }
+
+    fun throwNew(throwableClassHandle: JvmJniHandleId, message: String?): Int {
+        val throwableReference = heap.allocateObject(handles.resolveClass(throwableClassHandle))
+        val detailMessageValue = message
+            ?.let { value -> heap.allocateString(value) }
+            ?: JvmNullValue
+        heap.putInstanceField(throwableReference, throwableDetailMessageField, detailMessageValue)
+        pendingException = throwableReference
         return 0
     }
 
