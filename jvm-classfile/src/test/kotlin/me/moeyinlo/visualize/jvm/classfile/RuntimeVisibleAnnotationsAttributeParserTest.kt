@@ -285,6 +285,56 @@ class RuntimeVisibleAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects enum element value with invalid const simple name`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/Example;", byteArrayOf()),
+                ConstantUtf8Entry("enumValue", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/Mode;", byteArrayOf()),
+                ConstantUtf8Entry("BAD/NAME", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        13,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        1,
+                        0,
+                        3,
+                        'e'.code.toByte(),
+                        0,
+                        4,
+                        0,
+                        5,
+                    ),
+                    source = "bad-enum-const-name-annotation-element.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("RuntimeVisibleAnnotations" to RuntimeVisibleAnnotationsAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("enum_const_value.const_name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
     fun `rejects class element value with invalid return descriptor`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

@@ -183,7 +183,7 @@ internal object AnnotationParser {
             's' -> ElementValue.Const(tag, readConstValueIndex<ConstantUtf8Entry>(context, ownerPath, tag))
             'e' -> ElementValue.EnumConst(
                 typeNameIndex = readFieldDescriptorIndex(context, "$ownerPath.enum_const_value.type_name_index"),
-                constNameIndex = readUtf8Index(context, "$ownerPath.enum_const_value.const_name_index"),
+                constNameIndex = readUnqualifiedNameIndex(context, "$ownerPath.enum_const_value.const_name_index"),
             )
             'c' -> ElementValue.ClassInfo(
                 classInfoIndex = readReturnDescriptorIndex(context, "$ownerPath.class_info_index"),
@@ -258,6 +258,16 @@ internal object AnnotationParser {
         val index = readUtf8Index(context, role)
         val entry = context.constantPool[index] as ConstantUtf8Entry
         DescriptorValidator.validateFieldDescriptor(index, role, entry.value)
+        return index
+    }
+
+    private fun readUnqualifiedNameIndex(
+        context: AttributeParseContext,
+        role: String,
+    ): ConstantPoolIndex {
+        val index = readUtf8Index(context, role)
+        val entry = context.constantPool[index] as ConstantUtf8Entry
+        ClassNameValidator.validateUnqualifiedName(index, role, entry.value)
         return index
     }
 
