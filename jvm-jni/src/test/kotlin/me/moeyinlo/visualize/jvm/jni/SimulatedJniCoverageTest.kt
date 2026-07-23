@@ -25,6 +25,7 @@ class SimulatedJniCoverageTest {
         assertNotNull(rulesByName["primitive and reference arrays"])
         assertNotNull(rulesByName["monitor helpers"])
         assertNotNull(rulesByName["exception helpers"])
+        assertNotNull(rulesByName["pending exception native-return boundary"])
     }
 
     @Test

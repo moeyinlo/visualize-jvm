@@ -80,6 +80,13 @@ object SimulatedJniCoverage {
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(
+            rule = "pending exception native-return boundary",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmNativeDowncallReturn.toGuestValue consumes pending JNI exceptions and raises guest VM boundary exceptions",
+            status = SimulatedJniCoverageStatus.Implemented,
+            coveringTestClass = "JvmPanamaDowncallBackendTest",
+        ),
+        SimulatedJniCoverageEntry(
             rule = "JNI local frame capacity management",
             specSection = "JNI local reference management",
             currentComponent = "No PushLocalFrame/PopLocalFrame/EnsureLocalCapacity scopes yet",

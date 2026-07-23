@@ -69,6 +69,12 @@ class JvmSimulatedJniEnvironment(
         pendingException = null
     }
 
+    internal fun takePendingException(): JvmObjectReferenceValue? {
+        val throwable = pendingException
+        pendingException = null
+        return throwable
+    }
+
     fun findClass(className: String): JvmJniHandleId {
         if (!classHierarchy.hasClass(className)) {
             throw JvmNoClassDefFoundError(
