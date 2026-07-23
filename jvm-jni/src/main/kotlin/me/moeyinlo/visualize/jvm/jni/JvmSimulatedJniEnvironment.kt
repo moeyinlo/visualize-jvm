@@ -44,7 +44,12 @@ class JvmSimulatedJniEnvironment(
         descriptor = "Ljava/lang/String;",
     )
     private var pendingException: JvmObjectReferenceValue? = null
+    private val localFrameCapacities = mutableListOf<Int>()
     var ensuredLocalCapacity: Int = 0
+        private set
+    val localFrameDepth: Int
+        get() = localFrameCapacities.size
+    var maxLocalFrameCapacity: Int = 0
         private set
 
     fun throwObject(throwableHandle: JvmJniHandleId): Int {
@@ -88,6 +93,13 @@ class JvmSimulatedJniEnvironment(
     fun ensureLocalCapacity(capacity: Int): Int {
         require(capacity >= 0) { "JNI local capacity must be non-negative: $capacity" }
         ensuredLocalCapacity = maxOf(ensuredLocalCapacity, capacity)
+        return 0
+    }
+
+    fun pushLocalFrame(capacity: Int): Int {
+        require(capacity > 0) { "JNI local frame capacity must be positive: $capacity" }
+        localFrameCapacities += capacity
+        maxLocalFrameCapacity = maxOf(maxLocalFrameCapacity, capacity)
         return 0
     }
 

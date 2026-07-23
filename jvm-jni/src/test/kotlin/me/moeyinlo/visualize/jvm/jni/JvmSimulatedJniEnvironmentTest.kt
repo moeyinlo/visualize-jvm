@@ -6070,6 +6070,42 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `PushLocalFrame records nested local frame depth and requested capacity`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        assertEquals(0, environment.localFrameDepth)
+        assertEquals(0, environment.maxLocalFrameCapacity)
+
+        assertEquals(0, environment.pushLocalFrame(4))
+        assertEquals(1, environment.localFrameDepth)
+        assertEquals(4, environment.maxLocalFrameCapacity)
+
+        assertEquals(0, environment.pushLocalFrame(2))
+        assertEquals(2, environment.localFrameDepth)
+        assertEquals(4, environment.maxLocalFrameCapacity)
+
+        assertEquals(0, environment.pushLocalFrame(16))
+        assertEquals(3, environment.localFrameDepth)
+        assertEquals(16, environment.maxLocalFrameCapacity)
+    }
+
+    @Test
+    fun `PushLocalFrame rejects non positive capacities`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        val zero = assertFailsWith<IllegalArgumentException> {
+            environment.pushLocalFrame(0)
+        }
+        val negative = assertFailsWith<IllegalArgumentException> {
+            environment.pushLocalFrame(-1)
+        }
+
+        assertEquals("JNI local frame capacity must be positive: 0", zero.message)
+        assertEquals("JNI local frame capacity must be positive: -1", negative.message)
+        assertEquals(0, environment.localFrameDepth)
+    }
+
+    @Test
     fun `MonitorEnter records reentrant guest monitor ownership`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
