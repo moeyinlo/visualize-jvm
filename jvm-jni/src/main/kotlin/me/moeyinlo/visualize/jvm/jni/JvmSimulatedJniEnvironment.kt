@@ -44,6 +44,8 @@ class JvmSimulatedJniEnvironment(
         descriptor = "Ljava/lang/String;",
     )
     private var pendingException: JvmObjectReferenceValue? = null
+    var ensuredLocalCapacity: Int = 0
+        private set
 
     fun throwObject(throwableHandle: JvmJniHandleId): Int {
         val throwableReference = handles.resolveObject(throwableHandle)
@@ -81,6 +83,12 @@ class JvmSimulatedJniEnvironment(
 
     fun fatalError(message: String?): Nothing {
         throw JvmJniFatalError(message.orEmpty())
+    }
+
+    fun ensureLocalCapacity(capacity: Int): Int {
+        require(capacity >= 0) { "JNI local capacity must be non-negative: $capacity" }
+        ensuredLocalCapacity = maxOf(ensuredLocalCapacity, capacity)
+        return 0
     }
 
     internal fun takePendingException(): JvmObjectReferenceValue? {

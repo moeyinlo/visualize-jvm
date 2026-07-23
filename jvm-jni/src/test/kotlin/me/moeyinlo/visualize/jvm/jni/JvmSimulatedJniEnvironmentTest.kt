@@ -6045,6 +6045,31 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `EnsureLocalCapacity records the requested local reference capacity`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        assertEquals(0, environment.ensureLocalCapacity(8))
+        assertEquals(8, environment.ensuredLocalCapacity)
+
+        assertEquals(0, environment.ensureLocalCapacity(3))
+        assertEquals(8, environment.ensuredLocalCapacity)
+
+        assertEquals(0, environment.ensureLocalCapacity(32))
+        assertEquals(32, environment.ensuredLocalCapacity)
+    }
+
+    @Test
+    fun `EnsureLocalCapacity rejects negative capacities`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            environment.ensureLocalCapacity(-1)
+        }
+
+        assertEquals("JNI local capacity must be non-negative: -1", exception.message)
+    }
+
+    @Test
     fun `MonitorEnter records reentrant guest monitor ownership`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

@@ -48,7 +48,6 @@ class SimulatedJniCoverageTest {
 
         assertEquals(
             listOf(
-                "JNI local frame capacity management",
                 "weak global references",
                 "critical array and string sections",
                 "direct byte buffers",

@@ -89,8 +89,9 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "JNI local frame capacity management",
             specSection = "JNI local reference management",
-            currentComponent = "No PushLocalFrame/PopLocalFrame/EnsureLocalCapacity scopes yet",
-            status = SimulatedJniCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmSimulatedJniEnvironment.ensureLocalCapacity records guaranteed local reference capacity; PushLocalFrame/PopLocalFrame scopes not implemented yet",
+            status = SimulatedJniCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(
             rule = "weak global references",
