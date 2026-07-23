@@ -160,6 +160,12 @@ object CodeAttributeParser : AttributeBodyParser {
                         "range: start_pc=${entry.startPc} length=${entry.length} exceeds code_length=$codeLength",
                 )
             }
+            if (endPc != codeLength && endPc !in instructionLayout.instructionOffsets) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.annotations[$annotationIndex].target_info.localvar_target.table[$tableIndex]" +
+                        ".end_pc=$endPc: must be code_length=$codeLength or point to the opcode of an instruction",
+                )
+            }
         }
     }
 
