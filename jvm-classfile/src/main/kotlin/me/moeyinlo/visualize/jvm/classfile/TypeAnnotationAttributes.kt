@@ -69,6 +69,8 @@ object RuntimeInvisibleTypeAnnotationsAttributeParser : AttributeBodyParser {
 }
 
 private object TypeAnnotationParser {
+    private val ClassFileTargetTypes = setOf(0x00, 0x10, 0x11)
+
     fun parseTypeAnnotations(
         context: AttributeParseContext,
         ownerPath: String,
@@ -84,6 +86,7 @@ private object TypeAnnotationParser {
         ownerPath: String,
     ): TypeAnnotationInfo {
         val targetType = context.reader.readU1()
+        requireTargetTypeAllowedForOwner(ownerPath, targetType)
         return TypeAnnotationInfo(
             targetType = targetType,
             targetInfo = parseTargetInfo(context, ownerPath, targetType),
@@ -91,6 +94,21 @@ private object TypeAnnotationParser {
             annotation = AnnotationParser.parseAnnotation(context, ownerPath),
         )
     }
+
+    private fun requireTargetTypeAllowedForOwner(
+        ownerPath: String,
+        targetType: Int,
+    ) {
+        if (isClassFileAttribute(ownerPath) && targetType !in ClassFileTargetTypes) {
+            throw ClassFileFormatException(
+                "Invalid type_annotation target_type=0x${targetType.toString(16).padStart(2, '0')} " +
+                    "at $ownerPath: ClassFile type annotations allow only target_type 0x00, 0x10, or 0x11",
+            )
+        }
+    }
+
+    private fun isClassFileAttribute(ownerPath: String): Boolean =
+        ownerPath.startsWith("ClassFile.attributes[")
 
     private fun parseTargetInfo(
         context: AttributeParseContext,

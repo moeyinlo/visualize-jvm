@@ -124,6 +124,23 @@ class TypeAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects code target type in ClassFile type annotations`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseTypeAttribute(
+                attributeName = "RuntimeVisibleTypeAnnotations",
+                parser = RuntimeVisibleTypeAnnotationsAttributeParser,
+                constantPool = typeAnnotationConstantPool("RuntimeVisibleTypeAnnotations"),
+                info = bytes(0, 1, *typeAnnotation(0x40, 0, 0)),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("target_type"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("0x40"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid type path entry`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseTypeAttribute(
@@ -142,6 +159,7 @@ class TypeAnnotationsAttributeParserTest {
         parser: AttributeBodyParser,
         constantPool: ConstantPool,
         info: ByteArray,
+        ownerPath: String = "methods[0]",
     ): AttributeInfo =
         AttributeInfoParser.parseAttributes(
             reader = ClassFileByteReader(
@@ -150,7 +168,7 @@ class TypeAnnotationsAttributeParserTest {
             ),
             constantPool = constantPool,
             registry = AttributeParserRegistry.of(attributeName to parser),
-            ownerPath = "methods[0]",
+            ownerPath = ownerPath,
         ).single()
 
     private fun typeAnnotationConstantPool(attributeName: String): ConstantPool =
