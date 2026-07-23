@@ -269,4 +269,74 @@ class CodeNestedAttributesParserTest {
         assertTrue(message.contains("1"), message)
         assertTrue(message.contains("opcode of an instruction"), message)
     }
+
+    @Test
+    fun `rejects Code type annotation type argument target outside code array`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("RuntimeVisibleTypeAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("Lpkg/TypeUse;", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        30,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0xB1.toByte(),
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        0,
+                        0,
+                        11,
+                        0,
+                        1,
+                        0x47,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        3,
+                        0,
+                        0,
+                    ),
+                    source = "bad-code-type-annotation-type-argument.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "RuntimeVisibleTypeAnnotations" to RuntimeVisibleTypeAnnotationsAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        val message = failure.message.orEmpty()
+        assertTrue(message.contains("target_info.offset"), message)
+        assertTrue(message.contains("1"), message)
+        assertTrue(message.contains("opcode of an instruction"), message)
+    }
 }

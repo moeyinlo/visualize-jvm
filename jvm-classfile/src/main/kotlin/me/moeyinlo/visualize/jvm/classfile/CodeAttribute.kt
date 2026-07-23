@@ -123,6 +123,14 @@ object CodeAttributeParser : AttributeBodyParser {
                         "must point to the opcode of an instruction",
                 )
             }
+            if (targetInfo is TypeAnnotationTargetInfo.TypeArgumentTarget &&
+                targetInfo.offset !in instructionLayout.instructionOffsets
+            ) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.annotations[$index].target_info.offset=${targetInfo.offset}: " +
+                        "must point to the opcode of an instruction",
+                )
+            }
         }
     }
 
