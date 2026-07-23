@@ -53,7 +53,7 @@ object CodeAttributeParser : AttributeBodyParser {
             ownerPath = context.ownerPath,
             majorVersion = context.majorVersion,
         )
-        validateCodeAttributes(context, attributes, exceptionTable.size, instructionLayout)
+        validateCodeAttributes(context, attributes, exceptionTable.size, instructionLayout, code.size)
 
         return CodeAttribute(
             nameIndex = context.nameIndex,
@@ -70,6 +70,7 @@ object CodeAttributeParser : AttributeBodyParser {
         attributes: List<AttributeInfo>,
         exceptionTableLength: Int,
         instructionLayout: CodeInstructionLayout,
+        codeLength: Int,
     ) {
         val stackMapTablePaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
@@ -81,11 +82,11 @@ object CodeAttributeParser : AttributeBodyParser {
                 "StackMapTable" -> stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
-                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout)
+                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout, codeLength)
                 }
                 "RuntimeInvisibleTypeAnnotations" -> {
                     runtimeInvisibleTypeAnnotationsPaths += attributePath
-                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout)
+                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout, codeLength)
                 }
             }
         }
@@ -99,6 +100,7 @@ object CodeAttributeParser : AttributeBodyParser {
         attribute: AttributeInfo,
         exceptionTableLength: Int,
         instructionLayout: CodeInstructionLayout,
+        codeLength: Int,
     ) {
         val annotations = when (attribute) {
             is RuntimeVisibleTypeAnnotationsAttribute -> attribute.annotations
@@ -129,6 +131,26 @@ object CodeAttributeParser : AttributeBodyParser {
                 throw ClassFileFormatException(
                     "Invalid $attributePath.annotations[$index].target_info.offset=${targetInfo.offset}: " +
                         "must point to the opcode of an instruction",
+                )
+            }
+            if (targetInfo is TypeAnnotationTargetInfo.LocalVarTarget) {
+                validateCodeTypeAnnotationLocalVariableTarget(attributePath, index, targetInfo, codeLength)
+            }
+        }
+    }
+
+    private fun validateCodeTypeAnnotationLocalVariableTarget(
+        attributePath: String,
+        annotationIndex: Int,
+        targetInfo: TypeAnnotationTargetInfo.LocalVarTarget,
+        codeLength: Int,
+    ) {
+        targetInfo.table.forEachIndexed { tableIndex, entry ->
+            val endPc = entry.startPc + entry.length
+            if (endPc > codeLength) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.annotations[$annotationIndex].target_info.localvar_target.table[$tableIndex] " +
+                        "range: start_pc=${entry.startPc} length=${entry.length} exceeds code_length=$codeLength",
                 )
             }
         }
