@@ -6106,6 +6106,34 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `PopLocalFrame pops the current local frame and returns null results`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        environment.pushLocalFrame(4)
+        environment.pushLocalFrame(2)
+
+        val result = environment.popLocalFrame(null)
+
+        assertEquals(null, result)
+        assertEquals(1, environment.localFrameDepth)
+
+        environment.popLocalFrame(null)
+
+        assertEquals(0, environment.localFrameDepth)
+    }
+
+    @Test
+    fun `PopLocalFrame rejects local frame underflow`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        val exception = assertFailsWith<JvmJniLocalFrameException> {
+            environment.popLocalFrame(null)
+        }
+
+        assertEquals("JNI local frame stack is empty", exception.message)
+        assertEquals(0, environment.localFrameDepth)
+    }
+
+    @Test
     fun `MonitorEnter records reentrant guest monitor ownership`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

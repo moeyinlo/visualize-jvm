@@ -103,6 +103,13 @@ class JvmSimulatedJniEnvironment(
         return 0
     }
 
+    fun popLocalFrame(result: JvmJniHandleId?): JvmJniHandleId? {
+        if (localFrameCapacities.removeLastOrNull() == null) {
+            throw JvmJniLocalFrameException("JNI local frame stack is empty")
+        }
+        return result
+    }
+
     internal fun takePendingException(): JvmObjectReferenceValue? {
         val throwable = pendingException
         pendingException = null
@@ -1564,6 +1571,8 @@ class JvmJniStringAccessException(message: String) : IllegalStateException(messa
 class JvmJniArrayAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniExceptionAccessException(message: String) : IllegalStateException(message)
+
+class JvmJniLocalFrameException(message: String) : IllegalStateException(message)
 
 class JvmJniFatalError(message: String) : Error(message)
 
