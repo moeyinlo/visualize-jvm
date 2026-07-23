@@ -71,6 +71,7 @@ object RuntimeInvisibleTypeAnnotationsAttributeParser : AttributeBodyParser {
 private object TypeAnnotationParser {
     private val ClassFileTargetTypes = setOf(0x00, 0x10, 0x11)
     private val FieldOrRecordComponentTargetTypes = setOf(0x13)
+    private val MethodTargetTypes = setOf(0x01, 0x12, 0x14, 0x15, 0x16, 0x17)
     private val CodeTargetTypes = (0x40..0x4B).toSet()
     private val ClassFileAttributeAnnotationPath =
         Regex("""^ClassFile\.attributes\[\d+\]\.annotations\[\d+\]$""")
@@ -78,6 +79,8 @@ private object TypeAnnotationParser {
         Regex("""^fields\[\d+\]\.attributes\[\d+\]\.annotations\[\d+\]$""")
     private val RecordComponentAttributeAnnotationPath =
         Regex("""^ClassFile\.attributes\[\d+\]\.components\[\d+\]\.attributes\[\d+\]\.annotations\[\d+\]$""")
+    private val MethodAttributeAnnotationPath =
+        Regex("""^methods\[\d+\]\.attributes\[\d+\]\.annotations\[\d+\]$""")
     private val CodeAttributeAnnotationPath =
         Regex("""^methods\[\d+\]\.attributes\[\d+\]\.attributes\[\d+\]\.annotations\[\d+\]$""")
 
@@ -122,6 +125,12 @@ private object TypeAnnotationParser {
                         "field_info and record_component_info type annotations allow only target_type 0x13",
                 )
             }
+            isMethodAttribute(ownerPath) && targetType !in MethodTargetTypes -> {
+                throw ClassFileFormatException(
+                    "Invalid type_annotation target_type=${targetType.toHex()} at $ownerPath: " +
+                        "method_info type annotations allow only target_type 0x01, 0x12, 0x14, 0x15, 0x16, or 0x17",
+                )
+            }
             isCodeAttribute(ownerPath) && targetType !in CodeTargetTypes -> {
                 throw ClassFileFormatException(
                     "Invalid type_annotation target_type=${targetType.toHex()} at $ownerPath: " +
@@ -137,6 +146,9 @@ private object TypeAnnotationParser {
     private fun isFieldOrRecordComponentAttribute(ownerPath: String): Boolean =
         FieldAttributeAnnotationPath.matches(ownerPath) ||
             RecordComponentAttributeAnnotationPath.matches(ownerPath)
+
+    private fun isMethodAttribute(ownerPath: String): Boolean =
+        MethodAttributeAnnotationPath.matches(ownerPath)
 
     private fun isCodeAttribute(ownerPath: String): Boolean =
         CodeAttributeAnnotationPath.matches(ownerPath)

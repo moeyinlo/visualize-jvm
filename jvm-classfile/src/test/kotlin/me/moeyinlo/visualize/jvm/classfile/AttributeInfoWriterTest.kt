@@ -1443,7 +1443,7 @@ class AttributeInfoWriterTest {
             registry = AttributeParserRegistry.of(
                 "RuntimeVisibleTypeAnnotations" to RuntimeVisibleTypeAnnotationsAttributeParser,
             ),
-            ownerPath = "methods[0]",
+            ownerPath = "TypeAnnotationsStructure",
         )
 
         assertEquals(attribute, parsed.single())
@@ -1501,7 +1501,7 @@ class AttributeInfoWriterTest {
             registry = AttributeParserRegistry.of(
                 "RuntimeInvisibleTypeAnnotations" to RuntimeInvisibleTypeAnnotationsAttributeParser,
             ),
-            ownerPath = "methods[0]",
+            ownerPath = "TypeAnnotationsStructure",
         )
 
         assertEquals(attribute, parsed.single())
