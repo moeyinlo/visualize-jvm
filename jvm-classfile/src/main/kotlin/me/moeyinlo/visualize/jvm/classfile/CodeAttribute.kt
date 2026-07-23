@@ -134,7 +134,7 @@ object CodeAttributeParser : AttributeBodyParser {
                 )
             }
             if (targetInfo is TypeAnnotationTargetInfo.LocalVarTarget) {
-                validateCodeTypeAnnotationLocalVariableTarget(attributePath, index, targetInfo, codeLength)
+                validateCodeTypeAnnotationLocalVariableTarget(attributePath, index, targetInfo, codeLength, instructionLayout)
             }
         }
     }
@@ -144,8 +144,15 @@ object CodeAttributeParser : AttributeBodyParser {
         annotationIndex: Int,
         targetInfo: TypeAnnotationTargetInfo.LocalVarTarget,
         codeLength: Int,
+        instructionLayout: CodeInstructionLayout,
     ) {
         targetInfo.table.forEachIndexed { tableIndex, entry ->
+            if (entry.startPc !in instructionLayout.instructionOffsets) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.annotations[$annotationIndex].target_info.localvar_target.table[$tableIndex]" +
+                        ".start_pc=${entry.startPc}: must point to the opcode of an instruction",
+                )
+            }
             val endPc = entry.startPc + entry.length
             if (endPc > codeLength) {
                 throw ClassFileFormatException(
