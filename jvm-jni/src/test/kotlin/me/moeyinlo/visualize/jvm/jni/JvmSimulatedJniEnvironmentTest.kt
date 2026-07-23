@@ -6022,6 +6022,29 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `FatalError raises a non returning simulated JNI fatal error`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        val fatal = assertFailsWith<JvmJniFatalError> {
+            environment.fatalError("native invariant failed")
+        }
+
+        assertEquals("native invariant failed", fatal.message)
+        assertEquals(false, environment.exceptionCheck())
+    }
+
+    @Test
+    fun `FatalError accepts null messages as an empty fatal detail`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        val fatal = assertFailsWith<JvmJniFatalError> {
+            environment.fatalError(null)
+        }
+
+        assertEquals("", fatal.message)
+    }
+
+    @Test
     fun `MonitorEnter records reentrant guest monitor ownership`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

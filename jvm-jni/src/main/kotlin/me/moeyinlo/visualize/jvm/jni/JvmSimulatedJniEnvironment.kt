@@ -79,6 +79,10 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun fatalError(message: String?): Nothing {
+        throw JvmJniFatalError(message.orEmpty())
+    }
+
     internal fun takePendingException(): JvmObjectReferenceValue? {
         val throwable = pendingException
         pendingException = null
@@ -1540,6 +1544,8 @@ class JvmJniStringAccessException(message: String) : IllegalStateException(messa
 class JvmJniArrayAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniExceptionAccessException(message: String) : IllegalStateException(message)
+
+class JvmJniFatalError(message: String) : Error(message)
 
 enum class JvmJniArrayReleaseMode {
     CopyBackAndRelease,
