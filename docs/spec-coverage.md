@@ -293,7 +293,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.26 | `ModulePackages` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` package table rejects duplicate `package_index` entries | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package indexes` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` package table rejects duplicate package names through different indexes | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package names` | IMPLEMENTED |
-| 4.7.26 | `ModulePackages` uniqueness constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+| 4.7.26 | `ModulePackages` package indexes and resolved package names must be unique | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package indexes`, `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package names` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
