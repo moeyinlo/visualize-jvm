@@ -163,6 +163,31 @@ class RuntimeVisibleAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects annotation type index with invalid field descriptor`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleAnnotations", byteArrayOf()),
+                ConstantUtf8Entry("not-a-descriptor", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 6, 0, 1, 0, 2, 0, 0),
+                    source = "bad-runtime-visible-annotation-type.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("RuntimeVisibleAnnotations" to RuntimeVisibleAnnotationsAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("type_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
+
+    @Test
     fun `rejects const element value with wrong constant type`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

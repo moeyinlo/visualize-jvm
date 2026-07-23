@@ -181,6 +181,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.15 | `Deprecated` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
 | 4.7.15 | `Deprecated` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.16 | `RuntimeVisibleAnnotations` | `jvm-classfile` | `RuntimeVisibleAnnotationsAttributeParserTest` | IMPLEMENTED |
+| 4.7.16 | annotation `type_index` must reference a `CONSTANT_Utf8_info` field descriptor | `jvm-classfile` | `RuntimeVisibleAnnotationsAttributeParserTest.rejects annotation type index with invalid field descriptor` | IMPLEMENTED |
 | 4.7.16.1 | annotation `element_value` `enum_const_value.type_name_index` must reference a `CONSTANT_Utf8_info` field descriptor | `jvm-classfile` | `RuntimeVisibleAnnotationsAttributeParserTest.rejects enum element value with invalid type descriptor` | IMPLEMENTED |
 | 4.7.16.1 | annotation `element_value` `class_info_index` must reference a `CONSTANT_Utf8_info` return descriptor | `jvm-classfile` | `RuntimeVisibleAnnotationsAttributeParserTest.rejects class element value with invalid return descriptor` | IMPLEMENTED |
 | 4.7.16 | `RuntimeVisibleAnnotations` at-most-one `ClassFile` attribute rule | `jvm-classfile` | `ClassFileParserTest.rejects ClassFile with duplicate RuntimeVisibleAnnotations attributes` | IMPLEMENTED |

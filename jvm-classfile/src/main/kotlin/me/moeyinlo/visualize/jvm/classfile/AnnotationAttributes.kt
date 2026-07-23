@@ -144,7 +144,7 @@ internal object AnnotationParser {
         context: AttributeParseContext,
         ownerPath: String,
     ): AnnotationInfo {
-        val typeIndex = readUtf8Index(context, "$ownerPath.type_index")
+        val typeIndex = readFieldDescriptorIndex(context, "$ownerPath.type_index")
         val numElementValuePairs = context.reader.readU2()
         val pairs = List(numElementValuePairs) { index ->
             parseElementValuePair(context, "$ownerPath.element_value_pairs[$index]")
