@@ -53,7 +53,7 @@ object CodeAttributeParser : AttributeBodyParser {
             ownerPath = context.ownerPath,
             majorVersion = context.majorVersion,
         )
-        validateCodeAttributes(context, attributes, exceptionTable.size, instructionLayout, code.size)
+        validateCodeAttributes(context, attributes, exceptionTable.size, instructionLayout, code.size, maxLocals)
 
         return CodeAttribute(
             nameIndex = context.nameIndex,
@@ -71,6 +71,7 @@ object CodeAttributeParser : AttributeBodyParser {
         exceptionTableLength: Int,
         instructionLayout: CodeInstructionLayout,
         codeLength: Int,
+        maxLocals: Int,
     ) {
         val stackMapTablePaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
@@ -82,11 +83,25 @@ object CodeAttributeParser : AttributeBodyParser {
                 "StackMapTable" -> stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
-                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout, codeLength)
+                    validateCodeTypeAnnotationTargets(
+                        attributePath,
+                        attribute,
+                        exceptionTableLength,
+                        instructionLayout,
+                        codeLength,
+                        maxLocals,
+                    )
                 }
                 "RuntimeInvisibleTypeAnnotations" -> {
                     runtimeInvisibleTypeAnnotationsPaths += attributePath
-                    validateCodeTypeAnnotationTargets(attributePath, attribute, exceptionTableLength, instructionLayout, codeLength)
+                    validateCodeTypeAnnotationTargets(
+                        attributePath,
+                        attribute,
+                        exceptionTableLength,
+                        instructionLayout,
+                        codeLength,
+                        maxLocals,
+                    )
                 }
             }
         }
@@ -101,6 +116,7 @@ object CodeAttributeParser : AttributeBodyParser {
         exceptionTableLength: Int,
         instructionLayout: CodeInstructionLayout,
         codeLength: Int,
+        maxLocals: Int,
     ) {
         val annotations = when (attribute) {
             is RuntimeVisibleTypeAnnotationsAttribute -> attribute.annotations
@@ -134,7 +150,14 @@ object CodeAttributeParser : AttributeBodyParser {
                 )
             }
             if (targetInfo is TypeAnnotationTargetInfo.LocalVarTarget) {
-                validateCodeTypeAnnotationLocalVariableTarget(attributePath, index, targetInfo, codeLength, instructionLayout)
+                validateCodeTypeAnnotationLocalVariableTarget(
+                    attributePath,
+                    index,
+                    targetInfo,
+                    codeLength,
+                    instructionLayout,
+                    maxLocals,
+                )
             }
         }
     }
@@ -145,8 +168,15 @@ object CodeAttributeParser : AttributeBodyParser {
         targetInfo: TypeAnnotationTargetInfo.LocalVarTarget,
         codeLength: Int,
         instructionLayout: CodeInstructionLayout,
+        maxLocals: Int,
     ) {
         targetInfo.table.forEachIndexed { tableIndex, entry ->
+            if (entry.index >= maxLocals) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.annotations[$annotationIndex].target_info.localvar_target.table[$tableIndex]" +
+                        ".index=${entry.index}: must be less than max_locals=$maxLocals",
+                )
+            }
             if (entry.startPc !in instructionLayout.instructionOffsets) {
                 throw ClassFileFormatException(
                     "Invalid $attributePath.annotations[$annotationIndex].target_info.localvar_target.table[$tableIndex]" +
