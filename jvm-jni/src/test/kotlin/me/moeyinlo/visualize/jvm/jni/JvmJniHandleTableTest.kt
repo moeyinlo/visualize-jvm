@@ -88,4 +88,19 @@ class JvmJniHandleTableTest {
         assertEquals("java/lang/String", table.resolveClassOrNull(classHandle))
         assertEquals(null, table.resolveClassOrNull(null))
     }
+
+    @Test
+    fun `jmethodID handles resolve nullable resolved methods`() {
+        val table = JvmJniHandleTable()
+        val method = JvmResolvedMethod(
+            ownerClassName = "Example",
+            name = "run",
+            descriptor = "()V",
+            isStatic = false,
+        )
+        val methodHandle = table.newMethodIdHandle(method)
+
+        assertEquals(method, table.resolveMethodIdOrNull(methodHandle))
+        assertEquals(null, table.resolveMethodIdOrNull(null))
+    }
 }

@@ -54,6 +54,9 @@ class JvmJniHandleTable {
     fun resolveMethodId(handle: JvmJniHandleId): JvmResolvedMethod =
         entry(handle).expect<JvmJniHandleEntry.MethodIdHandle>(handle).method
 
+    fun resolveMethodIdOrNull(handle: JvmJniHandleId?): JvmResolvedMethod? =
+        handle?.let(::resolveMethodId)
+
     fun resolveFieldId(handle: JvmJniHandleId): JvmResolvedField =
         entry(handle).expect<JvmJniHandleEntry.FieldIdHandle>(handle).field
 
