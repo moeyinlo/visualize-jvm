@@ -114,6 +114,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val monitorEnter: (JvmJniHandleId) -> Int,
     val monitorExit: (JvmJniHandleId) -> Int,
     val getArrayLength: (JvmJniHandleId) -> Int,
+    val getPrimitiveArrayCritical: (JvmJniHandleId) -> JvmJniPrimitiveArrayCritical,
+    val releasePrimitiveArrayCritical: (JvmJniHandleId, JvmJniPrimitiveArrayCritical, JvmJniArrayReleaseMode) -> Unit,
     val newBooleanArray: (Int) -> JvmJniHandleId,
     val newByteArray: (Int) -> JvmJniHandleId,
     val newCharArray: (Int) -> JvmJniHandleId,
@@ -161,7 +163,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 156
+        const val SlotCount: Int = 158
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
@@ -276,6 +278,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 monitorEnter = environment::monitorEnter,
                 monitorExit = environment::monitorExit,
                 getArrayLength = environment::getArrayLength,
+                getPrimitiveArrayCritical = environment::getPrimitiveArrayCritical,
+                releasePrimitiveArrayCritical = environment::releasePrimitiveArrayCritical,
                 newBooleanArray = environment::newBooleanArray,
                 newByteArray = environment::newByteArray,
                 newCharArray = environment::newCharArray,

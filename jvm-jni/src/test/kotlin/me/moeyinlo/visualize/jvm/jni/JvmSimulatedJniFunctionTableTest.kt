@@ -2784,6 +2784,13 @@ class JvmSimulatedJniFunctionTableTest {
             assertEquals(expectedClassName, heap.get(arrayReference).className)
             assertEquals(index + 1, functions.getArrayLength(arrayHandle))
         }
+
+        val intArrayHandle = arrays[4].first
+        functions.setIntArrayRegion(intArrayHandle, 0, intArrayOf(1, 2, 3, 4, 5))
+        val critical = functions.getPrimitiveArrayCritical(intArrayHandle) as JvmJniPrimitiveArrayCritical.Ints
+        critical.elements[2] = 99
+        functions.releasePrimitiveArrayCritical(intArrayHandle, critical, JvmJniArrayReleaseMode.CopyBackAndRelease)
+        assertContentEquals(intArrayOf(1, 2, 99, 4, 5), functions.getIntArrayElements(intArrayHandle))
     }
 
     @Test
