@@ -415,4 +415,34 @@ class JvmSimulatedJniFunctionTableTest {
             functions.getShortArrayElements(arrayHandle),
         )
     }
+
+    @Test
+    fun `function table delegates int array element and region helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+        val arrayHandle = functions.newIntArray(4)
+
+        functions.setIntArrayRegion(arrayHandle, 1, intArrayOf(100, 200, 300))
+        assertContentEquals(
+            intArrayOf(0, 100, 200, 300),
+            functions.getIntArrayElements(arrayHandle),
+        )
+        assertContentEquals(intArrayOf(100, 200), functions.getIntArrayRegion(arrayHandle, 1, 2))
+
+        val committedElements = functions.getIntArrayElements(arrayHandle)
+        committedElements[0] = 400
+        functions.releaseIntArrayElements(arrayHandle, committedElements, JvmJniArrayReleaseMode.Commit)
+        assertContentEquals(
+            intArrayOf(400, 100, 200, 300),
+            functions.getIntArrayElements(arrayHandle),
+        )
+
+        val abortedElements = functions.getIntArrayElements(arrayHandle)
+        abortedElements[1] = 500
+        functions.releaseIntArrayElements(arrayHandle, abortedElements, JvmJniArrayReleaseMode.Abort)
+        assertContentEquals(
+            intArrayOf(400, 100, 200, 300),
+            functions.getIntArrayElements(arrayHandle),
+        )
+    }
 }
