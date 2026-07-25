@@ -475,4 +475,34 @@ class JvmSimulatedJniFunctionTableTest {
             functions.getLongArrayElements(arrayHandle),
         )
     }
+
+    @Test
+    fun `function table delegates float array element and region helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+        val arrayHandle = functions.newFloatArray(4)
+
+        functions.setFloatArrayRegion(arrayHandle, 1, floatArrayOf(1.5f, 2.5f, 3.5f))
+        assertContentEquals(
+            floatArrayOf(0.0f, 1.5f, 2.5f, 3.5f),
+            functions.getFloatArrayElements(arrayHandle),
+        )
+        assertContentEquals(floatArrayOf(1.5f, 2.5f), functions.getFloatArrayRegion(arrayHandle, 1, 2))
+
+        val committedElements = functions.getFloatArrayElements(arrayHandle)
+        committedElements[0] = 4.5f
+        functions.releaseFloatArrayElements(arrayHandle, committedElements, JvmJniArrayReleaseMode.Commit)
+        assertContentEquals(
+            floatArrayOf(4.5f, 1.5f, 2.5f, 3.5f),
+            functions.getFloatArrayElements(arrayHandle),
+        )
+
+        val abortedElements = functions.getFloatArrayElements(arrayHandle)
+        abortedElements[1] = 5.5f
+        functions.releaseFloatArrayElements(arrayHandle, abortedElements, JvmJniArrayReleaseMode.Abort)
+        assertContentEquals(
+            floatArrayOf(4.5f, 1.5f, 2.5f, 3.5f),
+            functions.getFloatArrayElements(arrayHandle),
+        )
+    }
 }

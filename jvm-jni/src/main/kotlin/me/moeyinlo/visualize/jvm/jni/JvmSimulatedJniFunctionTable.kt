@@ -69,6 +69,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val releaseLongArrayElements: (JvmJniHandleId, LongArray, JvmJniArrayReleaseMode) -> Unit,
     val getLongArrayRegion: (JvmJniHandleId, Int, Int) -> LongArray,
     val setLongArrayRegion: (JvmJniHandleId, Int, LongArray) -> Unit,
+    val getFloatArrayElements: (JvmJniHandleId) -> FloatArray,
+    val releaseFloatArrayElements: (JvmJniHandleId, FloatArray, JvmJniArrayReleaseMode) -> Unit,
+    val getFloatArrayRegion: (JvmJniHandleId, Int, Int) -> FloatArray,
+    val setFloatArrayRegion: (JvmJniHandleId, Int, FloatArray) -> Unit,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -141,6 +145,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 releaseLongArrayElements = environment::releaseLongArrayElements,
                 getLongArrayRegion = environment::getLongArrayRegion,
                 setLongArrayRegion = environment::setLongArrayRegion,
+                getFloatArrayElements = environment::getFloatArrayElements,
+                releaseFloatArrayElements = environment::releaseFloatArrayElements,
+                getFloatArrayRegion = environment::getFloatArrayRegion,
+                setFloatArrayRegion = environment::setFloatArrayRegion,
             )
     }
 }
