@@ -405,6 +405,7 @@ class JvmSimulatedJniEnvironment(
         val receiver = handles.resolveObject(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceByteMethod("CallByteMethod")
+        requireReceiverAssignableToMethod("CallByteMethod", receiver, method)
         return upcallDispatcher.callByteMethod(
             receiver = receiver,
             method = method,
