@@ -535,4 +535,39 @@ class JvmSimulatedJniFunctionTableTest {
             functions.getDoubleArrayElements(arrayHandle),
         )
     }
+
+    @Test
+    fun `function table delegates object array creation and element helpers to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "Example", superclassName = "java/lang/Object"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val functions = environment.functions
+        val elementClassHandle = functions.findClass("Example")
+        val initialReference = heap.allocateObject("Example")
+        val replacementReference = heap.allocateObject("Example")
+        val initialHandle = handles.newObjectHandle(initialReference)
+        val replacementHandle = handles.newObjectHandle(replacementReference)
+
+        val arrayHandle = functions.newObjectArray(3, elementClassHandle, initialHandle)
+
+        assertEquals(3, functions.getArrayLength(arrayHandle))
+        assertEquals(initialReference, handles.resolveObject(functions.getObjectArrayElement(arrayHandle, 0)!!))
+        assertEquals(initialReference, handles.resolveObject(functions.getObjectArrayElement(arrayHandle, 1)!!))
+        assertEquals(initialReference, handles.resolveObject(functions.getObjectArrayElement(arrayHandle, 2)!!))
+
+        functions.setObjectArrayElement(arrayHandle, 1, null)
+        assertEquals(null, functions.getObjectArrayElement(arrayHandle, 1))
+
+        functions.setObjectArrayElement(arrayHandle, 2, replacementHandle)
+        assertEquals(replacementReference, handles.resolveObject(functions.getObjectArrayElement(arrayHandle, 2)!!))
+    }
 }
