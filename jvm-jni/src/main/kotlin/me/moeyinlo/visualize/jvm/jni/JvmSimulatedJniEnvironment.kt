@@ -722,9 +722,10 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): Boolean {
-        handles.resolveClass(classHandle)
+        val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireStaticBooleanMethod("CallStaticBooleanMethod")
+        requireClassAssignableToStaticMethod("CallStaticBooleanMethod", className, method)
         return upcallDispatcher.callStaticBooleanMethod(
             method = method,
             arguments = arguments,
