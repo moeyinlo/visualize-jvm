@@ -401,6 +401,25 @@ class JvmSimulatedJniEnvironment(
         )
     }
 
+    fun callStaticObjectMethod(
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): JvmJniHandleId? {
+        handles.resolveClass(classHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireStaticObjectMethod("CallStaticObjectMethod")
+        return when (
+            val result = upcallDispatcher.callStaticObjectMethod(
+                method = method,
+                arguments = arguments,
+            )
+        ) {
+            JvmNullValue -> null
+            is JvmObjectReferenceValue -> handles.newObjectHandle(result)
+        }
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1885,6 +1904,14 @@ private fun JvmResolvedMethod.requireStaticVoidMethod(helperName: String) {
     if (!isStatic || returnDescriptor != "V") {
         throw JvmJniMethodAccessException(
             "$helperName requires a static void method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireStaticObjectMethod(helperName: String) {
+    if (!isStatic || !returnDescriptor.isReferenceFieldDescriptor()) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires a static reference-returning method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
