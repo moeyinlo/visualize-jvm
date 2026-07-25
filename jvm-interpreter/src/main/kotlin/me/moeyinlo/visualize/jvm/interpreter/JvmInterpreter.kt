@@ -23,6 +23,7 @@ import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallDispatcher
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallException
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapArgument
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodAccessException
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodTable
@@ -205,6 +206,35 @@ object JvmInterpreter {
                         "expected JvmReferenceValue but was " +
                         (returnValue?.javaClass?.simpleName ?: "void"),
                 )
+        }
+
+        override fun callBooleanMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmBooleanValue {
+            val returnValue = executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            val intValue = returnValue as? JvmIntValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallBooleanMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmIntValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+            return JvmBooleanValue(intValue.value != 0)
         }
 
         override fun callIntMethod(

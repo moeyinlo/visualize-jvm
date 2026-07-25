@@ -64,6 +64,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -12955,6 +12956,44 @@ class JvmInterpreterTest {
         )
 
         assertEquals(receiver, dispatcher.callStaticObjectMethod(method, listOf(receiver)))
+    }
+
+    @Test
+    fun `interpreter backed JNI dispatcher routes instance boolean upcalls into guest methods`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeOwner")
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "flag",
+                            descriptor = "()Z",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x04.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "NativeOwner",
+            name = "flag",
+            descriptor = "()Z",
+        )
+
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+        )
+
+        assertEquals(JvmBooleanValue(true), dispatcher.callBooleanMethod(receiver, method, emptyList()))
     }
 
     @Test
