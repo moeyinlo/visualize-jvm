@@ -42,6 +42,9 @@ class JvmJniHandleTable {
     fun resolveObject(handle: JvmJniHandleId): JvmObjectReferenceValue =
         entry(handle).expect<JvmJniHandleEntry.ObjectHandle>(handle).reference
 
+    fun resolveObjectOrNull(handle: JvmJniHandleId?): JvmObjectReferenceValue? =
+        handle?.let(::resolveObject)
+
     fun resolveClass(handle: JvmJniHandleId): String =
         entry(handle).expect<JvmJniHandleEntry.ClassHandle>(handle).className
 

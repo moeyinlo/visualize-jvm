@@ -65,4 +65,18 @@ class JvmJniHandleTableTest {
             table.resolveFieldId(fieldHandle)
         }
     }
+
+    @Test
+    fun `jobject handles resolve nullable guest object references`() {
+        val table = JvmJniHandleTable()
+        val objectReference = JvmObjectReferenceValue(JvmReferenceId(11))
+        val localHandle = table.newObjectHandle(objectReference)
+        val globalHandle = table.newGlobalObjectHandle(objectReference)
+        val weakGlobalHandle = table.newWeakGlobalObjectHandle(objectReference)
+
+        assertEquals(objectReference, table.resolveObjectOrNull(localHandle))
+        assertEquals(objectReference, table.resolveObjectOrNull(globalHandle))
+        assertEquals(objectReference, table.resolveObjectOrNull(weakGlobalHandle))
+        assertEquals(null, table.resolveObjectOrNull(null))
+    }
 }
