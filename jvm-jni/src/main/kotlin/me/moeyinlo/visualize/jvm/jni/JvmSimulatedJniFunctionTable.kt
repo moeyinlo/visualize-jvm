@@ -116,6 +116,9 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val getArrayLength: (JvmJniHandleId) -> Int,
     val getPrimitiveArrayCritical: (JvmJniHandleId) -> JvmJniPrimitiveArrayCritical,
     val releasePrimitiveArrayCritical: (JvmJniHandleId, JvmJniPrimitiveArrayCritical, JvmJniArrayReleaseMode) -> Unit,
+    val newDirectByteBuffer: (Long, Long) -> JvmJniHandleId,
+    val getDirectBufferAddress: (JvmJniHandleId) -> Long,
+    val getDirectBufferCapacity: (JvmJniHandleId) -> Long,
     val newBooleanArray: (Int) -> JvmJniHandleId,
     val newByteArray: (Int) -> JvmJniHandleId,
     val newCharArray: (Int) -> JvmJniHandleId,
@@ -163,7 +166,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 158
+        const val SlotCount: Int = 161
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
@@ -280,6 +283,9 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 getArrayLength = environment::getArrayLength,
                 getPrimitiveArrayCritical = environment::getPrimitiveArrayCritical,
                 releasePrimitiveArrayCritical = environment::releasePrimitiveArrayCritical,
+                newDirectByteBuffer = environment::newDirectByteBuffer,
+                getDirectBufferAddress = environment::getDirectBufferAddress,
+                getDirectBufferCapacity = environment::getDirectBufferCapacity,
                 newBooleanArray = environment::newBooleanArray,
                 newByteArray = environment::newByteArray,
                 newCharArray = environment::newCharArray,

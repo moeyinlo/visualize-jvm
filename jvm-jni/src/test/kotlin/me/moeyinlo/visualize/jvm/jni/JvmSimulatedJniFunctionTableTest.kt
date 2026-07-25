@@ -2794,6 +2794,17 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates direct byte buffer helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+
+        val bufferHandle = functions.newDirectByteBuffer(0x5000L, 1024L)
+
+        assertEquals(0x5000L, functions.getDirectBufferAddress(bufferHandle))
+        assertEquals(1024L, functions.getDirectBufferCapacity(bufferHandle))
+    }
+
+    @Test
     fun `function table delegates boolean array element and region helpers to one simulated JNI environment`() {
         val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
         val functions = environment.functions
