@@ -790,6 +790,12 @@ class JvmSimulatedJniEnvironment(
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
+        if (!classHierarchy.hasClass(className)) {
+            throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = className,
+            )
+        }
         return handles.newClassHandle(className)
     }
 

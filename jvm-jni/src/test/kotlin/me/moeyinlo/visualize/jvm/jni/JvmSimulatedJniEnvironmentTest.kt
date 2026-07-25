@@ -2303,6 +2303,26 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectClass throws guest NoClassDefFoundError when runtime class is not loaded`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Missing")
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            environment.getObjectClass(objectHandle)
+        }
+
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
+        assertEquals("Missing", exception.message)
+    }
+
+    @Test
     fun `IsInstanceOf returns true when a guest object is assignable to the target class`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
