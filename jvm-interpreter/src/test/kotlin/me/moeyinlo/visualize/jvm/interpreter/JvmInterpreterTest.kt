@@ -13190,6 +13190,44 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher routes instance long upcalls into guest methods`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeOwner")
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "longValue",
+                            descriptor = "()J",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x0A.toByte(),
+                                0xAD.toByte(),
+                            ),
+                            maxStack = 2,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "NativeOwner",
+            name = "longValue",
+            descriptor = "()J",
+        )
+
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+        )
+
+        assertEquals(JvmLongValue(1L), dispatcher.callLongMethod(receiver, method, emptyList()))
+    }
+
+    @Test
     fun `interpreter backed JNI dispatcher routes static char upcalls into guest methods`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(
