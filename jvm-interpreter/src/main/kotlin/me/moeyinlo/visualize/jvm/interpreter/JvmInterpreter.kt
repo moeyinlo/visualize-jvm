@@ -312,6 +312,33 @@ object JvmInterpreter {
                 )
         }
 
+        override fun callStaticBooleanMethod(
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmBooleanValue {
+            val returnValue = executeStaticMethodUpcall(
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            val intValue = returnValue as? JvmIntValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallStaticBooleanMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmIntValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+            return JvmBooleanValue(intValue.value != 0)
+        }
+
         override fun callStaticIntMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,

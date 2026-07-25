@@ -12997,6 +12997,42 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher routes static boolean upcalls into guest methods`() {
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "StaticOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "flag",
+                            descriptor = "()Z",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x03.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "StaticOwner",
+            name = "flag",
+            descriptor = "()Z",
+        )
+
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = JvmHeap(),
+            classHierarchy = classHierarchy,
+        )
+
+        assertEquals(JvmBooleanValue(false), dispatcher.callStaticBooleanMethod(method, emptyList()))
+    }
+
+    @Test
     fun `invokestatic prefers native intrinsics over simulated JNI bindings`() {
         val key = JvmNativeMethodKey(
             ownerClassName = "Example",
