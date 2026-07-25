@@ -43,6 +43,43 @@ object JvmHostMethodInvoker {
         return hostResult.toGuestReturn(method.returnType, heap, identityMap)
     }
 
+    fun invokeInstance(
+        method: JvmHostMethodMirror,
+        receiver: JvmReferenceValue,
+        arguments: List<JvmValue>,
+        heap: JvmHeap,
+        identityMap: JvmHostIdentityMap = JvmHostIdentityMap(),
+        classLoader: ClassLoader? = method.owner.hostClass.classLoader,
+    ): JvmValue? {
+        if (method.isStatic) {
+            throw JvmHostMethodInvocationException("Host method ${method.name} is static")
+        }
+        if (arguments.size != method.parameterTypes.size) {
+            throw JvmHostMethodInvocationException(
+                "Host method ${method.name} expects ${method.parameterTypes.size} arguments but received ${arguments.size}",
+            )
+        }
+        val hostReceiver = receiver.toHostArgument(method.owner.hostClass, heap, identityMap, classLoader)
+            ?: throw JvmHostMethodInvocationException("Host method ${method.name} receiver is null")
+        val hostArguments = arguments.zip(method.parameterTypes).map { (argument, parameterType) ->
+            argument.toHostArgument(parameterType, heap, identityMap, classLoader)
+        }
+        val hostResult = try {
+            method.hostMethod.invoke(hostReceiver, *hostArguments.toTypedArray())
+        } catch (exception: IllegalAccessException) {
+            throw JvmHostMethodInvocationException(
+                "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} is not accessible",
+                exception,
+            )
+        } catch (exception: InvocationTargetException) {
+            throw JvmHostMethodInvocationException(
+                "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} threw ${exception.targetException::class.java.name}",
+                exception.targetException,
+            )
+        }
+        return hostResult.toGuestReturn(method.returnType, heap, identityMap)
+    }
+
     private fun JvmValue.toHostArgument(
         targetType: Class<*>,
         heap: JvmHeap,
