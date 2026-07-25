@@ -2235,6 +2235,53 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallStaticVoidMethod rejects class that is not assignable to method owner`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "boot",
+                                descriptor = "()V",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticVoidMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallStaticVoidMethod must not enter dispatcher for an incompatible class")
+            },
+        )
+        val exampleHandle = environment.findClass("Example")
+        val otherHandle = environment.findClass("Other")
+        val methodHandle = environment.getStaticMethodId(exampleHandle, "boot", "()V")
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callStaticVoidMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallStaticVoidMethod requires class Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallStaticObjectMethod routes static method upcalls and returns a local object handle`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

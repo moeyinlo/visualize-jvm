@@ -208,6 +208,18 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    private fun requireClassAssignableToStaticMethod(
+        helperName: String,
+        className: String,
+        method: JvmResolvedMethod,
+    ) {
+        if (!classHierarchy.isAssignable(className, method.ownerClassName)) {
+            throw JvmJniMethodAccessException(
+                "$helperName requires class $className to be assignable to ${method.ownerClassName}",
+            )
+        }
+    }
+
     fun findClass(className: String): JvmJniHandleId {
         if (!classHierarchy.hasClass(className)) {
             throw JvmNoClassDefFoundError(
@@ -675,9 +687,10 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ) {
-        handles.resolveClass(classHandle)
+        val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireStaticVoidMethod("CallStaticVoidMethod")
+        requireClassAssignableToStaticMethod("CallStaticVoidMethod", className, method)
         upcallDispatcher.callStaticVoidMethod(
             method = method,
             arguments = arguments,
