@@ -1644,6 +1644,74 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates nonvirtual long method upcalls to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFunctionTableLongUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "counter", descriptor = "()J", isStatic = false),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "counter", descriptor = "()J", isStatic = false),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callLongMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmLongValue {
+                    calls += RecordedFunctionTableLongUpcall(receiver, method, arguments)
+                    return JvmLongValue(9876543211L)
+                }
+            },
+        )
+        val functions = environment.functions
+        val baseClassHandle = functions.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = functions.getMethodId(baseClassHandle, "counter", "()J")
+
+        val result = functions.callNonvirtualLongMethod(objectHandle, baseClassHandle, methodHandle, emptyList())
+
+        assertEquals(9876543211L, result)
+        assertEquals(
+            listOf(
+                RecordedFunctionTableLongUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "counter",
+                        descriptor = "()J",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `function table delegates float method upcalls to one simulated JNI environment`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

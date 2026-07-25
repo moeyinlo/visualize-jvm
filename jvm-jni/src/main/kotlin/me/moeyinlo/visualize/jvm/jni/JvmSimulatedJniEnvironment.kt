@@ -523,6 +523,29 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callNonvirtualLongMethod(
+        objectHandle: JvmJniHandleId,
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Long {
+        val receiver = handles.resolveObject(objectHandle)
+        val className = handles.resolveClass(classHandle)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, className)) {
+            throw JvmJniMethodAccessException(
+                "CallNonvirtualLongMethod requires receiver $receiverClassName to be assignable to $className",
+            )
+        }
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireNonvirtualInstanceLongMethod("CallNonvirtualLongMethod", className)
+        return upcallDispatcher.callLongMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun callFloatMethod(
         objectHandle: JvmJniHandleId,
         methodIdHandle: JvmJniHandleId,
@@ -2246,6 +2269,15 @@ private fun JvmResolvedMethod.requireInstanceLongMethod(helperName: String) {
     if (isStatic || returnDescriptor != "J") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance long method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireNonvirtualInstanceLongMethod(helperName: String, className: String) {
+    requireInstanceLongMethod(helperName)
+    if (ownerClassName != className) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires method owner $ownerClassName to match declaring class $className",
         )
     }
 }
