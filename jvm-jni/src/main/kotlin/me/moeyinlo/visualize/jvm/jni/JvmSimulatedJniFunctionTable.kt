@@ -80,6 +80,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val newObjectArray: (Int, JvmJniHandleId, JvmJniHandleId?) -> JvmJniHandleId,
     val getObjectArrayElement: (JvmJniHandleId, Int) -> JvmJniHandleId?,
     val setObjectArrayElement: (JvmJniHandleId, Int, JvmJniHandleId?) -> Unit,
+    val getObjectArrayRegion: (JvmJniHandleId, Int, Int) -> List<JvmJniHandleId?>,
+    val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -163,6 +165,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 newObjectArray = environment::newObjectArray,
                 getObjectArrayElement = environment::getObjectArrayElement,
                 setObjectArrayElement = environment::setObjectArrayElement,
+                getObjectArrayRegion = environment::getObjectArrayRegion,
+                setObjectArrayRegion = environment::setObjectArrayRegion,
             )
     }
 }

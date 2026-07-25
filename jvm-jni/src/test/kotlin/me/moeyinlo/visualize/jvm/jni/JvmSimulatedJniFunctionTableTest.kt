@@ -570,4 +570,35 @@ class JvmSimulatedJniFunctionTableTest {
         functions.setObjectArrayElement(arrayHandle, 2, replacementHandle)
         assertEquals(replacementReference, handles.resolveObject(functions.getObjectArrayElement(arrayHandle, 2)!!))
     }
+
+    @Test
+    fun `function table delegates object array region helpers to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "Example", superclassName = "java/lang/Object"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val functions = environment.functions
+        val elementClassHandle = functions.findClass("Example")
+        val firstReference = heap.allocateObject("Example")
+        val secondReference = heap.allocateObject("Example")
+        val firstHandle = handles.newObjectHandle(firstReference)
+        val secondHandle = handles.newObjectHandle(secondReference)
+        val arrayHandle = functions.newObjectArray(4, elementClassHandle, null)
+
+        functions.setObjectArrayRegion(arrayHandle, 1, listOf(firstHandle, null, secondHandle))
+
+        val region = functions.getObjectArrayRegion(arrayHandle, 1, 3)
+        assertEquals(3, region.size)
+        assertEquals(firstReference, handles.resolveObject(region[0]!!))
+        assertEquals(null, region[1])
+        assertEquals(secondReference, handles.resolveObject(region[2]!!))
+    }
 }
