@@ -174,6 +174,54 @@ class JvmVmIntrinsicsTest {
         assertEquals(true, invoked)
     }
 
+
+    @Test
+    fun `intrinsic miss enters simulated JNI implementation`() {
+        val key = JvmNativeMethodKey(
+            ownerClassName = "java/lang/System",
+            name = "jniFallbackValue",
+            descriptor = "()I",
+            isStatic = true,
+        )
+        var simulatedJniInvoked = false
+        val registry = JvmNativeMethodRegistry(
+            intrinsics = emptyMap(),
+            simulatedJni = mapOf(
+                key to JvmNativeMethodIntrinsic { context, invocation ->
+                    simulatedJniInvoked = true
+                    assertEquals("java/lang/System", context.currentClassName)
+                    assertEquals(null, invocation.receiver)
+                    assertEquals(emptyList(), invocation.arguments)
+                    JvmIntValue(99)
+                },
+            ),
+            intrinsicOwnerWhitelist = setOf("java/lang/System"),
+        )
+        val resolved = registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "java/lang/System",
+                name = "jniFallbackValue",
+                descriptor = "()I",
+                isStatic = true,
+                isNative = true,
+            ),
+        ) ?: error("simulated JNI fallback should resolve")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        val result = resolved.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(JvmIntValue(99), result)
+        assertEquals(true, simulatedJniInvoked)
+    }
+
     @Test
     fun `Object getClass intrinsic returns an interned guest class mirror for the receiver class`() {
         val heap = JvmHeap()
