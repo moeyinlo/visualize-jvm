@@ -563,6 +563,32 @@ object JvmInterpreter {
                         (returnValue?.javaClass?.simpleName ?: "void"),
                 )
         }
+
+        override fun callStaticLongMethod(
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmLongValue {
+            val returnValue = executeStaticMethodUpcall(
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            return returnValue as? JvmLongValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallStaticLongMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmLongValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
     }
 
     fun execute(
