@@ -24,4 +24,21 @@ class JvmSimulatedJavaVmFunctionTableTest {
         assertEquals(JvmJniStatus.EVersion, unsupported.status)
         assertEquals(null, unsupported.environment)
     }
+    @Test
+    fun `JavaVM function table delegates AttachCurrentThread and DetachCurrentThread`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+        val functions = javaVm.functions
+
+        assertEquals(JvmJniStatus.Ok, functions.detachCurrentThread())
+        assertEquals(JvmJniStatus.EDetached, functions.getEnv(JvmJniVersions.Version24).status)
+
+        val attached = functions.attachCurrentThread(JvmJniVersions.Version24)
+
+        assertEquals(JvmJniStatus.Ok, attached.status)
+        assertSame(environment, attached.environment)
+    }
 }
