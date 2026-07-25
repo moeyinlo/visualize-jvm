@@ -518,6 +518,20 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callStaticDoubleMethod(
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Double {
+        handles.resolveClass(classHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireStaticDoubleMethod("CallStaticDoubleMethod")
+        return upcallDispatcher.callStaticDoubleMethod(
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -2066,6 +2080,14 @@ private fun JvmResolvedMethod.requireStaticFloatMethod(helperName: String) {
     if (!isStatic || returnDescriptor != "F") {
         throw JvmJniMethodAccessException(
             "$helperName requires a static float method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireStaticDoubleMethod(helperName: String) {
+    if (!isStatic || returnDescriptor != "D") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires a static double method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
