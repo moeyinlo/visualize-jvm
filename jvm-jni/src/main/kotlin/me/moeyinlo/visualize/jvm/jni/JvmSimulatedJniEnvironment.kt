@@ -387,6 +387,20 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callStaticVoidMethod(
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ) {
+        handles.resolveClass(classHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireStaticVoidMethod("CallStaticVoidMethod")
+        upcallDispatcher.callStaticVoidMethod(
+            method = method,
+            arguments = arguments,
+        )
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1863,6 +1877,14 @@ private fun JvmResolvedMethod.requireInstanceDoubleMethod(helperName: String) {
     if (isStatic || returnDescriptor != "D") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance double method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireStaticVoidMethod(helperName: String) {
+    if (!isStatic || returnDescriptor != "V") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires a static void method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
