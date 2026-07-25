@@ -115,6 +115,7 @@ class JvmSimulatedJniFunctionTableTest {
         val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
         val objectClassHandle = functions.getObjectClass(objectHandle)
         val baseClassHandle = functions.findClass("Base")
+        val superclassHandle = functions.getSuperclass(classHandle)
         val methodHandle = functions.getMethodId(classHandle, "value", "()I")
         val inheritedMethodHandle = functions.getMethodId(classHandle, "baseValue", "()I")
         val staticMethodHandle = functions.getStaticMethodId(classHandle, "answer", "()I")
@@ -123,6 +124,8 @@ class JvmSimulatedJniFunctionTableTest {
 
         assertEquals("Example", handles.resolveClass(classHandle))
         assertEquals("Example", handles.resolveClass(objectClassHandle))
+        assertEquals("Base", handles.resolveClass(superclassHandle!!))
+        assertEquals(null, functions.getSuperclass(baseClassHandle))
         assertEquals(true, functions.isInstanceOf(objectHandle, baseClassHandle))
         assertEquals(true, functions.isInstanceOf(null, baseClassHandle))
         assertEquals(
