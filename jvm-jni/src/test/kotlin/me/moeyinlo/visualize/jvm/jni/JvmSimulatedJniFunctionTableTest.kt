@@ -569,6 +569,33 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates static boolean field helpers to one simulated JNI environment`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(name = "enabled", descriptor = "Z", isStatic = true),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+        val fieldHandle = functions.getStaticFieldId(classHandle, "enabled", "Z")
+
+        assertEquals(false, functions.getStaticBooleanField(classHandle, fieldHandle))
+
+        functions.setStaticBooleanField(classHandle, fieldHandle, true)
+
+        assertEquals(true, functions.getStaticBooleanField(classHandle, fieldHandle))
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
