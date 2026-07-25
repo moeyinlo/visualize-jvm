@@ -43,6 +43,13 @@ import kotlin.test.assertFailsWith
 
 class JvmSimulatedJniEnvironmentTest {
     @Test
+    fun `GetVersion returns the supported JNI version`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        assertEquals(0x00180000, environment.getVersion())
+    }
+
+    @Test
     fun `FindClass returns a class handle for loaded guest classes`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
