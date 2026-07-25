@@ -355,4 +355,34 @@ class JvmSimulatedJniFunctionTableTest {
             functions.getByteArrayElements(arrayHandle),
         )
     }
+
+    @Test
+    fun `function table delegates char array element and region helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+        val arrayHandle = functions.newCharArray(4)
+
+        functions.setCharArrayRegion(arrayHandle, 1, charArrayOf('j', 'v', 'm'))
+        assertContentEquals(
+            charArrayOf('\u0000', 'j', 'v', 'm'),
+            functions.getCharArrayElements(arrayHandle),
+        )
+        assertContentEquals(charArrayOf('j', 'v'), functions.getCharArrayRegion(arrayHandle, 1, 2))
+
+        val committedElements = functions.getCharArrayElements(arrayHandle)
+        committedElements[0] = 'J'
+        functions.releaseCharArrayElements(arrayHandle, committedElements, JvmJniArrayReleaseMode.Commit)
+        assertContentEquals(
+            charArrayOf('J', 'j', 'v', 'm'),
+            functions.getCharArrayElements(arrayHandle),
+        )
+
+        val abortedElements = functions.getCharArrayElements(arrayHandle)
+        abortedElements[1] = 'x'
+        functions.releaseCharArrayElements(arrayHandle, abortedElements, JvmJniArrayReleaseMode.Abort)
+        assertContentEquals(
+            charArrayOf('J', 'j', 'v', 'm'),
+            functions.getCharArrayElements(arrayHandle),
+        )
+    }
 }
