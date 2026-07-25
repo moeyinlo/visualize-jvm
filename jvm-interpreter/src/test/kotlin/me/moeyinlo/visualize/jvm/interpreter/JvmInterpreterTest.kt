@@ -65,6 +65,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
+import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -13030,6 +13031,45 @@ class JvmInterpreterTest {
         )
 
         assertEquals(JvmBooleanValue(false), dispatcher.callStaticBooleanMethod(method, emptyList()))
+    }
+
+    @Test
+    fun `interpreter backed JNI dispatcher routes instance byte upcalls into guest methods`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeOwner")
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "byteValue",
+                            descriptor = "()B",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                (-7).toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "NativeOwner",
+            name = "byteValue",
+            descriptor = "()B",
+        )
+
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+        )
+
+        assertEquals(JvmByteValue(-7), dispatcher.callByteMethod(receiver, method, emptyList()))
     }
 
     @Test
