@@ -290,6 +290,34 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun callNonvirtualObjectMethod(
+        objectHandle: JvmJniHandleId,
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): JvmJniHandleId? {
+        val receiver = handles.resolveObject(objectHandle)
+        val className = handles.resolveClass(classHandle)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, className)) {
+            throw JvmJniMethodAccessException(
+                "CallNonvirtualObjectMethod requires receiver $receiverClassName to be assignable to $className",
+            )
+        }
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireNonvirtualInstanceObjectMethod("CallNonvirtualObjectMethod", className)
+        return when (
+            val result = upcallDispatcher.callObjectMethod(
+                receiver = receiver,
+                method = method,
+                arguments = arguments,
+            )
+        ) {
+            JvmNullValue -> null
+            is JvmObjectReferenceValue -> handles.newObjectHandle(result)
+        }
+    }
+
     fun callBooleanMethod(
         objectHandle: JvmJniHandleId,
         methodIdHandle: JvmJniHandleId,
@@ -2001,6 +2029,15 @@ private fun JvmResolvedMethod.requireInstanceObjectMethod(helperName: String) {
     if (isStatic || !returnDescriptor.isReferenceFieldDescriptor()) {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance object method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireNonvirtualInstanceObjectMethod(helperName: String, className: String) {
+    requireInstanceObjectMethod(helperName)
+    if (ownerClassName != className) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires method owner $ownerClassName to match declaring class $className",
         )
     }
 }
