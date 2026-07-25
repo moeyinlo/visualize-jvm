@@ -13,6 +13,7 @@ value class JvmJniHandleId(val value: Int) {
 
 class JvmJniHandleTable {
     private val entries = linkedMapOf<JvmJniHandleId, JvmJniHandleEntry>()
+    private val localFrameStarts = mutableListOf<Int>()
     private var nextHandleId = 1
 
     fun newObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
@@ -45,6 +46,17 @@ class JvmJniHandleTable {
         if (entries.remove(handle) == null) {
             throw JvmJniInvalidHandleException("JNI handle ${handle.value} is not live")
         }
+    }
+
+    fun pushLocalFrame() {
+        localFrameStarts += nextHandleId
+    }
+
+    fun deleteCurrentLocalFrameHandles() {
+        val frameStart = localFrameStarts.removeLastOrNull()
+            ?: throw JvmJniLocalFrameException("JNI local frame stack is empty")
+        val scopedHandles = entries.keys.filter { handle -> handle.value >= frameStart }
+        scopedHandles.forEach(entries::remove)
     }
 
     private fun allocate(entry: JvmJniHandleEntry): JvmJniHandleId {

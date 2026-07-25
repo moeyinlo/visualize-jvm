@@ -6142,6 +6142,28 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `PopLocalFrame deletes handles allocated in the popped local frame`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val parentReference = heap.allocateObject("Parent")
+        val parentHandle = handles.newObjectHandle(parentReference)
+        environment.pushLocalFrame(2)
+        val scopedHandle = environment.newStringUtf("scoped")
+
+        environment.popLocalFrame(null)
+
+        assertEquals(parentReference, handles.resolveObject(parentHandle))
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveObject(scopedHandle)
+        }
+    }
+
+    @Test
     fun `PopLocalFrame rejects local frame underflow`() {
         val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
 

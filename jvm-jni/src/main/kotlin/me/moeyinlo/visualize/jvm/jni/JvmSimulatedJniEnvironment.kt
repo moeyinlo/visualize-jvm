@@ -99,6 +99,7 @@ class JvmSimulatedJniEnvironment(
     fun pushLocalFrame(capacity: Int): Int {
         require(capacity > 0) { "JNI local frame capacity must be positive: $capacity" }
         localFrameCapacities += capacity
+        handles.pushLocalFrame()
         maxLocalFrameCapacity = maxOf(maxLocalFrameCapacity, capacity)
         return 0
     }
@@ -108,6 +109,7 @@ class JvmSimulatedJniEnvironment(
         if (localFrameCapacities.removeLastOrNull() == null) {
             throw JvmJniLocalFrameException("JNI local frame stack is empty")
         }
+        handles.deleteCurrentLocalFrameHandles()
         return reboundResult?.let(handles::newObjectHandle)
     }
 
