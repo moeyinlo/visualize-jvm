@@ -740,6 +740,66 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates nonvirtual void method upcalls to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFunctionTableVoidUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "run", descriptor = "()V", isStatic = false),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "run", descriptor = "()V", isStatic = false),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) {
+                    calls += RecordedFunctionTableVoidUpcall(receiver, method, arguments)
+                }
+            },
+        )
+        val functions = environment.functions
+        val baseClassHandle = functions.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = functions.getMethodId(baseClassHandle, "run", "()V")
+
+        functions.callNonvirtualVoidMethod(objectHandle, baseClassHandle, methodHandle, emptyList())
+
+        assertEquals(
+            listOf(
+                RecordedFunctionTableVoidUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "run",
+                        descriptor = "()V",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `function table delegates object method upcalls to one simulated JNI environment`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

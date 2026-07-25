@@ -247,6 +247,29 @@ class JvmSimulatedJniEnvironment(
         )
     }
 
+    fun callNonvirtualVoidMethod(
+        objectHandle: JvmJniHandleId,
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ) {
+        val receiver = handles.resolveObject(objectHandle)
+        val className = handles.resolveClass(classHandle)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, className)) {
+            throw JvmJniMethodAccessException(
+                "CallNonvirtualVoidMethod requires receiver $receiverClassName to be assignable to $className",
+            )
+        }
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireNonvirtualInstanceVoidMethod("CallNonvirtualVoidMethod", className)
+        upcallDispatcher.callVoidMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+    }
+
     fun callObjectMethod(
         objectHandle: JvmJniHandleId,
         methodIdHandle: JvmJniHandleId,
@@ -1953,6 +1976,15 @@ private fun JvmResolvedMethod.requireInstanceVoidMethod(helperName: String) {
     if (isStatic || !descriptor.endsWith("V")) {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance void method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireNonvirtualInstanceVoidMethod(helperName: String, className: String) {
+    requireInstanceVoidMethod(helperName)
+    if (ownerClassName != className) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires method owner $ownerClassName to match declaring class $className",
         )
     }
 }

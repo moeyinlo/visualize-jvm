@@ -254,6 +254,78 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualVoidMethod routes explicit declaring class method upcalls through the configured dispatcher`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedVoidUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "accept",
+                                descriptor = "(I)V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "accept",
+                                descriptor = "(I)V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) {
+                    calls += RecordedVoidUpcall(receiver, method, arguments)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "accept", "(I)V")
+
+        environment.callNonvirtualVoidMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(7)),
+        )
+
+        assertEquals(
+            listOf(
+                RecordedVoidUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "accept",
+                        descriptor = "(I)V",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(7)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallObjectMethod routes instance method upcalls and returns a local object handle`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
