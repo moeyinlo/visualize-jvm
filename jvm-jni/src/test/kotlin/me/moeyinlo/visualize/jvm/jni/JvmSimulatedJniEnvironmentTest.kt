@@ -1465,6 +1465,56 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallIntMethod rejects receiver that is not assignable to method owner`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "answer",
+                                descriptor = "()I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callIntMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmIntValue = error("CallIntMethod must not enter dispatcher for an incompatible receiver")
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getMethodId(classHandle, "answer", "()I")
+        val otherHandle = handles.newObjectHandle(heap.allocateObject("Other"))
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callIntMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallIntMethod requires receiver Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualIntMethod routes explicit declaring class method upcalls and returns a JNI int`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
