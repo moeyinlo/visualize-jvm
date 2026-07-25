@@ -34,6 +34,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -193,6 +194,62 @@ class JvmSimulatedJniEnvironmentTest {
         assertFailsWith<JvmNoSuchMethodError> {
             environment.getMethodId(classHandle, "staticOnly", "()I")
         }
+    }
+
+    @Test
+    fun `CallVoidMethod routes instance method upcalls through the configured dispatcher`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedVoidUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "accept",
+                                descriptor = "(I)V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) {
+                    calls += RecordedVoidUpcall(receiver, method, arguments)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val receiver = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(classHandle, "accept", "(I)V")
+
+        environment.callVoidMethod(objectHandle, methodHandle, listOf(JvmIntValue(7)))
+
+        assertEquals(
+            listOf(
+                RecordedVoidUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "accept",
+                        descriptor = "(I)V",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(7)),
+                ),
+            ),
+            calls,
+        )
     }
 
     @Test
@@ -6562,3 +6619,9 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
 }
+
+private data class RecordedVoidUpcall(
+    val receiver: JvmObjectReferenceValue,
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)

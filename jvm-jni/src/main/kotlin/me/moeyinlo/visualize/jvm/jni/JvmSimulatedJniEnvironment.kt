@@ -24,10 +24,12 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
@@ -37,6 +39,7 @@ class JvmSimulatedJniEnvironment(
     private val monitors: JvmMonitorState = JvmMonitorState(),
     private val currentThreadId: String = "main",
     private val exceptionReporter: (String) -> Unit = {},
+    private val upcallDispatcher: JvmJniUpcallDispatcher = JvmJniUpcallDispatcher.Unbound,
 ) {
     private val throwableDetailMessageField = JvmFieldReference(
         ownerClassName = "java/lang/Throwable",
@@ -227,6 +230,21 @@ class JvmSimulatedJniEnvironment(
             )
         }
         return handles.newMethodIdHandle(method)
+    }
+
+    fun callVoidMethod(
+        objectHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ) {
+        val receiver = handles.resolveObject(objectHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireInstanceVoidMethod("CallVoidMethod")
+        upcallDispatcher.callVoidMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
     }
 
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
@@ -1608,6 +1626,8 @@ private fun String.referenceArrayComponentClassName(): String =
 
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
 
+class JvmJniMethodAccessException(message: String) : IllegalStateException(message)
+
 class JvmJniStringAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniArrayAccessException(message: String) : IllegalStateException(message)
@@ -1626,3 +1646,11 @@ enum class JvmJniArrayReleaseMode {
 
 private fun String.isReferenceFieldDescriptor(): Boolean =
     startsWith("L") || startsWith("[")
+
+private fun JvmResolvedMethod.requireInstanceVoidMethod(helperName: String) {
+    if (isStatic || !descriptor.endsWith("V")) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance void method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
