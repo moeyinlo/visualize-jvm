@@ -2989,6 +2989,53 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallStaticLongMethod rejects class that is not assignable to method owner`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "wide",
+                                descriptor = "()J",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticLongMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmLongValue = error("CallStaticLongMethod must not enter dispatcher for an incompatible class")
+            },
+        )
+        val exampleHandle = environment.findClass("Example")
+        val otherHandle = environment.findClass("Other")
+        val methodHandle = environment.getStaticMethodId(exampleHandle, "wide", "()J")
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callStaticLongMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallStaticLongMethod requires class Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallStaticFloatMethod routes static method upcalls and returns a JNI float`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

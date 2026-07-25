@@ -797,9 +797,10 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): Long {
-        handles.resolveClass(classHandle)
+        val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireStaticLongMethod("CallStaticLongMethod")
+        requireClassAssignableToStaticMethod("CallStaticLongMethod", className, method)
         return upcallDispatcher.callStaticLongMethod(
             method = method,
             arguments = arguments,
