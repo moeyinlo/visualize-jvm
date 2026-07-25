@@ -19,6 +19,13 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val getStaticMethodId: (JvmJniHandleId, String, String) -> JvmJniHandleId,
     val getFieldId: (JvmJniHandleId, String, String) -> JvmJniHandleId,
     val getStaticFieldId: (JvmJniHandleId, String, String) -> JvmJniHandleId,
+    val throwObject: (JvmJniHandleId) -> Int,
+    val throwNew: (JvmJniHandleId, String?) -> Int,
+    val exceptionOccurred: () -> JvmJniHandleId?,
+    val exceptionCheck: () -> Boolean,
+    val exceptionClear: () -> Unit,
+    val exceptionDescribe: () -> Unit,
+    val fatalError: (String?) -> Nothing,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -41,6 +48,13 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 getStaticMethodId = environment::getStaticMethodId,
                 getFieldId = environment::getFieldId,
                 getStaticFieldId = environment::getStaticFieldId,
+                throwObject = environment::throwObject,
+                throwNew = environment::throwNew,
+                exceptionOccurred = environment::exceptionOccurred,
+                exceptionCheck = environment::exceptionCheck,
+                exceptionClear = environment::exceptionClear,
+                exceptionDescribe = environment::exceptionDescribe,
+                fatalError = environment::fatalError,
             )
     }
 }

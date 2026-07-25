@@ -3,10 +3,13 @@ package me.moeyinlo.visualize.jvm.jni
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
+import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
+import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -130,5 +133,65 @@ class JvmSimulatedJniFunctionTableTest {
             JvmResolvedField(ownerClassName = "Example", name = "total", descriptor = "J", isStatic = true),
             handles.resolveFieldId(staticFieldHandle),
         )
+    }
+
+    @Test
+    fun `function table delegates exception helpers to one simulated JNI environment`() {
+        val reported = mutableListOf<String>()
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "java/lang/Throwable", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/IllegalArgumentException",
+                        superclassName = "java/lang/Throwable",
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            exceptionReporter = { text -> reported += text },
+        )
+        val functions = environment.functions
+        val throwableClassHandle = functions.findClass("java/lang/IllegalArgumentException")
+
+        assertEquals(false, functions.exceptionCheck())
+        assertEquals(null, functions.exceptionOccurred())
+        assertEquals(0, functions.throwNew(throwableClassHandle, "bad argument"))
+
+        val pendingHandle = functions.exceptionOccurred()
+        val pendingReference = handles.resolveObject(pendingHandle!!)
+        val detailMessageField = JvmFieldReference(
+            ownerClassName = "java/lang/Throwable",
+            name = "detailMessage",
+            descriptor = "Ljava/lang/String;",
+        )
+        val detailMessageReference =
+            heap.getInstanceField(pendingReference, detailMessageField) as JvmObjectReferenceValue
+
+        assertEquals("java/lang/IllegalArgumentException", heap.get(pendingReference).className)
+        assertEquals(JvmStringPayload("bad argument"), heap.get(detailMessageReference).payload)
+        assertEquals(true, functions.exceptionCheck())
+
+        functions.exceptionDescribe()
+        assertEquals(listOf("java/lang/IllegalArgumentException: bad argument"), reported)
+        assertEquals(true, functions.exceptionCheck())
+
+        functions.exceptionClear()
+        assertEquals(false, functions.exceptionCheck())
+        assertEquals(null, functions.exceptionOccurred())
+
+        val throwableReference = heap.allocateObject("java/lang/IllegalArgumentException")
+        val throwableHandle = handles.newObjectHandle(throwableReference)
+        assertEquals(0, functions.throwObject(throwableHandle))
+        assertEquals(throwableReference, handles.resolveObject(functions.exceptionOccurred()!!))
+
+        val fatal = assertFailsWith<JvmJniFatalError> {
+            functions.fatalError("native invariant failed")
+        }
+        assertEquals("native invariant failed", fatal.message)
     }
 }
