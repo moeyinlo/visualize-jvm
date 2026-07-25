@@ -7277,6 +7277,32 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetDirectBufferAddress returns the simulated native address for direct byte buffers`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val bufferHandle = environment.newDirectByteBuffer(address = 0x3000L, capacity = 256L)
+
+        val address = environment.getDirectBufferAddress(bufferHandle)
+
+        assertEquals(0x3000L, address)
+    }
+
+    @Test
+    fun `GetDirectBufferAddress rejects non direct byte buffer handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("java/lang/Object"))
+
+        assertFailsWith<JvmJniDirectBufferAccessException> {
+            environment.getDirectBufferAddress(objectHandle)
+        }
+    }
+
+    @Test
     fun `NewBooleanArray allocates a false filled guest boolean array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

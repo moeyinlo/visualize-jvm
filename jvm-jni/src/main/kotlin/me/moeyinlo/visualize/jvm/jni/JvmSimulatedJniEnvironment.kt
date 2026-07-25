@@ -7,6 +7,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmDirectByteBufferPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
@@ -1053,6 +1054,9 @@ class JvmSimulatedJniEnvironment(
 
     fun newDirectByteBuffer(address: Long, capacity: Long): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateDirectByteBuffer(address = address, capacity = capacity))
+
+    fun getDirectBufferAddress(bufferHandle: JvmJniHandleId): Long =
+        resolveDirectByteBuffer(bufferHandle).address
 
     fun newBooleanArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateBooleanArray(length))
@@ -2319,6 +2323,15 @@ class JvmSimulatedJniEnvironment(
             )
         }
     }
+
+    private fun resolveDirectByteBuffer(bufferHandle: JvmJniHandleId): JvmDirectByteBufferPayload {
+        val reference = handles.resolveObject(bufferHandle)
+        val heapObject = heap.get(reference)
+        return heapObject.payload as? JvmDirectByteBufferPayload
+            ?: throw JvmJniDirectBufferAccessException(
+                "JNI direct buffer helper requires java/nio/DirectByteBuffer payload, got ${heapObject.className}",
+            )
+    }
 }
 
 private fun String.referenceArrayComponentClassName(): String =
@@ -2335,6 +2348,8 @@ class JvmJniMethodAccessException(message: String) : IllegalStateException(messa
 class JvmJniStringAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniArrayAccessException(message: String) : IllegalStateException(message)
+
+class JvmJniDirectBufferAccessException(message: String) : IllegalStateException(message)
 
 class JvmJniExceptionAccessException(message: String) : IllegalStateException(message)
 
