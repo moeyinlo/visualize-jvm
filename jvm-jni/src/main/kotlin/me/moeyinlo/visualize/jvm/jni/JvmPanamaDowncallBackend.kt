@@ -55,6 +55,7 @@ sealed interface JvmNativeDowncallArgument {
     data class FloatPrimitive(val value: Float) : JvmNativeDowncallArgument
     data class DoublePrimitive(val value: Double) : JvmNativeDowncallArgument
     data class ObjectHandle(val handle: JvmJniHandleId?) : JvmNativeDowncallArgument
+    data class ClassHandle(val handle: JvmJniHandleId) : JvmNativeDowncallArgument
     data class GuestValue(val value: JvmValue) : JvmNativeDowncallArgument
 }
 
@@ -121,6 +122,22 @@ fun JvmNativeDowncallTarget.prepareInstanceInvocation(
         arguments = listOf(
             JvmNativeDowncallArgument.SimulatedJniEnv(environment),
             receiver.toDowncallArgument(environment),
+        ) + guestArguments.map { value -> value.toDowncallArgument(environment) },
+    )
+}
+
+fun JvmNativeDowncallTarget.prepareStaticInvocation(
+    environment: JvmSimulatedJniEnvironment,
+    classHandle: JvmJniHandleId,
+    guestArguments: List<JvmValue> = emptyList(),
+): JvmNativeDowncallInvocation {
+    val method = requireNotNull(guestMethod) { "JNI static export invocation requires a guest method target" }
+    require(method.isStatic) { "JNI static export invocation requires a static guest method target" }
+    return JvmNativeDowncallInvocation(
+        target = this,
+        arguments = listOf(
+            JvmNativeDowncallArgument.SimulatedJniEnv(environment),
+            JvmNativeDowncallArgument.ClassHandle(classHandle),
         ) + guestArguments.map { value -> value.toDowncallArgument(environment) },
     )
 }

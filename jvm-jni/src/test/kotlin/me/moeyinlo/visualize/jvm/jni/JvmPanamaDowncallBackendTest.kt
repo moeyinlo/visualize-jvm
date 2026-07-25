@@ -237,6 +237,41 @@ class JvmPanamaDowncallBackendTest {
         assertEquals(JvmNativeDowncallArgument.IntPrimitive(7), invocation.arguments[2])
     }
     @Test
+    fun `Panama backend prepares static native invocations with class after simulated JNIEnv`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "call",
+            methodDescriptor = "(I)V",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_call__I",
+        )
+        val target = JvmNativeDowncallTarget(
+            library = JvmNativeLibraryDescriptor(
+                logicalName = "native-api",
+                path = Path.of("native-api.dll"),
+                exports = listOf(export),
+            ),
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x5555L,
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val classHandle = environment.handles.newClassHandle("pkg/NativeApi")
+
+        val invocation = target.prepareStaticInvocation(
+            environment = environment,
+            classHandle = classHandle,
+            guestArguments = listOf(JvmIntValue(7)),
+        )
+
+        assertSame(environment, (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJniEnv).environment)
+        assertEquals(JvmNativeDowncallArgument.ClassHandle(classHandle), invocation.arguments[1])
+        assertEquals(JvmNativeDowncallArgument.IntPrimitive(7), invocation.arguments[2])
+    }
+    @Test
     fun `Panama backend marshals primitive guest values into JNI primitive arguments`() {
         val export = JvmNativeMethodExportDescriptor(
             ownerClassName = "pkg/NativeApi",
