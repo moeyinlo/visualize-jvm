@@ -149,6 +149,16 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callStaticByteMethod(
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmByteValue {
+        throw JvmJniUpcallException(
+            "No simulated JNI upcall dispatcher is configured for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor}",
+        )
+    }
+
     companion object {
         val Unbound: JvmJniUpcallDispatcher = object : JvmJniUpcallDispatcher {
             override fun callVoidMethod(
