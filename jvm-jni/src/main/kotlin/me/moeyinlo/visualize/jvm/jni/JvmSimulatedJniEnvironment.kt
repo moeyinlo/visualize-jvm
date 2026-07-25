@@ -185,6 +185,16 @@ class JvmSimulatedJniEnvironment(
         return className
     }
 
+    private fun requireLoadedClass(className: String): String {
+        if (!classHierarchy.hasClass(className)) {
+            throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = className,
+            )
+        }
+        return className
+    }
+
     fun findClass(className: String): JvmJniHandleId {
         if (!classHierarchy.hasClass(className)) {
             throw JvmNoClassDefFoundError(
@@ -789,13 +799,7 @@ class JvmSimulatedJniEnvironment(
 
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
-        val className = heap.get(reference).className
-        if (!classHierarchy.hasClass(className)) {
-            throw JvmNoClassDefFoundError(
-                guestClassName = "java/lang/NoClassDefFoundError",
-                message = className,
-            )
-        }
+        val className = requireLoadedClass(heap.get(reference).className)
         return handles.newClassHandle(className)
     }
 
@@ -805,6 +809,7 @@ class JvmSimulatedJniEnvironment(
         }
         val reference = handles.resolveObject(objectHandle)
         val sourceClassName = heap.get(reference).className
+        requireLoadedClass(sourceClassName)
         val targetClassName = handles.resolveClass(classHandle)
         return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
     }
