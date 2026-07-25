@@ -7220,6 +7220,44 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `ReleasePrimitiveArrayCritical copies primitive critical buffers back to guest arrays`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newIntArray(3)
+        environment.setIntArrayRegion(arrayHandle, start = 0, values = intArrayOf(1, 2, 3))
+        val critical = environment.getPrimitiveArrayCritical(arrayHandle) as JvmJniPrimitiveArrayCritical.Ints
+        critical.elements[1] = 42
+
+        environment.releasePrimitiveArrayCritical(arrayHandle, critical)
+
+        assertContentEquals(intArrayOf(1, 42, 3), environment.getIntArrayElements(arrayHandle))
+    }
+
+    @Test
+    fun `ReleasePrimitiveArrayCritical honors JNI_ABORT for primitive critical buffers`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newByteArray(2)
+        environment.setByteArrayRegion(arrayHandle, start = 0, values = byteArrayOf(1, 2))
+        val critical = environment.getPrimitiveArrayCritical(arrayHandle) as JvmJniPrimitiveArrayCritical.Bytes
+        critical.elements[0] = 9
+
+        environment.releasePrimitiveArrayCritical(arrayHandle, critical, JvmJniArrayReleaseMode.Abort)
+
+        assertContentEquals(byteArrayOf(1, 2), environment.getByteArrayElements(arrayHandle))
+    }
+
+    @Test
     fun `NewBooleanArray allocates a false filled guest boolean array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

@@ -1026,6 +1026,31 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun releasePrimitiveArrayCritical(
+        arrayHandle: JvmJniHandleId,
+        critical: JvmJniPrimitiveArrayCritical,
+        mode: JvmJniArrayReleaseMode = JvmJniArrayReleaseMode.CopyBackAndRelease,
+    ) {
+        when (critical) {
+            is JvmJniPrimitiveArrayCritical.Booleans ->
+                releaseBooleanArrayElements(arrayHandle, critical.elements, mode)
+            is JvmJniPrimitiveArrayCritical.Bytes ->
+                releaseByteArrayElements(arrayHandle, critical.elements, mode)
+            is JvmJniPrimitiveArrayCritical.Chars ->
+                releaseCharArrayElements(arrayHandle, critical.elements, mode)
+            is JvmJniPrimitiveArrayCritical.Doubles ->
+                releaseDoubleArrayElements(arrayHandle, critical.elements, mode)
+            is JvmJniPrimitiveArrayCritical.Floats ->
+                releaseFloatArrayElements(arrayHandle, critical.elements, mode)
+            is JvmJniPrimitiveArrayCritical.Ints ->
+                releaseIntArrayElements(arrayHandle, critical.elements, mode)
+            is JvmJniPrimitiveArrayCritical.Longs ->
+                releaseLongArrayElements(arrayHandle, critical.elements, mode)
+            is JvmJniPrimitiveArrayCritical.Shorts ->
+                releaseShortArrayElements(arrayHandle, critical.elements, mode)
+        }
+    }
+
     fun newBooleanArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateBooleanArray(length))
 
