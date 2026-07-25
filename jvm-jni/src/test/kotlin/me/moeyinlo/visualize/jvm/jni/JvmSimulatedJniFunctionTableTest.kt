@@ -8,6 +8,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -1043,6 +1044,67 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates int method upcalls to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFunctionTableIntUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "answer", descriptor = "()I", isStatic = false),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callIntMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmIntValue {
+                    calls += RecordedFunctionTableIntUpcall(receiver, method, arguments)
+                    return JvmIntValue(4242)
+                }
+            },
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+        val receiver = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = functions.getMethodId(classHandle, "answer", "()I")
+
+        val result = functions.callIntMethod(objectHandle, methodHandle, emptyList())
+
+        assertEquals(4242, result)
+        assertEquals(
+            listOf(
+                RecordedFunctionTableIntUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "answer",
+                        descriptor = "()I",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
@@ -1539,6 +1601,12 @@ private data class RecordedFunctionTableCharUpcall(
 )
 
 private data class RecordedFunctionTableShortUpcall(
+    val receiver: JvmObjectReferenceValue,
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedFunctionTableIntUpcall(
     val receiver: JvmObjectReferenceValue,
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
