@@ -45,6 +45,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val newLongArray: (Int) -> JvmJniHandleId,
     val newFloatArray: (Int) -> JvmJniHandleId,
     val newDoubleArray: (Int) -> JvmJniHandleId,
+    val getBooleanArrayElements: (JvmJniHandleId) -> BooleanArray,
+    val releaseBooleanArrayElements: (JvmJniHandleId, BooleanArray, JvmJniArrayReleaseMode) -> Unit,
+    val getBooleanArrayRegion: (JvmJniHandleId, Int, Int) -> BooleanArray,
+    val setBooleanArrayRegion: (JvmJniHandleId, Int, BooleanArray) -> Unit,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -93,6 +97,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 newLongArray = environment::newLongArray,
                 newFloatArray = environment::newFloatArray,
                 newDoubleArray = environment::newDoubleArray,
+                getBooleanArrayElements = environment::getBooleanArrayElements,
+                releaseBooleanArrayElements = environment::releaseBooleanArrayElements,
+                getBooleanArrayRegion = environment::getBooleanArrayRegion,
+                setBooleanArrayRegion = environment::setBooleanArrayRegion,
             )
     }
 }

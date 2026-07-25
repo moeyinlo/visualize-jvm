@@ -295,4 +295,34 @@ class JvmSimulatedJniFunctionTableTest {
             assertEquals(index + 1, functions.getArrayLength(arrayHandle))
         }
     }
+
+    @Test
+    fun `function table delegates boolean array element and region helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+        val arrayHandle = functions.newBooleanArray(4)
+
+        functions.setBooleanArrayRegion(arrayHandle, 1, booleanArrayOf(true, false, true))
+        assertContentEquals(
+            booleanArrayOf(false, true, false, true),
+            functions.getBooleanArrayElements(arrayHandle),
+        )
+        assertContentEquals(booleanArrayOf(true, false), functions.getBooleanArrayRegion(arrayHandle, 1, 2))
+
+        val committedElements = functions.getBooleanArrayElements(arrayHandle)
+        committedElements[0] = true
+        functions.releaseBooleanArrayElements(arrayHandle, committedElements, JvmJniArrayReleaseMode.Commit)
+        assertContentEquals(
+            booleanArrayOf(true, true, false, true),
+            functions.getBooleanArrayElements(arrayHandle),
+        )
+
+        val abortedElements = functions.getBooleanArrayElements(arrayHandle)
+        abortedElements[1] = false
+        functions.releaseBooleanArrayElements(arrayHandle, abortedElements, JvmJniArrayReleaseMode.Abort)
+        assertContentEquals(
+            booleanArrayOf(true, true, false, true),
+            functions.getBooleanArrayElements(arrayHandle),
+        )
+    }
 }
