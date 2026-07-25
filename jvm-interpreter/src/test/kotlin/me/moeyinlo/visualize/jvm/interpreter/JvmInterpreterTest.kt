@@ -13073,6 +13073,43 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher routes static byte upcalls into guest methods`() {
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "StaticOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "byteValue",
+                            descriptor = "()B",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                12.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "StaticOwner",
+            name = "byteValue",
+            descriptor = "()B",
+        )
+
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = JvmHeap(),
+            classHierarchy = classHierarchy,
+        )
+
+        assertEquals(JvmByteValue(12), dispatcher.callStaticByteMethod(method, emptyList()))
+    }
+
+    @Test
     fun `invokestatic prefers native intrinsics over simulated JNI bindings`() {
         val key = JvmNativeMethodKey(
             ownerClassName = "Example",
