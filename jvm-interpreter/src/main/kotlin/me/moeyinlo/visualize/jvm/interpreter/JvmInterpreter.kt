@@ -411,6 +411,34 @@ object JvmInterpreter {
                 )
         }
 
+        override fun callDoubleMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmDoubleValue {
+            val returnValue = executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            return returnValue as? JvmDoubleValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallDoubleMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmDoubleValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
+
         override fun callStaticVoidMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
