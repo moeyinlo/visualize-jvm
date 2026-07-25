@@ -445,4 +445,34 @@ class JvmSimulatedJniFunctionTableTest {
             functions.getIntArrayElements(arrayHandle),
         )
     }
+
+    @Test
+    fun `function table delegates long array element and region helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+        val arrayHandle = functions.newLongArray(4)
+
+        functions.setLongArrayRegion(arrayHandle, 1, longArrayOf(1_000L, 2_000L, 3_000L))
+        assertContentEquals(
+            longArrayOf(0L, 1_000L, 2_000L, 3_000L),
+            functions.getLongArrayElements(arrayHandle),
+        )
+        assertContentEquals(longArrayOf(1_000L, 2_000L), functions.getLongArrayRegion(arrayHandle, 1, 2))
+
+        val committedElements = functions.getLongArrayElements(arrayHandle)
+        committedElements[0] = 4_000L
+        functions.releaseLongArrayElements(arrayHandle, committedElements, JvmJniArrayReleaseMode.Commit)
+        assertContentEquals(
+            longArrayOf(4_000L, 1_000L, 2_000L, 3_000L),
+            functions.getLongArrayElements(arrayHandle),
+        )
+
+        val abortedElements = functions.getLongArrayElements(arrayHandle)
+        abortedElements[1] = 5_000L
+        functions.releaseLongArrayElements(arrayHandle, abortedElements, JvmJniArrayReleaseMode.Abort)
+        assertContentEquals(
+            longArrayOf(4_000L, 1_000L, 2_000L, 3_000L),
+            functions.getLongArrayElements(arrayHandle),
+        )
+    }
 }
