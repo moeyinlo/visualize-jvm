@@ -845,12 +845,13 @@ class JvmSimulatedJniEnvironment(
         val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireConstructorMethod("NewObject", className)
-        val receiver = heap.allocateObject(className)
+        val receiver = heap.allocateUninitializedObject(className)
         upcallDispatcher.callVoidMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,
         )
+        heap.markInitialized(receiver)
         return handles.newObjectHandle(receiver)
     }
 

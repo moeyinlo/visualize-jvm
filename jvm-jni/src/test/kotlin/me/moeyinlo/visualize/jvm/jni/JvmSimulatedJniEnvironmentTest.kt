@@ -3277,6 +3277,7 @@ class JvmSimulatedJniEnvironmentTest {
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
                 ) {
+                    assertEquals(false, heap.isInitialized(receiver))
                     calls += RecordedNewObjectUpcall(receiver, method, arguments)
                 }
             },
@@ -3288,6 +3289,7 @@ class JvmSimulatedJniEnvironmentTest {
         val objectReference = handles.resolveObject(objectHandle)
 
         assertEquals("Example", heap.get(objectReference).className)
+        assertEquals(true, heap.isInitialized(objectReference))
         assertEquals(
             listOf(
                 RecordedNewObjectUpcall(
