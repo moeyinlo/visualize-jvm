@@ -15,6 +15,7 @@ object JvmHostMethodInvoker {
         heap: JvmHeap,
         identityMap: JvmHostIdentityMap = JvmHostIdentityMap(),
         classLoader: ClassLoader? = method.owner.hostClass.classLoader,
+        boundaryEvents: JvmHostBoundaryEventSink = JvmHostBoundaryEventSink.None,
     ): JvmValue? {
         if (!method.isStatic) {
             throw JvmHostMethodInvocationException("Host method ${method.name} is not static")
@@ -24,20 +25,47 @@ object JvmHostMethodInvoker {
                 "Host method ${method.name} expects ${method.parameterTypes.size} arguments but received ${arguments.size}",
             )
         }
-        val hostArguments = arguments.zip(method.parameterTypes).map { (argument, parameterType) ->
-            argument.toHostArgument(parameterType, heap, identityMap, classLoader)
-        }
-        val hostResult = try {
-            method.hostMethod.invoke(null, *hostArguments.toTypedArray())
-        } catch (exception: IllegalAccessException) {
-            throw JvmHostMethodInvocationException(
-                "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} is not accessible",
-                exception,
+        boundaryEvents.recordMethod(
+            action = JvmHostBoundaryAction.Delegated,
+            method = method,
+            detail = "static args=${arguments.size}",
+        )
+        try {
+            val hostArguments = arguments.zip(method.parameterTypes).map { (argument, parameterType) ->
+                argument.toHostArgument(parameterType, heap, identityMap, classLoader)
+            }
+            val hostResult = try {
+                method.hostMethod.invoke(null, *hostArguments.toTypedArray())
+            } catch (exception: IllegalAccessException) {
+                throw JvmHostMethodInvocationException(
+                    "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} is not accessible",
+                    exception,
+                )
+            } catch (exception: InvocationTargetException) {
+                throw exception.targetException.toTranslatedGuestThrowable(heap)
+            }
+            return hostResult.toGuestReturn(method.returnType, heap, identityMap).also {
+                boundaryEvents.recordMethod(
+                    action = JvmHostBoundaryAction.Returned,
+                    method = method,
+                    detail = "return=${method.returnType.name}",
+                )
+            }
+        } catch (exception: JvmHostTranslatedException) {
+            boundaryEvents.recordMethod(
+                action = JvmHostBoundaryAction.Failed,
+                method = method,
+                detail = "translated=${exception.hostThrowable::class.java.name}",
             )
-        } catch (exception: InvocationTargetException) {
-            throw exception.targetException.toTranslatedGuestThrowable(heap)
+            throw exception
+        } catch (exception: RuntimeException) {
+            boundaryEvents.recordMethod(
+                action = JvmHostBoundaryAction.Failed,
+                method = method,
+                detail = "exception=${exception::class.java.name}",
+            )
+            throw exception
         }
-        return hostResult.toGuestReturn(method.returnType, heap, identityMap)
     }
 
     fun invokeInstance(
@@ -47,6 +75,7 @@ object JvmHostMethodInvoker {
         heap: JvmHeap,
         identityMap: JvmHostIdentityMap = JvmHostIdentityMap(),
         classLoader: ClassLoader? = method.owner.hostClass.classLoader,
+        boundaryEvents: JvmHostBoundaryEventSink = JvmHostBoundaryEventSink.None,
     ): JvmValue? {
         if (method.isStatic) {
             throw JvmHostMethodInvocationException("Host method ${method.name} is static")
@@ -56,22 +85,63 @@ object JvmHostMethodInvoker {
                 "Host method ${method.name} expects ${method.parameterTypes.size} arguments but received ${arguments.size}",
             )
         }
-        val hostReceiver = receiver.toHostArgument(method.owner.hostClass, heap, identityMap, classLoader)
-            ?: throw JvmHostMethodInvocationException("Host method ${method.name} receiver is null")
-        val hostArguments = arguments.zip(method.parameterTypes).map { (argument, parameterType) ->
-            argument.toHostArgument(parameterType, heap, identityMap, classLoader)
-        }
-        val hostResult = try {
-            method.hostMethod.invoke(hostReceiver, *hostArguments.toTypedArray())
-        } catch (exception: IllegalAccessException) {
-            throw JvmHostMethodInvocationException(
-                "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} is not accessible",
-                exception,
+        boundaryEvents.recordMethod(
+            action = JvmHostBoundaryAction.Delegated,
+            method = method,
+            detail = "instance args=${arguments.size}",
+        )
+        try {
+            val hostReceiver = receiver.toHostArgument(method.owner.hostClass, heap, identityMap, classLoader)
+                ?: throw JvmHostMethodInvocationException("Host method ${method.name} receiver is null")
+            val hostArguments = arguments.zip(method.parameterTypes).map { (argument, parameterType) ->
+                argument.toHostArgument(parameterType, heap, identityMap, classLoader)
+            }
+            val hostResult = try {
+                method.hostMethod.invoke(hostReceiver, *hostArguments.toTypedArray())
+            } catch (exception: IllegalAccessException) {
+                throw JvmHostMethodInvocationException(
+                    "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} is not accessible",
+                    exception,
+                )
+            } catch (exception: InvocationTargetException) {
+                throw exception.targetException.toTranslatedGuestThrowable(heap)
+            }
+            return hostResult.toGuestReturn(method.returnType, heap, identityMap).also {
+                boundaryEvents.recordMethod(
+                    action = JvmHostBoundaryAction.Returned,
+                    method = method,
+                    detail = "return=${method.returnType.name}",
+                )
+            }
+        } catch (exception: JvmHostTranslatedException) {
+            boundaryEvents.recordMethod(
+                action = JvmHostBoundaryAction.Failed,
+                method = method,
+                detail = "translated=${exception.hostThrowable::class.java.name}",
             )
-        } catch (exception: InvocationTargetException) {
-            throw exception.targetException.toTranslatedGuestThrowable(heap)
+            throw exception
+        } catch (exception: RuntimeException) {
+            boundaryEvents.recordMethod(
+                action = JvmHostBoundaryAction.Failed,
+                method = method,
+                detail = "exception=${exception::class.java.name}",
+            )
+            throw exception
         }
-        return hostResult.toGuestReturn(method.returnType, heap, identityMap)
+    }
+
+    private fun JvmHostBoundaryEventSink.recordMethod(
+        action: JvmHostBoundaryAction,
+        method: JvmHostMethodMirror,
+        detail: String,
+    ) {
+        record(
+            action = action,
+            className = method.owner.guestInternalName,
+            methodName = method.name,
+            descriptor = method.descriptor,
+            detail = detail,
+        )
     }
 
     private fun JvmValue.toHostArgument(
