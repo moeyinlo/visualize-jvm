@@ -178,6 +178,35 @@ object JvmInterpreter {
             )
         }
 
+        override fun callObjectMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmReferenceValue {
+            val returnValue = executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            return returnValue as? JvmReferenceValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallObjectMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
+                        "expected JvmReferenceValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
+
         override fun callIntMethod(
             receiver: JvmObjectReferenceValue,
             method: JvmResolvedMethod,
