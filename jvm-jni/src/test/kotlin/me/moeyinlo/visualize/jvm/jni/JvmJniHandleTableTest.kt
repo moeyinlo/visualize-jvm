@@ -79,4 +79,13 @@ class JvmJniHandleTableTest {
         assertEquals(objectReference, table.resolveObjectOrNull(weakGlobalHandle))
         assertEquals(null, table.resolveObjectOrNull(null))
     }
+
+    @Test
+    fun `jclass handles resolve nullable class names`() {
+        val table = JvmJniHandleTable()
+        val classHandle = table.newClassHandle("java/lang/String")
+
+        assertEquals("java/lang/String", table.resolveClassOrNull(classHandle))
+        assertEquals(null, table.resolveClassOrNull(null))
+    }
 }
