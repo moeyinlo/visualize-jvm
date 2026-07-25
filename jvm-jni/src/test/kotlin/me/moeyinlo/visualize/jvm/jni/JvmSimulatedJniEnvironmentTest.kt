@@ -6920,6 +6920,46 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetStringCritical returns copied UTF-16 code units for guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(heap.allocateString("critical"))
+
+        val result = environment.getStringCritical(stringHandle)
+
+        assertContentEquals(charArrayOf('c', 'r', 'i', 't', 'i', 'c', 'a', 'l'), result)
+    }
+
+    @Test
+    fun `GetStringCritical rejects non string guest object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+
+        assertFailsWith<JvmJniStringAccessException> {
+            environment.getStringCritical(objectHandle)
+        }
+    }
+
+    @Test
     fun `GetStringUTFChars returns copied modified UTF-8 bytes for guest strings`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

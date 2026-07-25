@@ -946,6 +946,9 @@ class JvmSimulatedJniEnvironment(
     fun getStringChars(stringHandle: JvmJniHandleId): CharArray =
         resolveStringValue(stringHandle).toCharArray()
 
+    fun getStringCritical(stringHandle: JvmJniHandleId): CharArray =
+        getStringChars(stringHandle)
+
     fun releaseStringChars(stringHandle: JvmJniHandleId, chars: CharArray) {
         resolveStringValue(stringHandle)
     }
