@@ -952,6 +952,66 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallStaticBooleanMethod routes static method upcalls and returns a JNI boolean`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedStaticBooleanUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "enabled",
+                                descriptor = "(I)Z",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticBooleanMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmBooleanValue {
+                    calls += RecordedStaticBooleanUpcall(method, arguments)
+                    return JvmBooleanValue(true)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getStaticMethodId(classHandle, "enabled", "(I)Z")
+
+        val result = environment.callStaticBooleanMethod(classHandle, methodHandle, listOf(JvmIntValue(9)))
+
+        assertEquals(true, result)
+        assertEquals(
+            listOf(
+                RecordedStaticBooleanUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "enabled",
+                        descriptor = "(I)Z",
+                        isStatic = true,
+                    ),
+                    arguments = listOf(JvmIntValue(9)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `GetObjectClass returns runtime class handle for guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -7385,6 +7445,11 @@ private data class RecordedStaticVoidUpcall(
 )
 
 private data class RecordedStaticObjectUpcall(
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedStaticBooleanUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
 )

@@ -420,6 +420,20 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun callStaticBooleanMethod(
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Boolean {
+        handles.resolveClass(classHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireStaticBooleanMethod("CallStaticBooleanMethod")
+        return upcallDispatcher.callStaticBooleanMethod(
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1912,6 +1926,14 @@ private fun JvmResolvedMethod.requireStaticObjectMethod(helperName: String) {
     if (!isStatic || !returnDescriptor.isReferenceFieldDescriptor()) {
         throw JvmJniMethodAccessException(
             "$helperName requires a static reference-returning method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireStaticBooleanMethod(helperName: String) {
+    if (!isStatic || returnDescriptor != "Z") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires a static boolean method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
