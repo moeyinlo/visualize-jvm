@@ -1,4 +1,4 @@
-﻿package me.moeyinlo.visualize.jvm.interpreter
+package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
@@ -125,6 +125,53 @@ class JvmVmIntrinsicsTest {
         )
 
         assertEquals(intrinsic, resolved)
+    }
+
+
+    @Test
+    fun `intrinsic hit uses Kotlin implementation`() {
+        val key = JvmNativeMethodKey(
+            ownerClassName = "java/lang/System",
+            name = "customValue",
+            descriptor = "()I",
+            isStatic = true,
+        )
+        var invoked = false
+        val intrinsic = JvmNativeMethodIntrinsic { context, invocation ->
+            invoked = true
+            assertEquals("java/lang/System", context.currentClassName)
+            assertEquals(null, invocation.receiver)
+            assertEquals(emptyList(), invocation.arguments)
+            JvmIntValue(42)
+        }
+        val registry = JvmNativeMethodRegistry(
+            intrinsics = mapOf(key to intrinsic),
+            simulatedJni = mapOf(key to JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(7) }),
+            intrinsicOwnerWhitelist = setOf("java/lang/System"),
+        )
+        val resolved = registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "java/lang/System",
+                name = "customValue",
+                descriptor = "()I",
+                isStatic = true,
+                isNative = true,
+            ),
+        ) ?: error("intrinsic should resolve")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        val result = resolved.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(JvmIntValue(42), result)
+        assertEquals(true, invoked)
     }
 
     @Test
