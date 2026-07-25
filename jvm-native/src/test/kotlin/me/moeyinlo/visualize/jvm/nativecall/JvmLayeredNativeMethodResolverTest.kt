@@ -71,6 +71,27 @@ class JvmLayeredNativeMethodResolverTest {
         )
     }
 
+
+    @Test
+    fun `layered resolver throws unresolved native method errors with guest UnsatisfiedLinkError identity`() {
+        val signature = signature(ownerClassName = "example/MissingNative")
+        val resolver = JvmLayeredNativeMethodResolver(
+            policy = JvmNativeResolutionPolicy.SimulatedJniOnly,
+            simulatedJniResolver = JvmNativeMethodResolver.Empty,
+        )
+
+        val exception = kotlin.test.assertFailsWith<JvmUnresolvedNativeMethodException> {
+            resolver.resolveOrThrow(signature)
+        }
+
+        assertEquals(signature, exception.signature)
+        assertEquals("java/lang/UnsatisfiedLinkError", exception.guestThrowableClassName)
+        assertEquals(
+            "Unresolved native method example/MissingNative.call:()V static=true",
+            exception.message,
+        )
+    }
+
     private fun signature(ownerClassName: String): JvmNativeMethodSignature =
         JvmNativeMethodSignature(
             ownerClassName = ownerClassName,

@@ -26,7 +26,19 @@ data class JvmNativeMethodBinding(
 fun interface JvmNativeMethodResolver {
     fun resolve(signature: JvmNativeMethodSignature): JvmNativeMethodBinding?
 
+    fun resolveOrThrow(signature: JvmNativeMethodSignature): JvmNativeMethodBinding =
+        resolve(signature) ?: throw JvmUnresolvedNativeMethodException(signature)
+
     companion object {
         val Empty: JvmNativeMethodResolver = JvmNativeMethodResolver { null }
     }
+}
+
+class JvmUnresolvedNativeMethodException(
+    val signature: JvmNativeMethodSignature,
+) : IllegalStateException(
+    "Unresolved native method ${signature.ownerClassName}.${signature.methodName}:" +
+        "${signature.methodDescriptor} static=${signature.isStatic}",
+) {
+    val guestThrowableClassName: String = "java/lang/UnsatisfiedLinkError"
 }
