@@ -950,6 +950,12 @@ class JvmSimulatedJniEnvironment(
         resolveStringValue(stringHandle)
     }
 
+    fun getStringRegion(stringHandle: JvmJniHandleId, start: Int, length: Int): CharArray {
+        val value = resolveStringValue(stringHandle)
+        requireStringRange("GetStringRegion", value.length, start, length)
+        return value.toCharArray(startIndex = start, endIndex = start + length)
+    }
+
     fun getStringUtfLength(stringHandle: JvmJniHandleId): Int =
         getStringUtfChars(stringHandle).size
 
@@ -2245,6 +2251,14 @@ class JvmSimulatedJniEnvironment(
                 "JNI string helper requires java/lang/String payload, got ${heapObject.className}",
             )
         return payload.value
+    }
+
+    private fun requireStringRange(helperName: String, stringLength: Int, start: Int, length: Int) {
+        if (start < 0 || length < 0 || start > stringLength - length) {
+            throw JvmJniStringAccessException(
+                "$helperName range $start..${start + length} is outside string length $stringLength",
+            )
+        }
     }
 }
 
