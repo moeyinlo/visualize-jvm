@@ -195,6 +195,21 @@ class JvmHeapTest {
     }
 
     @Test
+    fun `heap allocates direct byte buffer objects with native address payloads`() {
+        val heap = JvmHeap()
+
+        val buffer = heap.allocateDirectByteBuffer(address = 0x1000L, capacity = 64L)
+
+        assertEquals(
+            JvmHeapObject(
+                className = "java/nio/DirectByteBuffer",
+                payload = JvmDirectByteBufferPayload(address = 0x1000L, capacity = 64L),
+            ),
+            heap.get(buffer),
+        )
+    }
+
+    @Test
     fun `heap rejects call site targets that are not method handles`() {
         val heap = JvmHeap()
         val notMethodHandle = heap.allocateObject("java/lang/String")

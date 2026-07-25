@@ -66,6 +66,8 @@ data class JvmCallSitePayload(val targetMethodHandle: JvmObjectReferenceValue) :
 
 data class JvmReferenceArrayPayload(val elements: MutableList<JvmReferenceValue>) : JvmHeapPayload
 
+data class JvmDirectByteBufferPayload(val address: Long, val capacity: Long) : JvmHeapPayload
+
 private data class JvmMethodHandleKey(
     val referenceKind: JvmMethodHandleReferenceKind,
     val referenceIndex: Int,
@@ -224,6 +226,17 @@ class JvmHeap {
         )
     }
 
+    fun allocateDirectByteBuffer(address: Long, capacity: Long): JvmObjectReferenceValue {
+        require(capacity >= 0) { "direct byte buffer capacity must be non-negative: $capacity" }
+
+        return allocate(
+            JvmHeapObject(
+                className = "java/nio/DirectByteBuffer",
+                payload = JvmDirectByteBufferPayload(address = address, capacity = capacity),
+            ),
+        )
+    }
+
     fun internString(value: String): JvmObjectReferenceValue =
         internedStrings.getOrPut(value) { allocateString(value) }
 
@@ -359,6 +372,7 @@ private fun JvmHeapPayload.shallowClonePayload(): JvmHeapPayload =
         is JvmCallSitePayload -> copy()
         is JvmCharArrayPayload -> JvmCharArrayPayload(elements.toMutableList())
         is JvmClassPayload -> copy()
+        is JvmDirectByteBufferPayload -> copy()
         is JvmDoubleArrayPayload -> JvmDoubleArrayPayload(elements.toMutableList())
         is JvmFloatArrayPayload -> JvmFloatArrayPayload(elements.toMutableList())
         is JvmIntArrayPayload -> JvmIntArrayPayload(elements.toMutableList())

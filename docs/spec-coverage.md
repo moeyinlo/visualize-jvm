@@ -30,6 +30,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 2.5.3, 2.7 | Guest heap object allocation with opaque positive object references | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.3, 2.7 | Guest `java/lang/String` heap objects retain VM-owned string payloads | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
 | 2.5.3, 2.7 | Guest `java/lang/Class` mirror objects retain the represented class name and are interned by name | `jvm-runtime` | `JvmHeapTest` | IMPLEMENTED |
+| 2.5.3, 2.7 | Guest `java/nio/DirectByteBuffer` heap objects retain simulated native address and capacity payloads | `jvm-runtime` | `JvmHeapTest.heap allocates direct byte buffer objects with native address payloads` | IMPLEMENTED |
 | 2.5.4 | Method area stores per-class runtime metadata, static field storage, duplicate definition checks, and hierarchy views | `jvm-runtime` | `JvmMethodAreaTest` | IMPLEMENTED |
 | 2.5.5 | Run-time constant pool stores per-class one-based literal and symbolic entries plus resolved constant cache | `jvm-runtime` | `JvmRuntimeConstantPoolTest` | IMPLEMENTED |
 | 2.5.6 | Native method stack model stores native frames with guest method identity, entry point metadata, execution environment, and overflow/underflow behavior | `jvm-native` | `JvmNativeMethodStackTest` | IMPLEMENTED |
