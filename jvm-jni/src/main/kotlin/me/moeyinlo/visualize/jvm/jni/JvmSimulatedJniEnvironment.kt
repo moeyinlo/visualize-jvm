@@ -366,6 +366,7 @@ class JvmSimulatedJniEnvironment(
         val receiver = handles.resolveObject(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceBooleanMethod("CallBooleanMethod")
+        requireReceiverAssignableToMethod("CallBooleanMethod", receiver, method)
         return upcallDispatcher.callBooleanMethod(
             receiver = receiver,
             method = method,
