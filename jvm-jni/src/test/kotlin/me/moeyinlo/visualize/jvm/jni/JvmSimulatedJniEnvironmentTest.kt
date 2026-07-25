@@ -226,6 +226,34 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetMethodID rejects class initializer lookup`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val classHandle = environment.findClass("Example")
+
+        val exception = assertFailsWith<JvmNoSuchMethodError> {
+            environment.getMethodId(classHandle, "<clinit>", "()V")
+        }
+
+        assertEquals("java/lang/NoSuchMethodError", exception.guestClassName)
+        assertEquals("Example.<clinit>:()V", exception.message)
+    }
+
+    @Test
     fun `CallVoidMethod routes instance method upcalls through the configured dispatcher`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

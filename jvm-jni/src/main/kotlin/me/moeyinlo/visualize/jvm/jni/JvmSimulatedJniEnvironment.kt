@@ -237,6 +237,12 @@ class JvmSimulatedJniEnvironment(
         descriptor: String,
     ): JvmJniHandleId {
         val className = handles.resolveClass(classHandle)
+        if (name == "<clinit>") {
+            throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$className.$name:$descriptor",
+            )
+        }
         val method = classHierarchy.resolveMethod(
             ownerClassName = className,
             name = name,
