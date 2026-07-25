@@ -953,6 +953,10 @@ class JvmSimulatedJniEnvironment(
         resolveStringValue(stringHandle)
     }
 
+    fun releaseStringCritical(stringHandle: JvmJniHandleId, chars: CharArray) {
+        resolveStringValue(stringHandle)
+    }
+
     fun getStringRegion(stringHandle: JvmJniHandleId, start: Int, length: Int): CharArray {
         val value = resolveStringValue(stringHandle)
         requireStringRange("GetStringRegion", value.length, start, length)
