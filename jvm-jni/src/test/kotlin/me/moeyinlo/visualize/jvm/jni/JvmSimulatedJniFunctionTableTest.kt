@@ -2708,6 +2708,7 @@ class JvmSimulatedJniFunctionTableTest {
             byteArrayOf(0xc0.toByte(), 0x80.toByte(), 0x4a, 0x56, 0x4d),
             functions.getStringUtfChars(utfHandle),
         )
+        assertContentEquals(byteArrayOf(0x4a, 0x56), functions.getStringUtfRegion(utfHandle, 1, 2))
 
         val copiedChars = functions.getStringChars(utfHandle)
         functions.releaseStringChars(utfHandle, copiedChars)
