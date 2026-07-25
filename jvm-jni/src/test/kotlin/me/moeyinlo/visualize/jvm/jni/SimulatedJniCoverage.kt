@@ -94,6 +94,13 @@ object SimulatedJniCoverage {
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(
+            rule = "global references",
+            specSection = "JNI global references",
+            currentComponent = "JvmSimulatedJniEnvironment.newGlobalRef creates object handles outside local frames and deleteGlobalRef releases them",
+            status = SimulatedJniCoverageStatus.Implemented,
+            coveringTestClass = "JvmSimulatedJniEnvironmentTest",
+        ),
+        SimulatedJniCoverageEntry(
             rule = "weak global references",
             specSection = "JNI weak global references",
             currentComponent = "No weak global handle table or GC-sensitive semantics yet",

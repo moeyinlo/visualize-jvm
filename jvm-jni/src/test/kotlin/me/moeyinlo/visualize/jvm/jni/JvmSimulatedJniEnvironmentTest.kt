@@ -6045,6 +6045,38 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewGlobalRef survives local frame pop until DeleteGlobalRef`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        environment.pushLocalFrame(2)
+        val localHandle = handles.newObjectHandle(objectReference)
+
+        val globalHandle = environment.newGlobalRef(localHandle)
+        val nullHandle = environment.newGlobalRef(null)
+        environment.popLocalFrame(null)
+
+        val liveGlobalHandle = globalHandle!!
+        assertEquals(null, nullHandle)
+        assertEquals(objectReference, handles.resolveObject(liveGlobalHandle))
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveObject(localHandle)
+        }
+
+        environment.deleteGlobalRef(null)
+        environment.deleteGlobalRef(liveGlobalHandle)
+
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveObject(liveGlobalHandle)
+        }
+    }
+
+    @Test
     fun `IsSameObject compares nullable object local handles by guest reference identity`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

@@ -12,23 +12,26 @@ value class JvmJniHandleId(val value: Int) {
 }
 
 class JvmJniHandleTable {
-    private val entries = linkedMapOf<JvmJniHandleId, JvmJniHandleEntry>()
+    private val entries = linkedMapOf<JvmJniHandleId, JvmJniHandleRecord>()
     private val localFrameStarts = mutableListOf<Int>()
     private var nextHandleId = 1
 
     fun newObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
-        allocate(JvmJniHandleEntry.ObjectHandle(reference))
+        allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.Local)
+
+    fun newGlobalObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
+        allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.Global)
 
     fun newClassHandle(className: String): JvmJniHandleId {
         require(className.isNotBlank()) { "JNI class handle name must not be blank" }
-        return allocate(JvmJniHandleEntry.ClassHandle(className))
+        return allocate(JvmJniHandleEntry.ClassHandle(className), JvmJniHandleScope.Local)
     }
 
     fun newMethodIdHandle(method: JvmResolvedMethod): JvmJniHandleId =
-        allocate(JvmJniHandleEntry.MethodIdHandle(method))
+        allocate(JvmJniHandleEntry.MethodIdHandle(method), JvmJniHandleScope.Local)
 
     fun newFieldIdHandle(field: JvmResolvedField): JvmJniHandleId =
-        allocate(JvmJniHandleEntry.FieldIdHandle(field))
+        allocate(JvmJniHandleEntry.FieldIdHandle(field), JvmJniHandleScope.Local)
 
     fun resolveObject(handle: JvmJniHandleId): JvmObjectReferenceValue =
         entry(handle).expect<JvmJniHandleEntry.ObjectHandle>(handle).reference
@@ -48,6 +51,12 @@ class JvmJniHandleTable {
         }
     }
 
+    fun deleteGlobal(handle: JvmJniHandleId) {
+        if (entries.remove(handle) == null) {
+            throw JvmJniInvalidHandleException("JNI handle ${handle.value} is not live")
+        }
+    }
+
     fun pushLocalFrame() {
         localFrameStarts += nextHandleId
     }
@@ -55,20 +64,32 @@ class JvmJniHandleTable {
     fun deleteCurrentLocalFrameHandles() {
         val frameStart = localFrameStarts.removeLastOrNull()
             ?: throw JvmJniLocalFrameException("JNI local frame stack is empty")
-        val scopedHandles = entries.keys.filter { handle -> handle.value >= frameStart }
+        val scopedHandles = entries.filter { (handle, record) ->
+            record.scope == JvmJniHandleScope.Local && handle.value >= frameStart
+        }.keys
         scopedHandles.forEach(entries::remove)
     }
 
-    private fun allocate(entry: JvmJniHandleEntry): JvmJniHandleId {
+    private fun allocate(entry: JvmJniHandleEntry, scope: JvmJniHandleScope): JvmJniHandleId {
         val handle = JvmJniHandleId(nextHandleId)
         nextHandleId += 1
-        entries[handle] = entry
+        entries[handle] = JvmJniHandleRecord(entry = entry, scope = scope)
         return handle
     }
 
     private fun entry(handle: JvmJniHandleId): JvmJniHandleEntry =
-        entries[handle]
+        entries[handle]?.entry
             ?: throw JvmJniInvalidHandleException("JNI handle ${handle.value} is not live")
+}
+
+private data class JvmJniHandleRecord(
+    val entry: JvmJniHandleEntry,
+    val scope: JvmJniHandleScope,
+)
+
+private enum class JvmJniHandleScope {
+    Local,
+    Global,
 }
 
 private sealed interface JvmJniHandleEntry {
