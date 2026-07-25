@@ -13,13 +13,16 @@ class JvmJniHandleTableStateTest {
         val second = JvmObjectReferenceValue(JvmReferenceId(2))
 
         assertEquals(0, table.liveHandleCount)
+        assertEquals(0, table.localFrameDepth)
         val firstHandle = table.newObjectHandle(first)
         assertEquals(1, table.liveHandleCount)
         table.pushLocalFrame()
+        assertEquals(1, table.localFrameDepth)
         table.newObjectHandle(second)
         assertEquals(2, table.liveHandleCount)
         table.deleteCurrentLocalFrameHandles()
         assertEquals(1, table.liveHandleCount)
+        assertEquals(0, table.localFrameDepth)
         table.deleteLocal(firstHandle)
         assertEquals(0, table.liveHandleCount)
     }
