@@ -447,6 +447,29 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callNonvirtualShortMethod(
+        objectHandle: JvmJniHandleId,
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Int {
+        val receiver = handles.resolveObject(objectHandle)
+        val className = handles.resolveClass(classHandle)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, className)) {
+            throw JvmJniMethodAccessException(
+                "CallNonvirtualShortMethod requires receiver $receiverClassName to be assignable to $className",
+            )
+        }
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireNonvirtualInstanceShortMethod("CallNonvirtualShortMethod", className)
+        return upcallDispatcher.callShortMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun callIntMethod(
         objectHandle: JvmJniHandleId,
         methodIdHandle: JvmJniHandleId,
@@ -2166,6 +2189,15 @@ private fun JvmResolvedMethod.requireInstanceShortMethod(helperName: String) {
     if (isStatic || returnDescriptor != "S") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance short method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireNonvirtualInstanceShortMethod(helperName: String, className: String) {
+    requireInstanceShortMethod(helperName)
+    if (ownerClassName != className) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires method owner $ownerClassName to match declaring class $className",
         )
     }
 }

@@ -970,6 +970,86 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualShortMethod routes explicit declaring class method upcalls and returns a JNI short`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedShortUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "delta",
+                                descriptor = "(I)S",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "delta",
+                                descriptor = "(I)S",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callShortMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmShortValue {
+                    calls += RecordedShortUpcall(receiver, method, arguments)
+                    return JvmShortValue(-4321)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "delta", "(I)S")
+
+        val result = environment.callNonvirtualShortMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(17)),
+        )
+
+        assertEquals(-4321, result)
+        assertEquals(
+            listOf(
+                RecordedShortUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "delta",
+                        descriptor = "(I)S",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(17)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallIntMethod routes instance method upcalls and returns a JNI int`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
