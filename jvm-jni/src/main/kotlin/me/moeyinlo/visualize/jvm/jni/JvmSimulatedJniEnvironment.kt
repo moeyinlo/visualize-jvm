@@ -43,6 +43,7 @@ class JvmSimulatedJniEnvironment(
     private val currentThreadId: String = "main",
     private val exceptionReporter: (String) -> Unit = {},
     private val upcallDispatcher: JvmJniUpcallDispatcher = JvmJniUpcallDispatcher.Unbound,
+    val registeredNativeMethods: JvmJniNativeMethodRegistry = JvmJniNativeMethodRegistry(),
 ) {
     private val throwableDetailMessageField = JvmFieldReference(
         ownerClassName = "java/lang/Throwable",
@@ -63,6 +64,19 @@ class JvmSimulatedJniEnvironment(
         private set
 
     fun getVersion(): Int = JniVersion24
+
+    fun registerNatives(
+        classHandle: JvmJniHandleId,
+        methods: List<JvmJniNativeMethodDescriptor>,
+    ): Int {
+        val className = requireLoadedClass(handles.resolveClass(classHandle))
+        return registeredNativeMethods.register(className, methods)
+    }
+
+    fun unregisterNatives(classHandle: JvmJniHandleId): Int {
+        val className = requireLoadedClass(handles.resolveClass(classHandle))
+        return registeredNativeMethods.unregister(className)
+    }
 
     fun throwObject(throwableHandle: JvmJniHandleId): Int {
         val throwableReference = handles.resolveObject(throwableHandle)
