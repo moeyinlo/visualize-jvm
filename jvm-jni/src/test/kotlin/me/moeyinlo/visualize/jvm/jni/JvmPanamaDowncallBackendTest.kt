@@ -213,6 +213,47 @@ class JvmPanamaDowncallBackendTest {
     }
 
     @Test
+    fun `Panama backend binds native libraries as OnLoad plus export targets`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "call",
+            methodDescriptor = "()I",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_call",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(export),
+        )
+        val backend = JvmPanamaDowncallBackend(
+            symbolLookup = JvmNativeSymbolLookup { path, symbolName ->
+                when {
+                    path == library.path && symbolName == "JNI_OnLoad" -> JvmNativeSymbolAddress(symbolName, 0x1111L)
+                    path == library.path && symbolName == export.symbolName -> JvmNativeSymbolAddress(symbolName, 0x2222L)
+                    else -> null
+                }
+            },
+        )
+
+        val binding = backend.bindLibrary(library)
+
+        assertEquals(library, binding.library)
+        assertEquals(
+            JvmNativeDowncallTarget(library = library, guestMethod = null, symbolName = "JNI_OnLoad", address = 0x1111L),
+            binding.onLoadTarget,
+        )
+        assertEquals(
+            JvmNativeDowncallTarget(
+                library = library,
+                guestMethod = export.guestMethod,
+                symbolName = export.symbolName,
+                address = 0x2222L,
+            ),
+            binding.exportTargets.getValue(export.guestMethod),
+        )
+    }
+    @Test
     fun `Panama backend prepares native export invocations with simulated JNIEnv first`() {
         val export = JvmNativeMethodExportDescriptor(
             ownerClassName = "pkg/NativeApi",

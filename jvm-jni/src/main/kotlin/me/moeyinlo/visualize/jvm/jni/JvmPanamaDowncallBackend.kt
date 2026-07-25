@@ -39,6 +39,12 @@ data class JvmNativeDowncallTarget(
     }
 }
 
+data class JvmNativeLibraryBinding(
+    val library: JvmNativeLibraryDescriptor,
+    val onLoadTarget: JvmNativeDowncallTarget?,
+    val exportTargets: Map<JvmNativeGuestMethodSignature, JvmNativeDowncallTarget>,
+)
+
 data class JvmNativeDowncallInvocation(
     val target: JvmNativeDowncallTarget,
     val arguments: List<JvmNativeDowncallArgument>,
@@ -208,6 +214,13 @@ private fun JvmValue.toDowncallArgument(environment: JvmSimulatedJniEnvironment)
 class JvmPanamaDowncallBackend(
     private val symbolLookup: JvmNativeSymbolLookup,
 ) {
+    fun bindLibrary(library: JvmNativeLibraryDescriptor): JvmNativeLibraryBinding =
+        JvmNativeLibraryBinding(
+            library = library,
+            onLoadTarget = bindOnLoad(library),
+            exportTargets = bindExports(library),
+        )
+
     fun resolveExport(
         library: JvmNativeLibraryDescriptor,
         export: JvmNativeMethodExportDescriptor,
