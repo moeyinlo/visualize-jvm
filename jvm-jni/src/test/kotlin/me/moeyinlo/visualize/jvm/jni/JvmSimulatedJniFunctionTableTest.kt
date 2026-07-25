@@ -2635,7 +2635,7 @@ class JvmSimulatedJniFunctionTableTest {
 
         functions.exceptionDescribe()
         assertEquals(listOf("java/lang/IllegalArgumentException: bad argument"), reported)
-        assertEquals(true, functions.exceptionCheck())
+        assertEquals(false, functions.exceptionCheck())
 
         functions.exceptionClear()
         assertEquals(false, functions.exceptionCheck())

@@ -8079,7 +8079,7 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
-    fun `ExceptionDescribe reports pending throwable without clearing it`() {
+    fun `ExceptionDescribe reports pending throwable and clears it`() {
         val reported = mutableListOf<String>()
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
@@ -8093,7 +8093,8 @@ class JvmSimulatedJniEnvironmentTest {
         environment.exceptionDescribe()
 
         assertEquals(listOf("java/lang/IllegalStateException: broken"), reported)
-        assertEquals(true, environment.exceptionCheck())
+        assertEquals(false, environment.exceptionCheck())
+        assertEquals(null, environment.pendingExceptionReference)
     }
 
     @Test
