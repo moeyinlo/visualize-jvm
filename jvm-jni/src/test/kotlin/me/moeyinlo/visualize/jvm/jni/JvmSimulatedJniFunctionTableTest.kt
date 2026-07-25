@@ -11,6 +11,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -193,5 +194,46 @@ class JvmSimulatedJniFunctionTableTest {
             functions.fatalError("native invariant failed")
         }
         assertEquals("native invariant failed", fatal.message)
+    }
+
+    @Test
+    fun `function table delegates string helpers to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val functions = environment.functions
+
+        val utfHandle = functions.newStringUtf("\u0000JVM")
+        val utfReference = handles.resolveObject(utfHandle)
+        assertEquals("java/lang/String", heap.get(utfReference).className)
+        assertEquals(JvmStringPayload("\u0000JVM"), heap.get(utfReference).payload)
+        assertEquals(4, functions.getStringLength(utfHandle))
+        assertEquals(5, functions.getStringUtfLength(utfHandle))
+        assertContentEquals(charArrayOf('\u0000', 'J', 'V', 'M'), functions.getStringChars(utfHandle))
+        assertContentEquals(
+            byteArrayOf(0xc0.toByte(), 0x80.toByte(), 0x4a, 0x56, 0x4d),
+            functions.getStringUtfChars(utfHandle),
+        )
+
+        val copiedChars = functions.getStringChars(utfHandle)
+        functions.releaseStringChars(utfHandle, copiedChars)
+        assertContentEquals(charArrayOf('\u0000', 'J', 'V', 'M'), copiedChars)
+
+        val copiedUtf = functions.getStringUtfChars(utfHandle)
+        functions.releaseStringUtfChars(utfHandle, copiedUtf)
+        assertContentEquals(byteArrayOf(0xc0.toByte(), 0x80.toByte(), 0x4a, 0x56, 0x4d), copiedUtf)
+
+        val utf16Handle = functions.newString(charArrayOf('A', '\ud83d', '\ude00', 'x'), 3)
+        val utf16Reference = handles.resolveObject(utf16Handle)
+        assertEquals(JvmStringPayload("A\ud83d\ude00"), heap.get(utf16Reference).payload)
+        assertEquals(3, functions.getStringLength(utf16Handle))
     }
 }

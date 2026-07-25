@@ -26,6 +26,14 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val exceptionClear: () -> Unit,
     val exceptionDescribe: () -> Unit,
     val fatalError: (String?) -> Nothing,
+    val newString: (CharArray, Int) -> JvmJniHandleId,
+    val newStringUtf: (String) -> JvmJniHandleId,
+    val getStringLength: (JvmJniHandleId) -> Int,
+    val getStringChars: (JvmJniHandleId) -> CharArray,
+    val releaseStringChars: (JvmJniHandleId, CharArray) -> Unit,
+    val getStringUtfLength: (JvmJniHandleId) -> Int,
+    val getStringUtfChars: (JvmJniHandleId) -> ByteArray,
+    val releaseStringUtfChars: (JvmJniHandleId, ByteArray) -> Unit,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -55,6 +63,14 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 exceptionClear = environment::exceptionClear,
                 exceptionDescribe = environment::exceptionDescribe,
                 fatalError = environment::fatalError,
+                newString = environment::newString,
+                newStringUtf = environment::newStringUtf,
+                getStringLength = environment::getStringLength,
+                getStringChars = environment::getStringChars,
+                releaseStringChars = environment::releaseStringChars,
+                getStringUtfLength = environment::getStringUtfLength,
+                getStringUtfChars = environment::getStringUtfChars,
+                releaseStringUtfChars = environment::releaseStringUtfChars,
             )
     }
 }
