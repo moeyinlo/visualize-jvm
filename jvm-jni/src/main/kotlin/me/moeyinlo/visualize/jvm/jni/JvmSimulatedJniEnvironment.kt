@@ -247,6 +247,26 @@ class JvmSimulatedJniEnvironment(
         )
     }
 
+    fun callObjectMethod(
+        objectHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): JvmJniHandleId? {
+        val receiver = handles.resolveObject(objectHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireInstanceObjectMethod("CallObjectMethod")
+        return when (
+            val result = upcallDispatcher.callObjectMethod(
+                receiver = receiver,
+                method = method,
+                arguments = arguments,
+            )
+        ) {
+            JvmNullValue -> null
+            is JvmObjectReferenceValue -> handles.newObjectHandle(result)
+        }
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1654,3 +1674,14 @@ private fun JvmResolvedMethod.requireInstanceVoidMethod(helperName: String) {
         )
     }
 }
+
+private fun JvmResolvedMethod.requireInstanceObjectMethod(helperName: String) {
+    if (isStatic || !returnDescriptor.isReferenceFieldDescriptor()) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance object method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private val JvmResolvedMethod.returnDescriptor: String
+    get() = descriptor.substringAfter(')')

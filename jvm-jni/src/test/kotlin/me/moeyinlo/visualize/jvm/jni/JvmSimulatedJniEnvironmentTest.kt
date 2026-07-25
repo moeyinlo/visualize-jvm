@@ -27,6 +27,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
@@ -246,6 +247,72 @@ class JvmSimulatedJniEnvironmentTest {
                         isStatic = false,
                     ),
                     arguments = listOf(JvmIntValue(7)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
+    fun `CallObjectMethod routes instance method upcalls and returns a local object handle`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedObjectUpcall>()
+        val resultReference = heap.allocateObject("java/lang/Object")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "select",
+                                descriptor = "(I)Ljava/lang/Object;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callObjectMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmReferenceValue {
+                    calls += RecordedObjectUpcall(receiver, method, arguments)
+                    return resultReference
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val receiver = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(classHandle, "select", "(I)Ljava/lang/Object;")
+
+        val resultHandle = environment.callObjectMethod(objectHandle, methodHandle, listOf(JvmIntValue(3)))
+
+        assertEquals(resultReference, handles.resolveObject(resultHandle!!))
+        assertEquals(
+            listOf(
+                RecordedObjectUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "select",
+                        descriptor = "(I)Ljava/lang/Object;",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(3)),
                 ),
             ),
             calls,
@@ -6621,6 +6688,12 @@ class JvmSimulatedJniEnvironmentTest {
 }
 
 private data class RecordedVoidUpcall(
+    val receiver: JvmObjectReferenceValue,
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedObjectUpcall(
     val receiver: JvmObjectReferenceValue,
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
