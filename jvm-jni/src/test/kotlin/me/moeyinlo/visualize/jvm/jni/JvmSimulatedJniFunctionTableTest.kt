@@ -2540,6 +2540,29 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates AllocObject to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+
+        val objectHandle = functions.allocObject(classHandle)
+        val objectReference = handles.resolveObject(objectHandle)
+
+        assertEquals("Example", heap.get(objectReference).className)
+        assertEquals(false, heap.isInitialized(objectReference))
+    }
+
+    @Test
     fun `function table delegates NewObject constructor upcalls to one simulated JNI environment`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

@@ -87,6 +87,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val callStaticLongMethod: (JvmJniHandleId, JvmJniHandleId, List<JvmValue>) -> Long,
     val callStaticFloatMethod: (JvmJniHandleId, JvmJniHandleId, List<JvmValue>) -> Float,
     val callStaticDoubleMethod: (JvmJniHandleId, JvmJniHandleId, List<JvmValue>) -> Double,
+    val allocObject: (JvmJniHandleId) -> JvmJniHandleId,
     val newObject: (JvmJniHandleId, JvmJniHandleId, List<JvmValue>) -> JvmJniHandleId,
     val throwObject: (JvmJniHandleId) -> Int,
     val throwNew: (JvmJniHandleId, String?) -> Int,
@@ -153,7 +154,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 148
+        const val SlotCount: Int = 149
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
@@ -241,6 +242,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 callStaticLongMethod = environment::callStaticLongMethod,
                 callStaticFloatMethod = environment::callStaticFloatMethod,
                 callStaticDoubleMethod = environment::callStaticDoubleMethod,
+                allocObject = environment::allocObject,
                 newObject = environment::newObject,
                 throwObject = environment::throwObject,
                 throwNew = environment::throwNew,
