@@ -266,4 +266,33 @@ class JvmSimulatedJniFunctionTableTest {
         assertEquals(0, functions.monitorExit(objectHandle))
         assertEquals(0, monitors.holdCount(objectReference, "jni-thread"))
     }
+
+    @Test
+    fun `function table delegates primitive array creation and length helpers to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val functions = environment.functions
+
+        val arrays: List<Pair<JvmJniHandleId, String>> = listOf(
+            functions.newBooleanArray(1) to "[Z",
+            functions.newByteArray(2) to "[B",
+            functions.newCharArray(3) to "[C",
+            functions.newShortArray(4) to "[S",
+            functions.newIntArray(5) to "[I",
+            functions.newLongArray(6) to "[J",
+            functions.newFloatArray(7) to "[F",
+            functions.newDoubleArray(8) to "[D",
+        )
+
+        arrays.forEachIndexed { index, (arrayHandle, expectedClassName) ->
+            val arrayReference = handles.resolveObject(arrayHandle)
+            assertEquals(expectedClassName, heap.get(arrayReference).className)
+            assertEquals(index + 1, functions.getArrayLength(arrayHandle))
+        }
+    }
 }

@@ -36,6 +36,15 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val releaseStringUtfChars: (JvmJniHandleId, ByteArray) -> Unit,
     val monitorEnter: (JvmJniHandleId) -> Int,
     val monitorExit: (JvmJniHandleId) -> Int,
+    val getArrayLength: (JvmJniHandleId) -> Int,
+    val newBooleanArray: (Int) -> JvmJniHandleId,
+    val newByteArray: (Int) -> JvmJniHandleId,
+    val newCharArray: (Int) -> JvmJniHandleId,
+    val newShortArray: (Int) -> JvmJniHandleId,
+    val newIntArray: (Int) -> JvmJniHandleId,
+    val newLongArray: (Int) -> JvmJniHandleId,
+    val newFloatArray: (Int) -> JvmJniHandleId,
+    val newDoubleArray: (Int) -> JvmJniHandleId,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -75,6 +84,15 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 releaseStringUtfChars = environment::releaseStringUtfChars,
                 monitorEnter = environment::monitorEnter,
                 monitorExit = environment::monitorExit,
+                getArrayLength = environment::getArrayLength,
+                newBooleanArray = environment::newBooleanArray,
+                newByteArray = environment::newByteArray,
+                newCharArray = environment::newCharArray,
+                newShortArray = environment::newShortArray,
+                newIntArray = environment::newIntArray,
+                newLongArray = environment::newLongArray,
+                newFloatArray = environment::newFloatArray,
+                newDoubleArray = environment::newDoubleArray,
             )
     }
 }
