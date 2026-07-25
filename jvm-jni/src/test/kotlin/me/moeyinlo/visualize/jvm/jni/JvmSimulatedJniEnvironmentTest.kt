@@ -2775,6 +2775,53 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallStaticShortMethod rejects class that is not assignable to method owner`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "delta",
+                                descriptor = "()S",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticShortMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmShortValue = error("CallStaticShortMethod must not enter dispatcher for an incompatible class")
+            },
+        )
+        val exampleHandle = environment.findClass("Example")
+        val otherHandle = environment.findClass("Other")
+        val methodHandle = environment.getStaticMethodId(exampleHandle, "delta", "()S")
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callStaticShortMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallStaticShortMethod requires class Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallStaticIntMethod routes static method upcalls and returns a JNI int`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

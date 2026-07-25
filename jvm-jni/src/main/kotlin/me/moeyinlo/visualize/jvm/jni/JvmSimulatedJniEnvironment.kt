@@ -767,9 +767,10 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): Int {
-        handles.resolveClass(classHandle)
+        val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireStaticShortMethod("CallStaticShortMethod")
+        requireClassAssignableToStaticMethod("CallStaticShortMethod", className, method)
         return upcallDispatcher.callStaticShortMethod(
             method = method,
             arguments = arguments,
