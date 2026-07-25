@@ -48,8 +48,6 @@ class SimulatedJniCoverageTest {
 
         assertEquals(
             listOf(
-                "weak global references",
-                "critical array and string sections",
                 "direct byte buffers",
             ),
             unsupportedRules,

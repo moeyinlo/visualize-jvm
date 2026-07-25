@@ -54,14 +54,14 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "string helpers",
             specSection = "JNI string operations",
-            currentComponent = "NewString/NewStringUTF/GetStringLength/GetStringChars/GetStringUTFChars",
+            currentComponent = "NewString/NewStringUTF/GetStringLength/GetStringChars/GetStringCritical/GetStringRegion/GetStringUTFChars/GetStringUTFRegion/ReleaseString*",
             status = SimulatedJniCoverageStatus.Implemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(
             rule = "primitive and reference arrays",
             specSection = "JNI array operations",
-            currentComponent = "New<Type>Array/Get<Type>ArrayElements/Region/Release plus object array helpers",
+            currentComponent = "New<Type>Array/Get<Type>ArrayElements/Region/Release, GetPrimitiveArrayCritical/ReleasePrimitiveArrayCritical, plus object array helpers",
             status = SimulatedJniCoverageStatus.Implemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
@@ -103,14 +103,16 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "weak global references",
             specSection = "JNI weak global references",
-            currentComponent = "No weak global handle table or GC-sensitive semantics yet",
-            status = SimulatedJniCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmSimulatedJniEnvironment.newWeakGlobalRef creates weak-global object handles outside local frames, deleteWeakGlobalRef releases only weak-global references, and object ref type reports weak-global scope",
+            status = SimulatedJniCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(
             rule = "critical array and string sections",
             specSection = "JNI critical access operations",
-            currentComponent = "No GetPrimitiveArrayCritical/GetStringCritical pinning semantics yet",
-            status = SimulatedJniCoverageStatus.NotYetImplemented,
+            currentComponent = "GetStringCritical/ReleaseStringCritical and GetPrimitiveArrayCritical/ReleasePrimitiveArrayCritical use simulated copied buffers while keeping pin/no-block implementation obligations explicit",
+            status = SimulatedJniCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(
             rule = "direct byte buffers",
