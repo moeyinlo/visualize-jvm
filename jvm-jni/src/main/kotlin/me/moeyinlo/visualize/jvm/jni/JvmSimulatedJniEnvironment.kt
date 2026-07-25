@@ -327,6 +327,21 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callIntMethod(
+        objectHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Int {
+        val receiver = handles.resolveObject(objectHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireInstanceIntMethod("CallIntMethod")
+        return upcallDispatcher.callIntMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1771,6 +1786,14 @@ private fun JvmResolvedMethod.requireInstanceShortMethod(helperName: String) {
     if (isStatic || returnDescriptor != "S") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance short method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireInstanceIntMethod(helperName: String) {
+    if (isStatic || returnDescriptor != "I") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance int method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
