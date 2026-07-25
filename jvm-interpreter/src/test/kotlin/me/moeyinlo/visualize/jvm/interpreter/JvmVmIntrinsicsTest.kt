@@ -222,6 +222,58 @@ class JvmVmIntrinsicsTest {
         assertEquals(true, simulatedJniInvoked)
     }
 
+
+    @Test
+    fun `non whitelisted method skips intrinsic lookup and executes simulated JNI`() {
+        val key = JvmNativeMethodKey(
+            ownerClassName = "GuestNative",
+            name = "value",
+            descriptor = "()I",
+            isStatic = true,
+        )
+        var intrinsicInvoked = false
+        var simulatedJniInvoked = false
+        val registry = JvmNativeMethodRegistry(
+            intrinsics = mapOf(
+                key to JvmNativeMethodIntrinsic { _, _ ->
+                    intrinsicInvoked = true
+                    JvmIntValue(1)
+                },
+            ),
+            simulatedJni = mapOf(
+                key to JvmNativeMethodIntrinsic { _, _ ->
+                    simulatedJniInvoked = true
+                    JvmIntValue(2)
+                },
+            ),
+            intrinsicOwnerWhitelist = setOf("java/lang/System"),
+        )
+        val resolved = registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "GuestNative",
+                name = "value",
+                descriptor = "()I",
+                isStatic = true,
+                isNative = true,
+            ),
+        ) ?: error("simulated JNI fallback should resolve")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "GuestNative",
+        )
+
+        val result = resolved.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(JvmIntValue(2), result)
+        assertEquals(false, intrinsicInvoked)
+        assertEquals(true, simulatedJniInvoked)
+    }
+
     @Test
     fun `Object getClass intrinsic returns an interned guest class mirror for the receiver class`() {
         val heap = JvmHeap()
