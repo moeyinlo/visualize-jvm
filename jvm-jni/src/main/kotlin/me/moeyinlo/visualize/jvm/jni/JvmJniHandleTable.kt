@@ -60,6 +60,9 @@ class JvmJniHandleTable {
     fun resolveFieldId(handle: JvmJniHandleId): JvmResolvedField =
         entry(handle).expect<JvmJniHandleEntry.FieldIdHandle>(handle).field
 
+    fun resolveFieldIdOrNull(handle: JvmJniHandleId?): JvmResolvedField? =
+        handle?.let(::resolveFieldId)
+
     fun deleteLocal(handle: JvmJniHandleId) {
         deleteScoped(handle = handle, expectedScope = JvmJniHandleScope.Local)
     }

@@ -103,4 +103,19 @@ class JvmJniHandleTableTest {
         assertEquals(method, table.resolveMethodIdOrNull(methodHandle))
         assertEquals(null, table.resolveMethodIdOrNull(null))
     }
+
+    @Test
+    fun `jfieldID handles resolve nullable resolved fields`() {
+        val table = JvmJniHandleTable()
+        val field = JvmResolvedField(
+            ownerClassName = "Example",
+            name = "value",
+            descriptor = "I",
+            isStatic = false,
+        )
+        val fieldHandle = table.newFieldIdHandle(field)
+
+        assertEquals(field, table.resolveFieldIdOrNull(fieldHandle))
+        assertEquals(null, table.resolveFieldIdOrNull(null))
+    }
 }
