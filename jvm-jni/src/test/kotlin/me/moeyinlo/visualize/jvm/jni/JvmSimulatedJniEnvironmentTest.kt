@@ -492,6 +492,57 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallObjectMethod rejects receiver that is not assignable to method owner`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "select",
+                                descriptor = "()Ljava/lang/Object;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callObjectMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmReferenceValue = error("CallObjectMethod must not enter dispatcher for an incompatible receiver")
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getMethodId(classHandle, "select", "()Ljava/lang/Object;")
+        val otherHandle = handles.newObjectHandle(heap.allocateObject("Other"))
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callObjectMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallObjectMethod requires receiver Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualObjectMethod routes explicit declaring class method upcalls and returns a local object handle`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
