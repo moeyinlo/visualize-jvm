@@ -1,4 +1,4 @@
-﻿package me.moeyinlo.visualize.jvm.jni
+package me.moeyinlo.visualize.jvm.jni
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,6 +49,39 @@ class JvmJniNativeMethodRegistryTest {
         )
     }
 
+    @Test
+    fun `registered natives can be resolved as downcall targets`() {
+        val registry = JvmJniNativeMethodRegistry()
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = java.nio.file.Path.of("native-api.dll"),
+        )
+        registry.register(
+            className = "pkg/NativeApi",
+            methods = listOf(JvmJniNativeMethodDescriptor("a", "()I", 0x1234L)),
+        )
+
+        assertEquals(
+            JvmNativeDowncallTarget(
+                library = library,
+                guestMethod = JvmNativeGuestMethodSignature(
+                    ownerClassName = "pkg/NativeApi",
+                    methodName = "a",
+                    methodDescriptor = "()I",
+                    isStatic = false,
+                ),
+                symbolName = "RegisterNatives:pkg/NativeApi.a:()I",
+                address = 0x1234L,
+            ),
+            registry.resolveDowncallTarget(
+                library = library,
+                className = "pkg/NativeApi",
+                name = "a",
+                descriptor = "()I",
+                isStatic = false,
+            ),
+        )
+    }
     @Test
     fun `duplicate native registrations for one class are rejected`() {
         val registry = JvmJniNativeMethodRegistry()

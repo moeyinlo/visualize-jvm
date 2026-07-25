@@ -70,6 +70,19 @@ class JvmJniNativeMethodRegistry {
     ): JvmJniRegisteredNativeMethod? =
         methodsByKey[JvmJniRegisteredNativeMethodKey(className, name, descriptor)]
 
+    fun resolveDowncallTarget(
+        library: JvmNativeLibraryDescriptor,
+        className: String,
+        name: String,
+        descriptor: String,
+        isStatic: Boolean,
+    ): JvmNativeDowncallTarget? =
+        resolve(
+            className = className,
+            name = name,
+            descriptor = descriptor,
+        )?.toDowncallTarget(library = library, isStatic = isStatic)
+
     fun entriesForClass(className: String): List<JvmJniRegisteredNativeMethod> =
         methodsByKey.values
             .filter { method -> method.className == className }
@@ -87,6 +100,22 @@ class JvmJniNativeMethodRegistry {
             className = className,
             name = name,
             descriptor = descriptor,
+        )
+
+    private fun JvmJniRegisteredNativeMethod.toDowncallTarget(
+        library: JvmNativeLibraryDescriptor,
+        isStatic: Boolean,
+    ): JvmNativeDowncallTarget =
+        JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = JvmNativeGuestMethodSignature(
+                ownerClassName = className,
+                methodName = name,
+                methodDescriptor = descriptor,
+                isStatic = isStatic,
+            ),
+            symbolName = "RegisterNatives:$className.$name:$descriptor",
+            address = functionAddress,
         )
 }
 
