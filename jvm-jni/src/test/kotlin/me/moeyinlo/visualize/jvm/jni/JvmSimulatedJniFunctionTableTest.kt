@@ -14,6 +14,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
+import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import kotlin.test.Test
@@ -981,6 +982,67 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates short method upcalls to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFunctionTableShortUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "delta", descriptor = "()S", isStatic = false),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callShortMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmShortValue {
+                    calls += RecordedFunctionTableShortUpcall(receiver, method, arguments)
+                    return JvmShortValue(-77)
+                }
+            },
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+        val receiver = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = functions.getMethodId(classHandle, "delta", "()S")
+
+        val result = functions.callShortMethod(objectHandle, methodHandle, emptyList())
+
+        assertEquals(-77, result)
+        assertEquals(
+            listOf(
+                RecordedFunctionTableShortUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "delta",
+                        descriptor = "()S",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
@@ -1471,6 +1533,12 @@ private data class RecordedFunctionTableByteUpcall(
 )
 
 private data class RecordedFunctionTableCharUpcall(
+    val receiver: JvmObjectReferenceValue,
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedFunctionTableShortUpcall(
     val receiver: JvmObjectReferenceValue,
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
