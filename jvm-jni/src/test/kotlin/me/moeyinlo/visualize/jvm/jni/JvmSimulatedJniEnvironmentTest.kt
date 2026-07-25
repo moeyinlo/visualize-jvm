@@ -1271,6 +1271,56 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallShortMethod rejects receiver that is not assignable to method owner`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "delta",
+                                descriptor = "()S",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callShortMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmShortValue = error("CallShortMethod must not enter dispatcher for an incompatible receiver")
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getMethodId(classHandle, "delta", "()S")
+        val otherHandle = handles.newObjectHandle(heap.allocateObject("Other"))
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callShortMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallShortMethod requires receiver Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualShortMethod routes explicit declaring class method upcalls and returns a JNI short`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

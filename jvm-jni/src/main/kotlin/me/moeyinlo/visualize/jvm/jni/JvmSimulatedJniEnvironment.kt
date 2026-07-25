@@ -483,6 +483,7 @@ class JvmSimulatedJniEnvironment(
         val receiver = handles.resolveObject(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceShortMethod("CallShortMethod")
+        requireReceiverAssignableToMethod("CallShortMethod", receiver, method)
         return upcallDispatcher.callShortMethod(
             receiver = receiver,
             method = method,
