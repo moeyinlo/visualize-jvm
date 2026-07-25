@@ -490,6 +490,20 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callStaticLongMethod(
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Long {
+        handles.resolveClass(classHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireStaticLongMethod("CallStaticLongMethod")
+        return upcallDispatcher.callStaticLongMethod(
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -2022,6 +2036,14 @@ private fun JvmResolvedMethod.requireStaticIntMethod(helperName: String) {
     if (!isStatic || returnDescriptor != "I") {
         throw JvmJniMethodAccessException(
             "$helperName requires a static int method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireStaticLongMethod(helperName: String) {
+    if (!isStatic || returnDescriptor != "J") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires a static long method, got $ownerClassName.$name:$descriptor",
         )
     }
 }

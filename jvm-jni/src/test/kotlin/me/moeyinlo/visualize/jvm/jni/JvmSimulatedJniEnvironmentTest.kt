@@ -1252,6 +1252,66 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallStaticLongMethod routes static method upcalls and returns a JNI long`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedStaticLongUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "wide",
+                                descriptor = "(I)J",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticLongMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmLongValue {
+                    calls += RecordedStaticLongUpcall(method, arguments)
+                    return JvmLongValue(9_876_543_210L)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getStaticMethodId(classHandle, "wide", "(I)J")
+
+        val result = environment.callStaticLongMethod(classHandle, methodHandle, listOf(JvmIntValue(14)))
+
+        assertEquals(9_876_543_210L, result)
+        assertEquals(
+            listOf(
+                RecordedStaticLongUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "wide",
+                        descriptor = "(I)J",
+                        isStatic = true,
+                    ),
+                    arguments = listOf(JvmIntValue(14)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `GetObjectClass returns runtime class handle for guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -7710,6 +7770,11 @@ private data class RecordedStaticShortUpcall(
 )
 
 private data class RecordedStaticIntUpcall(
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedStaticLongUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
 )
