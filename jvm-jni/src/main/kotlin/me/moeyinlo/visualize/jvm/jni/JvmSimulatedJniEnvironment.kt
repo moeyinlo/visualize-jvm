@@ -1058,6 +1058,9 @@ class JvmSimulatedJniEnvironment(
     fun getDirectBufferAddress(bufferHandle: JvmJniHandleId): Long =
         resolveDirectByteBuffer(bufferHandle).address
 
+    fun getDirectBufferCapacity(bufferHandle: JvmJniHandleId): Long =
+        resolveDirectByteBuffer(bufferHandle).capacity
+
     fun newBooleanArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateBooleanArray(length))
 
