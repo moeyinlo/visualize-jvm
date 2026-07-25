@@ -6045,6 +6045,30 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `DeleteLocalRef and DeleteGlobalRef reject handles from the wrong reference scope`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val localHandle = handles.newObjectHandle(objectReference)
+        val globalHandle = environment.newGlobalRef(localHandle)!!
+
+        assertFailsWith<JvmJniHandleScopeException> {
+            environment.deleteLocalRef(globalHandle)
+        }
+        assertEquals(objectReference, handles.resolveObject(globalHandle))
+
+        assertFailsWith<JvmJniHandleScopeException> {
+            environment.deleteGlobalRef(localHandle)
+        }
+        assertEquals(objectReference, handles.resolveObject(localHandle))
+    }
+
+    @Test
     fun `NewGlobalRef survives local frame pop until DeleteGlobalRef`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

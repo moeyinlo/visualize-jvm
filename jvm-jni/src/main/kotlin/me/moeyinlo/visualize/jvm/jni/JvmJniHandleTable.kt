@@ -46,15 +46,11 @@ class JvmJniHandleTable {
         entry(handle).expect<JvmJniHandleEntry.FieldIdHandle>(handle).field
 
     fun deleteLocal(handle: JvmJniHandleId) {
-        if (entries.remove(handle) == null) {
-            throw JvmJniInvalidHandleException("JNI handle ${handle.value} is not live")
-        }
+        deleteScoped(handle = handle, expectedScope = JvmJniHandleScope.Local)
     }
 
     fun deleteGlobal(handle: JvmJniHandleId) {
-        if (entries.remove(handle) == null) {
-            throw JvmJniInvalidHandleException("JNI handle ${handle.value} is not live")
-        }
+        deleteScoped(handle = handle, expectedScope = JvmJniHandleScope.Global)
     }
 
     fun pushLocalFrame() {
@@ -75,6 +71,17 @@ class JvmJniHandleTable {
         nextHandleId += 1
         entries[handle] = JvmJniHandleRecord(entry = entry, scope = scope)
         return handle
+    }
+
+    private fun deleteScoped(handle: JvmJniHandleId, expectedScope: JvmJniHandleScope) {
+        val record = entries[handle]
+            ?: throw JvmJniInvalidHandleException("JNI handle ${handle.value} is not live")
+        if (record.scope != expectedScope) {
+            throw JvmJniHandleScopeException(
+                "JNI handle ${handle.value} has scope ${record.scope}, expected $expectedScope",
+            )
+        }
+        entries.remove(handle)
     }
 
     private fun entry(handle: JvmJniHandleId): JvmJniHandleEntry =
@@ -108,3 +115,5 @@ private inline fun <reified T : JvmJniHandleEntry> JvmJniHandleEntry.expect(hand
 class JvmJniInvalidHandleException(message: String) : IllegalStateException(message)
 
 class JvmJniHandleTypeException(message: String) : IllegalStateException(message)
+
+class JvmJniHandleScopeException(message: String) : IllegalStateException(message)

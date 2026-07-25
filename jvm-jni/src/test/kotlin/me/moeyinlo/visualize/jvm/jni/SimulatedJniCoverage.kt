@@ -96,7 +96,7 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "global references",
             specSection = "JNI global references",
-            currentComponent = "JvmSimulatedJniEnvironment.newGlobalRef creates object handles outside local frames and deleteGlobalRef releases them",
+            currentComponent = "JvmSimulatedJniEnvironment.newGlobalRef creates object handles outside local frames, deleteGlobalRef releases only global references, and local/global delete helpers reject the wrong reference scope",
             status = SimulatedJniCoverageStatus.Implemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
