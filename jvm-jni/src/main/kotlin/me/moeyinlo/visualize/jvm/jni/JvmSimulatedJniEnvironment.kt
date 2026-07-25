@@ -282,6 +282,21 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callByteMethod(
+        objectHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Int {
+        val receiver = handles.resolveObject(objectHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireInstanceByteMethod("CallByteMethod")
+        return upcallDispatcher.callByteMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1702,6 +1717,14 @@ private fun JvmResolvedMethod.requireInstanceBooleanMethod(helperName: String) {
     if (isStatic || returnDescriptor != "Z") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance boolean method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireInstanceByteMethod(helperName: String) {
+    if (isStatic || returnDescriptor != "B") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance byte method, got $ownerClassName.$name:$descriptor",
         )
     }
 }

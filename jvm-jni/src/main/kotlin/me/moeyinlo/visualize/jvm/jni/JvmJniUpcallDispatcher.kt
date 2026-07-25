@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
+import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
@@ -29,6 +30,17 @@ interface JvmJniUpcallDispatcher {
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
     ): JvmBooleanValue {
+        throw JvmJniUpcallException(
+            "No simulated JNI upcall dispatcher is configured for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor}",
+        )
+    }
+
+    fun callByteMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmByteValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor}",
