@@ -532,6 +532,23 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun newObject(
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): JvmJniHandleId {
+        val className = handles.resolveClass(classHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireConstructorMethod("NewObject", className)
+        val receiver = heap.allocateObject(className)
+        upcallDispatcher.callVoidMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+        return handles.newObjectHandle(receiver)
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1936,6 +1953,14 @@ private fun JvmResolvedMethod.requireInstanceVoidMethod(helperName: String) {
     if (isStatic || !descriptor.endsWith("V")) {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance void method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireConstructorMethod(helperName: String, className: String) {
+    if (ownerClassName != className || name != "<init>" || isStatic || returnDescriptor != "V") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance constructor for $className, got $ownerClassName.$name:$descriptor",
         )
     }
 }

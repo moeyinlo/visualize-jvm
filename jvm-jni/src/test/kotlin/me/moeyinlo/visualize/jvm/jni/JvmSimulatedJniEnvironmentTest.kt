@@ -1432,6 +1432,62 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObject allocates a guest object and invokes the constructor through the configured dispatcher`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedNewObjectUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<init>",
+                                descriptor = "(I)V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) {
+                    calls += RecordedNewObjectUpcall(receiver, method, arguments)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val constructorHandle = environment.getMethodId(classHandle, "<init>", "(I)V")
+
+        val objectHandle = environment.newObject(classHandle, constructorHandle, listOf(JvmIntValue(41)))
+        val objectReference = handles.resolveObject(objectHandle)
+
+        assertEquals("Example", heap.get(objectReference).className)
+        assertEquals(
+            listOf(
+                RecordedNewObjectUpcall(
+                    receiver = objectReference,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "<init>",
+                        descriptor = "(I)V",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(41)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `GetObjectClass returns runtime class handle for guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -7905,6 +7961,12 @@ private data class RecordedStaticFloatUpcall(
 )
 
 private data class RecordedStaticDoubleUpcall(
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedNewObjectUpcall(
+    val receiver: JvmObjectReferenceValue,
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
 )
