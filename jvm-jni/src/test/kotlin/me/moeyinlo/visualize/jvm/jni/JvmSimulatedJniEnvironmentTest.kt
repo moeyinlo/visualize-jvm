@@ -6101,6 +6101,73 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewWeakGlobalRef survives local frame pop until DeleteWeakGlobalRef`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        environment.pushLocalFrame(2)
+        val localHandle = handles.newObjectHandle(objectReference)
+
+        val weakGlobalHandle = environment.newWeakGlobalRef(localHandle)
+        val nullHandle = environment.newWeakGlobalRef(null)
+        environment.popLocalFrame(null)
+
+        val liveWeakGlobalHandle = weakGlobalHandle!!
+        assertEquals(null, nullHandle)
+        assertEquals(objectReference, handles.resolveObject(liveWeakGlobalHandle))
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveObject(localHandle)
+        }
+
+        environment.deleteWeakGlobalRef(null)
+        environment.deleteWeakGlobalRef(liveWeakGlobalHandle)
+
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveObject(liveWeakGlobalHandle)
+        }
+    }
+
+    @Test
+    fun `DeleteWeakGlobalRef enforces weak global reference scope`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val localHandle = handles.newObjectHandle(objectReference)
+        val globalHandle = environment.newGlobalRef(localHandle)!!
+        val weakGlobalHandle = environment.newWeakGlobalRef(localHandle)!!
+
+        assertFailsWith<JvmJniHandleScopeException> {
+            environment.deleteLocalRef(weakGlobalHandle)
+        }
+        assertEquals(objectReference, handles.resolveObject(weakGlobalHandle))
+
+        assertFailsWith<JvmJniHandleScopeException> {
+            environment.deleteGlobalRef(weakGlobalHandle)
+        }
+        assertEquals(objectReference, handles.resolveObject(weakGlobalHandle))
+
+        assertFailsWith<JvmJniHandleScopeException> {
+            environment.deleteWeakGlobalRef(localHandle)
+        }
+        assertEquals(objectReference, handles.resolveObject(localHandle))
+
+        assertFailsWith<JvmJniHandleScopeException> {
+            environment.deleteWeakGlobalRef(globalHandle)
+        }
+        assertEquals(objectReference, handles.resolveObject(globalHandle))
+    }
+
+    @Test
     fun `IsSameObject compares nullable object local handles by guest reference identity`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

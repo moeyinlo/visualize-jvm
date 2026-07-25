@@ -22,6 +22,9 @@ class JvmJniHandleTable {
     fun newGlobalObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
         allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.Global)
 
+    fun newWeakGlobalObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
+        allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.WeakGlobal)
+
     fun newClassHandle(className: String): JvmJniHandleId {
         require(className.isNotBlank()) { "JNI class handle name must not be blank" }
         return allocate(JvmJniHandleEntry.ClassHandle(className), JvmJniHandleScope.Local)
@@ -51,6 +54,10 @@ class JvmJniHandleTable {
 
     fun deleteGlobal(handle: JvmJniHandleId) {
         deleteScoped(handle = handle, expectedScope = JvmJniHandleScope.Global)
+    }
+
+    fun deleteWeakGlobal(handle: JvmJniHandleId) {
+        deleteScoped(handle = handle, expectedScope = JvmJniHandleScope.WeakGlobal)
     }
 
     fun pushLocalFrame() {
@@ -97,6 +104,7 @@ private data class JvmJniHandleRecord(
 private enum class JvmJniHandleScope {
     Local,
     Global,
+    WeakGlobal,
 }
 
 private sealed interface JvmJniHandleEntry {

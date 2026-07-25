@@ -109,6 +109,15 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun newWeakGlobalRef(handle: JvmJniHandleId?): JvmJniHandleId? =
+        handle?.let { localHandle -> handles.newWeakGlobalObjectHandle(handles.resolveObject(localHandle)) }
+
+    fun deleteWeakGlobalRef(handle: JvmJniHandleId?) {
+        if (handle != null) {
+            handles.deleteWeakGlobal(handle)
+        }
+    }
+
     fun deleteLocalRef(handle: JvmJniHandleId?) {
         if (handle != null) {
             handles.deleteLocal(handle)
