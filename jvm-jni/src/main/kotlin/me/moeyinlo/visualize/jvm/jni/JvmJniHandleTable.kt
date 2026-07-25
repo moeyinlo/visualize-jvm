@@ -25,6 +25,9 @@ class JvmJniHandleTable {
     val globalHandleCount: Int
         get() = countHandlesInScope(JvmJniHandleScope.Global)
 
+    val weakGlobalHandleCount: Int
+        get() = countHandlesInScope(JvmJniHandleScope.WeakGlobal)
+
     fun newObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
         allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.Local)
 
