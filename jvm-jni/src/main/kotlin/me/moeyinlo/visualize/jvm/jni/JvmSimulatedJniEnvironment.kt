@@ -444,6 +444,7 @@ class JvmSimulatedJniEnvironment(
         val receiver = handles.resolveObject(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceCharMethod("CallCharMethod")
+        requireReceiverAssignableToMethod("CallCharMethod", receiver, method)
         return upcallDispatcher.callCharMethod(
             receiver = receiver,
             method = method,
