@@ -505,4 +505,34 @@ class JvmSimulatedJniFunctionTableTest {
             functions.getFloatArrayElements(arrayHandle),
         )
     }
+
+    @Test
+    fun `function table delegates double array element and region helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+        val arrayHandle = functions.newDoubleArray(4)
+
+        functions.setDoubleArrayRegion(arrayHandle, 1, doubleArrayOf(1.25, 2.25, 3.25))
+        assertContentEquals(
+            doubleArrayOf(0.0, 1.25, 2.25, 3.25),
+            functions.getDoubleArrayElements(arrayHandle),
+        )
+        assertContentEquals(doubleArrayOf(1.25, 2.25), functions.getDoubleArrayRegion(arrayHandle, 1, 2))
+
+        val committedElements = functions.getDoubleArrayElements(arrayHandle)
+        committedElements[0] = 4.25
+        functions.releaseDoubleArrayElements(arrayHandle, committedElements, JvmJniArrayReleaseMode.Commit)
+        assertContentEquals(
+            doubleArrayOf(4.25, 1.25, 2.25, 3.25),
+            functions.getDoubleArrayElements(arrayHandle),
+        )
+
+        val abortedElements = functions.getDoubleArrayElements(arrayHandle)
+        abortedElements[1] = 5.25
+        functions.releaseDoubleArrayElements(arrayHandle, abortedElements, JvmJniArrayReleaseMode.Abort)
+        assertContentEquals(
+            doubleArrayOf(4.25, 1.25, 2.25, 3.25),
+            functions.getDoubleArrayElements(arrayHandle),
+        )
+    }
 }
