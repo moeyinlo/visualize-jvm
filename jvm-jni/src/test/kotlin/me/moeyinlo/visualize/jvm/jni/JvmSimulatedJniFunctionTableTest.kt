@@ -2714,6 +2714,10 @@ class JvmSimulatedJniFunctionTableTest {
         functions.releaseStringChars(utfHandle, copiedChars)
         assertContentEquals(charArrayOf('\u0000', 'J', 'V', 'M'), copiedChars)
 
+        val criticalChars = functions.getStringCritical(utfHandle)
+        functions.releaseStringCritical(utfHandle, criticalChars)
+        assertContentEquals(charArrayOf('\u0000', 'J', 'V', 'M'), criticalChars)
+
         val copiedUtf = functions.getStringUtfChars(utfHandle)
         functions.releaseStringUtfChars(utfHandle, copiedUtf)
         assertContentEquals(byteArrayOf(0xc0.toByte(), 0x80.toByte(), 0x4a, 0x56, 0x4d), copiedUtf)

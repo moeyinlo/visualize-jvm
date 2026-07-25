@@ -103,8 +103,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val newStringUtf: (String) -> JvmJniHandleId,
     val getStringLength: (JvmJniHandleId) -> Int,
     val getStringChars: (JvmJniHandleId) -> CharArray,
+    val getStringCritical: (JvmJniHandleId) -> CharArray,
     val getStringRegion: (JvmJniHandleId, Int, Int) -> CharArray,
     val releaseStringChars: (JvmJniHandleId, CharArray) -> Unit,
+    val releaseStringCritical: (JvmJniHandleId, CharArray) -> Unit,
     val getStringUtfLength: (JvmJniHandleId) -> Int,
     val getStringUtfChars: (JvmJniHandleId) -> ByteArray,
     val getStringUtfRegion: (JvmJniHandleId, Int, Int) -> ByteArray,
@@ -159,7 +161,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 154
+        const val SlotCount: Int = 156
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
@@ -263,8 +265,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 newStringUtf = environment::newStringUtf,
                 getStringLength = environment::getStringLength,
                 getStringChars = environment::getStringChars,
+                getStringCritical = environment::getStringCritical,
                 getStringRegion = environment::getStringRegion,
                 releaseStringChars = environment::releaseStringChars,
+                releaseStringCritical = environment::releaseStringCritical,
                 getStringUtfLength = environment::getStringUtfLength,
                 getStringUtfChars = environment::getStringUtfChars,
                 getStringUtfRegion = environment::getStringUtfRegion,
