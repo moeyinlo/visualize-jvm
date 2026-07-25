@@ -26,4 +26,21 @@ class JvmJniHandleTableStateTest {
         table.deleteLocal(firstHandle)
         assertEquals(0, table.liveHandleCount)
     }
+
+    @Test
+    fun `handle table tracks global references outside local frames`() {
+        val table = JvmJniHandleTable()
+        val reference = JvmObjectReferenceValue(JvmReferenceId(3))
+
+        assertEquals(0, table.globalHandleCount)
+        val globalHandle = table.newGlobalObjectHandle(reference)
+        table.pushLocalFrame()
+        table.newObjectHandle(reference)
+        table.deleteCurrentLocalFrameHandles()
+
+        assertEquals(1, table.globalHandleCount)
+        assertEquals(reference, table.resolveObject(globalHandle))
+        table.deleteGlobal(globalHandle)
+        assertEquals(0, table.globalHandleCount)
+    }
 }

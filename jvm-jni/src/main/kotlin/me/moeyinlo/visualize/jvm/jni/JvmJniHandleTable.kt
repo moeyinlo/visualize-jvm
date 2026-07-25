@@ -22,6 +22,9 @@ class JvmJniHandleTable {
     val localFrameDepth: Int
         get() = localFrameStarts.size
 
+    val globalHandleCount: Int
+        get() = countHandlesInScope(JvmJniHandleScope.Global)
+
     fun newObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
         allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.Local)
 
@@ -115,6 +118,9 @@ class JvmJniHandleTable {
         }
         entries.remove(handle)
     }
+
+    private fun countHandlesInScope(scope: JvmJniHandleScope): Int =
+        entries.count { (_, record) -> record.scope == scope }
 
     private fun entry(handle: JvmJniHandleId): JvmJniHandleEntry =
         entries[handle]?.entry
