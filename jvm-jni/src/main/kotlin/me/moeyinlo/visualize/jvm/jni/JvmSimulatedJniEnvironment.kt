@@ -1008,6 +1008,24 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun getPrimitiveArrayCritical(arrayHandle: JvmJniHandleId): JvmJniPrimitiveArrayCritical {
+        val reference = handles.resolveObject(arrayHandle)
+        val heapObject = heap.get(reference)
+        return when (val payload = heapObject.payload) {
+            is JvmBooleanArrayPayload -> JvmJniPrimitiveArrayCritical.Booleans(payload.elements.toBooleanArray())
+            is JvmByteArrayPayload -> JvmJniPrimitiveArrayCritical.Bytes(payload.elements.toByteArray())
+            is JvmCharArrayPayload -> JvmJniPrimitiveArrayCritical.Chars(payload.elements.toCharArray())
+            is JvmDoubleArrayPayload -> JvmJniPrimitiveArrayCritical.Doubles(payload.elements.toDoubleArray())
+            is JvmFloatArrayPayload -> JvmJniPrimitiveArrayCritical.Floats(payload.elements.toFloatArray())
+            is JvmIntArrayPayload -> JvmJniPrimitiveArrayCritical.Ints(payload.elements.toIntArray())
+            is JvmLongArrayPayload -> JvmJniPrimitiveArrayCritical.Longs(payload.elements.toLongArray())
+            is JvmShortArrayPayload -> JvmJniPrimitiveArrayCritical.Shorts(payload.elements.toShortArray())
+            else -> throw JvmJniArrayAccessException(
+                "JNI primitive array critical helper requires primitive array payload, got ${heapObject.className}",
+            )
+        }
+    }
+
     fun newBooleanArray(length: Int): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateBooleanArray(length))
 
@@ -2300,6 +2318,17 @@ enum class JvmJniArrayReleaseMode {
     CopyBackAndRelease,
     Commit,
     Abort,
+}
+
+sealed interface JvmJniPrimitiveArrayCritical {
+    data class Booleans(val elements: BooleanArray) : JvmJniPrimitiveArrayCritical
+    data class Bytes(val elements: ByteArray) : JvmJniPrimitiveArrayCritical
+    data class Chars(val elements: CharArray) : JvmJniPrimitiveArrayCritical
+    data class Shorts(val elements: ShortArray) : JvmJniPrimitiveArrayCritical
+    data class Ints(val elements: IntArray) : JvmJniPrimitiveArrayCritical
+    data class Longs(val elements: LongArray) : JvmJniPrimitiveArrayCritical
+    data class Floats(val elements: FloatArray) : JvmJniPrimitiveArrayCritical
+    data class Doubles(val elements: DoubleArray) : JvmJniPrimitiveArrayCritical
 }
 
 private fun String.isReferenceFieldDescriptor(): Boolean =

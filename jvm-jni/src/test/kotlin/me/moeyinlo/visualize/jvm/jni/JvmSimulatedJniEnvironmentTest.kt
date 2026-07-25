@@ -7186,6 +7186,40 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetPrimitiveArrayCritical returns copied primitive array elements`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newIntArray(3)
+        environment.setIntArrayRegion(arrayHandle, start = 0, values = intArrayOf(1, 2, 3))
+
+        val result = environment.getPrimitiveArrayCritical(arrayHandle)
+
+        val ints = result as JvmJniPrimitiveArrayCritical.Ints
+        assertContentEquals(intArrayOf(1, 2, 3), ints.elements)
+    }
+
+    @Test
+    fun `GetPrimitiveArrayCritical rejects reference arrays`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = handles.newObjectHandle(heap.allocateReferenceArray("java/lang/String", 1))
+
+        assertFailsWith<JvmJniArrayAccessException> {
+            environment.getPrimitiveArrayCritical(arrayHandle)
+        }
+    }
+
+    @Test
     fun `NewBooleanArray allocates a false filled guest boolean array`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
