@@ -70,6 +70,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
@@ -295,6 +296,35 @@ object JvmInterpreter {
                         (returnValue?.javaClass?.simpleName ?: "void"),
                 )
             return JvmCharValue(intValue.value)
+        }
+
+        override fun callShortMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmShortValue {
+            val returnValue = executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            val intValue = returnValue as? JvmIntValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallShortMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmIntValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+            return JvmShortValue(intValue.value)
         }
 
         override fun callIntMethod(
