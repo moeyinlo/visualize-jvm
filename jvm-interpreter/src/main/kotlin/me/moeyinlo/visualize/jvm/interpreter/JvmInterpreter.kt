@@ -161,9 +161,20 @@ object JvmInterpreter {
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
         ) {
-            throw JvmJniUpcallException(
-                "Interpreter-backed simulated JNI dispatcher has not implemented CallVoidMethod for " +
-                    "${method.ownerClassName}.${method.name}:${method.descriptor}",
+            executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
             )
         }
 

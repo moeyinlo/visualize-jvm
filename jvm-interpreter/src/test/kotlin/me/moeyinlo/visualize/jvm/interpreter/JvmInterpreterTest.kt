@@ -12794,6 +12794,49 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher routes instance void upcalls into guest methods`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeOwner")
+        val monitors = JvmMonitorState()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "enter",
+                            descriptor = "()V",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x2A.toByte(),
+                                0xC2.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "NativeOwner",
+            name = "enter",
+            descriptor = "()V",
+        )
+
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+            monitors = monitors,
+            currentThreadId = "jni-thread",
+        )
+        dispatcher.callVoidMethod(receiver, method, emptyList())
+
+        assertEquals(1, monitors.holdCount(receiver, "jni-thread"))
+    }
+
+    @Test
     fun `invokestatic prefers native intrinsics over simulated JNI bindings`() {
         val key = JvmNativeMethodKey(
             ownerClassName = "Example",
