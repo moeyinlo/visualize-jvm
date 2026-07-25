@@ -135,6 +135,34 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetStaticMethodID rejects class initializer lookup`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val classHandle = environment.findClass("Example")
+
+        val exception = assertFailsWith<JvmNoSuchMethodError> {
+            environment.getStaticMethodId(classHandle, "<clinit>", "()V")
+        }
+
+        assertEquals("java/lang/NoSuchMethodError", exception.guestClassName)
+        assertEquals("Example.<clinit>:()V", exception.message)
+    }
+
+    @Test
     fun `GetMethodID returns a method handle for loaded instance guest methods`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
