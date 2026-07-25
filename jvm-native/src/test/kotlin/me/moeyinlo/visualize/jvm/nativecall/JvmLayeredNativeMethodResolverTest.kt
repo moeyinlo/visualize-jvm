@@ -29,6 +29,48 @@ class JvmLayeredNativeMethodResolverTest {
         assertEquals(intrinsicBinding, resolver.resolve(signature))
     }
 
+
+    @Test
+    fun `layered resolver falls back to simulated JNI when whitelisted intrinsic misses`() {
+        val signature = signature(ownerClassName = "example/AllowedNative")
+        val simulatedBinding = binding(
+            signature = signature,
+            environment = JvmNativeExecutionEnvironment.SimulatedJni,
+            bindingName = "Java_example_AllowedNative_call",
+        )
+        val events = JvmNativeCallEventRecorder()
+        val resolver = JvmLayeredNativeMethodResolver(
+            policy = JvmNativeResolutionPolicy(
+                environments = listOf(
+                    JvmNativeExecutionEnvironment.VmIntrinsic,
+                    JvmNativeExecutionEnvironment.SimulatedJni,
+                ),
+                intrinsicWhitelist = JvmIntrinsicWhitelistPolicy.onlyOwners(setOf("example/AllowedNative")),
+            ),
+            intrinsicResolver = JvmNativeIntrinsicRegistry.Empty,
+            simulatedJniResolver = JvmNativeMethodResolver { candidate ->
+                if (candidate == signature) simulatedBinding else null
+            },
+            nativeCallEvents = events,
+        )
+
+        assertEquals(simulatedBinding, resolver.resolve(signature))
+        assertEquals(
+            listOf(
+                JvmNativeCallEventSnapshot(
+                    sequence = 1,
+                    depth = 0,
+                    action = JvmNativeCallAction.FellBackToSimulatedJni,
+                    signature = signature,
+                    environment = JvmNativeExecutionEnvironment.SimulatedJni,
+                    bindingName = "Java_example_AllowedNative_call",
+                    detail = "intrinsic miss",
+                ),
+            ),
+            events.snapshots(),
+        )
+    }
+
     private fun signature(ownerClassName: String): JvmNativeMethodSignature =
         JvmNativeMethodSignature(
             ownerClassName = ownerClassName,
