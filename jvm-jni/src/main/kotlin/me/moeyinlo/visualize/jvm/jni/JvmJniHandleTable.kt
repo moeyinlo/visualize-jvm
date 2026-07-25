@@ -16,6 +16,9 @@ class JvmJniHandleTable {
     private val localFrameStarts = mutableListOf<Int>()
     private var nextHandleId = 1
 
+    val liveHandleCount: Int
+        get() = entries.size
+
     fun newObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
         allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.Local)
 
