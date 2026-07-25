@@ -53,6 +53,9 @@ data class JvmNativeDowncallInvocation(
 data class JvmSimulatedJavaVm(
     val environment: JvmSimulatedJniEnvironment,
 ) {
+    val functions: JvmSimulatedJavaVmFunctionTable =
+        JvmSimulatedJavaVmFunctionTable.bind(this)
+
     fun getEnv(version: Int): JvmJavaVmGetEnvResult =
         if (version in JvmJniVersions.SupportedVersions) {
             JvmJavaVmGetEnvResult(
@@ -65,6 +68,17 @@ data class JvmSimulatedJavaVm(
                 environment = null,
             )
         }
+}
+
+data class JvmSimulatedJavaVmFunctionTable(
+    val getEnv: (Int) -> JvmJavaVmGetEnvResult,
+) {
+    companion object {
+        fun bind(javaVm: JvmSimulatedJavaVm): JvmSimulatedJavaVmFunctionTable =
+            JvmSimulatedJavaVmFunctionTable(
+                getEnv = javaVm::getEnv,
+            )
+    }
 }
 
 data class JvmJavaVmGetEnvResult(
