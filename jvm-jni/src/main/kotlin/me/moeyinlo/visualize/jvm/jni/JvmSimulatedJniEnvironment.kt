@@ -600,6 +600,7 @@ class JvmSimulatedJniEnvironment(
         val receiver = handles.resolveObject(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceFloatMethod("CallFloatMethod")
+        requireReceiverAssignableToMethod("CallFloatMethod", receiver, method)
         return upcallDispatcher.callFloatMethod(
             receiver = receiver,
             method = method,

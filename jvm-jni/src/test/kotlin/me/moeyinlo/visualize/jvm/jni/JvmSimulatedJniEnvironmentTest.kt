@@ -1853,6 +1853,56 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallFloatMethod rejects receiver that is not assignable to method owner`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "ratio",
+                                descriptor = "()F",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callFloatMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmFloatValue = error("CallFloatMethod must not enter dispatcher for an incompatible receiver")
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getMethodId(classHandle, "ratio", "()F")
+        val otherHandle = handles.newObjectHandle(heap.allocateObject("Other"))
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callFloatMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallFloatMethod requires receiver Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualFloatMethod routes explicit declaring class method upcalls and returns a JNI float`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
