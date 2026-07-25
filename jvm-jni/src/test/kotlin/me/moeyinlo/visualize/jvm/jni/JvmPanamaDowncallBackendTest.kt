@@ -112,6 +112,23 @@ class JvmPanamaDowncallBackendTest {
     }
 
     @Test
+    fun `Panama backend accepts supported JNI_OnLoad versions`() {
+        assertEquals(
+            0x00180000,
+            JvmNativeDowncallReturn.IntPrimitive(0x00180000).toOnLoadVersion(),
+        )
+    }
+
+    @Test
+    fun `Panama backend rejects unsupported JNI_OnLoad returns`() {
+        assertFailsWith<JvmJniOnLoadException> {
+            JvmNativeDowncallReturn.IntPrimitive(0x7fff0000).toOnLoadVersion()
+        }
+        assertFailsWith<JvmJniOnLoadException> {
+            JvmNativeDowncallReturn.Void.toOnLoadVersion()
+        }
+    }
+    @Test
     fun `Panama backend prepares JNI_OnLoad invocation with simulated JavaVM and reserved null`() {
         val library = JvmNativeLibraryDescriptor(
             logicalName = "native-api",

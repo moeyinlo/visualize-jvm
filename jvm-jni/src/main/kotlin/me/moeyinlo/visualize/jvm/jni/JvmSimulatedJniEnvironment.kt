@@ -32,8 +32,6 @@ import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
-private const val JniVersion24: Int = 0x00180000
-
 class JvmSimulatedJniEnvironment(
     private val classHierarchy: JvmClassHierarchy,
     private val heap: JvmHeap = JvmHeap(),
@@ -63,7 +61,7 @@ class JvmSimulatedJniEnvironment(
     var maxLocalFrameCapacity: Int = 0
         private set
 
-    fun getVersion(): Int = JniVersion24
+    fun getVersion(): Int = JvmJniVersions.Version24
 
     fun registerNatives(
         classHandle: JvmJniHandleId,

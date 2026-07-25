@@ -79,6 +79,15 @@ sealed interface JvmNativeDowncallReturn {
     data class ThrownGuestException(val throwableHandle: JvmJniHandleId) : JvmNativeDowncallReturn
 }
 
+fun JvmNativeDowncallReturn.toOnLoadVersion(): Int {
+    val version = (this as? JvmNativeDowncallReturn.IntPrimitive)?.value
+        ?: throw JvmJniOnLoadException("JNI_OnLoad must return a JNI version jint, got ${this::class.simpleName}")
+    if (version !in JvmJniVersions.SupportedVersions) {
+        throw JvmJniOnLoadException("JNI_OnLoad returned unsupported JNI version 0x${version.toString(16)}")
+    }
+    return version
+}
+
 fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment): JvmValue? {
     val value = when (this) {
         JvmNativeDowncallReturn.Void -> null
@@ -103,6 +112,28 @@ fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment
 class JvmNativeGuestException(val throwable: JvmObjectReferenceValue) : RuntimeException(
     "Native downcall threw guest exception reference ${throwable.referenceId.value}",
 )
+
+object JvmJniVersions {
+    const val Version24: Int = 0x00180000
+
+    val SupportedVersions: Set<Int> = setOf(
+        0x00010001,
+        0x00010002,
+        0x00010004,
+        0x00010006,
+        0x00010008,
+        0x00090000,
+        0x000A0000,
+        0x00130000,
+        0x00140000,
+        0x00150000,
+        0x00160000,
+        0x00170000,
+        Version24,
+    )
+}
+
+class JvmJniOnLoadException(message: String) : UnsatisfiedLinkError(message)
 
 fun JvmNativeDowncallTarget.prepareInvocation(
     environment: JvmSimulatedJniEnvironment,
