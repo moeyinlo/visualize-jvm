@@ -8,6 +8,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDirectByteBufferPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
@@ -7255,6 +7256,24 @@ class JvmSimulatedJniEnvironmentTest {
         environment.releasePrimitiveArrayCritical(arrayHandle, critical, JvmJniArrayReleaseMode.Abort)
 
         assertContentEquals(byteArrayOf(1, 2), environment.getByteArrayElements(arrayHandle))
+    }
+
+    @Test
+    fun `NewDirectByteBuffer creates a guest direct byte buffer for a native address`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+
+        val bufferHandle = environment.newDirectByteBuffer(address = 0x2000L, capacity = 128L)
+
+        val bufferReference = handles.resolveObject(bufferHandle)
+        val bufferObject = heap.get(bufferReference)
+        assertEquals("java/nio/DirectByteBuffer", bufferObject.className)
+        assertEquals(JvmDirectByteBufferPayload(address = 0x2000L, capacity = 128L), bufferObject.payload)
     }
 
     @Test
