@@ -53,21 +53,49 @@ data class JvmNativeDowncallInvocation(
 data class JvmSimulatedJavaVm(
     val environment: JvmSimulatedJniEnvironment,
 ) {
+    private var attached: Boolean = true
+
     val functions: JvmSimulatedJavaVmFunctionTable =
         JvmSimulatedJavaVmFunctionTable.bind(this)
 
-    fun getEnv(version: Int): JvmJavaVmGetEnvResult =
-        if (version in JvmJniVersions.SupportedVersions) {
-            JvmJavaVmGetEnvResult(
-                status = JvmJniStatus.Ok,
-                environment = environment,
-            )
-        } else {
-            JvmJavaVmGetEnvResult(
+    fun attachCurrentThread(version: Int): JvmJavaVmGetEnvResult {
+        if (version !in JvmJniVersions.SupportedVersions) {
+            return JvmJavaVmGetEnvResult(
                 status = JvmJniStatus.EVersion,
                 environment = null,
             )
         }
+
+        attached = true
+        return JvmJavaVmGetEnvResult(
+            status = JvmJniStatus.Ok,
+            environment = environment,
+        )
+    }
+
+    fun detachCurrentThread(): Int {
+        attached = false
+        return JvmJniStatus.Ok
+    }
+
+    fun getEnv(version: Int): JvmJavaVmGetEnvResult {
+        if (version !in JvmJniVersions.SupportedVersions) {
+            return JvmJavaVmGetEnvResult(
+                status = JvmJniStatus.EVersion,
+                environment = null,
+            )
+        }
+        if (!attached) {
+            return JvmJavaVmGetEnvResult(
+                status = JvmJniStatus.EDetached,
+                environment = null,
+            )
+        }
+        return JvmJavaVmGetEnvResult(
+            status = JvmJniStatus.Ok,
+            environment = environment,
+        )
+    }
 }
 
 data class JvmSimulatedJavaVmFunctionTable(
@@ -88,6 +116,7 @@ data class JvmJavaVmGetEnvResult(
 
 object JvmJniStatus {
     const val Ok: Int = 0
+    const val EDetached: Int = -2
     const val EVersion: Int = -3
 }
 
