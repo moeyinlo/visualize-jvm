@@ -195,6 +195,19 @@ class JvmSimulatedJniEnvironment(
         return className
     }
 
+    private fun requireReceiverAssignableToMethod(
+        helperName: String,
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+    ) {
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, method.ownerClassName)) {
+            throw JvmJniMethodAccessException(
+                "$helperName requires receiver $receiverClassName to be assignable to ${method.ownerClassName}",
+            )
+        }
+    }
+
     fun findClass(className: String): JvmJniHandleId {
         if (!classHierarchy.hasClass(className)) {
             throw JvmNoClassDefFoundError(
@@ -265,6 +278,7 @@ class JvmSimulatedJniEnvironment(
         val receiver = handles.resolveObject(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceVoidMethod("CallVoidMethod")
+        requireReceiverAssignableToMethod("CallVoidMethod", receiver, method)
         upcallDispatcher.callVoidMethod(
             receiver = receiver,
             method = method,
