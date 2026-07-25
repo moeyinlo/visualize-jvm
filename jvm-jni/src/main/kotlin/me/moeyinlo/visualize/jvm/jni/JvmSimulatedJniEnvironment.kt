@@ -49,6 +49,8 @@ class JvmSimulatedJniEnvironment(
         private set
     val localFrameDepth: Int
         get() = localFrameCapacities.size
+    val functions: JvmSimulatedJniFunctionTable =
+        JvmSimulatedJniFunctionTable.bind(this)
     var maxLocalFrameCapacity: Int = 0
         private set
 
