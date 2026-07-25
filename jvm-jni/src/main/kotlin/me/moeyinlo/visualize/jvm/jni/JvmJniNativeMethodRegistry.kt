@@ -1,0 +1,97 @@
+package me.moeyinlo.visualize.jvm.jni
+
+data class JvmJniNativeMethodDescriptor(
+    val name: String,
+    val descriptor: String,
+    val functionAddress: Long,
+) {
+    init {
+        require(name.isNotBlank()) { "registered native method name must not be blank" }
+        require(descriptor.isNotBlank()) { "registered native method descriptor must not be blank" }
+        require(functionAddress != 0L) { "registered native method function pointer must be non-zero" }
+    }
+}
+
+data class JvmJniRegisteredNativeMethod(
+    val className: String,
+    val name: String,
+    val descriptor: String,
+    val functionAddress: Long,
+) {
+    init {
+        require(className.isNotBlank()) { "registered native method class name must not be blank" }
+        require(name.isNotBlank()) { "registered native method name must not be blank" }
+        require(descriptor.isNotBlank()) { "registered native method descriptor must not be blank" }
+        require(functionAddress != 0L) { "registered native method function pointer must be non-zero" }
+    }
+}
+
+class JvmJniNativeMethodRegistry {
+    private val methodsByKey = mutableMapOf<JvmJniRegisteredNativeMethodKey, JvmJniRegisteredNativeMethod>()
+
+    fun register(
+        className: String,
+        methods: List<JvmJniNativeMethodDescriptor>,
+    ): Int {
+        require(className.isNotBlank()) { "registered native method class name must not be blank" }
+        val duplicate = methods
+            .groupingBy { method -> method.key(className) }
+            .eachCount()
+            .entries
+            .firstOrNull { (_, count) -> count > 1 }
+        require(duplicate == null) {
+            "duplicate registered native method ${duplicate!!.key.name}:${duplicate.key.descriptor} for $className"
+        }
+
+        methods.forEach { descriptor ->
+            val method = JvmJniRegisteredNativeMethod(
+                className = className,
+                name = descriptor.name,
+                descriptor = descriptor.descriptor,
+                functionAddress = descriptor.functionAddress,
+            )
+            methodsByKey[method.key] = method
+        }
+        return 0
+    }
+
+    fun unregister(className: String): Int {
+        require(className.isNotBlank()) { "registered native method class name must not be blank" }
+        methodsByKey.keys
+            .filter { key -> key.className == className }
+            .forEach(methodsByKey::remove)
+        return 0
+    }
+
+    fun resolve(
+        className: String,
+        name: String,
+        descriptor: String,
+    ): JvmJniRegisteredNativeMethod? =
+        methodsByKey[JvmJniRegisteredNativeMethodKey(className, name, descriptor)]
+
+    fun entriesForClass(className: String): List<JvmJniRegisteredNativeMethod> =
+        methodsByKey.values
+            .filter { method -> method.className == className }
+            .sortedWith(compareBy<JvmJniRegisteredNativeMethod> { method -> method.name }.thenBy { method -> method.descriptor })
+
+    private fun JvmJniNativeMethodDescriptor.key(className: String): JvmJniRegisteredNativeMethodKey =
+        JvmJniRegisteredNativeMethodKey(
+            className = className,
+            name = name,
+            descriptor = descriptor,
+        )
+
+    private val JvmJniRegisteredNativeMethod.key: JvmJniRegisteredNativeMethodKey
+        get() = JvmJniRegisteredNativeMethodKey(
+            className = className,
+            name = name,
+            descriptor = descriptor,
+        )
+}
+
+private data class JvmJniRegisteredNativeMethodKey(
+    val className: String,
+    val name: String,
+    val descriptor: String,
+)
