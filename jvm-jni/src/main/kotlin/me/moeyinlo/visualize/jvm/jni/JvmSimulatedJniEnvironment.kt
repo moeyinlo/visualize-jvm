@@ -90,6 +90,9 @@ class JvmSimulatedJniEnvironment(
         throw JvmJniFatalError(message.orEmpty())
     }
 
+    fun newLocalRef(handle: JvmJniHandleId?): JvmJniHandleId? =
+        handle?.let { localHandle -> handles.newObjectHandle(handles.resolveObject(localHandle)) }
+
     fun deleteLocalRef(handle: JvmJniHandleId?) {
         if (handle != null) {
             handles.deleteLocal(handle)
