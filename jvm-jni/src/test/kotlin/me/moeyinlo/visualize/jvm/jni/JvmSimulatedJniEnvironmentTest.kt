@@ -538,6 +538,86 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualBooleanMethod routes explicit declaring class method upcalls and returns a JNI boolean`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedBooleanUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "enabled",
+                                descriptor = "(I)Z",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "enabled",
+                                descriptor = "(I)Z",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callBooleanMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmBooleanValue {
+                    calls += RecordedBooleanUpcall(receiver, method, arguments)
+                    return JvmBooleanValue(false)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "enabled", "(I)Z")
+
+        val result = environment.callNonvirtualBooleanMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(9)),
+        )
+
+        assertEquals(false, result)
+        assertEquals(
+            listOf(
+                RecordedBooleanUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "enabled",
+                        descriptor = "(I)Z",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(9)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallByteMethod routes instance method upcalls and returns a JNI byte`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
