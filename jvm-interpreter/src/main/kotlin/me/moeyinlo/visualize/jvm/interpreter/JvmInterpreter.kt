@@ -255,6 +255,33 @@ object JvmInterpreter {
             )
         }
 
+        override fun callStaticObjectMethod(
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmReferenceValue {
+            val returnValue = executeStaticMethodUpcall(
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            return returnValue as? JvmReferenceValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallStaticObjectMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
+                        "expected JvmReferenceValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
+
         override fun callStaticIntMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
