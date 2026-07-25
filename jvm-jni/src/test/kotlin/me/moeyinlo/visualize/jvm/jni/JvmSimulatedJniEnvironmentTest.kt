@@ -1312,6 +1312,66 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallStaticFloatMethod routes static method upcalls and returns a JNI float`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedStaticFloatUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "ratio",
+                                descriptor = "(I)F",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticFloatMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmFloatValue {
+                    calls += RecordedStaticFloatUpcall(method, arguments)
+                    return JvmFloatValue(6.25f)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getStaticMethodId(classHandle, "ratio", "(I)F")
+
+        val result = environment.callStaticFloatMethod(classHandle, methodHandle, listOf(JvmIntValue(15)))
+
+        assertEquals(6.25f, result)
+        assertEquals(
+            listOf(
+                RecordedStaticFloatUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "ratio",
+                        descriptor = "(I)F",
+                        isStatic = true,
+                    ),
+                    arguments = listOf(JvmIntValue(15)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `GetObjectClass returns runtime class handle for guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -7775,6 +7835,11 @@ private data class RecordedStaticIntUpcall(
 )
 
 private data class RecordedStaticLongUpcall(
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedStaticFloatUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
 )

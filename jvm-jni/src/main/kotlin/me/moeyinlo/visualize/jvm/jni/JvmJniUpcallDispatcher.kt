@@ -199,6 +199,16 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callStaticFloatMethod(
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmFloatValue {
+        throw JvmJniUpcallException(
+            "No simulated JNI upcall dispatcher is configured for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor}",
+        )
+    }
+
     companion object {
         val Unbound: JvmJniUpcallDispatcher = object : JvmJniUpcallDispatcher {
             override fun callVoidMethod(
