@@ -230,6 +230,12 @@ class JvmSimulatedJniEnvironment(
         return handles.newClassHandle(className)
     }
 
+    fun getSuperclass(classHandle: JvmJniHandleId): JvmJniHandleId? {
+        val className = handles.resolveClass(classHandle)
+        val superclassName = classHierarchy.directSuperclassName(className) ?: return null
+        return handles.newClassHandle(superclassName)
+    }
+
     fun getStaticMethodId(
         classHandle: JvmJniHandleId,
         name: String,

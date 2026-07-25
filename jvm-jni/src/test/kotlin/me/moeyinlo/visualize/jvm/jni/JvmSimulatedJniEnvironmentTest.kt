@@ -72,6 +72,27 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetSuperclass returns a superclass handle for loaded guest classes and null for root classes`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "Example", superclassName = "java/lang/Object"),
+                ),
+            ),
+            handles = handles,
+        )
+        val objectHandle = environment.findClass("java/lang/Object")
+        val classHandle = environment.findClass("Example")
+
+        val superclassHandle = environment.getSuperclass(classHandle)
+
+        assertEquals("java/lang/Object", handles.resolveClass(superclassHandle!!))
+        assertEquals(null, environment.getSuperclass(objectHandle))
+    }
+
+    @Test
     fun `GetStaticMethodID returns a method handle for loaded static guest methods`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
