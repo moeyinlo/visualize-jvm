@@ -483,6 +483,33 @@ object JvmInterpreter {
             return JvmCharValue(intValue.value)
         }
 
+        override fun callStaticShortMethod(
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmShortValue {
+            val returnValue = executeStaticMethodUpcall(
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            val intValue = returnValue as? JvmIntValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallStaticShortMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmIntValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+            return JvmShortValue(intValue.value)
+        }
+
         override fun callStaticIntMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
