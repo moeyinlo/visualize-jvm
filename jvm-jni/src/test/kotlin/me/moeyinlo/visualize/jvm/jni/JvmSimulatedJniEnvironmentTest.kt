@@ -2047,6 +2047,56 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallDoubleMethod rejects receiver that is not assignable to method owner`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "score",
+                                descriptor = "()D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callDoubleMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmDoubleValue = error("CallDoubleMethod must not enter dispatcher for an incompatible receiver")
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getMethodId(classHandle, "score", "()D")
+        val otherHandle = handles.newObjectHandle(heap.allocateObject("Other"))
+
+        val exception = assertFailsWith<JvmJniMethodAccessException> {
+            environment.callDoubleMethod(otherHandle, methodHandle)
+        }
+
+        assertEquals(
+            "CallDoubleMethod requires receiver Other to be assignable to Example",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualDoubleMethod routes explicit declaring class method upcalls and returns a JNI double`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

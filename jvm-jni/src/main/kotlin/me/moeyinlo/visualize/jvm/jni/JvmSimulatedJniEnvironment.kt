@@ -639,6 +639,7 @@ class JvmSimulatedJniEnvironment(
         val receiver = handles.resolveObject(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceDoubleMethod("CallDoubleMethod")
+        requireReceiverAssignableToMethod("CallDoubleMethod", receiver, method)
         return upcallDispatcher.callDoubleMethod(
             receiver = receiver,
             method = method,
