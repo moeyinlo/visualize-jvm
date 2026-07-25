@@ -827,9 +827,10 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): Double {
-        handles.resolveClass(classHandle)
+        val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireStaticDoubleMethod("CallStaticDoubleMethod")
+        requireClassAssignableToStaticMethod("CallStaticDoubleMethod", className, method)
         return upcallDispatcher.callStaticDoubleMethod(
             method = method,
             arguments = arguments,
