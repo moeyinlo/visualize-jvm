@@ -462,6 +462,20 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callStaticShortMethod(
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Int {
+        handles.resolveClass(classHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireStaticShortMethod("CallStaticShortMethod")
+        return upcallDispatcher.callStaticShortMethod(
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1978,6 +1992,14 @@ private fun JvmResolvedMethod.requireStaticCharMethod(helperName: String) {
     if (!isStatic || returnDescriptor != "C") {
         throw JvmJniMethodAccessException(
             "$helperName requires a static char method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireStaticShortMethod(helperName: String) {
+    if (!isStatic || returnDescriptor != "S") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires a static short method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
