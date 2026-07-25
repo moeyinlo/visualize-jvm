@@ -1804,6 +1804,63 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates static double method upcalls to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFunctionTableStaticDoubleUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "score", descriptor = "(I)D", isStatic = true),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticDoubleMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmDoubleValue {
+                    calls += RecordedFunctionTableStaticDoubleUpcall(method, arguments)
+                    return JvmDoubleValue(99.5)
+                }
+            },
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+        val methodHandle = functions.getStaticMethodId(classHandle, "score", "(I)D")
+
+        val result = functions.callStaticDoubleMethod(classHandle, methodHandle, listOf(JvmIntValue(37)))
+
+        assertEquals(99.5, result)
+        assertEquals(
+            listOf(
+                RecordedFunctionTableStaticDoubleUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "score",
+                        descriptor = "(I)D",
+                        isStatic = true,
+                    ),
+                    arguments = listOf(JvmIntValue(37)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
@@ -2370,6 +2427,11 @@ private data class RecordedFunctionTableStaticLongUpcall(
 )
 
 private data class RecordedFunctionTableStaticFloatUpcall(
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedFunctionTableStaticDoubleUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
 )
