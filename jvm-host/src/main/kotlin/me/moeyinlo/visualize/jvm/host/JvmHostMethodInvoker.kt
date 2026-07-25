@@ -35,10 +35,7 @@ object JvmHostMethodInvoker {
                 exception,
             )
         } catch (exception: InvocationTargetException) {
-            throw JvmHostMethodInvocationException(
-                "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} threw ${exception.targetException::class.java.name}",
-                exception.targetException,
-            )
+            throw exception.targetException.toTranslatedGuestThrowable(heap)
         }
         return hostResult.toGuestReturn(method.returnType, heap, identityMap)
     }
@@ -72,10 +69,7 @@ object JvmHostMethodInvoker {
                 exception,
             )
         } catch (exception: InvocationTargetException) {
-            throw JvmHostMethodInvocationException(
-                "Host method ${method.owner.hostBinaryName}.${method.name}:${method.descriptor} threw ${exception.targetException::class.java.name}",
-                exception.targetException,
-            )
+            throw exception.targetException.toTranslatedGuestThrowable(heap)
         }
         return hostResult.toGuestReturn(method.returnType, heap, identityMap)
     }
@@ -143,9 +137,27 @@ object JvmHostMethodInvoker {
                 }
             }
         }
+
+    private fun Throwable.toTranslatedGuestThrowable(heap: JvmHeap): JvmHostTranslatedException {
+        val guestThrowable = JvmHostThrowableBridge.fromHost(this, Throwable::class.java, heap)
+        val guestThrowableReference = guestThrowable as? JvmObjectReferenceValue
+            ?: throw JvmHostMethodInvocationException("Host throwable ${this::class.java.name} translated to null")
+        return JvmHostTranslatedException(
+            guestThrowable = guestThrowableReference,
+            hostThrowable = this,
+        )
+    }
 }
 
 class JvmHostMethodInvocationException(
     message: String,
     cause: Throwable? = null,
 ) : IllegalStateException(message, cause)
+
+class JvmHostTranslatedException(
+    val guestThrowable: JvmObjectReferenceValue,
+    val hostThrowable: Throwable,
+) : IllegalStateException(
+    "Host throwable ${hostThrowable::class.java.name} was translated to guest reference ${guestThrowable.referenceId.value}",
+    hostThrowable,
+)
