@@ -6,6 +6,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
+import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
 interface JvmJniUpcallDispatcher {
@@ -53,6 +54,17 @@ interface JvmJniUpcallDispatcher {
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
     ): JvmCharValue {
+        throw JvmJniUpcallException(
+            "No simulated JNI upcall dispatcher is configured for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor}",
+        )
+    }
+
+    fun callShortMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmShortValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor}",
