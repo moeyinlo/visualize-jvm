@@ -107,11 +107,19 @@ fun interface JvmNativeMethodIntrinsic {
 class JvmNativeMethodRegistry(
     private val intrinsics: Map<JvmNativeMethodKey, JvmNativeMethodIntrinsic> = emptyMap(),
     private val simulatedJni: Map<JvmNativeMethodKey, JvmNativeMethodIntrinsic> = emptyMap(),
+    private val intrinsicOwnerWhitelist: Set<String>? = null,
 ) {
     fun resolve(method: JvmResolvedMethod): JvmNativeMethodIntrinsic? =
         JvmNativeMethodKey.from(method).let { key ->
-            intrinsics[key] ?: simulatedJni[key]
+            key.intrinsicWhenWhitelisted() ?: simulatedJni[key]
         }
+
+    private fun JvmNativeMethodKey.intrinsicWhenWhitelisted(): JvmNativeMethodIntrinsic? {
+        if (intrinsicOwnerWhitelist != null && ownerClassName !in intrinsicOwnerWhitelist) {
+            return null
+        }
+        return intrinsics[this]
+    }
 
     companion object {
         val Empty: JvmNativeMethodRegistry = JvmNativeMethodRegistry()

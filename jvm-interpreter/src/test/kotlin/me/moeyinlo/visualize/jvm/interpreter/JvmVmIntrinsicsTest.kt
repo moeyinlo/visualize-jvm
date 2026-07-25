@@ -70,6 +70,64 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `native registry uses intrinsics only for whitelisted owners before simulated JNI fallback`() {
+        val key = JvmNativeMethodKey(
+            ownerClassName = "GuestNative",
+            name = "value",
+            descriptor = "()I",
+            isStatic = true,
+        )
+        val intrinsic = JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(1) }
+        val simulatedJni = JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(2) }
+        val registry = JvmNativeMethodRegistry(
+            intrinsics = mapOf(key to intrinsic),
+            simulatedJni = mapOf(key to simulatedJni),
+            intrinsicOwnerWhitelist = setOf("java/lang/System"),
+        )
+
+        val resolved = registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "GuestNative",
+                name = "value",
+                descriptor = "()I",
+                isStatic = true,
+                isNative = true,
+            ),
+        )
+
+        assertEquals(simulatedJni, resolved)
+    }
+
+    @Test
+    fun `native registry resolves whitelisted owner intrinsics before simulated JNI fallback`() {
+        val key = JvmNativeMethodKey(
+            ownerClassName = "java/lang/System",
+            name = "value",
+            descriptor = "()I",
+            isStatic = true,
+        )
+        val intrinsic = JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(1) }
+        val simulatedJni = JvmNativeMethodIntrinsic { _, _ -> JvmIntValue(2) }
+        val registry = JvmNativeMethodRegistry(
+            intrinsics = mapOf(key to intrinsic),
+            simulatedJni = mapOf(key to simulatedJni),
+            intrinsicOwnerWhitelist = setOf("java/lang/System"),
+        )
+
+        val resolved = registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "java/lang/System",
+                name = "value",
+                descriptor = "()I",
+                isStatic = true,
+                isNative = true,
+            ),
+        )
+
+        assertEquals(intrinsic, resolved)
+    }
+
+    @Test
     fun `Object getClass intrinsic returns an interned guest class mirror for the receiver class`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Example")
