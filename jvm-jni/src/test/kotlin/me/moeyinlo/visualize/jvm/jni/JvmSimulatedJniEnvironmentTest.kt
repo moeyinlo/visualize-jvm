@@ -7957,10 +7957,12 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertEquals(false, environment.exceptionCheck())
         assertEquals(null, environment.exceptionOccurred())
+        assertEquals(null, environment.pendingExceptionReference)
 
         assertEquals(0, environment.throwObject(throwableHandle))
 
         assertEquals(true, environment.exceptionCheck())
+        assertEquals(throwableReference, environment.pendingExceptionReference)
         val occurredHandle = environment.exceptionOccurred()
         assertEquals(throwableReference, handles.resolveObject(occurredHandle!!))
 
@@ -7968,6 +7970,7 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertEquals(false, environment.exceptionCheck())
         assertEquals(null, environment.exceptionOccurred())
+        assertEquals(null, environment.pendingExceptionReference)
     }
 
     @Test

@@ -47,6 +47,8 @@ class JvmSimulatedJniEnvironment(
         descriptor = "Ljava/lang/String;",
     )
     private var pendingException: JvmObjectReferenceValue? = null
+    val pendingExceptionReference: JvmObjectReferenceValue?
+        get() = pendingException
     private val localFrameCapacities = mutableListOf<Int>()
     var ensuredLocalCapacity: Int = 0
         private set
