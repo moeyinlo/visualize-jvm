@@ -357,6 +357,21 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callFloatMethod(
+        objectHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Float {
+        val receiver = handles.resolveObject(objectHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireInstanceFloatMethod("CallFloatMethod")
+        return upcallDispatcher.callFloatMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1817,6 +1832,14 @@ private fun JvmResolvedMethod.requireInstanceLongMethod(helperName: String) {
     if (isStatic || returnDescriptor != "J") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance long method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireInstanceFloatMethod(helperName: String) {
+    if (isStatic || returnDescriptor != "F") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance float method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
