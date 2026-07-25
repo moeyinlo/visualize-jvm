@@ -267,6 +267,21 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun callBooleanMethod(
+        objectHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Boolean {
+        val receiver = handles.resolveObject(objectHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireInstanceBooleanMethod("CallBooleanMethod")
+        return upcallDispatcher.callBooleanMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1679,6 +1694,14 @@ private fun JvmResolvedMethod.requireInstanceObjectMethod(helperName: String) {
     if (isStatic || !returnDescriptor.isReferenceFieldDescriptor()) {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance object method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireInstanceBooleanMethod(helperName: String) {
+    if (isStatic || returnDescriptor != "Z") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance boolean method, got $ownerClassName.$name:$descriptor",
         )
     }
 }
