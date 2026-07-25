@@ -20,6 +20,8 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallDispatcher
+import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallException
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapArgument
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodAccessException
@@ -143,6 +145,56 @@ class JvmUnsatisfiedLinkError(
 
 object JvmInterpreter {
     private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
+
+    fun jniUpcallDispatcher(
+        heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields = JvmStaticFields(),
+        nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
+        monitors: JvmMonitorState = JvmMonitorState(),
+        currentThreadId: String = "main",
+        currentClassName: String? = null,
+        dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
+    ): JvmJniUpcallDispatcher = object : JvmJniUpcallDispatcher {
+        override fun callVoidMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ) {
+            throw JvmJniUpcallException(
+                "Interpreter-backed simulated JNI dispatcher has not implemented CallVoidMethod for " +
+                    "${method.ownerClassName}.${method.name}:${method.descriptor}",
+            )
+        }
+
+        override fun callIntMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmIntValue {
+            val returnValue = executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            return returnValue as? JvmIntValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallIntMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmIntValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
+    }
 
     fun execute(
         code: ByteArray,
