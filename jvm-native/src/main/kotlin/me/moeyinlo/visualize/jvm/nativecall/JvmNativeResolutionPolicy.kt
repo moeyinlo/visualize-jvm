@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.nativecall
 
 data class JvmNativeResolutionPolicy(
     val environments: List<JvmNativeExecutionEnvironment>,
+    val intrinsicWhitelist: JvmIntrinsicWhitelistPolicy = JvmIntrinsicWhitelistPolicy.Unrestricted,
 ) {
     init {
         require(environments.isNotEmpty()) { "native resolution policy must include at least one environment" }
@@ -9,6 +10,12 @@ data class JvmNativeResolutionPolicy(
             "native resolution policy must not contain duplicate environments"
         }
     }
+
+    fun allowsEnvironment(
+        environment: JvmNativeExecutionEnvironment,
+        signature: JvmNativeMethodSignature,
+    ): Boolean =
+        environment != JvmNativeExecutionEnvironment.VmIntrinsic || intrinsicWhitelist.allows(signature)
 
     companion object {
         val Default: JvmNativeResolutionPolicy = JvmNativeResolutionPolicy(
