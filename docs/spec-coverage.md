@@ -1186,7 +1186,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Native resolver | Interpreted class native calls resolve intrinsic first when whitelist allows | `jvm-native` | TBD | PENDING |
 | Native resolver | Intrinsic miss falls back to simulated JNI | `jvm-native`, `jvm-jni` | TBD | PENDING |
 | Simulated JNI | Custom `JNIEnv` function table routes upcalls to guest interpreter | `jvm-jni`, `jvm-interpreter` | TBD | PENDING |
-| Simulated JNI | Simulated `JNIEnv` function table binds implemented reference-management and local-frame helper entries to one `JvmSimulatedJniEnvironment` so native bindings can call through a stable helper table instead of direct environment methods | `jvm-jni` | `JvmSimulatedJniFunctionTableTest` | IMPLEMENTED |
+| Simulated JNI | Simulated `JNIEnv` function table binds implemented reference-management, local-frame, class lookup, object-class, instance checks, and method/field ID lookup helper entries to one `JvmSimulatedJniEnvironment` so native bindings can call through a stable helper table instead of direct environment methods | `jvm-jni` | `JvmSimulatedJniFunctionTableTest` | IMPLEMENTED |
 | Simulated JNI | JNI handles represent guest objects, classes, methods, and fields | `jvm-jni`, `jvm-runtime` | `JvmJniHandleTableTest` | IMPLEMENTED |
 | Simulated JNI | `FindClass` resolves loaded guest classes to `jclass` handles and throws guest `NoClassDefFoundError` for misses | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest` | IMPLEMENTED |
 | Simulated JNI | `GetStaticMethodID` resolves static guest methods from a `jclass` handle into `jmethodID` handles and rejects misses or instance methods | `jvm-jni`, `jvm-runtime` | `JvmSimulatedJniEnvironmentTest` | IMPLEMENTED |

@@ -12,6 +12,13 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val ensureLocalCapacity: (Int) -> Int,
     val pushLocalFrame: (Int) -> Int,
     val popLocalFrame: (JvmJniHandleId?) -> JvmJniHandleId?,
+    val findClass: (String) -> JvmJniHandleId,
+    val getObjectClass: (JvmJniHandleId) -> JvmJniHandleId,
+    val isInstanceOf: (JvmJniHandleId?, JvmJniHandleId) -> Boolean,
+    val getMethodId: (JvmJniHandleId, String, String) -> JvmJniHandleId,
+    val getStaticMethodId: (JvmJniHandleId, String, String) -> JvmJniHandleId,
+    val getFieldId: (JvmJniHandleId, String, String) -> JvmJniHandleId,
+    val getStaticFieldId: (JvmJniHandleId, String, String) -> JvmJniHandleId,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -27,6 +34,13 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 ensureLocalCapacity = environment::ensureLocalCapacity,
                 pushLocalFrame = environment::pushLocalFrame,
                 popLocalFrame = environment::popLocalFrame,
+                findClass = environment::findClass,
+                getObjectClass = environment::getObjectClass,
+                isInstanceOf = environment::isInstanceOf,
+                getMethodId = environment::getMethodId,
+                getStaticMethodId = environment::getStaticMethodId,
+                getFieldId = environment::getFieldId,
+                getStaticFieldId = environment::getStaticFieldId,
             )
     }
 }
