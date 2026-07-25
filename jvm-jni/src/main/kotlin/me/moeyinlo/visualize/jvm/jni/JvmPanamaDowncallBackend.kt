@@ -44,8 +44,14 @@ data class JvmNativeDowncallInvocation(
     val arguments: List<JvmNativeDowncallArgument>,
 )
 
+data class JvmSimulatedJavaVm(
+    val environment: JvmSimulatedJniEnvironment,
+)
+
 sealed interface JvmNativeDowncallArgument {
     data class SimulatedJniEnv(val environment: JvmSimulatedJniEnvironment) : JvmNativeDowncallArgument
+    data class SimulatedJavaVm(val javaVm: JvmSimulatedJavaVm) : JvmNativeDowncallArgument
+    data object ReservedNull : JvmNativeDowncallArgument
     data class BooleanPrimitive(val value: Boolean) : JvmNativeDowncallArgument
     data class BytePrimitive(val value: Int) : JvmNativeDowncallArgument
     data class CharPrimitive(val value: Int) : JvmNativeDowncallArgument
@@ -107,6 +113,17 @@ fun JvmNativeDowncallTarget.prepareInvocation(
         target = this,
         arguments = listOf(JvmNativeDowncallArgument.SimulatedJniEnv(environment)) +
             guestArguments.map { value -> value.toDowncallArgument(environment) },
+    )
+}
+
+fun JvmNativeDowncallTarget.prepareOnLoadInvocation(javaVm: JvmSimulatedJavaVm): JvmNativeDowncallInvocation {
+    require(guestMethod == null) { "JNI_OnLoad invocation must not target a guest native method" }
+    return JvmNativeDowncallInvocation(
+        target = this,
+        arguments = listOf(
+            JvmNativeDowncallArgument.SimulatedJavaVm(javaVm),
+            JvmNativeDowncallArgument.ReservedNull,
+        ),
     )
 }
 
