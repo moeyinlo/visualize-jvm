@@ -1747,6 +1747,63 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates static float method upcalls to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFunctionTableStaticFloatUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "ratio", descriptor = "(I)F", isStatic = true),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticFloatMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmFloatValue {
+                    calls += RecordedFunctionTableStaticFloatUpcall(method, arguments)
+                    return JvmFloatValue(3.75f)
+                }
+            },
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+        val methodHandle = functions.getStaticMethodId(classHandle, "ratio", "(I)F")
+
+        val result = functions.callStaticFloatMethod(classHandle, methodHandle, listOf(JvmIntValue(31)))
+
+        assertEquals(3.75f, result)
+        assertEquals(
+            listOf(
+                RecordedFunctionTableStaticFloatUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "ratio",
+                        descriptor = "(I)F",
+                        isStatic = true,
+                    ),
+                    arguments = listOf(JvmIntValue(31)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
@@ -2308,6 +2365,11 @@ private data class RecordedFunctionTableStaticIntUpcall(
 )
 
 private data class RecordedFunctionTableStaticLongUpcall(
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedFunctionTableStaticFloatUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
 )
