@@ -599,6 +599,29 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callNonvirtualDoubleMethod(
+        objectHandle: JvmJniHandleId,
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Double {
+        val receiver = handles.resolveObject(objectHandle)
+        val className = handles.resolveClass(classHandle)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, className)) {
+            throw JvmJniMethodAccessException(
+                "CallNonvirtualDoubleMethod requires receiver $receiverClassName to be assignable to $className",
+            )
+        }
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireNonvirtualInstanceDoubleMethod("CallNonvirtualDoubleMethod", className)
+        return upcallDispatcher.callDoubleMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun callStaticVoidMethod(
         classHandle: JvmJniHandleId,
         methodIdHandle: JvmJniHandleId,
@@ -2326,6 +2349,15 @@ private fun JvmResolvedMethod.requireInstanceDoubleMethod(helperName: String) {
     if (isStatic || returnDescriptor != "D") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance double method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireNonvirtualInstanceDoubleMethod(helperName: String, className: String) {
+    requireInstanceDoubleMethod(helperName)
+    if (ownerClassName != className) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires method owner $ownerClassName to match declaring class $className",
         )
     }
 }
