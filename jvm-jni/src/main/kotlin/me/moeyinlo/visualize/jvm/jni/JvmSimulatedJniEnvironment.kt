@@ -702,9 +702,10 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): JvmJniHandleId? {
-        handles.resolveClass(classHandle)
+        val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireStaticObjectMethod("CallStaticObjectMethod")
+        requireClassAssignableToStaticMethod("CallStaticObjectMethod", className, method)
         return when (
             val result = upcallDispatcher.callStaticObjectMethod(
                 method = method,
