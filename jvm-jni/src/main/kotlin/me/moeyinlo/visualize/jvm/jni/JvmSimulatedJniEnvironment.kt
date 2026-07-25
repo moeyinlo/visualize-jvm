@@ -93,6 +93,13 @@ class JvmSimulatedJniEnvironment(
     fun newLocalRef(handle: JvmJniHandleId?): JvmJniHandleId? =
         handle?.let { localHandle -> handles.newObjectHandle(handles.resolveObject(localHandle)) }
 
+    fun isSameObject(left: JvmJniHandleId?, right: JvmJniHandleId?): Boolean {
+        if (left == null || right == null) {
+            return left == right
+        }
+        return handles.resolveObject(left) == handles.resolveObject(right)
+    }
+
     fun deleteLocalRef(handle: JvmJniHandleId?) {
         if (handle != null) {
             handles.deleteLocal(handle)

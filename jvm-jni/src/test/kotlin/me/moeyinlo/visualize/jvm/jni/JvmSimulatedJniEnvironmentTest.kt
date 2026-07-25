@@ -6045,6 +6045,28 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsSameObject compares nullable object local handles by guest reference identity`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val firstReference = heap.allocateObject("Example")
+        val secondReference = heap.allocateObject("Example")
+        val firstHandle = handles.newObjectHandle(firstReference)
+        val duplicatedFirstHandle = environment.newLocalRef(firstHandle)
+        val secondHandle = handles.newObjectHandle(secondReference)
+
+        assertEquals(true, environment.isSameObject(null, null))
+        assertEquals(false, environment.isSameObject(firstHandle, null))
+        assertEquals(false, environment.isSameObject(null, firstHandle))
+        assertEquals(true, environment.isSameObject(firstHandle, duplicatedFirstHandle))
+        assertEquals(false, environment.isSameObject(firstHandle, secondHandle))
+    }
+
+    @Test
     fun `NewLocalRef duplicates object local handles and preserves null references`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
