@@ -126,6 +126,8 @@ class JvmSimulatedJniFunctionTableTest {
         assertEquals("Example", handles.resolveClass(objectClassHandle))
         assertEquals("Base", handles.resolveClass(superclassHandle!!))
         assertEquals(null, functions.getSuperclass(baseClassHandle))
+        assertEquals(true, functions.isAssignableFrom(classHandle, baseClassHandle))
+        assertEquals(false, functions.isAssignableFrom(baseClassHandle, classHandle))
         assertEquals(true, functions.isInstanceOf(objectHandle, baseClassHandle))
         assertEquals(true, functions.isInstanceOf(null, baseClassHandle))
         assertEquals(
