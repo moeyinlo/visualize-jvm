@@ -154,6 +154,29 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates native registration helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition(internalName = "pkg/NativeApi"))),
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("pkg/NativeApi")
+
+        assertEquals(
+            0,
+            functions.registerNatives(
+                classHandle,
+                listOf(JvmJniNativeMethodDescriptor("a", "()V", 0x1234L)),
+            ),
+        )
+        assertEquals(
+            JvmJniRegisteredNativeMethod("pkg/NativeApi", "a", "()V", 0x1234L),
+            environment.registeredNativeMethods.resolve("pkg/NativeApi", "a", "()V"),
+        )
+
+        assertEquals(0, functions.unregisterNatives(classHandle))
+        assertEquals(null, environment.registeredNativeMethods.resolve("pkg/NativeApi", "a", "()V"))
+    }
+    @Test
     fun `function table delegates int field helpers to one simulated JNI environment`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

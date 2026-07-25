@@ -15,6 +15,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val ensureLocalCapacity: (Int) -> Int,
     val pushLocalFrame: (Int) -> Int,
     val popLocalFrame: (JvmJniHandleId?) -> JvmJniHandleId?,
+    val registerNatives: (JvmJniHandleId, List<JvmJniNativeMethodDescriptor>) -> Int,
+    val unregisterNatives: (JvmJniHandleId) -> Int,
     val findClass: (String) -> JvmJniHandleId,
     val getSuperclass: (JvmJniHandleId) -> JvmJniHandleId?,
     val getObjectClass: (JvmJniHandleId) -> JvmJniHandleId,
@@ -166,7 +168,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 161
+        const val SlotCount: Int = 163
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
@@ -182,6 +184,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 ensureLocalCapacity = environment::ensureLocalCapacity,
                 pushLocalFrame = environment::pushLocalFrame,
                 popLocalFrame = environment::popLocalFrame,
+                registerNatives = environment::registerNatives,
+                unregisterNatives = environment::unregisterNatives,
                 findClass = environment::findClass,
                 getSuperclass = environment::getSuperclass,
                 getObjectClass = environment::getObjectClass,
