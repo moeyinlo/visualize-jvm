@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.jni
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
@@ -101,6 +102,17 @@ interface JvmJniUpcallDispatcher {
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
     ): JvmFloatValue {
+        throw JvmJniUpcallException(
+            "No simulated JNI upcall dispatcher is configured for " +
+                "${method.ownerClassName}.${method.name}:${method.descriptor}",
+        )
+    }
+
+    fun callDoubleMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmDoubleValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +
                 "${method.ownerClassName}.${method.name}:${method.descriptor}",

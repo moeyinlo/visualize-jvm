@@ -768,6 +768,70 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallDoubleMethod routes instance method upcalls and returns a JNI double`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedDoubleUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "score",
+                                descriptor = "(I)D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callDoubleMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmDoubleValue {
+                    calls += RecordedDoubleUpcall(receiver, method, arguments)
+                    return JvmDoubleValue(12.5)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val receiver = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(classHandle, "score", "(I)D")
+
+        val result = environment.callDoubleMethod(objectHandle, methodHandle, listOf(JvmIntValue(4)))
+
+        assertEquals(12.5, result)
+        assertEquals(
+            listOf(
+                RecordedDoubleUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "score",
+                        descriptor = "(I)D",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(4)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `GetObjectClass returns runtime class handle for guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -7184,6 +7248,12 @@ private data class RecordedLongUpcall(
 )
 
 private data class RecordedFloatUpcall(
+    val receiver: JvmObjectReferenceValue,
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedDoubleUpcall(
     val receiver: JvmObjectReferenceValue,
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
