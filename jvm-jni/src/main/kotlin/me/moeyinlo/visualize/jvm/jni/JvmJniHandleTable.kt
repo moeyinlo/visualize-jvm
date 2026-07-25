@@ -60,6 +60,13 @@ class JvmJniHandleTable {
         deleteScoped(handle = handle, expectedScope = JvmJniHandleScope.WeakGlobal)
     }
 
+    fun referenceType(handle: JvmJniHandleId?): JvmJniReferenceType =
+        handle
+            ?.let(entries::get)
+            ?.scope
+            ?.toReferenceType()
+            ?: JvmJniReferenceType.Invalid
+
     fun pushLocalFrame() {
         localFrameStarts += nextHandleId
     }
@@ -106,6 +113,20 @@ private enum class JvmJniHandleScope {
     Global,
     WeakGlobal,
 }
+
+enum class JvmJniReferenceType {
+    Invalid,
+    Local,
+    Global,
+    WeakGlobal,
+}
+
+private fun JvmJniHandleScope.toReferenceType(): JvmJniReferenceType =
+    when (this) {
+        JvmJniHandleScope.Local -> JvmJniReferenceType.Local
+        JvmJniHandleScope.Global -> JvmJniReferenceType.Global
+        JvmJniHandleScope.WeakGlobal -> JvmJniReferenceType.WeakGlobal
+    }
 
 private sealed interface JvmJniHandleEntry {
     data class ObjectHandle(val reference: JvmObjectReferenceValue) : JvmJniHandleEntry

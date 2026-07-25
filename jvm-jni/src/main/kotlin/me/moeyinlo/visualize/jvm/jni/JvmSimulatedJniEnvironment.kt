@@ -118,6 +118,9 @@ class JvmSimulatedJniEnvironment(
         }
     }
 
+    fun getObjectRefType(handle: JvmJniHandleId?): JvmJniReferenceType =
+        handles.referenceType(handle)
+
     fun deleteLocalRef(handle: JvmJniHandleId?) {
         if (handle != null) {
             handles.deleteLocal(handle)

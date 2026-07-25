@@ -6168,6 +6168,30 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectRefType reports local global weak and invalid references`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val localHandle = handles.newObjectHandle(objectReference)
+        val globalHandle = environment.newGlobalRef(localHandle)!!
+        val weakGlobalHandle = environment.newWeakGlobalRef(localHandle)!!
+        val deletedLocalHandle = handles.newObjectHandle(objectReference)
+
+        environment.deleteLocalRef(deletedLocalHandle)
+
+        assertEquals(JvmJniReferenceType.Local, environment.getObjectRefType(localHandle))
+        assertEquals(JvmJniReferenceType.Global, environment.getObjectRefType(globalHandle))
+        assertEquals(JvmJniReferenceType.WeakGlobal, environment.getObjectRefType(weakGlobalHandle))
+        assertEquals(JvmJniReferenceType.Invalid, environment.getObjectRefType(deletedLocalHandle))
+        assertEquals(JvmJniReferenceType.Invalid, environment.getObjectRefType(null))
+    }
+
+    @Test
     fun `IsSameObject compares nullable object local handles by guest reference identity`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
