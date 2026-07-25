@@ -236,6 +236,12 @@ class JvmSimulatedJniEnvironment(
         return handles.newClassHandle(superclassName)
     }
 
+    fun isAssignableFrom(sourceClassHandle: JvmJniHandleId, targetClassHandle: JvmJniHandleId): Boolean {
+        val sourceClassName = handles.resolveClass(sourceClassHandle)
+        val targetClassName = handles.resolveClass(targetClassHandle)
+        return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
+    }
+
     fun getStaticMethodId(
         classHandle: JvmJniHandleId,
         name: String,

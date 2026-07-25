@@ -93,6 +93,25 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsAssignableFrom returns whether source class objects can be cast to target class`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "Base", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "Derived", superclassName = "Base"),
+                ),
+            ),
+        )
+        val baseHandle = environment.findClass("Base")
+        val derivedHandle = environment.findClass("Derived")
+
+        assertEquals(true, environment.isAssignableFrom(derivedHandle, baseHandle))
+        assertEquals(true, environment.isAssignableFrom(baseHandle, baseHandle))
+        assertEquals(false, environment.isAssignableFrom(baseHandle, derivedHandle))
+    }
+
+    @Test
     fun `GetStaticMethodID returns a method handle for loaded static guest methods`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
