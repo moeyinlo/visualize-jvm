@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.jni
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
 class JvmSimulatedJniFunctionTable internal constructor(
+    val getVersion: () -> Int,
     val newLocalRef: (JvmJniHandleId?) -> JvmJniHandleId?,
     val deleteLocalRef: (JvmJniHandleId?) -> Unit,
     val newGlobalRef: (JvmJniHandleId?) -> JvmJniHandleId?,
@@ -156,10 +157,11 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 151
+        const val SlotCount: Int = 152
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
+                getVersion = environment::getVersion,
                 newLocalRef = environment::newLocalRef,
                 deleteLocalRef = environment::deleteLocalRef,
                 newGlobalRef = environment::newGlobalRef,

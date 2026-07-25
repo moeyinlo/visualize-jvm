@@ -39,6 +39,7 @@ class JvmSimulatedJniFunctionTableTest {
         val functions = environment.functions
         val objectReference = heap.allocateObject("Example")
 
+        assertEquals(0x00180000, functions.getVersion())
         assertEquals(0, functions.ensureLocalCapacity(16))
         assertEquals(16, environment.ensuredLocalCapacity)
         assertEquals(0, functions.pushLocalFrame(4))
