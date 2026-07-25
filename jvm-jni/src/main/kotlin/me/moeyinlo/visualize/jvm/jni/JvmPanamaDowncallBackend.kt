@@ -109,6 +109,22 @@ fun JvmNativeDowncallTarget.prepareInvocation(
     )
 }
 
+fun JvmNativeDowncallTarget.prepareInstanceInvocation(
+    environment: JvmSimulatedJniEnvironment,
+    receiver: JvmObjectReferenceValue,
+    guestArguments: List<JvmValue> = emptyList(),
+): JvmNativeDowncallInvocation {
+    val method = requireNotNull(guestMethod) { "JNI instance export invocation requires a guest method target" }
+    require(!method.isStatic) { "JNI instance export invocation requires a non-static guest method target" }
+    return JvmNativeDowncallInvocation(
+        target = this,
+        arguments = listOf(
+            JvmNativeDowncallArgument.SimulatedJniEnv(environment),
+            receiver.toDowncallArgument(environment),
+        ) + guestArguments.map { value -> value.toDowncallArgument(environment) },
+    )
+}
+
 private fun JvmValue.toDowncallArgument(environment: JvmSimulatedJniEnvironment): JvmNativeDowncallArgument =
     when (this) {
         is JvmBooleanValue -> JvmNativeDowncallArgument.BooleanPrimitive(value)
