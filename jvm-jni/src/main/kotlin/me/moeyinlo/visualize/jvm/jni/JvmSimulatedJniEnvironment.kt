@@ -962,6 +962,12 @@ class JvmSimulatedJniEnvironment(
     fun getStringUtfChars(stringHandle: JvmJniHandleId): ByteArray =
         encodeModifiedUtf8(resolveStringValue(stringHandle))
 
+    fun getStringUtfRegion(stringHandle: JvmJniHandleId, start: Int, length: Int): ByteArray {
+        val value = resolveStringValue(stringHandle)
+        requireStringRange("GetStringUTFRegion", value.length, start, length)
+        return encodeModifiedUtf8(value.substring(startIndex = start, endIndex = start + length))
+    }
+
     fun releaseStringUtfChars(stringHandle: JvmJniHandleId, chars: ByteArray) {
         resolveStringValue(stringHandle)
     }

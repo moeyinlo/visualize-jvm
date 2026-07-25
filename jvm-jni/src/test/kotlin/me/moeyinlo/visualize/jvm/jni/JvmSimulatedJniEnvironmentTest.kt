@@ -3331,6 +3331,40 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetStringUTFRegion copies a modified UTF-8 character range from guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(heap.allocateString("a\u0000cdef"))
+
+        val region = environment.getStringUtfRegion(stringHandle, start = 1, length = 3)
+
+        assertContentEquals(byteArrayOf(0xc0.toByte(), 0x80.toByte(), 0x63, 0x64), region)
+    }
+
+    @Test
+    fun `GetStringUTFRegion rejects ranges outside the guest string`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(heap.allocateString("abc"))
+
+        val exception = assertFailsWith<JvmJniStringAccessException> {
+            environment.getStringUtfRegion(stringHandle, start = 2, length = 2)
+        }
+
+        assertEquals("GetStringUTFRegion range 2..4 is outside string length 3", exception.message)
+    }
+
+    @Test
     fun `AllocObject allocates an uninitialized guest object without invoking a constructor`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
