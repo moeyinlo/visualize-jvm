@@ -617,6 +617,32 @@ object JvmInterpreter {
                         (returnValue?.javaClass?.simpleName ?: "void"),
                 )
         }
+
+        override fun callStaticFloatMethod(
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmFloatValue {
+            val returnValue = executeStaticMethodUpcall(
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                dynamicConstants = dynamicConstants,
+            )
+            return returnValue as? JvmFloatValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallStaticFloatMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmFloatValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
     }
 
     fun execute(
