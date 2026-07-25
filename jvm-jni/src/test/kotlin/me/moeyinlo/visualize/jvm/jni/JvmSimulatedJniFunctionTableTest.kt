@@ -11,6 +11,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -677,6 +678,59 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates void method upcalls to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFunctionTableVoidUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(name = "run", descriptor = "()V", isStatic = false),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) {
+                    calls += RecordedFunctionTableVoidUpcall(receiver, method, arguments)
+                }
+            },
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+        val receiver = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = functions.getMethodId(classHandle, "run", "()V")
+
+        functions.callVoidMethod(objectHandle, methodHandle, emptyList())
+
+        assertEquals(
+            listOf(
+                RecordedFunctionTableVoidUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "run",
+                        descriptor = "()V",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
@@ -1141,3 +1195,9 @@ class JvmSimulatedJniFunctionTableTest {
         assertEquals(secondReference, handles.resolveObject(region[2]!!))
     }
 }
+
+private data class RecordedFunctionTableVoidUpcall(
+    val receiver: JvmObjectReferenceValue,
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)

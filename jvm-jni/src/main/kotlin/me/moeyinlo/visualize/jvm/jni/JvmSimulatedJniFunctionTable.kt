@@ -1,5 +1,7 @@
 package me.moeyinlo.visualize.jvm.jni
 
+import me.moeyinlo.visualize.jvm.runtime.JvmValue
+
 class JvmSimulatedJniFunctionTable internal constructor(
     val newLocalRef: (JvmJniHandleId?) -> JvmJniHandleId?,
     val deleteLocalRef: (JvmJniHandleId?) -> Unit,
@@ -55,6 +57,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setStaticCharField: (JvmJniHandleId, JvmJniHandleId, Int) -> Unit,
     val getStaticShortField: (JvmJniHandleId, JvmJniHandleId) -> Int,
     val setStaticShortField: (JvmJniHandleId, JvmJniHandleId, Int) -> Unit,
+    val callVoidMethod: (JvmJniHandleId, JvmJniHandleId, List<JvmValue>) -> Unit,
     val throwObject: (JvmJniHandleId) -> Int,
     val throwNew: (JvmJniHandleId, String?) -> Int,
     val exceptionOccurred: () -> JvmJniHandleId?,
@@ -176,6 +179,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 setStaticCharField = environment::setStaticCharField,
                 getStaticShortField = environment::getStaticShortField,
                 setStaticShortField = environment::setStaticShortField,
+                callVoidMethod = environment::callVoidMethod,
                 throwObject = environment::throwObject,
                 throwNew = environment::throwNew,
                 exceptionOccurred = environment::exceptionOccurred,
