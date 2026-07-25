@@ -34,6 +34,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val getStringUtfLength: (JvmJniHandleId) -> Int,
     val getStringUtfChars: (JvmJniHandleId) -> ByteArray,
     val releaseStringUtfChars: (JvmJniHandleId, ByteArray) -> Unit,
+    val monitorEnter: (JvmJniHandleId) -> Int,
+    val monitorExit: (JvmJniHandleId) -> Int,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -71,6 +73,8 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 getStringUtfLength = environment::getStringUtfLength,
                 getStringUtfChars = environment::getStringUtfChars,
                 releaseStringUtfChars = environment::releaseStringUtfChars,
+                monitorEnter = environment::monitorEnter,
+                monitorExit = environment::monitorExit,
             )
     }
 }

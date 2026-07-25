@@ -6,6 +6,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
@@ -235,5 +236,34 @@ class JvmSimulatedJniFunctionTableTest {
         val utf16Reference = handles.resolveObject(utf16Handle)
         assertEquals(JvmStringPayload("A\ud83d\ude00"), heap.get(utf16Reference).payload)
         assertEquals(3, functions.getStringLength(utf16Handle))
+    }
+
+    @Test
+    fun `function table delegates monitor helpers to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val monitors = JvmMonitorState()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "jni-thread",
+        )
+        val functions = environment.functions
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        assertEquals(1, functions.monitorEnter(objectHandle))
+        assertEquals(1, monitors.holdCount(objectReference, "jni-thread"))
+
+        assertEquals(2, functions.monitorEnter(objectHandle))
+        assertEquals(2, monitors.holdCount(objectReference, "jni-thread"))
+
+        assertEquals(1, functions.monitorExit(objectHandle))
+        assertEquals(1, monitors.holdCount(objectReference, "jni-thread"))
+
+        assertEquals(0, functions.monitorExit(objectHandle))
+        assertEquals(0, monitors.holdCount(objectReference, "jni-thread"))
     }
 }
