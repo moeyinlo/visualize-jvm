@@ -826,6 +826,86 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualCharMethod routes explicit declaring class method upcalls and returns a JNI char`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedCharUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "letter",
+                                descriptor = "(I)C",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "letter",
+                                descriptor = "(I)C",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callCharMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmCharValue {
+                    calls += RecordedCharUpcall(receiver, method, arguments)
+                    return JvmCharValue('z'.code)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "letter", "(I)C")
+
+        val result = environment.callNonvirtualCharMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(13)),
+        )
+
+        assertEquals('z'.code, result)
+        assertEquals(
+            listOf(
+                RecordedCharUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "letter",
+                        descriptor = "(I)C",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(13)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallShortMethod routes instance method upcalls and returns a JNI short`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

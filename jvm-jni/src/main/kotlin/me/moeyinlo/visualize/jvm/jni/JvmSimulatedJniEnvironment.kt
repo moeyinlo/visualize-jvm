@@ -409,6 +409,29 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callNonvirtualCharMethod(
+        objectHandle: JvmJniHandleId,
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Int {
+        val receiver = handles.resolveObject(objectHandle)
+        val className = handles.resolveClass(classHandle)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, className)) {
+            throw JvmJniMethodAccessException(
+                "CallNonvirtualCharMethod requires receiver $receiverClassName to be assignable to $className",
+            )
+        }
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireNonvirtualInstanceCharMethod("CallNonvirtualCharMethod", className)
+        return upcallDispatcher.callCharMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun callShortMethod(
         objectHandle: JvmJniHandleId,
         methodIdHandle: JvmJniHandleId,
@@ -2126,6 +2149,15 @@ private fun JvmResolvedMethod.requireInstanceCharMethod(helperName: String) {
     if (isStatic || returnDescriptor != "C") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance char method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireNonvirtualInstanceCharMethod(helperName: String, className: String) {
+    requireInstanceCharMethod(helperName)
+    if (ownerClassName != className) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires method owner $ownerClassName to match declaring class $className",
         )
     }
 }
