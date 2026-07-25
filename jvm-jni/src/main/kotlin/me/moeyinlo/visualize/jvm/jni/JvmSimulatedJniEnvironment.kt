@@ -90,6 +90,12 @@ class JvmSimulatedJniEnvironment(
         throw JvmJniFatalError(message.orEmpty())
     }
 
+    fun deleteLocalRef(handle: JvmJniHandleId?) {
+        if (handle != null) {
+            handles.deleteLocal(handle)
+        }
+    }
+
     fun ensureLocalCapacity(capacity: Int): Int {
         require(capacity >= 0) { "JNI local capacity must be non-negative: $capacity" }
         ensuredLocalCapacity = maxOf(ensuredLocalCapacity, capacity)

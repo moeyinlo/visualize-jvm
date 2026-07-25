@@ -6045,6 +6045,26 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `DeleteLocalRef deletes object local handles and ignores null references`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        environment.deleteLocalRef(null)
+        environment.deleteLocalRef(objectHandle)
+
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveObject(objectHandle)
+        }
+    }
+
+    @Test
     fun `EnsureLocalCapacity records the requested local reference capacity`() {
         val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
 
