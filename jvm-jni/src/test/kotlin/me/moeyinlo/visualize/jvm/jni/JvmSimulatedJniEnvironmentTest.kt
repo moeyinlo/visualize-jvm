@@ -6122,6 +6122,26 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `PopLocalFrame rebinds non null object results into the previous local frame`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        environment.pushLocalFrame(4)
+        val resultHandle = handles.newObjectHandle(objectReference)
+
+        val reboundResultHandle = environment.popLocalFrame(resultHandle)
+
+        assertEquals(objectReference, handles.resolveObject(reboundResultHandle!!))
+        assertEquals(false, reboundResultHandle == resultHandle)
+        assertEquals(0, environment.localFrameDepth)
+    }
+
+    @Test
     fun `PopLocalFrame rejects local frame underflow`() {
         val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
 

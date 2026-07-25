@@ -89,7 +89,7 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "JNI local frame capacity management",
             specSection = "JNI local reference management",
-            currentComponent = "JvmSimulatedJniEnvironment.ensureLocalCapacity records guaranteed local reference capacity, pushLocalFrame records nested frame depth/capacity, and popLocalFrame pops frame depth; PopLocalFrame scoped reference deletion/result rebasing is not implemented yet",
+            currentComponent = "JvmSimulatedJniEnvironment.ensureLocalCapacity records guaranteed local reference capacity, pushLocalFrame records nested frame depth/capacity, and popLocalFrame pops frame depth and rebinds non-null object results; PopLocalFrame scoped reference deletion is not implemented yet",
             status = SimulatedJniCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),

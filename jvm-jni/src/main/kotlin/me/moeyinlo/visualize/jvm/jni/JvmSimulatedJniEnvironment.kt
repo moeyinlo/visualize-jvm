@@ -104,10 +104,11 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun popLocalFrame(result: JvmJniHandleId?): JvmJniHandleId? {
+        val reboundResult = result?.let(handles::resolveObject)
         if (localFrameCapacities.removeLastOrNull() == null) {
             throw JvmJniLocalFrameException("JNI local frame stack is empty")
         }
-        return result
+        return reboundResult?.let(handles::newObjectHandle)
     }
 
     internal fun takePendingException(): JvmObjectReferenceValue? {
