@@ -1,4 +1,4 @@
-﻿package me.moeyinlo.visualize.jvm.nativecall
+package me.moeyinlo.visualize.jvm.nativecall
 
 data class JvmNativeMethodFrame(
     val ownerClassName: String,
@@ -13,8 +13,31 @@ data class JvmNativeMethodFrame(
         require(ownerClassName.isNotBlank()) { "native frame owner class name must not be blank" }
         require(methodName.isNotBlank()) { "native frame method name must not be blank" }
         require(methodDescriptor.isNotBlank()) { "native frame method descriptor must not be blank" }
-        require(libraryName == null || libraryName.isNotBlank()) { "native frame library name must not be blank" }
-        require(entryPoint == null || entryPoint.isNotBlank()) { "native frame entry point must not be blank" }
+        require(libraryName == null || libraryName.isNotBlank()) { "native frame library name must be null or non-blank" }
+        require(entryPoint == null || entryPoint.isNotBlank()) { "native frame entry point must be null or non-blank" }
+    }
+
+    val signature: JvmNativeMethodSignature = JvmNativeMethodSignature(
+        ownerClassName = ownerClassName,
+        methodName = methodName,
+        methodDescriptor = methodDescriptor,
+        isStatic = isStatic,
+    )
+
+    companion object {
+        fun fromBinding(
+            binding: JvmNativeMethodBinding,
+            libraryName: String? = null,
+        ): JvmNativeMethodFrame =
+            JvmNativeMethodFrame(
+                ownerClassName = binding.signature.ownerClassName,
+                methodName = binding.signature.methodName,
+                methodDescriptor = binding.signature.methodDescriptor,
+                isStatic = binding.signature.isStatic,
+                libraryName = libraryName,
+                entryPoint = binding.bindingName,
+                environment = binding.environment,
+            )
     }
 }
 

@@ -1,4 +1,4 @@
-﻿package me.moeyinlo.visualize.jvm.nativecall
+package me.moeyinlo.visualize.jvm.nativecall
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -79,6 +79,32 @@ class JvmNativeMethodStackTest {
         assertFailsWith<IllegalArgumentException> { nativeFrame(methodDescriptor = "") }
         assertFailsWith<IllegalArgumentException> { nativeFrame(libraryName = "") }
         assertFailsWith<IllegalArgumentException> { nativeFrame(entryPoint = "") }
+    }
+
+
+    @Test
+    fun `native method frames can be derived from resolved native bindings`() {
+        val signature = JvmNativeMethodSignature(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "call",
+            methodDescriptor = "(I)J",
+            isStatic = true,
+        )
+        val binding = JvmNativeMethodBinding(
+            signature = signature,
+            environment = JvmNativeExecutionEnvironment.VmIntrinsic,
+            bindingName = "pkg.NativeApi.call",
+        )
+
+        val frame = JvmNativeMethodFrame.fromBinding(binding)
+
+        assertEquals(signature, frame.signature)
+        assertEquals("pkg/NativeApi", frame.ownerClassName)
+        assertEquals("call", frame.methodName)
+        assertEquals("(I)J", frame.methodDescriptor)
+        assertEquals(true, frame.isStatic)
+        assertEquals(JvmNativeExecutionEnvironment.VmIntrinsic, frame.environment)
+        assertEquals("pkg.NativeApi.call", frame.entryPoint)
     }
 
     private fun nativeFrame(
