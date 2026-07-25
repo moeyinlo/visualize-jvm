@@ -528,6 +528,47 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates static object field helpers to one simulated JNI environment`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "Holder",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "LExample;",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val functions = environment.functions
+        val holderClassHandle = functions.findClass("Holder")
+        val valueReference = heap.allocateObject("Example")
+        val valueHandle = handles.newObjectHandle(valueReference)
+        val fieldHandle = functions.getStaticFieldId(holderClassHandle, "value", "LExample;")
+
+        assertEquals(null, functions.getStaticObjectField(holderClassHandle, fieldHandle))
+
+        functions.setStaticObjectField(holderClassHandle, fieldHandle, valueHandle)
+
+        val readHandle = functions.getStaticObjectField(holderClassHandle, fieldHandle)
+        assertEquals(valueReference, handles.resolveObject(readHandle!!))
+
+        functions.setStaticObjectField(holderClassHandle, fieldHandle, null)
+
+        assertEquals(null, functions.getStaticObjectField(holderClassHandle, fieldHandle))
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
