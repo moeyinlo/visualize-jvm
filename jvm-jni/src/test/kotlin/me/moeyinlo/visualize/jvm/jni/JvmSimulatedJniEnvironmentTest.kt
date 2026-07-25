@@ -3250,6 +3250,35 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `AllocObject allocates an uninitialized guest object without invoking a constructor`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("AllocObject must not invoke a constructor")
+            },
+        )
+        val classHandle = environment.findClass("Example")
+
+        val objectHandle = environment.allocObject(classHandle)
+        val objectReference = handles.resolveObject(objectHandle)
+
+        assertEquals("Example", heap.get(objectReference).className)
+        assertEquals(false, heap.isInitialized(objectReference))
+    }
+
+    @Test
     fun `NewObject allocates a guest object and invokes the constructor through the configured dispatcher`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
