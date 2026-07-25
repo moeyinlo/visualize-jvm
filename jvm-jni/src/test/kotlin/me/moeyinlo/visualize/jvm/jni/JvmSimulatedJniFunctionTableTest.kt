@@ -420,6 +420,33 @@ class JvmSimulatedJniFunctionTableTest {
     }
 
     @Test
+    fun `function table delegates static int field helpers to one simulated JNI environment`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(name = "count", descriptor = "I", isStatic = true),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        val functions = environment.functions
+        val classHandle = functions.findClass("Example")
+        val fieldHandle = functions.getStaticFieldId(classHandle, "count", "I")
+
+        assertEquals(0, functions.getStaticIntField(classHandle, fieldHandle))
+
+        functions.setStaticIntField(classHandle, fieldHandle, 99)
+
+        assertEquals(99, functions.getStaticIntField(classHandle, fieldHandle))
+    }
+
+    @Test
     fun `function table delegates exception helpers to one simulated JNI environment`() {
         val reported = mutableListOf<String>()
         val heap = JvmHeap()
