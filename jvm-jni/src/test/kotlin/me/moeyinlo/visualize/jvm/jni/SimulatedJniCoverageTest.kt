@@ -47,9 +47,7 @@ class SimulatedJniCoverageTest {
             .map(SimulatedJniCoverageEntry::rule)
 
         assertEquals(
-            listOf(
-                "direct byte buffers",
-            ),
+            emptyList(),
             unsupportedRules,
         )
     }

@@ -117,8 +117,9 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "direct byte buffers",
             specSection = "JNI NIO direct buffer operations",
-            currentComponent = "No NewDirectByteBuffer/GetDirectBufferAddress/GetDirectBufferCapacity model yet",
-            status = SimulatedJniCoverageStatus.NotYetImplemented,
+            currentComponent = "NewDirectByteBuffer/GetDirectBufferAddress/GetDirectBufferCapacity map simulated native address and capacity payloads to guest java/nio/DirectByteBuffer handles",
+            status = SimulatedJniCoverageStatus.Implemented,
+            coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
     )
 }
