@@ -297,6 +297,21 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callCharMethod(
+        objectHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Int {
+        val receiver = handles.resolveObject(objectHandle)
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireInstanceCharMethod("CallCharMethod")
+        return upcallDispatcher.callCharMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
         val reference = handles.resolveObject(objectHandle)
         val className = heap.get(reference).className
@@ -1725,6 +1740,14 @@ private fun JvmResolvedMethod.requireInstanceByteMethod(helperName: String) {
     if (isStatic || returnDescriptor != "B") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance byte method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireInstanceCharMethod(helperName: String) {
+    if (isStatic || returnDescriptor != "C") {
+        throw JvmJniMethodAccessException(
+            "$helperName requires an instance char method, got $ownerClassName.$name:$descriptor",
         )
     }
 }

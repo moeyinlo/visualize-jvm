@@ -448,6 +448,70 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallCharMethod routes instance method upcalls and returns a JNI char`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedCharUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "letter",
+                                descriptor = "(I)C",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callCharMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmCharValue {
+                    calls += RecordedCharUpcall(receiver, method, arguments)
+                    return JvmCharValue('x'.code)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val receiver = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(classHandle, "letter", "(I)C")
+
+        val result = environment.callCharMethod(objectHandle, methodHandle, listOf(JvmIntValue(13)))
+
+        assertEquals('x'.code, result)
+        assertEquals(
+            listOf(
+                RecordedCharUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "letter",
+                        descriptor = "(I)C",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(13)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `GetObjectClass returns runtime class handle for guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -6834,6 +6898,12 @@ private data class RecordedBooleanUpcall(
 )
 
 private data class RecordedByteUpcall(
+    val receiver: JvmObjectReferenceValue,
+    val method: JvmResolvedMethod,
+    val arguments: List<JvmValue>,
+)
+
+private data class RecordedCharUpcall(
     val receiver: JvmObjectReferenceValue,
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
