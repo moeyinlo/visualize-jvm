@@ -112,6 +112,33 @@ class JvmPanamaDowncallBackendTest {
     }
 
     @Test
+    fun `simulated JavaVM GetEnv returns attached environment for supported versions`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        val result = javaVm.getEnv(JvmJniVersions.Version24)
+
+        assertEquals(JvmJniStatus.Ok, result.status)
+        assertSame(environment, result.environment)
+    }
+
+    @Test
+    fun `simulated JavaVM GetEnv rejects unsupported versions`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        val result = javaVm.getEnv(0x7fff0000)
+
+        assertEquals(JvmJniStatus.EVersion, result.status)
+        assertEquals(null, result.environment)
+    }
+    @Test
     fun `Panama backend accepts supported JNI_OnLoad versions`() {
         assertEquals(
             0x00180000,

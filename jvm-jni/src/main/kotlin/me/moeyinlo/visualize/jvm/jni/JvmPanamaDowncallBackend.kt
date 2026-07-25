@@ -52,7 +52,30 @@ data class JvmNativeDowncallInvocation(
 
 data class JvmSimulatedJavaVm(
     val environment: JvmSimulatedJniEnvironment,
+) {
+    fun getEnv(version: Int): JvmJavaVmGetEnvResult =
+        if (version in JvmJniVersions.SupportedVersions) {
+            JvmJavaVmGetEnvResult(
+                status = JvmJniStatus.Ok,
+                environment = environment,
+            )
+        } else {
+            JvmJavaVmGetEnvResult(
+                status = JvmJniStatus.EVersion,
+                environment = null,
+            )
+        }
+}
+
+data class JvmJavaVmGetEnvResult(
+    val status: Int,
+    val environment: JvmSimulatedJniEnvironment?,
 )
+
+object JvmJniStatus {
+    const val Ok: Int = 0
+    const val EVersion: Int = -3
+}
 
 sealed interface JvmNativeDowncallArgument {
     data class SimulatedJniEnv(val environment: JvmSimulatedJniEnvironment) : JvmNativeDowncallArgument
