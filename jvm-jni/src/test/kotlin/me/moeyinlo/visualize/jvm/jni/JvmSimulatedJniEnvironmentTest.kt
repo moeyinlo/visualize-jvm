@@ -1114,6 +1114,86 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualIntMethod routes explicit declaring class method upcalls and returns a JNI int`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedIntUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "answer",
+                                descriptor = "(I)I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "answer",
+                                descriptor = "(I)I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callIntMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmIntValue {
+                    calls += RecordedIntUpcall(receiver, method, arguments)
+                    return JvmIntValue(654321)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "answer", "(I)I")
+
+        val result = environment.callNonvirtualIntMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(19)),
+        )
+
+        assertEquals(654321, result)
+        assertEquals(
+            listOf(
+                RecordedIntUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "answer",
+                        descriptor = "(I)I",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(19)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallLongMethod routes instance method upcalls and returns a JNI long`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

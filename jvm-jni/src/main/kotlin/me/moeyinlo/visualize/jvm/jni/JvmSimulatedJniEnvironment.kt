@@ -485,6 +485,29 @@ class JvmSimulatedJniEnvironment(
         ).value
     }
 
+    fun callNonvirtualIntMethod(
+        objectHandle: JvmJniHandleId,
+        classHandle: JvmJniHandleId,
+        methodIdHandle: JvmJniHandleId,
+        arguments: List<JvmValue> = emptyList(),
+    ): Int {
+        val receiver = handles.resolveObject(objectHandle)
+        val className = handles.resolveClass(classHandle)
+        val receiverClassName = heap.get(receiver).className
+        if (!classHierarchy.isAssignable(receiverClassName, className)) {
+            throw JvmJniMethodAccessException(
+                "CallNonvirtualIntMethod requires receiver $receiverClassName to be assignable to $className",
+            )
+        }
+        val method = handles.resolveMethodId(methodIdHandle)
+        method.requireNonvirtualInstanceIntMethod("CallNonvirtualIntMethod", className)
+        return upcallDispatcher.callIntMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        ).value
+    }
+
     fun callLongMethod(
         objectHandle: JvmJniHandleId,
         methodIdHandle: JvmJniHandleId,
@@ -2206,6 +2229,15 @@ private fun JvmResolvedMethod.requireInstanceIntMethod(helperName: String) {
     if (isStatic || returnDescriptor != "I") {
         throw JvmJniMethodAccessException(
             "$helperName requires an instance int method, got $ownerClassName.$name:$descriptor",
+        )
+    }
+}
+
+private fun JvmResolvedMethod.requireNonvirtualInstanceIntMethod(helperName: String, className: String) {
+    requireInstanceIntMethod(helperName)
+    if (ownerClassName != className) {
+        throw JvmJniMethodAccessException(
+            "$helperName requires method owner $ownerClassName to match declaring class $className",
         )
     }
 }
