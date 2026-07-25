@@ -325,4 +325,34 @@ class JvmSimulatedJniFunctionTableTest {
             functions.getBooleanArrayElements(arrayHandle),
         )
     }
+
+    @Test
+    fun `function table delegates byte array element and region helpers to one simulated JNI environment`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val functions = environment.functions
+        val arrayHandle = functions.newByteArray(4)
+
+        functions.setByteArrayRegion(arrayHandle, 1, byteArrayOf(7, 8, 9))
+        assertContentEquals(
+            byteArrayOf(0, 7, 8, 9),
+            functions.getByteArrayElements(arrayHandle),
+        )
+        assertContentEquals(byteArrayOf(7, 8), functions.getByteArrayRegion(arrayHandle, 1, 2))
+
+        val committedElements = functions.getByteArrayElements(arrayHandle)
+        committedElements[0] = 6
+        functions.releaseByteArrayElements(arrayHandle, committedElements, JvmJniArrayReleaseMode.Commit)
+        assertContentEquals(
+            byteArrayOf(6, 7, 8, 9),
+            functions.getByteArrayElements(arrayHandle),
+        )
+
+        val abortedElements = functions.getByteArrayElements(arrayHandle)
+        abortedElements[1] = 5
+        functions.releaseByteArrayElements(arrayHandle, abortedElements, JvmJniArrayReleaseMode.Abort)
+        assertContentEquals(
+            byteArrayOf(6, 7, 8, 9),
+            functions.getByteArrayElements(arrayHandle),
+        )
+    }
 }

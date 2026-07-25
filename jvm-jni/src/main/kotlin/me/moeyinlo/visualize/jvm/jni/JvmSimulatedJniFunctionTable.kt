@@ -49,6 +49,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val releaseBooleanArrayElements: (JvmJniHandleId, BooleanArray, JvmJniArrayReleaseMode) -> Unit,
     val getBooleanArrayRegion: (JvmJniHandleId, Int, Int) -> BooleanArray,
     val setBooleanArrayRegion: (JvmJniHandleId, Int, BooleanArray) -> Unit,
+    val getByteArrayElements: (JvmJniHandleId) -> ByteArray,
+    val releaseByteArrayElements: (JvmJniHandleId, ByteArray, JvmJniArrayReleaseMode) -> Unit,
+    val getByteArrayRegion: (JvmJniHandleId, Int, Int) -> ByteArray,
+    val setByteArrayRegion: (JvmJniHandleId, Int, ByteArray) -> Unit,
 ) {
     companion object {
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
@@ -101,6 +105,10 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 releaseBooleanArrayElements = environment::releaseBooleanArrayElements,
                 getBooleanArrayRegion = environment::getBooleanArrayRegion,
                 setBooleanArrayRegion = environment::setBooleanArrayRegion,
+                getByteArrayElements = environment::getByteArrayElements,
+                releaseByteArrayElements = environment::releaseByteArrayElements,
+                getByteArrayRegion = environment::getByteArrayRegion,
+                setByteArrayRegion = environment::setByteArrayRegion,
             )
     }
 }
