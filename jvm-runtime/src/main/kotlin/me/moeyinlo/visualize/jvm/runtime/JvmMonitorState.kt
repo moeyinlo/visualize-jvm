@@ -45,14 +45,31 @@ class JvmMonitorState {
     }
 
     fun exit(reference: JvmObjectReferenceValue, threadId: String): Int {
+        return exitAndSelectUnblocked(reference, threadId).holdCount
+    }
+
+    fun exitAndSelectUnblocked(reference: JvmObjectReferenceValue, threadId: String): JvmMonitorExitResult {
         val current = requireOwned(reference, threadId, action = "exited")
         val nextCount = current.holdCount - 1
+        var unblockedThreadId: String? = null
         if (nextCount == 0) {
-            storeOrRemove(reference, current.copy(ownerThreadId = null, holdCount = 0))
+            val blockedThreadIds = current.blockedThreadIds.copyToLinkedSet()
+            unblockedThreadId = blockedThreadIds.firstOrNull()
+            if (unblockedThreadId != null) {
+                blockedThreadIds.remove(unblockedThreadId)
+            }
+            storeOrRemove(
+                reference,
+                current.copy(
+                    ownerThreadId = null,
+                    holdCount = 0,
+                    blockedThreadIds = blockedThreadIds,
+                ),
+            )
         } else {
             entries[reference.referenceId] = current.copy(holdCount = nextCount)
         }
-        return nextCount
+        return JvmMonitorExitResult(holdCount = nextCount, unblockedThreadId = unblockedThreadId)
     }
 
     fun holdCount(reference: JvmObjectReferenceValue, threadId: String): Int {
@@ -137,6 +154,11 @@ sealed interface JvmMonitorEnterResult {
         val blockedThreadIds: List<String>,
     ) : JvmMonitorEnterResult
 }
+
+data class JvmMonitorExitResult(
+    val holdCount: Int,
+    val unblockedThreadId: String?,
+)
 
 private data class JvmMonitorEntry(
     val ownerThreadId: String?,
