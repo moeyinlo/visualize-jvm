@@ -189,6 +189,7 @@ class JvmThreadSuspendedException(
     val state: JvmThreadSchedulingState,
     val suspendedAtBytecodeOffset: Int,
     val nextBytecodeOffset: Int?,
+    val operandStackValues: List<JvmValue> = emptyList(),
     message: String,
 ) : IllegalStateException(message)
 
@@ -952,6 +953,7 @@ object JvmInterpreter {
                     state = schedulerState,
                     suspendedAtBytecodeOffset = exception.bytecodeOffset,
                     nextBytecodeOffset = exception.bytecodeOffset,
+                    operandStackValues = listOf(exception.objectReference),
                     message = exception.message ?: "Thread ${exception.threadId} is blocked entering a monitor",
                 ),
             )

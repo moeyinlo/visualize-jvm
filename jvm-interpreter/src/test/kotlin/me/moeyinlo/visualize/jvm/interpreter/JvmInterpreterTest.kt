@@ -19680,6 +19680,7 @@ class JvmInterpreterTest {
         assertEquals(listOf("contender"), result.stalledThreadIds)
         assertEquals(1, suspension.suspendedAtBytecodeOffset)
         assertEquals(1, suspension.nextBytecodeOffset)
+        assertEquals(listOf(receiver), suspension.operandStackValues)
         assertEquals(
             JvmThreadSchedulingState.BlockedOnMonitor(
                 reference = receiver,
