@@ -51,8 +51,9 @@ class JvmThreadScheduler {
     ): String? {
         val notifiedThreadId = monitors.notifyOne(reference, threadId)
         if (notifiedThreadId != null) {
+            val pendingReentryHoldCount = waitReleasedHoldCount(notifiedThreadId)
             val result = monitors.tryEnter(reference, notifiedThreadId)
-            recordMonitorEnterResult(reference, notifiedThreadId, result)
+            recordMonitorEnterResult(reference, notifiedThreadId, result, pendingReentryHoldCount)
         }
         return notifiedThreadId
     }
@@ -64,16 +65,21 @@ class JvmThreadScheduler {
     ): List<String> {
         val notifiedThreadIds = monitors.notifyAll(reference, threadId)
         for (notifiedThreadId in notifiedThreadIds) {
+            val pendingReentryHoldCount = waitReleasedHoldCount(notifiedThreadId)
             val result = monitors.tryEnter(reference, notifiedThreadId)
-            recordMonitorEnterResult(reference, notifiedThreadId, result)
+            recordMonitorEnterResult(reference, notifiedThreadId, result, pendingReentryHoldCount)
         }
         return notifiedThreadIds
     }
+
+    private fun waitReleasedHoldCount(threadId: String): Int =
+        (statesByThreadId[threadId] as? JvmThreadSchedulingState.WaitingOnMonitor)?.releasedHoldCount ?: 1
 
     private fun recordMonitorEnterResult(
         reference: JvmObjectReferenceValue,
         threadId: String,
         result: JvmMonitorEnterResult,
+        pendingReentryHoldCount: Int = 1,
     ) {
         when (result) {
             is JvmMonitorEnterResult.Acquired -> {
@@ -83,6 +89,7 @@ class JvmThreadScheduler {
                 statesByThreadId[threadId] = JvmThreadSchedulingState.BlockedOnMonitor(
                     reference = reference,
                     ownerThreadId = result.ownerThreadId,
+                    pendingReentryHoldCount = pendingReentryHoldCount,
                 )
             }
         }
@@ -95,9 +102,13 @@ sealed interface JvmThreadSchedulingState {
     data class BlockedOnMonitor(
         val reference: JvmObjectReferenceValue,
         val ownerThreadId: String,
+        val pendingReentryHoldCount: Int = 1,
     ) : JvmThreadSchedulingState {
         init {
             require(ownerThreadId.isNotBlank()) { "owner thread id must not be blank" }
+            require(pendingReentryHoldCount > 0) {
+                "pending reentry hold count must be positive: $pendingReentryHoldCount"
+            }
         }
     }
 
