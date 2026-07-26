@@ -13,19 +13,9 @@ class JvmThreadScheduler {
         reference: JvmObjectReferenceValue,
         threadId: String,
     ): JvmMonitorEnterResult {
-        return when (val result = monitors.tryEnter(reference, threadId)) {
-            is JvmMonitorEnterResult.Acquired -> {
-                statesByThreadId[threadId] = JvmThreadSchedulingState.Runnable
-                result
-            }
-            is JvmMonitorEnterResult.Blocked -> {
-                statesByThreadId[threadId] = JvmThreadSchedulingState.BlockedOnMonitor(
-                    reference = reference,
-                    ownerThreadId = result.ownerThreadId,
-                )
-                result
-            }
-        }
+        val result = monitors.tryEnter(reference, threadId)
+        recordMonitorEnterResult(reference, threadId, result)
+        return result
     }
 
     fun exitMonitor(
@@ -40,6 +30,50 @@ class JvmThreadScheduler {
         }
         return result
     }
+
+    fun waitForMonitorNotification(
+        monitors: JvmMonitorState,
+        reference: JvmObjectReferenceValue,
+        threadId: String,
+    ): Int {
+        val releasedHoldCount = monitors.waitForNotification(reference, threadId)
+        statesByThreadId[threadId] = JvmThreadSchedulingState.WaitingOnMonitor(
+            reference = reference,
+            releasedHoldCount = releasedHoldCount,
+        )
+        return releasedHoldCount
+    }
+
+    fun notifyOneMonitor(
+        monitors: JvmMonitorState,
+        reference: JvmObjectReferenceValue,
+        threadId: String,
+    ): String? {
+        val notifiedThreadId = monitors.notifyOne(reference, threadId)
+        if (notifiedThreadId != null) {
+            val result = monitors.tryEnter(reference, notifiedThreadId)
+            recordMonitorEnterResult(reference, notifiedThreadId, result)
+        }
+        return notifiedThreadId
+    }
+
+    private fun recordMonitorEnterResult(
+        reference: JvmObjectReferenceValue,
+        threadId: String,
+        result: JvmMonitorEnterResult,
+    ) {
+        when (result) {
+            is JvmMonitorEnterResult.Acquired -> {
+                statesByThreadId[threadId] = JvmThreadSchedulingState.Runnable
+            }
+            is JvmMonitorEnterResult.Blocked -> {
+                statesByThreadId[threadId] = JvmThreadSchedulingState.BlockedOnMonitor(
+                    reference = reference,
+                    ownerThreadId = result.ownerThreadId,
+                )
+            }
+        }
+    }
 }
 
 sealed interface JvmThreadSchedulingState {
@@ -51,6 +85,15 @@ sealed interface JvmThreadSchedulingState {
     ) : JvmThreadSchedulingState {
         init {
             require(ownerThreadId.isNotBlank()) { "owner thread id must not be blank" }
+        }
+    }
+
+    data class WaitingOnMonitor(
+        val reference: JvmObjectReferenceValue,
+        val releasedHoldCount: Int,
+    ) : JvmThreadSchedulingState {
+        init {
+            require(releasedHoldCount > 0) { "released hold count must be positive: $releasedHoldCount" }
         }
     }
 }
