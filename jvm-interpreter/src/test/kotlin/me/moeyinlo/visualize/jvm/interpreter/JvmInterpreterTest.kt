@@ -16803,6 +16803,91 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial executes callee bytecode with the callee method constant pool`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Owner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "call",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0xB8.toByte(),
+                                0x00.toByte(),
+                                0x02.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantUtf8Entry("dummy", "dummy".encodeToByteArray()),
+                                    ConstantMethodRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+                                    ConstantClassEntry(ConstantPoolIndex(4)),
+                                    ConstantUtf8Entry("pkg/Helper", "pkg/Helper".encodeToByteArray()),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Helper",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+                    ConstantUtf8Entry("not-a-methodref", "not-a-methodref".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(4)),
+                    ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                    ConstantUtf8Entry("call", "call".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Owner",
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokespecial executes no argument int returning instance method`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("Owner")
