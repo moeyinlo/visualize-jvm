@@ -13119,6 +13119,66 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic NativeLibraries unload delegates to VM native library unload hook`() {
+        val unloadedLogicalNames = mutableListOf<String>()
+        val heap = JvmHeap()
+        val libraryName = heap.internString("interpreter-native")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, libraryName)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "jdk/internal/loader/NativeLibraries",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "unload",
+                            descriptor = "(Ljava/lang/String;ZJ)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x03.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry(
+                        "jdk/internal/loader/NativeLibraries",
+                        "jdk/internal/loader/NativeLibraries".encodeToByteArray(),
+                    ),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("unload", "unload".encodeToByteArray()),
+                    ConstantUtf8Entry("(Ljava/lang/String;ZJ)V", "(Ljava/lang/String;ZJ)V".encodeToByteArray()),
+                    ConstantLongEntry(0x1234L),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            currentClassName = "Caller",
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("interpreter-native"), unloadedLogicalNames)
+    }
+
+    @Test
     fun `invokestatic executes callee bytecode with the callee method constant pool`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(

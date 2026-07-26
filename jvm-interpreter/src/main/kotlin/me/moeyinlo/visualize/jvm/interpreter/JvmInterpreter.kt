@@ -721,14 +721,30 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
         nativeLibraryLoader: JvmNativeLibraryLoader? = null,
         javaVm: JvmSimulatedJavaVm? = null,
     ): JvmExecutionResult {
-        val effectiveLoadNativeLibraryHandler = nativeLibraryLoader?.loadHook(
-            javaVm ?: throw JvmUnsupportedInstructionException(
-                "Native library loader requires a simulated JavaVM",
-            ),
-        ) ?: loadNativeLibraryHandler
+        val effectiveLoadNativeLibraryHandler = if (nativeLibraryLoader == null) {
+            loadNativeLibraryHandler
+        } else {
+            nativeLibraryLoader.loadHook(
+                javaVm ?: throw JvmUnsupportedInstructionException(
+                    "Native library loader requires a simulated JavaVM",
+                ),
+            )
+        }
+        val effectiveUnloadNativeLibraryHandler = if (nativeLibraryLoader == null) {
+            unloadNativeLibraryHandler
+        } else {
+            nativeLibraryLoader.unloadHook(
+                javaVm ?: throw JvmUnsupportedInstructionException(
+                    "Native library loader requires a simulated JavaVM",
+                ),
+            )
+        }
         val frameResult = executeFrame(
             code = code,
             maxStack = maxStack,
@@ -747,6 +763,7 @@ object JvmInterpreter {
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
             loadNativeLibraryHandler = effectiveLoadNativeLibraryHandler,
+            unloadNativeLibraryHandler = effectiveUnloadNativeLibraryHandler,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -770,6 +787,9 @@ object JvmInterpreter {
         dynamicConstants: JvmDynamicConstantRegistry,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
     ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
@@ -826,6 +846,7 @@ object JvmInterpreter {
                             invokeDynamicCallSites,
                             dynamicConstants,
                             loadNativeLibraryHandler,
+                            unloadNativeLibraryHandler,
                         )
                         null
                     }
@@ -1103,6 +1124,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -1342,6 +1366,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites,
                 dynamicConstants,
                 loadNativeLibraryHandler,
+                unloadNativeLibraryHandler,
             )
             0xB9 -> executeInvokeInterface(
                 instruction,
@@ -4806,6 +4831,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
@@ -4826,6 +4854,7 @@ object JvmInterpreter {
             resolvedMethod = resolvedMethod,
             opcodeMnemonic = "invokestatic",
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )
     }
 
@@ -4846,6 +4875,9 @@ object JvmInterpreter {
         opcodeMnemonic: String,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
     ) {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
@@ -4881,6 +4913,7 @@ object JvmInterpreter {
             arguments = arguments,
             opcodeMnemonic = opcodeMnemonic,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )?.let { returnValue ->
             operandStack.push(returnValue)
         }
@@ -4903,6 +4936,9 @@ object JvmInterpreter {
         opcodeMnemonic: String,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
     ): JvmValue? {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
@@ -4939,6 +4975,7 @@ object JvmInterpreter {
                 currentClassName = resolvedMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -4990,6 +5027,7 @@ object JvmInterpreter {
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -6762,6 +6800,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ): JvmValue? {
         val intrinsic = nativeMethods.resolve(method)
             ?: throw JvmUnsatisfiedLinkError(
@@ -6778,6 +6819,7 @@ object JvmInterpreter {
                 monitors = monitors,
                 currentThreadId = currentThreadId,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 callStaticMethodHandler = { ownerClassName, name, descriptor, upcallArguments ->
                     executeStaticMethodUpcall(
                         ownerClassName = ownerClassName,
