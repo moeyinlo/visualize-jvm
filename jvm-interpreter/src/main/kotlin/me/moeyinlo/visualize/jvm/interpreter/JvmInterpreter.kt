@@ -143,6 +143,8 @@ class JvmMonitorBlockedException(
 class JvmThreadSuspendedException(
     val threadId: String,
     val state: JvmThreadSchedulingState,
+    val suspendedAtBytecodeOffset: Int,
+    val nextBytecodeOffset: Int?,
     message: String,
 ) : IllegalStateException(message)
 
@@ -914,7 +916,12 @@ object JvmInterpreter {
                             loadNativeLibraryHandler,
                             unloadNativeLibraryHandler,
                         )
-                        throwIfCurrentThreadSuspended(threadScheduler, currentThreadId)
+                        throwIfCurrentThreadSuspended(
+                            threadScheduler = threadScheduler,
+                            currentThreadId = currentThreadId,
+                            suspendedAtBytecodeOffset = instruction.offset,
+                            nextBytecodeOffset = instructions.getOrNull(instructionIndex + 1)?.offset,
+                        )
                         null
                     }
                 }
@@ -1111,12 +1118,16 @@ object JvmInterpreter {
     private fun throwIfCurrentThreadSuspended(
         threadScheduler: JvmThreadScheduler?,
         currentThreadId: String,
+        suspendedAtBytecodeOffset: Int,
+        nextBytecodeOffset: Int?,
     ) {
         val state = threadScheduler?.state(currentThreadId) ?: return
         if (state != JvmThreadSchedulingState.Runnable) {
             throw JvmThreadSuspendedException(
                 threadId = currentThreadId,
                 state = state,
+                suspendedAtBytecodeOffset = suspendedAtBytecodeOffset,
+                nextBytecodeOffset = nextBytecodeOffset,
                 message = "Thread $currentThreadId is suspended in scheduler state $state",
             )
         }

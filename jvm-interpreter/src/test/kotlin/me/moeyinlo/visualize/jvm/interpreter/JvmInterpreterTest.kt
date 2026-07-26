@@ -19178,6 +19178,8 @@ class JvmInterpreterTest {
         }
 
         assertEquals("main", exception.threadId)
+        assertEquals(1, exception.suspendedAtBytecodeOffset)
+        assertEquals(4, exception.nextBytecodeOffset)
         assertEquals(
             JvmThreadSchedulingState.WaitingOnMonitor(
                 reference = receiver,
