@@ -698,6 +698,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.4.4 | Access control | `jvm-runtime` | TBD | PENDING |
 | 5.4.5 | Method overriding | `jvm-runtime` | TBD | PENDING |
 | 5.4.6 | Method selection | `jvm-runtime` | TBD | PENDING |
+| 5.4.6 | Virtual method selection starts at the receiver class, searches its superclass chain, then selects the unique non-abstract maximally-specific superinterface default when no class implementation is found | `jvm-runtime` | `JvmMethodResolutionTest.virtual method resolution starts at the receiver class before superclasses`, `JvmMethodResolutionTest.virtual method resolution selects unique interface default after class hierarchy miss` | PARTIAL |
 | 5.5 | Initialization | `jvm-runtime`, `jvm-interpreter` | TBD | PENDING |
 | 5.6 | Binding native method implementations | `jvm-native`, `jvm-jni`, `jvm-host` | TBD | PENDING |
 | 5.7 | VM termination | `jvm-runtime` | TBD | PENDING |

@@ -231,10 +231,7 @@ class JvmClassHierarchy(
         return receiverClass.findDeclaredMethod(name, descriptor)
             ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
             ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
-            ?: throw JvmNoSuchMethodError(
-                guestClassName = "java/lang/NoSuchMethodError",
-                message = "$receiverClassName.$name:$descriptor",
-            )
+            ?: selectMaximallySpecificInterfaceMethod(receiverClassName, receiverClass.interfaceNames, name, descriptor)
     }
 
     fun resolveInterfaceMethodTarget(
