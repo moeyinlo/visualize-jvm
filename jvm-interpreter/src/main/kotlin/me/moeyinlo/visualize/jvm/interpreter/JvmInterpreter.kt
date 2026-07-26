@@ -1782,7 +1782,15 @@ object JvmInterpreter {
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
-            0xBB -> executeNew(instruction, operandStack, constantPool, heap)
+            0xBB -> executeNew(
+                instruction,
+                operandStack,
+                constantPool,
+                heap,
+                classHierarchy,
+                classInitializationStates,
+                currentThreadId,
+            )
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
             0xBE -> executeArrayLength(instruction, operandStack, heap)
             0xBF -> executeAThrow(instruction, operandStack, heap)
@@ -8012,8 +8020,13 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
         heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+        currentThreadId: String,
     ) {
-        operandStack.push(heap.allocateUninitializedObject(resolveConstantClassName(instruction, constantPool)))
+        val className = resolveConstantClassName(instruction, constantPool)
+        initializeClassForActiveUse(className, classHierarchy, classInitializationStates, currentThreadId)
+        operandStack.push(heap.allocateUninitializedObject(className))
     }
 
     private fun executeANewArray(

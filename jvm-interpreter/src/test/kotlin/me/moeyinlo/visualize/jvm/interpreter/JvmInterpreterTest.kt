@@ -3822,6 +3822,34 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new initializes target class without class initializer`() {
+        val heap = JvmHeap()
+        val initializationStates = JvmClassInitializationStates()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBB.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition(internalName = "example/Foo"))),
+            classInitializationStates = initializationStates,
+        )
+
+        val reference = result.operandStack.toList().single() as JvmObjectReferenceValue
+        assertFalse(heap.isInitialized(reference))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("example/Foo"))
+    }
+
+    @Test
     fun `invokespecial initializes an uninitialized object after constructor returns`() {
         val heap = JvmHeap()
 
