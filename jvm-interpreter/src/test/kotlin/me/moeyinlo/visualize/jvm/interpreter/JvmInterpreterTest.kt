@@ -22068,6 +22068,109 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked static call site target executes class initializer`() {
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Targets",
+                    fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "<clinit>",
+                            descriptor = "()V",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x07.toByte(),
+                                0xB3.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                    ConstantClassEntry(ConstantPoolIndex(3)),
+                                    ConstantUtf8Entry("pkg/Targets", "pkg/Targets".encodeToByteArray()),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                                ),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0xB2.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                    ConstantClassEntry(ConstantPoolIndex(3)),
+                                    ConstantUtf8Entry("pkg/Targets", "pkg/Targets".encodeToByteArray()),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                                ),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        val initializationStates = JvmClassInitializationStates()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Targets",
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicIntCallSiteConstantPool(),
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("pkg/Targets"))
+    }
+
+    @Test
     fun `invokedynamic cached linked static native target retains native library load hook`() {
         val loadedLogicalNames = mutableListOf<String>()
         val classHierarchy = JvmClassHierarchy(
