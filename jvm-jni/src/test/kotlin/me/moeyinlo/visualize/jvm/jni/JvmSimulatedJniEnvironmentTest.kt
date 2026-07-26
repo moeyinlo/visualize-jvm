@@ -5515,6 +5515,46 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(internalName = "Target"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "LTarget;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "LTarget;")
+        val mirrorReference = heap.internClassMirror("Example")
+        val targetReference = heap.allocateObject("Target")
+        heap.putInstanceField(
+            mirrorReference,
+            JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "LTarget;"),
+            targetReference,
+        )
+
+        val resultHandle = environment.getObjectField(receiverClassHandle, fieldHandle)
+
+        assertEquals(targetReference, handles.resolveObject(resultHandle!!))
+    }
+
+    @Test
     fun `GetObjectField returns jclass handles for stored guest class mirrors`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
