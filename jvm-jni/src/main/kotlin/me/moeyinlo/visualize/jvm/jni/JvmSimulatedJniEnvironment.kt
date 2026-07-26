@@ -1696,7 +1696,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun setByteField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Int) {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "B" || field.isStatic) {
             throw JvmJniFieldAccessException(

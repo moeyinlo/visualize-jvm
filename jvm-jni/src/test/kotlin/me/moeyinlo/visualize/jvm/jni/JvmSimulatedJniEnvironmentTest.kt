@@ -6965,6 +6965,45 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetByteField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "B",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "B")
+        val mirrorReference = heap.internClassMirror("Example")
+
+        environment.setByteField(receiverClassHandle, fieldHandle, -11)
+
+        assertEquals(
+            JvmByteValue(-11),
+            heap.getInstanceField(
+                mirrorReference,
+                JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "B"),
+            ),
+        )
+    }
+
+    @Test
     fun `SetByteField rejects non byte guest field handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
