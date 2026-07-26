@@ -20,6 +20,7 @@ object OpcodeExecutionCoverage {
     private val implementedOpcodes: Set<Int> =
         (0x00..0xAB).toSet() +
             (0xB2..0xB9).toSet() +
+            setOf(0xBA) +
             (0xBB..0xBF).toSet() +
             setOf(0xC5) +
             setOf(0xC0, 0xC1, 0xC2, 0xC3, 0xC4) +
