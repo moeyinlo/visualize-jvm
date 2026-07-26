@@ -158,4 +158,20 @@ class JvmNativeLibraryRegistryTest {
         assertEquals(null, registry.loadedLibrary("native-api"))
         assertEquals(null, registry.resolveExport(export.guestMethod))
     }
+    @Test
+    fun `unloadOrThrow reports missing native libraries`() {
+        val registry = JvmNativeLibraryRegistry()
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = JvmClassHierarchy(),
+                staticFields = JvmStaticFields(),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmNativeLibraryLoadException> {
+            registry.unloadOrThrow("native-api", javaVm)
+        }
+
+        assertEquals("native library native-api is not loaded", exception.message)
+    }
 }

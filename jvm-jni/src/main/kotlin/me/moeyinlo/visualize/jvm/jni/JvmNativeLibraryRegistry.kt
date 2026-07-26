@@ -57,6 +57,13 @@ class JvmNativeLibraryRegistry {
         )
     }
 
+    fun unloadOrThrow(
+        logicalName: String,
+        javaVm: JvmSimulatedJavaVm,
+    ): JvmNativeLibraryUnloadRequest =
+        unload(logicalName, javaVm)
+            ?: throw JvmNativeLibraryLoadException("native library $logicalName is not loaded")
+
     fun resolveExport(signature: JvmNativeGuestMethodSignature): JvmNativeDowncallTarget? =
         loadedByLogicalName.values
             .asSequence()
