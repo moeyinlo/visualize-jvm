@@ -1504,7 +1504,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun getLongField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Long {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "J" || field.isStatic) {
             throw JvmJniFieldAccessException(

@@ -5809,6 +5809,44 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetLongField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "J",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "J")
+        val mirrorReference = heap.internClassMirror("Example")
+        heap.putInstanceField(
+            mirrorReference,
+            JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "J"),
+            JvmLongValue(9_876_543_210L),
+        )
+
+        val result = environment.getLongField(receiverClassHandle, fieldHandle)
+
+        assertEquals(9_876_543_210L, result)
+    }
+
+    @Test
     fun `GetLongField reads default zero for an unwritten guest long instance field`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
