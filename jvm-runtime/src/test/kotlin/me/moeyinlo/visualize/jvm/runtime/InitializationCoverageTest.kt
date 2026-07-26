@@ -46,7 +46,6 @@ class InitializationCoverageTest {
         assertEquals(
             listOf(
                 "active use triggers initialization",
-                "class initialization state machine",
                 "superclass and superinterface initialization",
                 "initialization error handling",
                 "native class initialization boundary",

@@ -53,8 +53,9 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "class initialization state machine",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "No verified/prepared/initializing/initialized/erroneous class state table yet",
-            status = InitializationCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; interpreter active-use scheduling and waiting semantics remain pending",
+            status = InitializationCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmClassInitializationStateTest",
         ),
         InitializationCoverageEntry(
             rule = "superclass and superinterface initialization",
