@@ -19207,6 +19207,87 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled Object wait can resume from suspension next bytecode offset after notification`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("java/lang/Object")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "waiter")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/Object",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "wait",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val code = byteArrayOf(
+            0x2A.toByte(),
+            0xB6.toByte(),
+            0x00.toByte(),
+            0x01.toByte(),
+            0x03.toByte(),
+        )
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("wait", "wait".encodeToByteArray()),
+                ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+            ),
+        )
+
+        val suspension = assertFailsWith<JvmThreadSuspendedException> {
+            JvmInterpreter.execute(
+                code = code,
+                maxStack = 1,
+                constantPool = constantPool,
+                heap = heap,
+                localVariables = localVariables,
+                classHierarchy = classHierarchy,
+                nativeMethods = JvmVmIntrinsics.Registry,
+                monitors = monitors,
+                threadScheduler = scheduler,
+                currentThreadId = "waiter",
+                currentClassName = "pkg/Caller",
+            )
+        }
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "notifier")
+        scheduler.notifyOneMonitor(monitors, receiver, threadId = "notifier")
+        scheduler.exitMonitor(monitors, receiver, threadId = "notifier")
+        scheduler.resumeMonitorReentry(monitors, receiver, threadId = "waiter")
+
+        val resumed = JvmInterpreter.execute(
+            code = code,
+            maxStack = 1,
+            startBytecodeOffset = suspension.nextBytecodeOffset ?: error("wait suspension must expose resume offset"),
+            constantPool = constantPool,
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            monitors = monitors,
+            threadScheduler = scheduler,
+            currentThreadId = "waiter",
+            currentClassName = "pkg/Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(0)), resumed.operandStack.toList())
+        assertEquals(1, monitors.holdCount(receiver, threadId = "waiter"))
+    }
+
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()
