@@ -9574,6 +9574,35 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectArrayRegion returns jclass handles for guest class mirror array slots`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "First"),
+                    JvmClassDefinition(internalName = "Second"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val arrayHandle = environment.newObjectArray(3, classClassHandle, null)
+        val arrayReference = handles.resolveObject(arrayHandle)
+        val array = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        array.elements[0] = heap.internClassMirror("First")
+        array.elements[2] = heap.internClassMirror("Second")
+
+        val result = environment.getObjectArrayRegion(arrayHandle, start = 0, length = 3)
+
+        assertEquals("First", handles.resolveClass(result[0]!!))
+        assertEquals(null, result[1])
+        assertEquals("Second", handles.resolveClass(result[2]!!))
+    }
+
+    @Test
     fun `GetObjectArrayRegion rejects primitive arrays and invalid ranges`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -9629,6 +9658,37 @@ class JvmSimulatedJniEnvironmentTest {
             secondReference,
             handles.resolveObject(environment.getObjectArrayElement(arrayHandle, 3)!!),
         )
+    }
+
+    @Test
+    fun `SetObjectArrayRegion accepts jclass handles for guest Class arrays`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "First"),
+                    JvmClassDefinition(internalName = "Second"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val firstClassHandle = environment.findClass("First")
+        val secondClassHandle = environment.findClass("Second")
+        val arrayHandle = environment.newObjectArray(3, classClassHandle, null)
+
+        environment.setObjectArrayRegion(arrayHandle, start = 0, values = listOf(firstClassHandle, null, secondClassHandle))
+
+        val arrayReference = handles.resolveObject(arrayHandle)
+        val array = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        val firstValue = array.elements[0] as JvmObjectReferenceValue
+        val secondValue = array.elements[2] as JvmObjectReferenceValue
+        assertEquals(JvmClassPayload("First"), heap.get(firstValue).payload)
+        assertEquals(JvmNullValue, array.elements[1])
+        assertEquals(JvmClassPayload("Second"), heap.get(secondValue).payload)
     }
 
     @Test

@@ -1445,7 +1445,7 @@ class JvmSimulatedJniEnvironment(
         return array.elements.subList(start, start + length).map { element ->
             when (element) {
                 JvmNullValue -> null
-                is JvmObjectReferenceValue -> handles.newObjectHandle(element)
+                is JvmObjectReferenceValue -> newJObjectHandle(element)
             }
         }
     }
