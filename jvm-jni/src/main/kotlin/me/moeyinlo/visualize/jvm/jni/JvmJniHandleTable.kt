@@ -121,6 +121,13 @@ class JvmJniHandleTable {
             is JvmJniLocalReferenceSnapshot.ClassReference -> newClassHandle(snapshot.className)
         }
 
+    fun newGlobalReference(snapshot: JvmJniLocalReferenceSnapshot): JvmJniHandleId =
+        when (snapshot) {
+            is JvmJniLocalReferenceSnapshot.ObjectReference -> newGlobalObjectHandle(snapshot.reference)
+            is JvmJniLocalReferenceSnapshot.ClassReference ->
+                allocate(JvmJniHandleEntry.ClassHandle(snapshot.className), JvmJniHandleScope.Global)
+        }
+
     private fun allocate(entry: JvmJniHandleEntry, scope: JvmJniHandleScope): JvmJniHandleId {
         val handle = JvmJniHandleId(nextHandleId)
         nextHandleId += 1

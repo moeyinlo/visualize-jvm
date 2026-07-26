@@ -126,7 +126,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun newGlobalRef(handle: JvmJniHandleId?): JvmJniHandleId? =
-        handle?.let { localHandle -> handles.newGlobalObjectHandle(handles.resolveObject(localHandle)) }
+        handle?.let { localHandle -> handles.newGlobalReference(handles.snapshotLocalReference(localHandle)) }
 
     fun deleteGlobalRef(handle: JvmJniHandleId?) {
         if (handle != null) {
