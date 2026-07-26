@@ -1715,7 +1715,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun getCharField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "C" || field.isStatic) {
             throw JvmJniFieldAccessException(
