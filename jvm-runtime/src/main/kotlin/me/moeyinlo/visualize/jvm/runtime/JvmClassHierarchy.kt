@@ -174,7 +174,9 @@ class JvmClassHierarchy(
         ownerClass.findDeclaredMethod(name, descriptor)?.let { method -> return method }
         ownerClass.findSignaturePolymorphicDeclaration(name, descriptor)?.let { method -> return method }
         if (name != "<init>") {
-            findSuperclassMethod(ownerClass.superclassName, name, descriptor)?.let { method -> return method }
+            findSuperclassMethodForMethodResolution(ownerClass.superclassName, name, descriptor)?.let { method ->
+                return method
+            }
             selectMaximallySpecificInterfaceMethodOrNull(ownerClass.interfaceNames, name, descriptor)?.let { method ->
                 return method
             }
@@ -416,6 +418,22 @@ class JvmClassHierarchy(
         val superclass = classesByName[superclassName] ?: return null
         return superclass.findDeclaredMethod(name, descriptor)
             ?: findSuperclassMethod(superclass.superclassName, name, descriptor)
+    }
+
+    private fun findSuperclassMethodForMethodResolution(
+        superclassName: String?,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod? {
+        if (superclassName == null) {
+            return null
+        }
+        val superclass = classesByName[superclassName] ?: return null
+        return superclass.findDeclaredMethod(name, descriptor)
+            ?: superclass.findSignaturePolymorphicDeclaration(name, descriptor)
+            ?: findSuperclassMethodForMethodResolution(superclass.superclassName, name, descriptor)
+            ?: selectMaximallySpecificInterfaceMethodOrNull(superclass.interfaceNames, name, descriptor)
+            ?: collectInterfaceMethods(superclass.interfaceNames, name, descriptor).firstOrNull()
     }
 
     private fun findPublicObjectMethod(name: String, descriptor: String): JvmResolvedMethod? =

@@ -138,6 +138,70 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `method resolution recursively searches superclass superinterface defaults before child interfaces`() {
+        val parentDefaultCode = byteArrayOf(0x05)
+        val childDefaultCode = byteArrayOf(0x06)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    superclassName = "Parent",
+                    interfaceNames = listOf("ChildFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    interfaceNames = listOf("ParentFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "ParentFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = parentDefaultCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "ChildFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = childDefaultCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "ParentFace",
+                name = "answer",
+                descriptor = "()I",
+                isStatic = false,
+                code = parentDefaultCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveMethod(
+                ownerClassName = "Example",
+                name = "answer",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `method resolution does not inherit instance initialization methods from superclasses`() {
         val hierarchy = JvmClassHierarchy(
             listOf(
