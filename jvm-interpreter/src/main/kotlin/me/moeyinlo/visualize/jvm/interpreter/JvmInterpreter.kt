@@ -6435,12 +6435,22 @@ object JvmInterpreter {
             JvmMethodHandleReferenceKind.PutStatic -> executeLinkedInvokeDynamicPutStaticTarget(
                 instruction = instruction,
                 operandStack = operandStack,
+                constantPool = constantPool,
                 staticFields = staticFields,
                 heap = heap,
                 classHierarchy = classHierarchy,
                 classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             JvmMethodHandleReferenceKind.InvokeStatic -> executeLinkedInvokeDynamicStaticTarget(
                 instruction = instruction,
@@ -6737,12 +6747,26 @@ object JvmInterpreter {
     private fun executeLinkedInvokeDynamicPutStaticTarget(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
+        constantPool: ConstantPool,
         staticFields: JvmStaticFields,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        threadScheduler: JvmThreadScheduler? = null,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
             ?: throw JvmUnsupportedInstructionException(
@@ -6764,7 +6788,29 @@ object JvmInterpreter {
             classHierarchy,
             classInitializationStates,
             currentThreadId,
-        )
+        ) { classInitializer ->
+            executeStaticMethodWithArguments(
+                instruction = instruction,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+                resolvedMethod = classInitializer,
+                arguments = emptyList(),
+                opcodeMnemonic = "class initialization",
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+            )
+        }
         val field = JvmFieldReference(
             ownerClassName = resolvedField.ownerClassName,
             name = resolvedField.name,
