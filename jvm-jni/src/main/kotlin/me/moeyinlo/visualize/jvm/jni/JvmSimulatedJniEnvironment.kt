@@ -394,7 +394,7 @@ class JvmSimulatedJniEnvironment(
             )
         ) {
             JvmNullValue -> null
-            is JvmObjectReferenceValue -> handles.newObjectHandle(result)
+            is JvmObjectReferenceValue -> newJObjectHandle(result)
         }
     }
 

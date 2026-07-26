@@ -1,4 +1,4 @@
-package me.moeyinlo.visualize.jvm.jni
+﻿package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
@@ -571,6 +571,53 @@ class JvmSimulatedJniEnvironmentTest {
             ),
             calls,
         )
+    }
+
+    @Test
+    fun `CallObjectMethod returns jclass handles for guest Class mirror results`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val resultReference = heap.internClassMirror("Child")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "Child"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "type",
+                                descriptor = "()Ljava/lang/Class;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callObjectMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmReferenceValue = resultReference
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val objectHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+        val methodHandle = environment.getMethodId(classHandle, "type", "()Ljava/lang/Class;")
+
+        val resultHandle = environment.callObjectMethod(objectHandle, methodHandle)
+
+        assertEquals("Child", handles.resolveClass(resultHandle!!))
     }
 
     @Test
