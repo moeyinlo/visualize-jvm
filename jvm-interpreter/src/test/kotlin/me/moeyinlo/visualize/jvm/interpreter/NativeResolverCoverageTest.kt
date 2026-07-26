@@ -45,8 +45,6 @@ class NativeResolverCoverageTest {
 
         assertEquals(
             listOf(
-                "native library loading lifecycle",
-                "JNI_OnLoad registration",
                 "automatic descriptor-to-library binding",
             ),
             unsupportedRules,

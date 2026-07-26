@@ -61,14 +61,16 @@ object NativeResolverCoverage {
         NativeResolverCoverageEntry(
             rule = "native library loading lifecycle",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
-            currentComponent = "No runtime System.loadLibrary/load/native library table lifecycle yet",
-            status = NativeResolverCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmNativeLibraryLifecycle binds, loads, unloads, and calls optional JNI_OnLoad/JNI_OnUnload; runtime System.loadLibrary wiring remains pending",
+            status = NativeResolverCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmNativeLibraryLifecycleTest",
         ),
         NativeResolverCoverageEntry(
             rule = "JNI_OnLoad registration",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
-            currentComponent = "Library descriptors name JNI_OnLoad, but runtime invocation/registration is not implemented",
-            status = NativeResolverCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmNativeLibraryLifecycle invokes optional JNI_OnLoad and registers the accepted JNI version in JvmNativeLibraryRegistry",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmNativeLibraryLifecycleTest",
         ),
         NativeResolverCoverageEntry(
             rule = "automatic descriptor-to-library binding",
