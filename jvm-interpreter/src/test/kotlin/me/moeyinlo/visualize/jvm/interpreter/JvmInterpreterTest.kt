@@ -21316,6 +21316,98 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic native bootstrap retains native library unload hook`() {
+        val heap = JvmHeap()
+        val unloadedLogicalNames = mutableListOf<String>()
+        val bootstrapDescriptor =
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
+                "Ljava/lang/invoke/CallSite;"
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "bootstrap",
+                            descriptor = bootstrapDescriptor,
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Targets",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey(
+                ownerClassName = "pkg/Bootstrap",
+                name = "bootstrap",
+                descriptor = bootstrapDescriptor,
+                isStatic = true,
+            ) to JvmNativeMethodIntrinsic { context, invocation ->
+                assertEquals(3, invocation.arguments.size)
+                context.unloadNativeLibraryHandler("indy-bootstrap-native")
+                context.heap.allocateCallSite(
+                    context.heap.internMethodHandle(
+                        referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                        referenceIndex = 12,
+                    ),
+                )
+            },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicBootstrapExecutionConstantPool(bootstrapDescriptor),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(5),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
+            ),
+            invokeDynamicCallSites = callSites,
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("indy-bootstrap-native"), unloadedLogicalNames)
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        assertEquals(
+            classHierarchy.resolveMethod("pkg/Targets", "answer", "()I"),
+            callSites.linked(JvmInvokeDynamicCallSiteKey("pkg/Caller", 0))?.targetMethod,
+        )
+    }
+
+    @Test
     fun `invokedynamic resolves nested dynamic constant bootstrap static arguments`() {
         val heap = JvmHeap()
         val bootstrapDescriptor =

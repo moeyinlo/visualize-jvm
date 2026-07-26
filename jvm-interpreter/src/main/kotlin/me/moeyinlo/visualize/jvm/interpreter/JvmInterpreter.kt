@@ -1402,6 +1402,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(instruction, operandStack, constantPool, heap)
@@ -5476,6 +5477,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         val thirdOperand = instruction.operands[2]
         val fourthOperand = instruction.operands[3]
@@ -5599,6 +5603,7 @@ object JvmInterpreter {
             arguments = bootstrapArguments,
             opcodeMnemonic = "invokedynamic bootstrap",
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         ) ?: throw JvmUnsupportedInstructionException(
             "Invalid invokedynamic call site ${instruction.constantPoolIndex()} at offset ${instruction.offset}: " +
                 "bootstrap method ${bootstrapMethod.ownerClassName}.${bootstrapMethod.name}:" +
