@@ -19120,6 +19120,73 @@ class JvmInterpreterTest {
 
         assertEquals(scheduler, observedScheduler)
     }
+
+    @Test
+    fun `Object wait suspends scheduled interpreter execution before following bytecode`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("java/lang/Object")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "main")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/Object",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "wait",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmThreadSuspendedException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB6.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x03.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("wait", "wait".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = localVariables,
+                classHierarchy = classHierarchy,
+                nativeMethods = JvmVmIntrinsics.Registry,
+                monitors = monitors,
+                threadScheduler = scheduler,
+                currentThreadId = "main",
+                currentClassName = "pkg/Caller",
+            )
+        }
+
+        assertEquals("main", exception.threadId)
+        assertEquals(
+            JvmThreadSchedulingState.WaitingOnMonitor(
+                reference = receiver,
+                releasedHoldCount = 1,
+            ),
+            exception.state,
+        )
+    }
+
     @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()

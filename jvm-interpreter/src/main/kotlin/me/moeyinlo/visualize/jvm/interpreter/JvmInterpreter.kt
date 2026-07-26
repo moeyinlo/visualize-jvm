@@ -79,6 +79,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
@@ -136,6 +137,12 @@ class JvmMonitorBlockedException(
     val objectReference: JvmObjectReferenceValue,
     val ownerThreadId: String,
     val blockedThreadIds: List<String>,
+    message: String,
+) : IllegalStateException(message)
+
+class JvmThreadSuspendedException(
+    val threadId: String,
+    val state: JvmThreadSchedulingState,
     message: String,
 ) : IllegalStateException(message)
 
@@ -907,6 +914,7 @@ object JvmInterpreter {
                             loadNativeLibraryHandler,
                             unloadNativeLibraryHandler,
                         )
+                        throwIfCurrentThreadSuspended(threadScheduler, currentThreadId)
                         null
                     }
                 }
@@ -1098,6 +1106,20 @@ object JvmInterpreter {
             }
         }
         return JvmFrameExecutionResult(operandStack = operandStack)
+    }
+
+    private fun throwIfCurrentThreadSuspended(
+        threadScheduler: JvmThreadScheduler?,
+        currentThreadId: String,
+    ) {
+        val state = threadScheduler?.state(currentThreadId) ?: return
+        if (state != JvmThreadSchedulingState.Runnable) {
+            throw JvmThreadSuspendedException(
+                threadId = currentThreadId,
+                state = state,
+                message = "Thread $currentThreadId is suspended in scheduler state $state",
+            )
+        }
     }
 
     private fun dispatchExistingGuestThrowableToHandler(
