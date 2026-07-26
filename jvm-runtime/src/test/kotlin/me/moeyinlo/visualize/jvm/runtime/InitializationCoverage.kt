@@ -67,7 +67,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "initialization error handling",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "Active use of a class already marked erroneous throws guest NoClassDefFoundError; interpreted <clinit> abrupt completion by modeled guest VM exceptions marks the class erroneous, while ExceptionInInitializerError wrapping and full Throwable/error hierarchy handling remain pending",
+            currentComponent = "Active use of a class already marked erroneous throws guest NoClassDefFoundError; interpreted <clinit> abrupt completion marks the class erroneous, preserves Error subclasses as-is, and wraps non-Error guest VM exceptions as ExceptionInInitializerError; deeper Throwable object cause/linkage modeling remains pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
