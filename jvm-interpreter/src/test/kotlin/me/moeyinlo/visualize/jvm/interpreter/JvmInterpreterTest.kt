@@ -18440,6 +18440,106 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokeinterface executes target bytecode with the target method constant pool`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Impl")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Interface",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "call",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isAbstract = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Impl",
+                    interfaceNames = listOf("pkg/Interface"),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "call",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0xB8.toByte(),
+                                0x00.toByte(),
+                                0x02.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantUtf8Entry("dummy", "dummy".encodeToByteArray()),
+                                    ConstantMethodRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+                                    ConstantClassEntry(ConstantPoolIndex(4)),
+                                    ConstantUtf8Entry("pkg/Helper", "pkg/Helper".encodeToByteArray()),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Helper",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB9.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantInterfaceMethodRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+                    ConstantUtf8Entry("not-a-methodref", "not-a-methodref".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(4)),
+                    ConstantUtf8Entry("pkg/Interface", "pkg/Interface".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                    ConstantUtf8Entry("call", "call".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokeinterface executes receiver class implementation`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Impl")
