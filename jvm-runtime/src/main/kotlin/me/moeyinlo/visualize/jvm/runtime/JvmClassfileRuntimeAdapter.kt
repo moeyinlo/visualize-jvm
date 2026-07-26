@@ -5,10 +5,16 @@ import me.moeyinlo.visualize.jvm.classfile.ClassFile
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.CodeExceptionHandler
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantFloatEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantLongEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.ConstantValueAttribute
 import me.moeyinlo.visualize.jvm.classfile.FieldInfo
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
 
@@ -33,7 +39,25 @@ private fun FieldInfo.toJvmFieldDefinition(constantPool: ConstantPool): JvmField
         isPrivate = has(FieldAccessFlag.Private),
         isPackagePrivate = !has(FieldAccessFlag.Public) && !has(FieldAccessFlag.Private) && !has(FieldAccessFlag.Protected),
         isProtected = has(FieldAccessFlag.Protected),
+        constantValue = constantValue(constantPool),
     )
+
+private fun FieldInfo.constantValue(constantPool: ConstantPool): JvmValue? {
+    val attribute = attributes.filterIsInstance<ConstantValueAttribute>().singleOrNull()
+        ?: return null
+    return when (val entry = constantPool[attribute.constantValueIndex]) {
+        is ConstantIntegerEntry -> JvmIntValue(entry.value)
+        is ConstantFloatEntry -> JvmFloatValue(entry.value)
+        is ConstantLongEntry -> JvmLongValue(entry.value)
+        is ConstantDoubleEntry -> JvmDoubleValue(entry.value)
+        is ConstantStringEntry -> throw JvmClassfileRuntimeAdapterException(
+            "String ConstantValue attributes require guest String heap preparation",
+        )
+        else -> throw JvmClassfileRuntimeAdapterException(
+            "Invalid ConstantValue entry ${attribute.constantValueIndex}: found ${entry.javaClass.simpleName}",
+        )
+    }
+}
 
 private fun MethodInfo.toJvmMethodDefinition(constantPool: ConstantPool): JvmMethodDefinition {
     val codeAttribute = attributes.filterIsInstance<CodeAttribute>().singleOrNull()
