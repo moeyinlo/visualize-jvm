@@ -40,14 +40,14 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "static method active-use operations",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmInterpreter invokestatic triggers active-use initialization for the resolved static method owner and shares the initialization state ledger with interpreted static callee frames; actual <clinit> bytecode scheduling remains pending",
+            currentComponent = "JvmInterpreter invokestatic executes target <clinit>:()V before invoking the resolved static method and shares the initialization state ledger with class initializer and callee frames",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "getstatic and putstatic execute target <clinit>:()V before static field access; new, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; remaining <clinit> execution paths, recursive ordering, waiting, and error transitions remain pending",
+            currentComponent = "getstatic, putstatic, and invokestatic execute target <clinit>:()V before static field or static method access; new and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; remaining <clinit> execution paths, recursive ordering, waiting, and error transitions remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
