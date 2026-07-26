@@ -29,6 +29,9 @@ class JvmNativeLibraryRegistry {
     fun loadedLibrary(logicalName: String): JvmLoadedNativeLibrary? =
         loadedByLogicalName[logicalName]
 
+    fun markUnloaded(logicalName: String): JvmLoadedNativeLibrary? =
+        loadedByLogicalName.remove(logicalName)
+
     fun resolveExport(signature: JvmNativeGuestMethodSignature): JvmNativeDowncallTarget? =
         loadedByLogicalName.values
             .asSequence()

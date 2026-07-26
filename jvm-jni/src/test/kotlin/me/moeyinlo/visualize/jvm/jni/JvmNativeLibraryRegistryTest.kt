@@ -48,4 +48,34 @@ class JvmNativeLibraryRegistryTest {
             registry.markLoaded(binding, onLoadVersion = null)
         }
     }
+    @Test
+    fun `unloading native library removes exports and allows reload`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "call",
+            methodDescriptor = "()I",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_call",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(export),
+        )
+        val target = JvmNativeDowncallTarget(library, export.guestMethod, export.symbolName, 0x1234L)
+        val binding = JvmNativeLibraryBinding(
+            library = library,
+            onLoadTarget = null,
+            onUnloadTarget = null,
+            exportTargets = mapOf(export.guestMethod to target),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        val loaded = registry.markLoaded(binding, onLoadVersion = JvmJniVersions.Version24)
+
+        assertEquals(loaded, registry.markUnloaded("native-api"))
+
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(null, registry.resolveExport(export.guestMethod))
+        assertEquals(loaded, registry.markLoaded(binding, onLoadVersion = JvmJniVersions.Version24))
+    }
 }
