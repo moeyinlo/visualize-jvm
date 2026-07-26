@@ -35,10 +35,9 @@ class JvmNativeLibraryLifecycle(
         request.onUnloadInvocation
             ?.let { invocation ->
                 javaVm.withNativeLibraryLifecycleLocalFrame {
-                    invokeDowncall.invoke(invocation)
+                    invokeDowncall.invoke(invocation).requireOnUnloadVoid(javaVm.environment)
                 }
             }
-            ?.requireOnUnloadVoid(javaVm.environment)
         return request.loadedLibrary
     }
 }
@@ -64,6 +63,9 @@ private fun JvmNativeDowncallReturn.toOnLoadVersion(environment: JvmSimulatedJni
 }
 
 private fun JvmNativeDowncallReturn.requireOnUnloadVoid(environment: JvmSimulatedJniEnvironment) {
+    if (this is JvmNativeDowncallReturn.ThrownGuestException) {
+        throw JvmNativeGuestException(environment.handles.resolveObject(throwableHandle))
+    }
     requireOnUnloadVoid()
     environment.takePendingException()?.let { throwable ->
         throw JvmNativeGuestException(throwable)

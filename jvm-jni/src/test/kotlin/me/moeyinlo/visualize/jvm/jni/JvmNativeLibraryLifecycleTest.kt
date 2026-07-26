@@ -350,6 +350,53 @@ class JvmNativeLibraryLifecycleTest {
     }
 
     @Test
+    fun `unload propagates explicit JNI_OnUnload guest exception returns`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val onUnload = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = null,
+            symbolName = "JNI_OnUnload",
+            address = 0x2222L,
+        )
+        val binding = JvmNativeLibraryBinding(
+            library = library,
+            onLoadTarget = null,
+            onUnloadTarget = onUnload,
+            exportTargets = emptyMap(),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        registry.markLoaded(binding, onLoadVersion = null)
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val throwable = heap.allocateObject("java/lang/IllegalStateException")
+        val javaVm = JvmSimulatedJavaVm(environment)
+        val lifecycle = JvmNativeLibraryLifecycle(
+            backend = JvmPanamaDowncallBackend { _, _ -> null },
+            registry = registry,
+            invokeDowncall = {
+                JvmNativeDowncallReturn.ThrownGuestException(environment.handles.newObjectHandle(throwable))
+            },
+        )
+
+        val thrown = assertFailsWith<JvmNativeGuestException> {
+            lifecycle.unload("native-api", javaVm)
+        }
+
+        assertEquals(throwable, thrown.throwable)
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(0, environment.localFrameDepth)
+        assertEquals(0, environment.handles.localFrameDepth)
+        assertEquals(0, environment.handles.liveHandleCount)
+    }
+
+    @Test
     fun `duplicate load is rejected before invoking JNI_OnLoad again`() {
         val library = JvmNativeLibraryDescriptor(
             logicalName = "native-api",
