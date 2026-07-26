@@ -9691,6 +9691,35 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewWeakGlobalRef creates class weak global handles that survive local frame pop until DeleteWeakGlobalRef`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        environment.pushLocalFrame(2)
+        val localClassHandle = environment.findClass("Example")
+
+        val weakGlobalClassHandle = environment.newWeakGlobalRef(localClassHandle)!!
+        environment.popLocalFrame(null)
+
+        assertEquals("Example", handles.resolveClass(weakGlobalClassHandle))
+        assertEquals(JvmJniReferenceType.WeakGlobal, environment.getObjectRefType(weakGlobalClassHandle))
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveClass(localClassHandle)
+        }
+
+        environment.deleteWeakGlobalRef(weakGlobalClassHandle)
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveClass(weakGlobalClassHandle)
+        }
+    }
+
+    @Test
     fun `DeleteWeakGlobalRef enforces weak global reference scope`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

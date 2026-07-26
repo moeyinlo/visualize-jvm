@@ -128,6 +128,13 @@ class JvmJniHandleTable {
                 allocate(JvmJniHandleEntry.ClassHandle(snapshot.className), JvmJniHandleScope.Global)
         }
 
+    fun newWeakGlobalReference(snapshot: JvmJniLocalReferenceSnapshot): JvmJniHandleId =
+        when (snapshot) {
+            is JvmJniLocalReferenceSnapshot.ObjectReference -> newWeakGlobalObjectHandle(snapshot.reference)
+            is JvmJniLocalReferenceSnapshot.ClassReference ->
+                allocate(JvmJniHandleEntry.ClassHandle(snapshot.className), JvmJniHandleScope.WeakGlobal)
+        }
+
     private fun allocate(entry: JvmJniHandleEntry, scope: JvmJniHandleScope): JvmJniHandleId {
         val handle = JvmJniHandleId(nextHandleId)
         nextHandleId += 1
