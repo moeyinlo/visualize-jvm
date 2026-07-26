@@ -5177,7 +5177,10 @@ object JvmInterpreter {
             }
             JvmClassInitializationState.Initialized -> Unit
             is JvmClassInitializationState.Initializing -> Unit
-            is JvmClassInitializationState.Erroneous -> Unit
+            is JvmClassInitializationState.Erroneous -> throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = className,
+            )
         }
     }
 
