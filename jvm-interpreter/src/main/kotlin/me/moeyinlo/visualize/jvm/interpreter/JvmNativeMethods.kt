@@ -4,6 +4,7 @@ import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallInvoker
 import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestMethodSignature
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryRegistry
 import me.moeyinlo.visualize.jvm.jni.JvmSimulatedJniEnvironment
+import me.moeyinlo.visualize.jvm.jni.prepareInstanceInvocation
 import me.moeyinlo.visualize.jvm.jni.prepareStaticInvocation
 import me.moeyinlo.visualize.jvm.jni.toGuestValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
@@ -152,28 +153,34 @@ class JvmNativeMethodRegistry(
             invokeDowncall: JvmNativeDowncallInvoker,
         ): JvmNativeMethodRegistry {
             val loadedLibraryResolver: DynamicNativeMethodResolver = { key ->
-                if (!key.isStatic) {
-                    null
-                } else {
-                    val signature = JvmNativeGuestMethodSignature(
-                        ownerClassName = key.ownerClassName,
-                        methodName = key.name,
-                        methodDescriptor = key.descriptor,
-                        isStatic = true,
-                    )
-                    loadedLibraries.resolveExport(signature)?.let { target ->
-                        JvmNativeMethodIntrinsic { _, invocation ->
+                val signature = JvmNativeGuestMethodSignature(
+                    ownerClassName = key.ownerClassName,
+                    methodName = key.name,
+                    methodDescriptor = key.descriptor,
+                    isStatic = key.isStatic,
+                )
+                loadedLibraries.resolveExport(signature)?.let { target ->
+                    JvmNativeMethodIntrinsic { _, invocation ->
+                        val downcallInvocation = if (key.isStatic) {
                             val classHandle = environment.handles.newClassHandle(key.ownerClassName)
-                            invokeDowncall
-                                .invoke(
-                                    target.prepareStaticInvocation(
-                                        environment = environment,
-                                        classHandle = classHandle,
-                                        guestArguments = invocation.arguments,
-                                    ),
+                            target.prepareStaticInvocation(
+                                environment = environment,
+                                classHandle = classHandle,
+                                guestArguments = invocation.arguments,
+                            )
+                        } else {
+                            val receiver = invocation.receiver
+                                ?: throw JvmUnsupportedInstructionException(
+                                    "Loaded native instance export ${key.ownerClassName}.${key.name}:" +
+                                        "${key.descriptor} requires a receiver",
                                 )
-                                .toGuestValue(environment)
+                            target.prepareInstanceInvocation(
+                                environment = environment,
+                                receiver = receiver,
+                                guestArguments = invocation.arguments,
+                            )
                         }
+                        invokeDowncall.invoke(downcallInvocation).toGuestValue(environment)
                     }
                 }
             }

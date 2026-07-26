@@ -80,9 +80,9 @@ object NativeResolverCoverage {
             coveringTestClass = "JvmNativeLibraryLoaderTest",
         ),
         NativeResolverCoverageEntry(
-            rule = "loaded native library static export dispatch",
+            rule = "loaded native library export dispatch",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
-            currentComponent = "JvmNativeMethodRegistry resolves loaded library Java_ static exports into simulated JNI downcalls",
+            currentComponent = "JvmNativeMethodRegistry resolves loaded library Java_ static and instance exports into simulated JNI downcalls",
             status = NativeResolverCoverageStatus.Implemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
