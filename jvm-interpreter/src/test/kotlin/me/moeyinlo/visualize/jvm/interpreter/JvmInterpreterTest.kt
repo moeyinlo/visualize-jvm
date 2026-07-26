@@ -12961,6 +12961,82 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic executes callee bytecode with the callee method constant pool`() {
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Target",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0xB8.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                    ConstantClassEntry(ConstantPoolIndex(3)),
+                                    ConstantUtf8Entry("pkg/Helper", "pkg/Helper".encodeToByteArray()),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Helper",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("not-a-methodref", "not-a-methodref".encodeToByteArray()),
+                    ConstantMethodRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(5)),
+                    ConstantClassEntry(ConstantPoolIndex(4)),
+                    ConstantUtf8Entry("pkg/Target", "pkg/Target".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = classHierarchy,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokestatic System loadLibrary loads through configured native library loader`() {
         val descriptor = JvmNativeLibraryDescriptor(
             logicalName = "loader-native",

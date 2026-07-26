@@ -1,5 +1,7 @@
 package me.moeyinlo.visualize.jvm.runtime
 
+import me.moeyinlo.visualize.jvm.classfile.ConstantPool
+
 data class JvmClassDefinition(
     val internalName: String,
     val superclassName: String? = null,
@@ -55,6 +57,7 @@ data class JvmMethodDefinition(
     val isNative: Boolean = false,
     val isVarargs: Boolean = false,
     val code: ByteArray? = null,
+    val constantPool: ConstantPool? = null,
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
     val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
@@ -73,6 +76,7 @@ data class JvmResolvedMethod(
     val isVarargs: Boolean = false,
     val signaturePolymorphicDeclarationDescriptor: String? = null,
     val code: ByteArray? = null,
+    val constantPool: ConstantPool? = null,
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
     val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
@@ -246,6 +250,7 @@ class JvmClassHierarchy(
                     isNative = method.isNative,
                     isVarargs = method.isVarargs,
                     code = method.code,
+                    constantPool = method.constantPool,
                     maxStack = method.maxStack,
                     maxLocals = method.maxLocals,
                     exceptionHandlers = method.exceptionHandlers,
