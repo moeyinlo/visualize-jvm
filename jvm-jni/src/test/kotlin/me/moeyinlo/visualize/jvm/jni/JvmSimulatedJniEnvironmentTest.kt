@@ -6544,6 +6544,44 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetBooleanField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "Z",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "Z")
+        val mirrorReference = heap.internClassMirror("Example")
+        heap.putInstanceField(
+            mirrorReference,
+            JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "Z"),
+            JvmBooleanValue(true),
+        )
+
+        val result = environment.getBooleanField(receiverClassHandle, fieldHandle)
+
+        assertEquals(true, result)
+    }
+
+    @Test
     fun `GetBooleanField reads default false for an unwritten guest boolean instance field`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
