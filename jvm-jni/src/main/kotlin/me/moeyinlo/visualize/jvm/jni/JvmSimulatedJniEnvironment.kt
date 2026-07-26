@@ -122,7 +122,6 @@ class JvmSimulatedJniEnvironment(
     fun exceptionDescribe() {
         pendingException?.let { throwable ->
             exceptionReporter(describeThrowable(throwable))
-            pendingException = null
         }
     }
 
