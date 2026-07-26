@@ -13500,6 +13500,69 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial native methods retain native library unload hook`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeLibraryBridge")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        val unloadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeLibraryBridge",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "unloadSpecial",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey(
+                ownerClassName = "NativeLibraryBridge",
+                name = "unloadSpecial",
+                descriptor = "()V",
+                isStatic = false,
+            ) to JvmNativeMethodIntrinsic { context, invocation ->
+                assertEquals(receiver, invocation.receiver)
+                context.unloadNativeLibraryHandler("special-native")
+                null
+            },
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeLibraryBridge", "NativeLibraryBridge".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("unloadSpecial", "unloadSpecial".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("special-native"), unloadedLogicalNames)
+    }
+
+    @Test
     fun `invokeinterface native methods retain native library load hook`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeInterfaceImpl")
