@@ -1042,6 +1042,7 @@ object JvmInterpreter {
                     unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                     nativeLibraryLoader = nativeLibraryLoader,
                     javaVm = javaVm,
+                    initialOperandStackValues = frame.operandStackValues,
                     startBytecodeOffset = frame.startBytecodeOffset,
                 )
             ) {
