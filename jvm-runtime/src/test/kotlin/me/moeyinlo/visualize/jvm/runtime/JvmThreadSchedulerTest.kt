@@ -72,4 +72,37 @@ class JvmThreadSchedulerTest {
         )
         assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("waiter"))
     }
+
+    @Test
+    fun `scheduler moves all notified waiters into monitor blocked handoff before resume`() {
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "first")
+        assertEquals(1, scheduler.waitForMonitorNotification(monitors, reference, threadId = "first"))
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "second")
+        assertEquals(1, scheduler.waitForMonitorNotification(monitors, reference, threadId = "second"))
+
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "notifier")
+        assertEquals(
+            listOf("first", "second"),
+            scheduler.notifyAllMonitor(monitors, reference, threadId = "notifier"),
+        )
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = reference,
+                ownerThreadId = "notifier",
+            ),
+            scheduler.state("first"),
+        )
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = reference,
+                ownerThreadId = "notifier",
+            ),
+            scheduler.state("second"),
+        )
+        assertEquals(listOf("first", "second"), monitors.blockedThreads(reference))
+    }
 }

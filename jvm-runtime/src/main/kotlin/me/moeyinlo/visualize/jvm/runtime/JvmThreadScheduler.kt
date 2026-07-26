@@ -57,6 +57,19 @@ class JvmThreadScheduler {
         return notifiedThreadId
     }
 
+    fun notifyAllMonitor(
+        monitors: JvmMonitorState,
+        reference: JvmObjectReferenceValue,
+        threadId: String,
+    ): List<String> {
+        val notifiedThreadIds = monitors.notifyAll(reference, threadId)
+        for (notifiedThreadId in notifiedThreadIds) {
+            val result = monitors.tryEnter(reference, notifiedThreadId)
+            recordMonitorEnterResult(reference, notifiedThreadId, result)
+        }
+        return notifiedThreadIds
+    }
+
     private fun recordMonitorEnterResult(
         reference: JvmObjectReferenceValue,
         threadId: String,
