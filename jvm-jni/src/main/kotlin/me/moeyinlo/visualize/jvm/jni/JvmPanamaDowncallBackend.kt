@@ -56,14 +56,24 @@ data class JvmSimulatedJavaVm(
 ) {
     private var attached: Boolean = true
     private var daemonAttached: Boolean = false
+    private var destroyed: Boolean = false
 
     val isCurrentThreadDaemonAttached: Boolean
         get() = attached && daemonAttached
+
+    val isDestroyed: Boolean
+        get() = destroyed
 
     val functions: JvmSimulatedJavaVmFunctionTable =
         JvmSimulatedJavaVmFunctionTable.bind(this)
 
     fun attachCurrentThread(version: Int): JvmJavaVmGetEnvResult {
+        if (destroyed) {
+            return JvmJavaVmGetEnvResult(
+                status = JvmJniStatus.Err,
+                environment = null,
+            )
+        }
         if (version !in JvmJniVersions.SupportedVersions) {
             return JvmJavaVmGetEnvResult(
                 status = JvmJniStatus.EVersion,
@@ -80,6 +90,12 @@ data class JvmSimulatedJavaVm(
     }
 
     fun attachCurrentThreadAsDaemon(version: Int): JvmJavaVmGetEnvResult {
+        if (destroyed) {
+            return JvmJavaVmGetEnvResult(
+                status = JvmJniStatus.Err,
+                environment = null,
+            )
+        }
         if (version !in JvmJniVersions.SupportedVersions) {
             return JvmJavaVmGetEnvResult(
                 status = JvmJniStatus.EVersion,
@@ -93,6 +109,13 @@ data class JvmSimulatedJavaVm(
             status = JvmJniStatus.Ok,
             environment = environment,
         )
+    }
+
+    fun destroyJavaVm(): Int {
+        destroyed = true
+        attached = false
+        daemonAttached = false
+        return JvmJniStatus.Ok
     }
 
     fun detachCurrentThread(): Int {
@@ -145,6 +168,7 @@ data class JvmJavaVmGetEnvResult(
 
 object JvmJniStatus {
     const val Ok: Int = 0
+    const val Err: Int = -1
     const val EDetached: Int = -2
     const val EVersion: Int = -3
 }

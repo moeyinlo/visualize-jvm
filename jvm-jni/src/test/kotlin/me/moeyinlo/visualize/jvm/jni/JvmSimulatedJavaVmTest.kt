@@ -1,4 +1,4 @@
-﻿package me.moeyinlo.visualize.jvm.jni
+package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -72,5 +72,22 @@ class JvmSimulatedJavaVmTest {
         assertEquals(JvmJniStatus.EVersion, result.status)
         assertEquals(null, result.environment)
         assertEquals(false, javaVm.isCurrentThreadDaemonAttached)
+    }
+    @Test
+    fun `DestroyJavaVM destroys the simulated VM and prevents later attachment`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        assertEquals(JvmJniStatus.Ok, javaVm.destroyJavaVm())
+
+        assertEquals(true, javaVm.isDestroyed)
+        val detached = javaVm.getEnv(JvmJniVersions.Version24)
+        assertEquals(JvmJniStatus.EDetached, detached.status)
+        assertEquals(null, detached.environment)
+        assertEquals(JvmJniStatus.Err, javaVm.attachCurrentThread(JvmJniVersions.Version24).status)
+        assertEquals(JvmJniStatus.Err, javaVm.attachCurrentThreadAsDaemon(JvmJniVersions.Version24).status)
     }
 }
