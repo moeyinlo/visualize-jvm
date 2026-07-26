@@ -13219,6 +13219,92 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokeinterface native methods retain native library load hook`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeInterfaceImpl")
+        val libraryName = heap.internString("interface-native")
+        val localVariables = JvmLocalVariables(maxLocals = 2)
+        localVariables.store(0, receiver)
+        localVariables.store(1, libraryName)
+        val loadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeInterface",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "loadInterface",
+                            descriptor = "(Ljava/lang/String;)V",
+                            isStatic = false,
+                            isAbstract = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "NativeInterfaceImpl",
+                    interfaceNames = listOf("NativeInterface"),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "loadInterface",
+                            descriptor = "(Ljava/lang/String;)V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey(
+                ownerClassName = "NativeInterfaceImpl",
+                name = "loadInterface",
+                descriptor = "(Ljava/lang/String;)V",
+                isStatic = false,
+            ) to JvmNativeMethodIntrinsic { context, invocation ->
+                assertEquals(receiver, invocation.receiver)
+                val name = context.heap.get(invocation.arguments.single() as JvmObjectReferenceValue)
+                    .payload as JvmStringPayload
+                context.loadNativeLibraryHandler(name.value)
+                null
+            },
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x2B.toByte(),
+                0xB9.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x02.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeInterface", "NativeInterface".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("loadInterface", "loadInterface".encodeToByteArray()),
+                    ConstantUtf8Entry(
+                        "(Ljava/lang/String;)V",
+                        "(Ljava/lang/String;)V".encodeToByteArray(),
+                    ),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("interface-native"), loadedLogicalNames)
+    }
+
+    @Test
     fun `native instance upcalls retain native library load hook`() {
         val heap = JvmHeap()
         val upcaller = heap.allocateObject("Upcaller")

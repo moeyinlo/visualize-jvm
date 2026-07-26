@@ -1355,6 +1355,7 @@ object JvmInterpreter {
                 bootstrapMethods,
                 invokeDynamicCallSites,
                 dynamicConstants,
+                loadNativeLibraryHandler,
             )
             0xBA -> executeInvokeDynamic(
                 instruction = instruction,
@@ -6502,6 +6503,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         val count = instruction.operands[2]
@@ -6605,6 +6609,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
