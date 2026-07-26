@@ -235,6 +235,17 @@ fun JvmNativeDowncallTarget.prepareOnLoadInvocation(javaVm: JvmSimulatedJavaVm):
     )
 }
 
+fun JvmNativeDowncallTarget.prepareOnUnloadInvocation(javaVm: JvmSimulatedJavaVm): JvmNativeDowncallInvocation {
+    require(guestMethod == null) { "JNI_OnUnload invocation must not target a guest native method" }
+    return JvmNativeDowncallInvocation(
+        target = this,
+        arguments = listOf(
+            JvmNativeDowncallArgument.SimulatedJavaVm(javaVm),
+            JvmNativeDowncallArgument.ReservedNull,
+        ),
+    )
+}
+
 fun JvmNativeDowncallTarget.prepareInstanceInvocation(
     environment: JvmSimulatedJniEnvironment,
     receiver: JvmObjectReferenceValue,

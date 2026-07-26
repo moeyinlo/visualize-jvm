@@ -216,6 +216,37 @@ class JvmPanamaDowncallBackendTest {
         )
     }
     @Test
+    fun `Panama backend prepares JNI_OnUnload invocation with simulated JavaVM and reserved null`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = emptyList(),
+        )
+        val target = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = null,
+            symbolName = "JNI_OnUnload",
+            address = 0x5678L,
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        val invocation = target.prepareOnUnloadInvocation(javaVm)
+
+        assertEquals(target, invocation.target)
+        assertEquals(
+            listOf(
+                JvmNativeDowncallArgument.SimulatedJavaVm(javaVm),
+                JvmNativeDowncallArgument.ReservedNull,
+            ),
+            invocation.arguments,
+        )
+    }
+
+    @Test
     fun `Panama backend binds Java native exports by guest signature`() {
         val staticExport = JvmNativeMethodExportDescriptor(
             ownerClassName = "pkg/NativeApi",
