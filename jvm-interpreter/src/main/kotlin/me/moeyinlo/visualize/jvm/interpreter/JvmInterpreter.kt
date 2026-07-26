@@ -102,12 +102,14 @@ data class JvmScheduledThreadFrame(
     val bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
     val invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
     val dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
+    val operandStackValues: List<JvmValue> = emptyList(),
     val startBytecodeOffset: Int = 0,
 ) {
     init {
         require(threadId.isNotBlank()) { "thread id must not be blank" }
         require(maxStack >= 0) { "max_stack must not be negative: $maxStack" }
         require(startBytecodeOffset >= 0) { "start bytecode offset must not be negative: $startBytecodeOffset" }
+        JvmOperandStack.fromValues(maxStack = maxStack, values = operandStackValues)
     }
 }
 

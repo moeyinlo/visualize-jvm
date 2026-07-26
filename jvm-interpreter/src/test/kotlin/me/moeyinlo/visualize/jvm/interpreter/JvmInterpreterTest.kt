@@ -19362,12 +19362,14 @@ class JvmInterpreterTest {
     @Test
     fun `scheduled thread frame records resume configuration`() {
         val locals = JvmLocalVariables(maxLocals = 1)
+        val operandStackValues = listOf(JvmIntValue(7))
         val frame = JvmScheduledThreadFrame(
             threadId = "worker",
             code = byteArrayOf(0x03.toByte()),
             maxStack = 1,
             localVariables = locals,
             currentClassName = "pkg/Worker",
+            operandStackValues = operandStackValues,
             startBytecodeOffset = 7,
         )
 
@@ -19376,6 +19378,7 @@ class JvmInterpreterTest {
         assertEquals(1, frame.maxStack)
         assertEquals(locals, frame.localVariables)
         assertEquals("pkg/Worker", frame.currentClassName)
+        assertEquals(operandStackValues, frame.operandStackValues)
         assertEquals(7, frame.startBytecodeOffset)
     }
 
@@ -19389,6 +19392,14 @@ class JvmInterpreterTest {
         }
         assertFailsWith<IllegalArgumentException> {
             JvmScheduledThreadFrame(threadId = "worker", code = byteArrayOf(), maxStack = 0, startBytecodeOffset = -1)
+        }
+        assertFailsWith<JvmOperandStackOverflowException> {
+            JvmScheduledThreadFrame(
+                threadId = "worker",
+                code = byteArrayOf(),
+                maxStack = 1,
+                operandStackValues = listOf(JvmLongValue(1L)),
+            )
         }
     }
 
