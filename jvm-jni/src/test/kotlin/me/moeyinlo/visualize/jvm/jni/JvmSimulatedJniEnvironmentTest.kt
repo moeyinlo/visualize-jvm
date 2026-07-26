@@ -6261,6 +6261,44 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetStaticObjectField returns jclass handles for stored guest static class mirrors`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "type",
+                                descriptor = "Ljava/lang/Class;",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "type", "Ljava/lang/Class;")
+        staticFields.put(
+            JvmFieldReference(ownerClassName = "Example", name = "type", descriptor = "Ljava/lang/Class;"),
+            heap.internClassMirror("Child"),
+        )
+
+        val resultHandle = environment.getStaticObjectField(classHandle, fieldHandle)
+
+        assertEquals("Child", handles.resolveClass(resultHandle!!))
+    }
+
+    @Test
     fun `GetStaticObjectField reads null for an unwritten guest static reference field`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
@@ -6354,6 +6392,45 @@ class JvmSimulatedJniEnvironmentTest {
                 JvmFieldReference(ownerClassName = "Example", name = "child", descriptor = "LChild;"),
             ),
         )
+    }
+
+    @Test
+    fun `SetStaticObjectField accepts jclass handles for guest static class mirror fields`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val staticFields = JvmStaticFields()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "type",
+                                descriptor = "Ljava/lang/Class;",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            staticFields = staticFields,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "type", "Ljava/lang/Class;")
+        val valueHandle = environment.findClass("Child")
+
+        environment.setStaticObjectField(classHandle, fieldHandle, valueHandle)
+
+        val storedValue = staticFields.get(
+            JvmFieldReference(ownerClassName = "Example", name = "type", descriptor = "Ljava/lang/Class;"),
+        ) as JvmObjectReferenceValue
+        assertEquals("java/lang/Class", heap.get(storedValue).className)
+        assertEquals(JvmClassPayload("Child"), heap.get(storedValue).payload)
     }
 
     @Test
