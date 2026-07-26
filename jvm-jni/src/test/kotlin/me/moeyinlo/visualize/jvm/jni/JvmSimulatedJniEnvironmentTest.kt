@@ -12014,6 +12014,32 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `Throw rejects jclass handles as non throwable guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "java/lang/Throwable", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "java/lang/Class", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "NotThrowable", superclassName = "java/lang/Object"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("NotThrowable")
+
+        val exception = assertFailsWith<JvmJniExceptionAccessException> {
+            environment.throwObject(classHandle)
+        }
+
+        assertEquals("JNI exception helper requires java/lang/Throwable, got java/lang/Class", exception.message)
+        assertEquals(false, environment.exceptionCheck())
+    }
+
+    @Test
     fun `ThrowNew rejects non throwable guest class handles`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(

@@ -92,7 +92,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun throwObject(throwableHandle: JvmJniHandleId): Int {
-        val throwableReference = handles.resolveObject(throwableHandle)
+        val throwableReference = resolveJObjectValue(throwableHandle)
         requireThrowableClass(heap.get(throwableReference).className)
         pendingException = throwableReference
         return 0
