@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class JvmNativeLibraryLifecycleTest {
     @Test
@@ -100,5 +101,43 @@ class JvmNativeLibraryLifecycleTest {
             ),
             invocations.single().arguments,
         )
+    }
+    @Test
+    fun `duplicate load is rejected before invoking JNI_OnLoad again`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val backend = JvmPanamaDowncallBackend { path, symbolName ->
+            if (path == library.path && symbolName == "JNI_OnLoad") {
+                JvmNativeSymbolAddress(symbolName, 0x1111L)
+            } else {
+                null
+            }
+        }
+        val registry = JvmNativeLibraryRegistry()
+        val invocations = mutableListOf<JvmNativeDowncallInvocation>()
+        val lifecycle = JvmNativeLibraryLifecycle(
+            backend = backend,
+            registry = registry,
+            invokeDowncall = { invocation ->
+                invocations += invocation
+                JvmNativeDowncallReturn.IntPrimitive(JvmJniVersions.Version24)
+            },
+        )
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = JvmClassHierarchy(),
+                staticFields = JvmStaticFields(),
+            ),
+        )
+        lifecycle.load(library, javaVm)
+
+        val exception = assertFailsWith<JvmNativeLibraryLoadException> {
+            lifecycle.load(library, javaVm)
+        }
+
+        assertEquals("native library native-api is already loaded", exception.message)
+        assertEquals(1, invocations.size)
     }
 }

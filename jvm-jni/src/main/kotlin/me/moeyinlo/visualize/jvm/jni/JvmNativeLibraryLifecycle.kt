@@ -13,6 +13,9 @@ class JvmNativeLibraryLifecycle(
         library: JvmNativeLibraryDescriptor,
         javaVm: JvmSimulatedJavaVm,
     ): JvmLoadedNativeLibrary {
+        registry.loadedLibrary(library.logicalName)?.let {
+            throw JvmNativeLibraryLoadException("native library ${library.logicalName} is already loaded")
+        }
         val binding = backend.bindLibrary(library)
         val onLoadVersion = binding.onLoadTarget
             ?.prepareOnLoadInvocation(javaVm)
