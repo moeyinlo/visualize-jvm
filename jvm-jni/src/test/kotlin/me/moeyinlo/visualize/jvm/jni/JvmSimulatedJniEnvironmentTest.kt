@@ -7210,6 +7210,45 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetCharField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "C",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "C")
+        val mirrorReference = heap.internClassMirror("Example")
+
+        environment.setCharField(receiverClassHandle, fieldHandle, '类'.code)
+
+        assertEquals(
+            JvmCharValue('类'.code),
+            heap.getInstanceField(
+                mirrorReference,
+                JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "C"),
+            ),
+        )
+    }
+
+    @Test
     fun `SetCharField rejects non char guest field handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
