@@ -1567,7 +1567,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun setFloatField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Float) {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "F" || field.isStatic) {
             throw JvmJniFieldAccessException(
