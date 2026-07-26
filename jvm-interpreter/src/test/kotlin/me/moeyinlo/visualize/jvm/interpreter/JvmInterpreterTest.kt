@@ -19691,6 +19691,58 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop resumes monitorenter contender after owner releases monitor`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("pkg/Lock")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "owner")
+        val ownerLocals = JvmLocalVariables(maxLocals = 1)
+        ownerLocals.store(0, receiver)
+        val contenderLocals = JvmLocalVariables(maxLocals = 1)
+        contenderLocals.store(0, receiver)
+
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "contender",
+                    code = byteArrayOf(
+                        0x2A.toByte(),
+                        0xC2.toByte(),
+                        0x03.toByte(),
+                        0x2A.toByte(),
+                        0xC3.toByte(),
+                    ),
+                    maxStack = 2,
+                    localVariables = contenderLocals,
+                    currentClassName = "pkg/Contender",
+                ),
+                JvmScheduledThreadFrame(
+                    threadId = "owner",
+                    code = byteArrayOf(
+                        0x2A.toByte(),
+                        0xC3.toByte(),
+                        0x04.toByte(),
+                    ),
+                    maxStack = 1,
+                    localVariables = ownerLocals,
+                    currentClassName = "pkg/Owner",
+                ),
+            ),
+            heap = heap,
+            monitors = monitors,
+            threadScheduler = scheduler,
+        )
+
+        assertEquals(listOf("contender", "owner", "contender"), result.executedThreadIds)
+        assertEquals(emptyMap(), result.suspendedThreads)
+        assertEquals(listOf(JvmIntValue(0)), result.completedThreads.getValue("contender").operandStack.toList())
+        assertEquals(listOf(JvmIntValue(1)), result.completedThreads.getValue("owner").operandStack.toList())
+        assertEquals(0, monitors.holdCount(receiver, threadId = "owner"))
+        assertEquals(0, monitors.holdCount(receiver, threadId = "contender"))
+    }
+
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()

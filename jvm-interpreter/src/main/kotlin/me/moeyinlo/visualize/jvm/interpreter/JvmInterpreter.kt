@@ -1057,7 +1057,10 @@ object JvmInterpreter {
                     suspendedThreads[threadId] = result.suspension
                     val nextBytecodeOffset = result.suspension.nextBytecodeOffset
                     if (nextBytecodeOffset != null) {
-                        remainingFrames[threadId] = frame.copy(startBytecodeOffset = nextBytecodeOffset)
+                        remainingFrames[threadId] = frame.copy(
+                            startBytecodeOffset = nextBytecodeOffset,
+                            operandStackValues = result.suspension.operandStackValues,
+                        )
                     }
                 }
             }
