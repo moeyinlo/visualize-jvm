@@ -360,7 +360,7 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ) {
-        val receiver = handles.resolveObject(objectHandle)
+        val receiver = resolveJObjectValue(objectHandle)
         val className = handles.resolveClass(classHandle)
         val receiverClassName = heap.get(receiver).className
         if (!classHierarchy.isAssignable(receiverClassName, className)) {
