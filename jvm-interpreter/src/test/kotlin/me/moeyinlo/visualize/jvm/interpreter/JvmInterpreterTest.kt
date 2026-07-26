@@ -12929,6 +12929,99 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual executes registered native instance methods from loaded libraries`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeOwner")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "registeredValue",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+        )
+        environment.registeredNativeMethods.register(
+            className = "NativeOwner",
+            methods = listOf(
+                JvmJniNativeMethodDescriptor(
+                    name = "registeredValue",
+                    descriptor = "()I",
+                    functionAddress = 0xFACE_FEEDL,
+                ),
+            ),
+        )
+        val loadedLibraries = JvmNativeLibraryRegistry()
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        loadedLibraries.markLoaded(
+            binding = JvmNativeLibraryBinding(
+                library = library,
+                onLoadTarget = null,
+                onUnloadTarget = null,
+                exportTargets = emptyMap(),
+            ),
+            onLoadVersion = null,
+        )
+        val invocations = mutableListOf<JvmNativeDowncallInvocation>()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("registeredValue", "registeredValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmNativeMethodRegistry.fromLoadedNativeLibraries(
+                loadedLibraries = loadedLibraries,
+                environment = environment,
+                invokeDowncall = { invocation ->
+                    invocations += invocation
+                    JvmNativeDowncallReturn.IntPrimitive(45)
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(45)), result.operandStack.toList())
+        val invocation = invocations.single()
+        assertEquals("RegisterNatives:NativeOwner.registeredValue:()I", invocation.target.symbolName)
+        assertEquals(0xFACE_FEEDL, invocation.target.address)
+        assertEquals(library, invocation.target.library)
+        assertTrue(invocation.arguments[0] is JvmNativeDowncallArgument.SimulatedJniEnv)
+        val receiverArgument = invocation.arguments[1] as JvmNativeDowncallArgument.ObjectHandle
+        assertEquals(receiver, environment.handles.resolveObject(receiverArgument.handle!!))
+    }
+
+    @Test
     fun `simulated JNI bindings can upcall interpreted static guest methods`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

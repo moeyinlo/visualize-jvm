@@ -160,22 +160,18 @@ class JvmNativeMethodRegistry(
                     isStatic = key.isStatic,
                 )
                 val target = loadedLibraries.resolveExport(signature)
-                    ?: if (key.isStatic) {
-                        loadedLibraries.loadedLibraries()
-                            .asSequence()
-                            .mapNotNull { loaded ->
-                                environment.registeredNativeMethods.resolveDowncallTarget(
-                                    library = loaded.library,
-                                    className = key.ownerClassName,
-                                    name = key.name,
-                                    descriptor = key.descriptor,
-                                    isStatic = true,
-                                )
-                            }
-                            .firstOrNull()
-                    } else {
-                        null
-                    }
+                    ?: loadedLibraries.loadedLibraries()
+                        .asSequence()
+                        .mapNotNull { loaded ->
+                            environment.registeredNativeMethods.resolveDowncallTarget(
+                                library = loaded.library,
+                                className = key.ownerClassName,
+                                name = key.name,
+                                descriptor = key.descriptor,
+                                isStatic = key.isStatic,
+                            )
+                        }
+                        .firstOrNull()
                 target?.let { resolvedTarget ->
                     JvmNativeMethodIntrinsic { _, invocation ->
                         val downcallInvocation = if (key.isStatic) {

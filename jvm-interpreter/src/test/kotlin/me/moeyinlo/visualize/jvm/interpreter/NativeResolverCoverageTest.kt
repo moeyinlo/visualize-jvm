@@ -24,7 +24,7 @@ class NativeResolverCoverageTest {
         assertNotNull(rulesByName["JNI short and long symbol candidates"])
         assertNotNull(rulesByName["native library export lookup"])
         assertNotNull(rulesByName["loaded native library export dispatch"])
-        assertNotNull(rulesByName["registered native static dispatch"])
+        assertNotNull(rulesByName["registered native dispatch"])
     }
 
     @Test
