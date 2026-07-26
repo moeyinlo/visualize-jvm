@@ -1023,12 +1023,12 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun monitorEnter(objectHandle: JvmJniHandleId): Int {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         return monitors.enter(reference, currentThreadId)
     }
 
     fun monitorExit(objectHandle: JvmJniHandleId): Int {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         return monitors.exit(reference, currentThreadId)
     }
 

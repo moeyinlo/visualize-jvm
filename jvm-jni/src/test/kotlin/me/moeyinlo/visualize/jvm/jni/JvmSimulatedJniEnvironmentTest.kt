@@ -10598,6 +10598,32 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `MonitorEnter and MonitorExit accept jclass handles as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val monitors = JvmMonitorState()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            monitors = monitors,
+            currentThreadId = "jni-thread",
+        )
+        val classHandle = environment.findClass("Example")
+        val classMirrorReference = heap.internClassMirror("Example")
+
+        assertEquals(1, environment.monitorEnter(classHandle))
+        assertEquals(1, monitors.holdCount(classMirrorReference, "jni-thread"))
+
+        assertEquals(0, environment.monitorExit(classHandle))
+        assertEquals(0, monitors.holdCount(classMirrorReference, "jni-thread"))
+    }
+
+    @Test
     fun `MonitorEnter rejects monitors owned by another simulated JNI thread`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
