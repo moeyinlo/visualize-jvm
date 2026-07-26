@@ -320,7 +320,9 @@ class JvmClassHierarchy(
         resolvedMethod: JvmResolvedMethod?,
     ): JvmResolvedMethod? =
         findDeclaredMethod(name, descriptor)
-            ?.takeIf { candidate -> resolvedMethod == null || !candidate.isPrivate }
+            ?.takeIf { candidate ->
+                resolvedMethod == null || (!candidate.isPrivate && !candidate.isStatic)
+            }
 
     private fun JvmClassDefinition.findSignaturePolymorphicDeclaration(
         name: String,
