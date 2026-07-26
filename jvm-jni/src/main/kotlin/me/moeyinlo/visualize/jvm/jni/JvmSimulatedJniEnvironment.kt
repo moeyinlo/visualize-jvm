@@ -665,7 +665,7 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): Float {
-        val receiver = handles.resolveObject(objectHandle)
+        val receiver = resolveJObjectValue(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceFloatMethod("CallFloatMethod")
         requireReceiverAssignableToMethod("CallFloatMethod", receiver, method)

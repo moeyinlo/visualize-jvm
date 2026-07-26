@@ -2483,6 +2483,70 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallFloatMethod accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFloatUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "mirrorRatio",
+                                descriptor = "()F",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callFloatMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmFloatValue {
+                    calls += RecordedFloatUpcall(receiver, method, arguments)
+                    return JvmFloatValue(1.25f)
+                }
+            },
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val methodHandle = environment.getMethodId(classClassHandle, "mirrorRatio", "()F")
+
+        val result = environment.callFloatMethod(receiverClassHandle, methodHandle)
+
+        assertEquals(1.25f, result)
+        assertEquals(
+            listOf(
+                RecordedFloatUpcall(
+                    receiver = heap.internClassMirror("Example"),
+                    method = JvmResolvedMethod(
+                        ownerClassName = "java/lang/Class",
+                        name = "mirrorRatio",
+                        descriptor = "()F",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallFloatMethod rejects receiver that is not assignable to method owner`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
