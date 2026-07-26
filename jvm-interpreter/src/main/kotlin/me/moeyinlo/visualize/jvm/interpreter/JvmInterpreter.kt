@@ -5205,7 +5205,19 @@ object JvmInterpreter {
                 if (classInitializer == null) {
                     classInitializationStates.completeInitialization(className, currentThreadId)
                 } else if (executeClassInitializer != null) {
-                    executeClassInitializer(classInitializer)
+                    try {
+                        executeClassInitializer(classInitializer)
+                    } catch (exception: Throwable) {
+                        if (exception is JvmThreadSuspendedException || exception is JvmMonitorBlockedException) {
+                            throw exception
+                        }
+                        classInitializationStates.failInitialization(
+                            className = className,
+                            threadId = currentThreadId,
+                            errorClassName = exception.initializationErrorClassName(),
+                        )
+                        throw exception
+                    }
                     classInitializationStates.completeInitialization(className, currentThreadId)
                 }
             }
@@ -5217,6 +5229,27 @@ object JvmInterpreter {
             )
         }
     }
+
+    private fun Throwable.initializationErrorClassName(): String =
+        when (this) {
+            is JvmArithmeticException -> guestClassName
+            is JvmNegativeArraySizeException -> guestClassName
+            is JvmArrayIndexOutOfBoundsException -> guestClassName
+            is JvmNullPointerException -> guestClassName
+            is JvmArrayStoreException -> guestClassName
+            is JvmClassCastException -> guestClassName
+            is JvmIllegalMonitorStateException -> guestClassName
+            is JvmIncompatibleClassChangeError -> guestClassName
+            is JvmIllegalAccessError -> guestClassName
+            is JvmAbstractMethodError -> guestClassName
+            is JvmUnsatisfiedLinkError -> guestClassName
+            is JvmNoClassDefFoundError -> guestClassName
+            is JvmNoSuchFieldError -> guestClassName
+            is JvmNoSuchMethodError -> guestClassName
+            is JvmNativeGuestException -> "java/lang/Throwable"
+            is JvmThrownException -> "java/lang/Throwable"
+            else -> "java/lang/ExceptionInInitializerError"
+        }
 
     private fun executeGetStatic(
         instruction: DecodedInstruction,

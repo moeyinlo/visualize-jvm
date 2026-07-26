@@ -5949,6 +5949,62 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic failing class initializer marks target class erroneous`() {
+        val initializationStates = JvmClassInitializationStates()
+
+        val exception = assertFailsWith<JvmArithmeticException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                    code = byteArrayOf(
+                                        0x04.toByte(),
+                                        0x03.toByte(),
+                                        0x6C.toByte(),
+                                        0xB1.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                classInitializationStates = initializationStates,
+            )
+        }
+
+        assertEquals("java/lang/ArithmeticException", exception.guestClassName)
+        assertEquals(
+            JvmClassInitializationState.Erroneous("java/lang/ArithmeticException"),
+            initializationStates.get("Example"),
+        )
+    }
+
+    @Test
     fun `getstatic throws NoClassDefFoundError for erroneous target class initialization state`() {
         val initializationStates = JvmClassInitializationStates()
         initializationStates.startInitialization("Example", "initializer")
