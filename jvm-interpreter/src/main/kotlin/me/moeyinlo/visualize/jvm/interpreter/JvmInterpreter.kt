@@ -85,6 +85,12 @@ data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
 )
 
+sealed interface JvmScheduledThreadExecutionResult {
+    data class Completed(val result: JvmExecutionResult) : JvmScheduledThreadExecutionResult
+
+    data class Suspended(val suspension: JvmThreadSuspendedException) : JvmScheduledThreadExecutionResult
+}
+
 private data class JvmFrameExecutionResult(
     val operandStack: JvmOperandStack,
     val hasReturned: Boolean = false,
@@ -833,6 +839,65 @@ object JvmInterpreter {
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
+
+    fun executeScheduledThread(
+        code: ByteArray,
+        maxStack: Int,
+        constantPool: ConstantPool = ConstantPool.fromEntries(emptyList()),
+        heap: JvmHeap = JvmHeap(),
+        localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
+        classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
+        staticFields: JvmStaticFields = JvmStaticFields(),
+        nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
+        monitors: JvmMonitorState = JvmMonitorState(),
+        threadScheduler: JvmThreadScheduler? = null,
+        currentThreadId: String = "main",
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
+        currentClassName: String? = null,
+        exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
+        bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
+        dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
+        nativeLibraryLoader: JvmNativeLibraryLoader? = null,
+        javaVm: JvmSimulatedJavaVm? = null,
+        startBytecodeOffset: Int = 0,
+    ): JvmScheduledThreadExecutionResult =
+        try {
+            JvmScheduledThreadExecutionResult.Completed(
+                execute(
+                    code = code,
+                    maxStack = maxStack,
+                    constantPool = constantPool,
+                    heap = heap,
+                    localVariables = localVariables,
+                    classHierarchy = classHierarchy,
+                    staticFields = staticFields,
+                    nativeMethods = nativeMethods,
+                    monitors = monitors,
+                    threadScheduler = threadScheduler,
+                    currentThreadId = currentThreadId,
+                    monitorUnblockedHandler = monitorUnblockedHandler,
+                    currentClassName = currentClassName,
+                    exceptionHandlers = exceptionHandlers,
+                    bootstrapMethods = bootstrapMethods,
+                    invokeDynamicCallSites = invokeDynamicCallSites,
+                    dynamicConstants = dynamicConstants,
+                    loadNativeLibraryHandler = loadNativeLibraryHandler,
+                    unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                    nativeLibraryLoader = nativeLibraryLoader,
+                    javaVm = javaVm,
+                    startBytecodeOffset = startBytecodeOffset,
+                ),
+            )
+        } catch (exception: JvmThreadSuspendedException) {
+            JvmScheduledThreadExecutionResult.Suspended(exception)
+        }
 
     private fun executeFrame(
         code: ByteArray,

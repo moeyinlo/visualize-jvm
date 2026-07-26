@@ -19288,6 +19288,78 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread execution API returns completion results`() {
+        val result = JvmInterpreter.executeScheduledThread(
+            code = byteArrayOf(0x03.toByte()),
+            maxStack = 1,
+            currentThreadId = "worker",
+        )
+
+        val completed = result as JvmScheduledThreadExecutionResult.Completed
+        assertEquals(listOf(JvmIntValue(0)), completed.result.operandStack.toList())
+    }
+
+    @Test
+    fun `scheduled thread execution API returns suspension results`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("java/lang/Object")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "waiter")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/Object",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "wait",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.executeScheduledThread(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x03.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("wait", "wait".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            monitors = monitors,
+            threadScheduler = scheduler,
+            currentThreadId = "waiter",
+            currentClassName = "pkg/Caller",
+        )
+
+        val suspended = result as JvmScheduledThreadExecutionResult.Suspended
+        assertEquals("waiter", suspended.suspension.threadId)
+        assertEquals(1, suspended.suspension.suspendedAtBytecodeOffset)
+        assertEquals(4, suspended.suspension.nextBytecodeOffset)
+    }
+
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()
