@@ -33,7 +33,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "static field active-use operations",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmInterpreter getstatic and putstatic trigger active-use initialization for resolved static field owners before executing against prepared JvmStaticFields; actual <clinit> bytecode scheduling remains pending",
+            currentComponent = "JvmInterpreter getstatic executes target <clinit>:()V before reading prepared JvmStaticFields; putstatic still only covers no-<clinit> active-use initialization, and cached dynamic field-target <clinit> scheduling remains pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
@@ -47,14 +47,14 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; real <clinit> execution, recursive ordering, waiting, and error transitions remain pending",
+            currentComponent = "getstatic executes target <clinit>:()V before static field read; new, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; remaining <clinit> execution paths, recursive ordering, waiting, and error transitions remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "class initialization state machine",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; interpreter active-use scheduling and waiting semantics remain pending",
+            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; getstatic drives Prepared -> Initializing -> Initialized around successful <clinit> execution, while waiting semantics remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmClassInitializationStateTest",
         ),
