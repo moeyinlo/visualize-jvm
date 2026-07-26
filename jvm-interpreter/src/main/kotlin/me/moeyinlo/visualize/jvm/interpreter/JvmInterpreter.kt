@@ -5440,6 +5440,7 @@ object JvmInterpreter {
                     invokeDynamicCallSites = invokeDynamicCallSites,
                     dynamicConstants = dynamicConstants,
                     linkedCallSite = linkedCallSite,
+                    loadNativeLibraryHandler = loadNativeLibraryHandler,
                 )
                 return
             }
@@ -5558,6 +5559,7 @@ object JvmInterpreter {
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
             linkedCallSite = linkedCallSite,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
     }
 
@@ -5623,6 +5625,9 @@ object JvmInterpreter {
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         when (linkedCallSite.targetMethodHandle.referenceKind) {
             JvmMethodHandleReferenceKind.GetField -> executeLinkedInvokeDynamicGetFieldTarget(
@@ -5669,6 +5674,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             JvmMethodHandleReferenceKind.InvokeVirtual -> executeLinkedInvokeDynamicVirtualTarget(
                 instruction = instruction,
@@ -5932,6 +5938,9 @@ object JvmInterpreter {
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, linkedCallSite.targetMethod.descriptor)
@@ -5950,6 +5959,7 @@ object JvmInterpreter {
             dynamicConstants = dynamicConstants,
             resolvedMethod = linkedCallSite.targetMethod,
             opcodeMnemonic = "invokedynamic",
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
     }
 
