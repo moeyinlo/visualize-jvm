@@ -21724,6 +21724,7 @@ class JvmInterpreterTest {
             ),
         )
         val callSites = JvmInvokeDynamicCallSiteRegistry()
+        val initializationStates = JvmClassInitializationStates()
         callSites.bind(
             key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
             callSite = JvmLinkedInvokeDynamicCallSite(
@@ -21758,9 +21759,11 @@ class JvmInterpreterTest {
             classHierarchy = classHierarchy,
             currentClassName = "pkg/Caller",
             invokeDynamicCallSites = callSites,
+            classInitializationStates = initializationStates,
         )
 
         assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("pkg/Targets"))
     }
 
     @Test

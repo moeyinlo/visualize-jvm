@@ -1769,6 +1769,7 @@ object JvmInterpreter {
                 heap = heap,
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
+                classInitializationStates = classInitializationStates,
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 threadScheduler = threadScheduler,
@@ -5981,6 +5982,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         threadScheduler: JvmThreadScheduler? = null,
@@ -6031,6 +6033,7 @@ object JvmInterpreter {
                     heap = heap,
                     classHierarchy = classHierarchy,
                     staticFields = staticFields,
+                    classInitializationStates = classInitializationStates,
                     nativeMethods = nativeMethods,
                     monitors = monitors,
                     currentThreadId = currentThreadId,
@@ -6157,6 +6160,7 @@ object JvmInterpreter {
             heap = heap,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
+            classInitializationStates = classInitializationStates,
             nativeMethods = nativeMethods,
             monitors = monitors,
             threadScheduler = threadScheduler,
@@ -6235,6 +6239,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         threadScheduler: JvmThreadScheduler? = null,
@@ -6290,6 +6295,7 @@ object JvmInterpreter {
                 heap = heap,
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
+                classInitializationStates = classInitializationStates,
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 threadScheduler = threadScheduler,
@@ -6571,6 +6577,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         threadScheduler: JvmThreadScheduler? = null,
@@ -6588,6 +6595,12 @@ object JvmInterpreter {
     ) {
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, linkedCallSite.targetMethod.descriptor)
+        initializeClassForActiveUse(
+            linkedCallSite.targetMethod.ownerClassName,
+            classHierarchy,
+            classInitializationStates,
+            currentThreadId,
+        )
         executeResolvedStaticMethod(
             instruction = instruction,
             operandStack = operandStack,
@@ -6595,6 +6608,7 @@ object JvmInterpreter {
             heap = heap,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
+            classInitializationStates = classInitializationStates,
             nativeMethods = nativeMethods,
             monitors = monitors,
             threadScheduler = threadScheduler,
