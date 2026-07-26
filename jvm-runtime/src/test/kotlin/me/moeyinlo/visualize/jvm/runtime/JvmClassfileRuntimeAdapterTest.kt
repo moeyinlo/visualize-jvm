@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.runtime
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlags
 import me.moeyinlo.visualize.jvm.classfile.ClassFile
 import me.moeyinlo.visualize.jvm.classfile.ClassFileKind
@@ -16,6 +17,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.ConstantValueAttribute
 import me.moeyinlo.visualize.jvm.classfile.FieldInfo
@@ -211,6 +213,45 @@ class JvmClassfileRuntimeAdapterTest {
         )
     }
 
+    @Test
+    fun `classfile adapter reports String ConstantValue requires guest string preparation`() {
+        val classFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = constantPool(),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = listOf(
+                FieldInfo(
+                    accessFlags = 0x0008,
+                    nameIndex = ConstantPoolIndex(9),
+                    descriptorIndex = ConstantPoolIndex(10),
+                    attributes = listOf(
+                        ConstantValueAttribute(
+                            nameIndex = ConstantPoolIndex(19),
+                            constantValueIndex = ConstantPoolIndex(22),
+                        ),
+                    ),
+                ),
+            ),
+            methods = emptyList(),
+            attributes = emptyList(),
+        )
+
+        val exception = assertFailsWith<JvmClassfileRuntimeAdapterException> {
+            classFile.toJvmClassDefinition()
+        }
+
+        assertEquals(
+            "String ConstantValue attributes require guest String heap preparation",
+            exception.message,
+        )
+    }
+
     private fun constantPool(): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
@@ -237,6 +278,8 @@ class JvmClassfileRuntimeAdapterTest {
                 ConstantClassEntry(ConstantPoolIndex(17)),
                 ConstantUtf8Entry("ConstantValue", "ConstantValue".encodeToByteArray()),
                 ConstantIntegerEntry(42),
+                ConstantUtf8Entry("literal", "literal".encodeToByteArray()),
+                ConstantStringEntry(ConstantPoolIndex(21)),
             ),
         )
 }
