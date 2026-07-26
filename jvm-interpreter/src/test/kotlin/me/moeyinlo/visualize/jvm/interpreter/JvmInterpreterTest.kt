@@ -19635,6 +19635,86 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked special native target retains native library load hook`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Child")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val loadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Child",
+                    superclassName = "pkg/Base",
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 1),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "(Lpkg/Base;)I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Base",
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("pkg/Base", "answer", "()I", isStatic = false) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    assertEquals(receiver, invocation.receiver)
+                    context.loadNativeLibraryHandler("indy-special-native")
+                    JvmIntValue(42)
+                },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicVirtualReceiverCallSiteConstantPool(),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("indy-special-native"), loadedLogicalNames)
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokedynamic executes cached invoke interface target using receiver dispatch`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Impl")
