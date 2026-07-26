@@ -60,6 +60,15 @@ class SimulatedJniCoverageTest {
     }
 
     @Test
+    fun `critical array and string coverage is fully implemented`() {
+        val criticalSections = SimulatedJniCoverage.entries.single { entry ->
+            entry.rule == "critical array and string sections"
+        }
+
+        assertEquals(SimulatedJniCoverageStatus.Implemented, criticalSections.status)
+    }
+
+    @Test
     fun `current unsupported simulated JNI work is named explicitly`() {
         val unsupportedRules = SimulatedJniCoverage.entries
             .filter { entry -> entry.status == SimulatedJniCoverageStatus.NotYetImplemented }

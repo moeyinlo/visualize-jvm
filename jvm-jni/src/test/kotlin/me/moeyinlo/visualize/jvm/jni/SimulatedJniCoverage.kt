@@ -117,8 +117,8 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "critical array and string sections",
             specSection = "JNI critical access operations",
-            currentComponent = "GetStringCritical/ReleaseStringCritical and GetPrimitiveArrayCritical/ReleasePrimitiveArrayCritical use simulated copied buffers while keeping pin/no-block implementation obligations explicit",
-            status = SimulatedJniCoverageStatus.PartiallyImplemented,
+            currentComponent = "GetStringCritical/ReleaseStringCritical and GetPrimitiveArrayCritical/ReleasePrimitiveArrayCritical use VM-owned simulated copied buffers, validate string/reference-array misuse, copy primitive buffers back by default, and honor JNI_ABORT",
+            status = SimulatedJniCoverageStatus.Implemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(
