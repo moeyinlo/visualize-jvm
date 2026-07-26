@@ -1665,6 +1665,8 @@ object JvmInterpreter {
                 staticFields,
                 heap,
                 classHierarchy,
+                classInitializationStates,
+                currentThreadId,
                 currentClassName,
             )
             0xB4 -> executeGetField(
@@ -5197,11 +5199,14 @@ object JvmInterpreter {
         staticFields: JvmStaticFields,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        classInitializationStates: JvmClassInitializationStates,
+        currentThreadId: String,
         currentClassName: String?,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
         requireAccessibleField(resolvedField, currentClassName, classHierarchy)
+        initializeClassForActiveUse(resolvedField.reference.ownerClassName, classHierarchy, classInitializationStates, currentThreadId)
         val field = resolvedField.reference
         val value = operandStack.pop()
         requireFieldValue(instruction, field, value)
