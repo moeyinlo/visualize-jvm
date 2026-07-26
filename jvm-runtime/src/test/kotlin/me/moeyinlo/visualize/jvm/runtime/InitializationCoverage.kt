@@ -47,7 +47,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "getstatic, putstatic, and invokestatic execute target <clinit>:()V before static field or static method access; new and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; remaining <clinit> execution paths, recursive ordering, waiting, and error transitions remain pending",
+            currentComponent = "new, getstatic, putstatic, and invokestatic execute target <clinit>:()V before object allocation, static field access, or static method access; cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; cached-dynamic <clinit> execution paths, recursive ordering, waiting, and error transitions remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
