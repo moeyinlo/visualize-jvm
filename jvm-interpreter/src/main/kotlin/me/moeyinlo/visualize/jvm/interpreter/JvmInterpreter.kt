@@ -6278,6 +6278,8 @@ object JvmInterpreter {
                 staticFields = staticFields,
                 heap = heap,
                 classHierarchy = classHierarchy,
+                classInitializationStates = classInitializationStates,
+                currentThreadId = currentThreadId,
                 linkedCallSite = linkedCallSite,
             )
             JvmMethodHandleReferenceKind.PutStatic -> executeLinkedInvokeDynamicPutStaticTarget(
@@ -6508,6 +6510,8 @@ object JvmInterpreter {
         staticFields: JvmStaticFields,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+        currentThreadId: String,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
     ) {
         val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
@@ -6522,9 +6526,15 @@ object JvmInterpreter {
                 "Invalid invokedynamic linked target for ${linkedCallSite.spec.name}:" +
                     "${linkedCallSite.spec.descriptor} at offset ${instruction.offset}: target " +
                     "${resolvedField.ownerClassName}.${resolvedField.name}:${resolvedField.descriptor} " +
-                    "does not match call site descriptor",
+                "does not match call site descriptor",
             )
         }
+        initializeClassForActiveUse(
+            resolvedField.ownerClassName,
+            classHierarchy,
+            classInitializationStates,
+            currentThreadId,
+        )
         val field = JvmFieldReference(
             ownerClassName = resolvedField.ownerClassName,
             name = resolvedField.name,

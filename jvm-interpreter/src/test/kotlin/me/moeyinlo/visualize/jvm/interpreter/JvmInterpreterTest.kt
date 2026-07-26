@@ -21912,6 +21912,7 @@ class JvmInterpreterTest {
         )
         staticFields.put(field, JvmIntValue(42))
         val callSites = JvmInvokeDynamicCallSiteRegistry()
+        val initializationStates = JvmClassInitializationStates()
         callSites.bind(
             key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
             callSite = JvmLinkedInvokeDynamicCallSite(
@@ -21947,11 +21948,14 @@ class JvmInterpreterTest {
             maxStack = 1,
             constantPool = invokedynamicIntCallSiteConstantPool(),
             staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition(internalName = "pkg/Targets"))),
+            classInitializationStates = initializationStates,
             currentClassName = "pkg/Caller",
             invokeDynamicCallSites = callSites,
         )
 
         assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("pkg/Targets"))
     }
 
     @Test
