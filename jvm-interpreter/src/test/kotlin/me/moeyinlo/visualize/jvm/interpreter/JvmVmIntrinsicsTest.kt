@@ -343,6 +343,39 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `NativeLibraries load intrinsic rejects invalid boolean flags`() {
+        val heap = JvmHeap()
+        val nativeLibrary = heap.allocateObject("jdk/internal/loader/NativeLibraries\$NativeLibraryImpl")
+        val libraryName = heap.internString("jdk-native")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "jdk/internal/loader/NativeLibraries",
+                name = "load",
+                descriptor = "(Ljdk/internal/loader/NativeLibraries\$NativeLibraryImpl;Ljava/lang/String;ZZ)Z",
+                isStatic = true,
+                isNative = true,
+            ),
+        ) ?: error("NativeLibraries.load intrinsic should resolve")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/loader/NativeLibraries",
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(
+                context,
+                JvmNativeMethodInvocation(
+                    receiver = null,
+                    arguments = listOf(nativeLibrary, libraryName, JvmIntValue(2), JvmIntValue(1)),
+                ),
+            )
+        }
+
+        assertEquals("NativeLibraries.load boolean flags must be 0 or 1", exception.message)
+    }
+    @Test
     fun `NativeLibraries findBuiltinLib intrinsic reports no host builtin library`() {
         val heap = JvmHeap()
         val libraryName = heap.internString("java")
