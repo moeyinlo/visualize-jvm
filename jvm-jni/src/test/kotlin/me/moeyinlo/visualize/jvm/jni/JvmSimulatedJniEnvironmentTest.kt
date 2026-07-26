@@ -9766,6 +9766,27 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewLocalRef duplicates class local handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        val originalHandle = environment.findClass("Example")
+
+        val duplicatedHandle = environment.newLocalRef(originalHandle)
+
+        assertEquals("Example", handles.resolveClass(duplicatedHandle!!))
+        assertEquals(false, duplicatedHandle == originalHandle)
+        environment.deleteLocalRef(originalHandle)
+        assertEquals("Example", handles.resolveClass(duplicatedHandle))
+    }
+
+    @Test
     fun `DeleteLocalRef deletes object local handles and ignores null references`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
