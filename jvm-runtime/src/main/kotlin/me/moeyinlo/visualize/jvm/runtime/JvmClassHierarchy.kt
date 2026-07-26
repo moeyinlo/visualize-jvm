@@ -247,15 +247,19 @@ class JvmClassHierarchy(
         receiverClassName: String,
         name: String,
         descriptor: String,
+        resolvedMethod: JvmResolvedMethod? = null,
     ): JvmResolvedMethod {
+        if (resolvedMethod?.isPrivate == true) {
+            return resolvedMethod
+        }
         val receiverClass = classesByName[receiverClassName]
             ?: throw JvmNoClassDefFoundError(
                 guestClassName = "java/lang/NoClassDefFoundError",
                 message = receiverClassName,
             )
-        return receiverClass.findDeclaredMethod(name, descriptor)
+        return receiverClass.findDeclaredVirtualSelectionMethod(name, descriptor, resolvedMethod)
             ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
-            ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
+            ?: findSuperclassVirtualSelectionMethod(receiverClass.superclassName, name, descriptor, resolvedMethod)
             ?: selectMaximallySpecificInterfaceMethod(
                 receiverClassName,
                 collectClassAndSuperclassInterfaceNames(receiverClass),

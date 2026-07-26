@@ -6886,6 +6886,7 @@ object JvmInterpreter {
                 receiverClassName = receiverClassName,
                 name = resolvedMethod.name,
                 descriptor = resolvedMethod.descriptor,
+                resolvedMethod = resolvedMethod,
             )
         } catch (exception: me.moeyinlo.visualize.jvm.runtime.JvmIncompatibleClassChangeError) {
             throw JvmIncompatibleClassChangeError(
@@ -7243,6 +7244,7 @@ object JvmInterpreter {
                 receiverClassName = receiverClassName,
                 name = resolvedMethod.name,
                 descriptor = resolvedMethod.descriptor,
+                resolvedMethod = resolvedMethod,
             )
         } catch (exception: me.moeyinlo.visualize.jvm.runtime.JvmIncompatibleClassChangeError) {
             throw JvmIncompatibleClassChangeError(

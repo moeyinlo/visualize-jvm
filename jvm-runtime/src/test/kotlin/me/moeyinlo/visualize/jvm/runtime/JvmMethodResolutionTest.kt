@@ -455,6 +455,67 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `interface method target resolution ignores private methods that cannot override resolved methods`() {
+        val defaultCode = byteArrayOf(0x05)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    interfaceNames = listOf("DefaultFace"),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isPrivate = true,
+                            code = byteArrayOf(0x06),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "DefaultFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = defaultCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val resolvedMethod = hierarchy.resolveInterfaceMethod(
+            ownerClassName = "DefaultFace",
+            name = "value",
+            descriptor = "()I",
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "DefaultFace",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                code = defaultCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+                resolvedMethod = resolvedMethod,
+            ),
+        )
+    }
+
+    @Test
     fun `interface method target resolution finds direct interface default method`() {
         val defaultCode = byteArrayOf(0x05)
         val hierarchy = JvmClassHierarchy(
