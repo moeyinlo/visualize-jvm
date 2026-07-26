@@ -5,6 +5,42 @@ import kotlin.test.assertEquals
 
 class JvmThreadSchedulerTest {
     @Test
+    fun `scheduler selects the next runnable thread while skipping blocked and waiting threads`() {
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val blockedReference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val waitingReference = JvmObjectReferenceValue(JvmReferenceId(2))
+
+        scheduler.tryEnterMonitor(monitors, blockedReference, threadId = "owner")
+        scheduler.tryEnterMonitor(monitors, blockedReference, threadId = "blocked")
+        scheduler.tryEnterMonitor(monitors, waitingReference, threadId = "waiting")
+        scheduler.waitForMonitorNotification(monitors, waitingReference, threadId = "waiting")
+
+        assertEquals(
+            listOf("owner", "late"),
+            scheduler.runnableThreadIds(listOf("owner", "blocked", "waiting", "late")),
+        )
+        assertEquals("late", scheduler.nextRunnableThreadId(listOf("owner", "blocked", "waiting", "late"), afterThreadId = "owner"))
+        assertEquals("owner", scheduler.nextRunnableThreadId(listOf("owner", "blocked", "waiting", "late"), afterThreadId = "late"))
+    }
+
+    @Test
+    fun `scheduler reports no next runnable thread when every candidate is blocked or waiting`() {
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val blockedReference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val waitingReference = JvmObjectReferenceValue(JvmReferenceId(2))
+
+        scheduler.tryEnterMonitor(monitors, blockedReference, threadId = "owner")
+        scheduler.tryEnterMonitor(monitors, blockedReference, threadId = "blocked")
+        scheduler.tryEnterMonitor(monitors, waitingReference, threadId = "waiting")
+        scheduler.waitForMonitorNotification(monitors, waitingReference, threadId = "waiting")
+
+        assertEquals(emptyList(), scheduler.runnableThreadIds(listOf("blocked", "waiting")))
+        assertEquals(null, scheduler.nextRunnableThreadId(listOf("blocked", "waiting"), afterThreadId = "blocked"))
+    }
+
+    @Test
     fun `scheduler parks monitor contender and resumes it when owner releases`() {
         val monitors = JvmMonitorState()
         val scheduler = JvmThreadScheduler()

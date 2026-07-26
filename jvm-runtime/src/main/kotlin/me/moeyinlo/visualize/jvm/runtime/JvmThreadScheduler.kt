@@ -9,6 +9,42 @@ class JvmThreadScheduler {
         return statesByThreadId[threadId] ?: JvmThreadSchedulingState.Runnable
     }
 
+    fun runnableThreadIds(threadIds: Iterable<String>): List<String> =
+        threadIds
+            .map { threadId ->
+                require(threadId.isNotBlank()) { "thread id must not be blank" }
+                threadId
+            }
+            .filter { threadId -> state(threadId) == JvmThreadSchedulingState.Runnable }
+
+    fun nextRunnableThreadId(
+        threadIds: List<String>,
+        afterThreadId: String? = null,
+    ): String? {
+        if (threadIds.isEmpty()) {
+            return null
+        }
+        threadIds.forEach { threadId ->
+            require(threadId.isNotBlank()) { "thread id must not be blank" }
+        }
+        afterThreadId?.let { threadId ->
+            require(threadId.isNotBlank()) { "thread id must not be blank" }
+        }
+
+        val startIndex = afterThreadId
+            ?.let(threadIds::indexOf)
+            ?.takeIf { index -> index >= 0 }
+            ?.let { index -> (index + 1) % threadIds.size }
+            ?: 0
+        for (offset in threadIds.indices) {
+            val candidate = threadIds[(startIndex + offset) % threadIds.size]
+            if (state(candidate) == JvmThreadSchedulingState.Runnable) {
+                return candidate
+            }
+        }
+        return null
+    }
+
     fun tryEnterMonitor(
         monitors: JvmMonitorState,
         reference: JvmObjectReferenceValue,
