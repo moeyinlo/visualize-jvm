@@ -55,6 +55,10 @@ data class JvmSimulatedJavaVm(
     val environment: JvmSimulatedJniEnvironment,
 ) {
     private var attached: Boolean = true
+    private var daemonAttached: Boolean = false
+
+    val isCurrentThreadDaemonAttached: Boolean
+        get() = attached && daemonAttached
 
     val functions: JvmSimulatedJavaVmFunctionTable =
         JvmSimulatedJavaVmFunctionTable.bind(this)
@@ -68,6 +72,23 @@ data class JvmSimulatedJavaVm(
         }
 
         attached = true
+        daemonAttached = false
+        return JvmJavaVmGetEnvResult(
+            status = JvmJniStatus.Ok,
+            environment = environment,
+        )
+    }
+
+    fun attachCurrentThreadAsDaemon(version: Int): JvmJavaVmGetEnvResult {
+        if (version !in JvmJniVersions.SupportedVersions) {
+            return JvmJavaVmGetEnvResult(
+                status = JvmJniStatus.EVersion,
+                environment = null,
+            )
+        }
+
+        attached = true
+        daemonAttached = true
         return JvmJavaVmGetEnvResult(
             status = JvmJniStatus.Ok,
             environment = environment,
@@ -76,6 +97,7 @@ data class JvmSimulatedJavaVm(
 
     fun detachCurrentThread(): Int {
         attached = false
+        daemonAttached = false
         return JvmJniStatus.Ok
     }
 

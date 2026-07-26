@@ -39,4 +39,38 @@ class JvmSimulatedJavaVmTest {
         assertEquals(JvmJniStatus.EVersion, result.status)
         assertEquals(null, result.environment)
     }
+    @Test
+    fun `AttachCurrentThreadAsDaemon records daemon attachment state`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        assertEquals(JvmJniStatus.Ok, javaVm.detachCurrentThread())
+        val attached = javaVm.attachCurrentThreadAsDaemon(JvmJniVersions.Version24)
+
+        assertEquals(JvmJniStatus.Ok, attached.status)
+        assertSame(environment, attached.environment)
+        assertEquals(true, javaVm.isCurrentThreadDaemonAttached)
+
+        val ordinary = javaVm.attachCurrentThread(JvmJniVersions.Version24)
+        assertEquals(JvmJniStatus.Ok, ordinary.status)
+        assertEquals(false, javaVm.isCurrentThreadDaemonAttached)
+    }
+
+    @Test
+    fun `AttachCurrentThreadAsDaemon rejects unsupported requested JNI versions`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        val result = javaVm.attachCurrentThreadAsDaemon(0x7fff0000)
+
+        assertEquals(JvmJniStatus.EVersion, result.status)
+        assertEquals(null, result.environment)
+        assertEquals(false, javaVm.isCurrentThreadDaemonAttached)
+    }
 }
