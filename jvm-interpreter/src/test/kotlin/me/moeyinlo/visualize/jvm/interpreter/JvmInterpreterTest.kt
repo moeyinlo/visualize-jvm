@@ -22300,7 +22300,7 @@ class JvmInterpreterTest {
                     referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
                     referenceIndex = 1,
                 ),
-                targetMethod = classHierarchy.resolveMethod(
+                targetMethod = classHierarchy.resolveInterfaceMethod(
                     ownerClassName = "pkg/TargetInterface",
                     name = "value",
                     descriptor = "()I",
@@ -22407,7 +22407,7 @@ class JvmInterpreterTest {
                     referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
                     referenceIndex = 1,
                 ),
-                targetMethod = classHierarchy.resolveMethod(
+                targetMethod = classHierarchy.resolveInterfaceMethod(
                     ownerClassName = "pkg/TargetInterface",
                     name = "value",
                     descriptor = "()I",
@@ -22521,7 +22521,7 @@ class JvmInterpreterTest {
                     referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
                     referenceIndex = 1,
                 ),
-                targetMethod = classHierarchy.resolveMethod(
+                targetMethod = classHierarchy.resolveInterfaceMethod(
                     ownerClassName = "pkg/TargetInterface",
                     name = "value",
                     descriptor = "()I",
@@ -22611,7 +22611,7 @@ class JvmInterpreterTest {
                     referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
                     referenceIndex = 1,
                 ),
-                targetMethod = classHierarchy.resolveMethod(
+                targetMethod = classHierarchy.resolveInterfaceMethod(
                     ownerClassName = "pkg/TargetInterface",
                     name = "release",
                     descriptor = "()V",
@@ -22712,7 +22712,7 @@ class JvmInterpreterTest {
                     referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
                     referenceIndex = 1,
                 ),
-                targetMethod = classHierarchy.resolveMethod(
+                targetMethod = classHierarchy.resolveInterfaceMethod(
                     ownerClassName = "pkg/TargetInterface",
                     name = "value",
                     descriptor = "()I",
@@ -22801,7 +22801,7 @@ class JvmInterpreterTest {
                     referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
                     referenceIndex = 1,
                 ),
-                targetMethod = classHierarchy.resolveMethod(
+                targetMethod = classHierarchy.resolveInterfaceMethod(
                     ownerClassName = "pkg/TargetInterface",
                     name = "value",
                     descriptor = "()I",

@@ -34,6 +34,30 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `method resolution rejects interface symbolic references`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "ExampleFace",
+                    isInterface = true,
+                    methods = listOf(JvmMethodDefinition(name = "answer", descriptor = "()I", isStatic = false)),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIncompatibleClassChangeError> {
+            hierarchy.resolveMethod(
+                ownerClassName = "ExampleFace",
+                name = "answer",
+                descriptor = "()I",
+            )
+        }
+
+        assertEquals("java/lang/IncompatibleClassChangeError", exception.guestClassName)
+        assertEquals("ExampleFace.answer:()I", exception.message)
+    }
+
+    @Test
     fun `method resolution searches the superclass chain after the referenced class`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

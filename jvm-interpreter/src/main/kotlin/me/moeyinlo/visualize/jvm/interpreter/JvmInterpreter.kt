@@ -7168,7 +7168,12 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
     ) {
-        val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
+        val symbolicMethod = resolveConstantMethodReference(instruction, constantPool)
+        val resolvedMethod = classHierarchy.resolveInterfaceMethod(
+            ownerClassName = symbolicMethod.ownerClassName,
+            name = symbolicMethod.name,
+            descriptor = symbolicMethod.descriptor,
+        )
         val count = instruction.operands[2]
         val zero = instruction.operands[3]
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()

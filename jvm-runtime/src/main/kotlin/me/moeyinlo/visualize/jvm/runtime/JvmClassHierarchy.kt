@@ -165,11 +165,45 @@ class JvmClassHierarchy(
                 guestClassName = "java/lang/NoClassDefFoundError",
                 message = ownerClassName,
             )
+        if (ownerClass.isInterface) {
+            throw JvmIncompatibleClassChangeError(
+                guestClassName = "java/lang/IncompatibleClassChangeError",
+                message = "$ownerClassName.$name:$descriptor",
+            )
+        }
         ownerClass.findDeclaredMethod(name, descriptor)?.let { method -> return method }
         ownerClass.findSignaturePolymorphicDeclaration(name, descriptor)?.let { method -> return method }
         if (name != "<init>") {
             findSuperclassMethod(ownerClass.superclassName, name, descriptor)?.let { method -> return method }
         }
+        throw JvmNoSuchMethodError(
+            guestClassName = "java/lang/NoSuchMethodError",
+            message = "$ownerClassName.$name:$descriptor",
+        )
+    }
+
+    fun resolveInterfaceMethod(
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod {
+        val ownerClass = classesByName[ownerClassName]
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = ownerClassName,
+            )
+        if (!ownerClass.isInterface) {
+            throw JvmIncompatibleClassChangeError(
+                guestClassName = "java/lang/IncompatibleClassChangeError",
+                message = "$ownerClassName.$name:$descriptor",
+            )
+        }
+        ownerClass.findDeclaredMethod(name, descriptor)?.let { method -> return method }
+        findPublicObjectMethod(name, descriptor)?.let { method -> return method }
+        selectMaximallySpecificInterfaceMethodOrNull(ownerClass.interfaceNames, name, descriptor)?.let { method ->
+            return method
+        }
+        collectInterfaceMethods(ownerClass.interfaceNames, name, descriptor).firstOrNull()?.let { method -> return method }
         throw JvmNoSuchMethodError(
             guestClassName = "java/lang/NoSuchMethodError",
             message = "$ownerClassName.$name:$descriptor",
@@ -316,6 +350,21 @@ class JvmClassHierarchy(
         }
     }
 
+    private fun selectMaximallySpecificInterfaceMethodOrNull(
+        interfaceNames: List<String>,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod? {
+        val candidates = collectInterfaceMethods(interfaceNames, name, descriptor)
+        val maximallySpecificMethods = candidates.filter { candidate ->
+            candidates.none { other ->
+                other.ownerClassName != candidate.ownerClassName &&
+                    isAssignable(other.ownerClassName, candidate.ownerClassName)
+            }
+        }
+        return maximallySpecificMethods.singleOrNull { method -> !method.isAbstract }
+    }
+
     private fun collectInterfaceMethods(
         interfaceNames: List<String>,
         name: String,
@@ -360,6 +409,11 @@ class JvmClassHierarchy(
         return superclass.findDeclaredMethod(name, descriptor)
             ?: findSuperclassMethod(superclass.superclassName, name, descriptor)
     }
+
+    private fun findPublicObjectMethod(name: String, descriptor: String): JvmResolvedMethod? =
+        classesByName["java/lang/Object"]
+            ?.findDeclaredMethod(name, descriptor)
+            ?.takeIf { method -> !method.isStatic && !method.isPrivate && !method.isPackagePrivate && !method.isProtected }
 
     private fun String.isArrayClassName(): Boolean = startsWith("[")
 

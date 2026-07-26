@@ -689,7 +689,9 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.4.3.2 | Field resolution searches the superclass chain after superinterface lookup | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |
 | 5.4.3.2 | Field resolution throws guest `NoSuchFieldError` when lookup misses | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |
 | 5.4.3.3 | Method resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.3 | Method resolution rejects class-method symbolic references whose resolved owner is an interface with guest `IncompatibleClassChangeError` | `jvm-runtime` | `JvmMethodResolutionTest.method resolution rejects interface symbolic references` | IMPLEMENTED |
 | 5.4.3.4 | Interface method resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.4 | Interface method resolution validates that the symbolic owner is an interface and supplies resolved interface methods to `invokeinterface` before receiver-target selection | `jvm-runtime`, `jvm-interpreter` | `JvmInterpreterTest.invokeinterface executes direct interface default method`, `JvmMethodResolutionTest.method resolution rejects interface symbolic references` | PARTIAL |
 | 5.4.3.5 | Method type and method handle resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.6 | Dynamic constant and call site resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.4 | Access control | `jvm-runtime` | TBD | PENDING |

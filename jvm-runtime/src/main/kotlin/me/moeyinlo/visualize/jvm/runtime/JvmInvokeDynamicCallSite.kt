@@ -357,11 +357,15 @@ object JvmInvokeDynamicCallSiteResolver {
                             "reference but found ${methodReferenceEntry.javaClass.simpleName}",
                     )
                 }
-                val resolvedMethod = resolveMethodHandleReferenceMethod(
+                val methodReference = methodReference(
                     constantPool = constantPool,
-                    classHierarchy = classHierarchy,
-                    methodReferenceEntry = methodReferenceEntry,
+                    entry = methodReferenceEntry,
                     referenceIndex = referenceIndex,
+                )
+                val resolvedMethod = classHierarchy.resolveInterfaceMethod(
+                    ownerClassName = methodReference.ownerClassName,
+                    name = methodReference.name,
+                    descriptor = methodReference.descriptor,
                 )
                 if (resolvedMethod.isStatic) {
                     throw JvmInvokeDynamicLinkageException(
