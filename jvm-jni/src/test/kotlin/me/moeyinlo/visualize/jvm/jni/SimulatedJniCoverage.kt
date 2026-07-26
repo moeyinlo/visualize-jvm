@@ -82,8 +82,8 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "exception helpers",
             specSection = "JNI exception operations",
-            currentComponent = "JvmSimulatedJniEnvironment pending exception state covers Throw/ThrowNew/ExceptionOccurred/ExceptionDescribe/ExceptionCheck/ExceptionClear/FatalError with Throwable assignability checks",
-            status = SimulatedJniCoverageStatus.PartiallyImplemented,
+            currentComponent = "JvmSimulatedJniEnvironment pending exception state covers Throw/ThrowNew/ExceptionOccurred/ExceptionDescribe without clearing/ExceptionCheck/ExceptionClear/FatalError with Throwable assignability checks",
+            status = SimulatedJniCoverageStatus.Implemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(

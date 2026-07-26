@@ -42,6 +42,15 @@ class SimulatedJniCoverageTest {
     }
 
     @Test
+    fun `exception helper coverage is fully implemented`() {
+        val exceptionHelpers = SimulatedJniCoverage.entries.single { entry ->
+            entry.rule == "exception helpers"
+        }
+
+        assertEquals(SimulatedJniCoverageStatus.Implemented, exceptionHelpers.status)
+    }
+
+    @Test
     fun `current unsupported simulated JNI work is named explicitly`() {
         val unsupportedRules = SimulatedJniCoverage.entries
             .filter { entry -> entry.status == SimulatedJniCoverageStatus.NotYetImplemented }
