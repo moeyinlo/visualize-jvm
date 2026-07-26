@@ -1608,7 +1608,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun setDoubleField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Double) {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "D" || field.isStatic) {
             throw JvmJniFieldAccessException(

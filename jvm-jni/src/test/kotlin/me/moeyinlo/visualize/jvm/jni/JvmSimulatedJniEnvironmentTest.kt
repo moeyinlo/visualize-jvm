@@ -6437,6 +6437,45 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetDoubleField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "D")
+        val mirrorReference = heap.internClassMirror("Example")
+
+        environment.setDoubleField(receiverClassHandle, fieldHandle, 8.25)
+
+        assertEquals(
+            JvmDoubleValue(8.25),
+            heap.getInstanceField(
+                mirrorReference,
+                JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "D"),
+            ),
+        )
+    }
+
+    @Test
     fun `SetDoubleField rejects non double guest field handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
