@@ -33,22 +33,23 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "static field active-use operations",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmInterpreter getstatic and putstatic execute against prepared JvmStaticFields",
+            currentComponent = "JvmInterpreter getstatic and putstatic trigger active-use initialization for resolved static field owners before executing against prepared JvmStaticFields; actual <clinit> bytecode scheduling remains pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "static method active-use operations",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmInterpreter invokestatic resolves and executes methods without class initialization scheduling",
+            currentComponent = "JvmInterpreter invokestatic triggers active-use initialization for the resolved static method owner and shares the initialization state ledger with interpreted static callee frames; actual <clinit> bytecode scheduling remains pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "No class initialization scheduler before new/getstatic/putstatic/invokestatic yet",
-            status = InitializationCoverageStatus.NotYetImplemented,
+            currentComponent = "getstatic, putstatic, and invokestatic mark prepared target classes initialized when no class initializer is present; new triggers, real <clinit> execution, recursive ordering, waiting, and error transitions remain pending",
+            status = InitializationCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "class initialization state machine",
