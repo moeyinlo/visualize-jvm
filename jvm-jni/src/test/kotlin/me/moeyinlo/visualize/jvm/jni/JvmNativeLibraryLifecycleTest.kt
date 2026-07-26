@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.jni
 
 import java.nio.file.Path
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,6 +53,51 @@ class JvmNativeLibraryLifecycleTest {
             invocations.single().arguments,
         )
     }
+    @Test
+    fun `load invokes JNI_OnLoad inside an automatic JNI local frame`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val backend = JvmPanamaDowncallBackend { path, symbolName ->
+            if (path == library.path && symbolName == "JNI_OnLoad") {
+                JvmNativeSymbolAddress(symbolName, 0x1111L)
+            } else {
+                null
+            }
+        }
+        val registry = JvmNativeLibraryRegistry()
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+        var frameDepthDuringOnLoad = -1
+        var liveHandlesDuringOnLoad = -1
+        val lifecycle = JvmNativeLibraryLifecycle(
+            backend = backend,
+            registry = registry,
+            invokeDowncall = { invocation ->
+                val downcallJavaVm = (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJavaVm).javaVm
+                val downcallEnvironment = downcallJavaVm.getEnv(JvmJniVersions.Version24).environment!!
+                frameDepthDuringOnLoad = downcallEnvironment.localFrameDepth
+                downcallEnvironment.handles.newObjectHandle(heap.allocateObject("java/lang/Object"))
+                liveHandlesDuringOnLoad = downcallEnvironment.handles.liveHandleCount
+                JvmNativeDowncallReturn.IntPrimitive(JvmJniVersions.Version24)
+            },
+        )
+
+        lifecycle.load(library, javaVm)
+
+        assertEquals(1, frameDepthDuringOnLoad)
+        assertEquals(1, liveHandlesDuringOnLoad)
+        assertEquals(0, environment.localFrameDepth)
+        assertEquals(0, environment.handles.localFrameDepth)
+        assertEquals(0, environment.handles.liveHandleCount)
+    }
+
     @Test
     fun `unload invokes JNI_OnUnload and returns unloaded library`() {
         val library = JvmNativeLibraryDescriptor(
