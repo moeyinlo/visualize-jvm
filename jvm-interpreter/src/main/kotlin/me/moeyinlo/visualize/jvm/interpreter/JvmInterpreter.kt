@@ -1668,15 +1668,24 @@ object JvmInterpreter {
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             0xB3 -> executePutStatic(
-                instruction,
-                operandStack,
-                constantPool,
-                staticFields,
-                heap,
-                classHierarchy,
-                classInitializationStates,
-                currentThreadId,
-                currentClassName,
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                staticFields = staticFields,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                currentClassName = currentClassName,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             0xB4 -> executeGetField(
                 instruction,
@@ -5269,13 +5278,53 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        threadScheduler: JvmThreadScheduler? = null,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
         requireAccessibleField(resolvedField, currentClassName, classHierarchy)
-        initializeClassForActiveUse(resolvedField.reference.ownerClassName, classHierarchy, classInitializationStates, currentThreadId)
+        initializeClassForActiveUse(
+            resolvedField.reference.ownerClassName,
+            classHierarchy,
+            classInitializationStates,
+            currentThreadId,
+        ) { classInitializer ->
+            executeStaticMethodWithArguments(
+                instruction = instruction,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+                resolvedMethod = classInitializer,
+                arguments = emptyList(),
+                opcodeMnemonic = "class initialization",
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+            )
+        }
         val field = resolvedField.reference
         val value = operandStack.pop()
         requireFieldValue(instruction, field, value)
