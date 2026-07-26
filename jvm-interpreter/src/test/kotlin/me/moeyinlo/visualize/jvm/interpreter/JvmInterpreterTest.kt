@@ -13067,6 +13067,69 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual native method context delegates to VM native library unload hook`() {
+        val unloadedLogicalNames = mutableListOf<String>()
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeOwner")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "unloadViaContext",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("unloadViaContext", "unloadViaContext".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey(
+                    ownerClassName = "NativeOwner",
+                    name = "unloadViaContext",
+                    descriptor = "()V",
+                    isStatic = false,
+                ) to JvmNativeMethodIntrinsic { context, invocation ->
+                    assertEquals(receiver, invocation.receiver)
+                    context.unloadNativeLibraryHandler("virtual-native")
+                    null
+                },
+            ),
+            currentClassName = "Caller",
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("virtual-native"), unloadedLogicalNames)
+    }
+
+    @Test
     fun `invokestatic System loadLibrary delegates to VM native library load hook`() {
         val loadedLogicalNames = mutableListOf<String>()
         val heap = JvmHeap()
