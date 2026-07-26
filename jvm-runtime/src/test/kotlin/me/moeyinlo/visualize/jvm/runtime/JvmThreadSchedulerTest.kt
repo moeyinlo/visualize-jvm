@@ -97,6 +97,56 @@ class JvmThreadSchedulerTest {
     }
 
     @Test
+    fun `scheduler restores released wait hold count when notified waiter reacquires monitor`() {
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "waiter")
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "waiter")
+        scheduler.waitForMonitorNotification(monitors, reference, threadId = "waiter")
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "notifier")
+        scheduler.notifyOneMonitor(monitors, reference, threadId = "notifier")
+        scheduler.exitMonitor(monitors, reference, threadId = "notifier")
+
+        assertEquals(
+            JvmMonitorEnterResult.Acquired(holdCount = 2),
+            scheduler.resumeMonitorReentry(monitors, reference, threadId = "waiter"),
+        )
+        assertEquals(2, monitors.holdCount(reference, threadId = "waiter"))
+        assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("waiter"))
+    }
+
+    @Test
+    fun `scheduler keeps pending wait hold count when notified waiter still cannot reacquire monitor`() {
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "waiter")
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "waiter")
+        scheduler.waitForMonitorNotification(monitors, reference, threadId = "waiter")
+        scheduler.tryEnterMonitor(monitors, reference, threadId = "notifier")
+        scheduler.notifyOneMonitor(monitors, reference, threadId = "notifier")
+
+        assertEquals(
+            JvmMonitorEnterResult.Blocked(
+                ownerThreadId = "notifier",
+                blockedThreadIds = listOf("waiter"),
+            ),
+            scheduler.resumeMonitorReentry(monitors, reference, threadId = "waiter"),
+        )
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = reference,
+                ownerThreadId = "notifier",
+                pendingReentryHoldCount = 2,
+            ),
+            scheduler.state("waiter"),
+        )
+    }
+
+    @Test
     fun `scheduler preserves released wait hold counts during notifyAll handoff`() {
         val monitors = JvmMonitorState()
         val scheduler = JvmThreadScheduler()

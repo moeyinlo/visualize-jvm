@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.runtime
 
 class JvmThreadScheduler {
     private val statesByThreadId = linkedMapOf<String, JvmThreadSchedulingState>()
+    private val pendingReentryHoldCountsByThreadId = linkedMapOf<String, Int>()
 
     fun state(threadId: String): JvmThreadSchedulingState {
         require(threadId.isNotBlank()) { "thread id must not be blank" }
@@ -52,6 +53,7 @@ class JvmThreadScheduler {
         val notifiedThreadId = monitors.notifyOne(reference, threadId)
         if (notifiedThreadId != null) {
             val pendingReentryHoldCount = waitReleasedHoldCount(notifiedThreadId)
+            pendingReentryHoldCountsByThreadId[notifiedThreadId] = pendingReentryHoldCount
             val result = monitors.tryEnter(reference, notifiedThreadId)
             recordMonitorEnterResult(reference, notifiedThreadId, result, pendingReentryHoldCount)
         }
@@ -66,10 +68,37 @@ class JvmThreadScheduler {
         val notifiedThreadIds = monitors.notifyAll(reference, threadId)
         for (notifiedThreadId in notifiedThreadIds) {
             val pendingReentryHoldCount = waitReleasedHoldCount(notifiedThreadId)
+            pendingReentryHoldCountsByThreadId[notifiedThreadId] = pendingReentryHoldCount
             val result = monitors.tryEnter(reference, notifiedThreadId)
             recordMonitorEnterResult(reference, notifiedThreadId, result, pendingReentryHoldCount)
         }
         return notifiedThreadIds
+    }
+
+    fun resumeMonitorReentry(
+        monitors: JvmMonitorState,
+        reference: JvmObjectReferenceValue,
+        threadId: String,
+    ): JvmMonitorEnterResult {
+        val pendingReentryHoldCount = pendingReentryHoldCountsByThreadId[threadId]
+            ?: ((statesByThreadId[threadId] as? JvmThreadSchedulingState.BlockedOnMonitor)
+                ?.takeIf { state -> state.reference == reference }
+                ?.pendingReentryHoldCount ?: 1)
+        val result = monitors.tryEnter(reference, threadId)
+        when (result) {
+            is JvmMonitorEnterResult.Acquired -> {
+                for (reentry in 2..pendingReentryHoldCount) {
+                    monitors.enter(reference, threadId)
+                }
+                pendingReentryHoldCountsByThreadId.remove(threadId)
+                statesByThreadId[threadId] = JvmThreadSchedulingState.Runnable
+                return JvmMonitorEnterResult.Acquired(holdCount = pendingReentryHoldCount)
+            }
+            is JvmMonitorEnterResult.Blocked -> {
+                recordMonitorEnterResult(reference, threadId, result, pendingReentryHoldCount)
+                return result
+            }
+        }
     }
 
     private fun waitReleasedHoldCount(threadId: String): Int =
