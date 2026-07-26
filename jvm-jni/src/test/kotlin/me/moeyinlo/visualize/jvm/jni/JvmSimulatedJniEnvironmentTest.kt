@@ -6827,6 +6827,44 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetByteField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "B",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "B")
+        val mirrorReference = heap.internClassMirror("Example")
+        heap.putInstanceField(
+            mirrorReference,
+            JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "B"),
+            JvmByteValue(-9),
+        )
+
+        val result = environment.getByteField(receiverClassHandle, fieldHandle)
+
+        assertEquals(-9, result)
+    }
+
+    @Test
     fun `GetByteField reads default zero for an unwritten guest byte instance field`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
