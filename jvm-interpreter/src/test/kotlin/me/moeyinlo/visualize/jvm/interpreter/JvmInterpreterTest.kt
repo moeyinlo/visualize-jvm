@@ -19875,6 +19875,7 @@ class JvmInterpreterTest {
     @Test
     fun `invokedynamic executes invoke static bootstrap method and dispatches linked target`() {
         val heap = JvmHeap()
+        val loadedLogicalNames = mutableListOf<String>()
         val bootstrapDescriptor =
             "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)" +
                 "Ljava/lang/invoke/CallSite;"
@@ -19919,6 +19920,7 @@ class JvmInterpreterTest {
                 isStatic = true,
             ) to JvmNativeMethodIntrinsic { context, invocation ->
                 assertEquals(3, invocation.arguments.size)
+                context.loadNativeLibraryHandler("indy-bootstrap-native")
                 context.heap.allocateCallSite(
                     context.heap.internMethodHandle(
                         referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
@@ -19951,8 +19953,10 @@ class JvmInterpreterTest {
                 ),
             ),
             invokeDynamicCallSites = callSites,
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
         )
 
+        assertEquals(listOf("indy-bootstrap-native"), loadedLogicalNames)
         assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
         assertEquals(
             classHierarchy.resolveMethod("pkg/Targets", "answer", "()I"),
