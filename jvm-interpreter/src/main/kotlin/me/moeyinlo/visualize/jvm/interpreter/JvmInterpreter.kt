@@ -5741,6 +5741,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
         }
     }
@@ -6407,6 +6408,9 @@ object JvmInterpreter {
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val constructor = linkedCallSite.targetMethod
         if (constructor.name != "<init>") {
@@ -6452,6 +6456,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 currentClassName = constructor.ownerClassName,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             if (nativeReturnValue != null) {
                 throw JvmUnsupportedInstructionException(
@@ -6493,6 +6498,7 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
         if (frameResult.returnValue != null) {
             throw JvmUnsupportedInstructionException(

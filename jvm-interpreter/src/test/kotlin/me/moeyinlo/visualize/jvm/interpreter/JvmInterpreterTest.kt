@@ -19955,6 +19955,79 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked native constructor target retains native library load hook`() {
+        val heap = JvmHeap()
+        val loadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Constructed",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "<init>",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("pkg/Constructed", "<init>", "()V", isStatic = false) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    assertTrue(invocation.receiver is JvmObjectReferenceValue)
+                    context.loadNativeLibraryHandler("indy-constructor-native")
+                    null
+                },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicConstructorCallSiteConstantPool(),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
+        )
+
+        val constructed = result.operandStack.toList().single() as JvmObjectReferenceValue
+        assertEquals(listOf("indy-constructor-native"), loadedLogicalNames)
+        assertEquals("pkg/Constructed", heap.get(constructed).className)
+        assertTrue(heap.isInitialized(constructed))
+    }
+
+    @Test
     fun `invokedynamic rejects field method handles without linked field targets`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(
