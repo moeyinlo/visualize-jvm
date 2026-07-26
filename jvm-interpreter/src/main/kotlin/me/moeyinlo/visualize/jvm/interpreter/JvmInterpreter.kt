@@ -1172,6 +1172,7 @@ object JvmInterpreter {
                             currentThreadId = currentThreadId,
                             suspendedAtBytecodeOffset = instruction.offset,
                             nextBytecodeOffset = instructions.getOrNull(instructionIndex + 1)?.offset,
+                            operandStackValues = operandStack.toList(),
                         )
                         null
                     }
@@ -1371,6 +1372,7 @@ object JvmInterpreter {
         currentThreadId: String,
         suspendedAtBytecodeOffset: Int,
         nextBytecodeOffset: Int?,
+        operandStackValues: List<JvmValue> = emptyList(),
     ) {
         val state = threadScheduler?.state(currentThreadId) ?: return
         if (state != JvmThreadSchedulingState.Runnable) {
@@ -1379,6 +1381,7 @@ object JvmInterpreter {
                 state = state,
                 suspendedAtBytecodeOffset = suspendedAtBytecodeOffset,
                 nextBytecodeOffset = nextBytecodeOffset,
+                operandStackValues = operandStackValues,
                 message = "Thread $currentThreadId is suspended in scheduler state $state",
             )
         }

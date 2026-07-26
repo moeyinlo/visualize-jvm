@@ -19409,6 +19409,77 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread suspension preserves operand stack snapshot after current instruction`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("pkg/Lock")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "owner")
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("parkValue", "parkValue".encodeToByteArray()),
+                ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "parkValue",
+                            descriptor = "()I",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.executeScheduledThread(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x03.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey(
+                    ownerClassName = "Example",
+                    name = "parkValue",
+                    descriptor = "()I",
+                    isStatic = true,
+                ) to JvmNativeMethodIntrinsic { context, _ ->
+                    context.threadScheduler!!.tryEnterMonitor(
+                        monitors = context.monitors,
+                        reference = receiver,
+                        threadId = context.currentThreadId,
+                    )
+                    JvmIntValue(7)
+                },
+            ),
+            monitors = monitors,
+            threadScheduler = scheduler,
+            currentThreadId = "worker",
+            currentClassName = "Caller",
+        )
+
+        val suspended = result as JvmScheduledThreadExecutionResult.Suspended
+        assertEquals(0, suspended.suspension.suspendedAtBytecodeOffset)
+        assertEquals(3, suspended.suspension.nextBytecodeOffset)
+        assertEquals(listOf(JvmIntValue(7)), suspended.suspension.operandStackValues)
+    }
+
+    @Test
     fun `scheduled thread frame records resume configuration`() {
         val locals = JvmLocalVariables(maxLocals = 1)
         val operandStackValues = listOf(JvmIntValue(7))
