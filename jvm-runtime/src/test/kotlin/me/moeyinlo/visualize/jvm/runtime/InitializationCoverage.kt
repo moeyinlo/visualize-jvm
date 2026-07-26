@@ -26,8 +26,8 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "ConstantValue attribute assignment",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "ClassFileParser parses ConstantValue, JvmClassfileRuntimeAdapter maps numeric ConstantValue entries into runtime metadata, and JvmStaticFields.prepare assigns modeled ConstantValue metadata; String ConstantValue guest heap wiring remains pending",
-            status = InitializationCoverageStatus.PartiallyImplemented,
+            currentComponent = "ClassFileParser parses ConstantValue, JvmClassfileRuntimeAdapter maps numeric and String ConstantValue entries into runtime metadata, and heap-aware JvmStaticFields.prepare assigns modeled ConstantValue metadata to descriptor values or interned guest strings",
+            status = InitializationCoverageStatus.Implemented,
             coveringTestClass = "JvmStaticFieldsTest",
         ),
         InitializationCoverageEntry(
