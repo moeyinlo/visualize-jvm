@@ -2524,6 +2524,51 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallStaticObjectMethod returns jclass handles for guest Class mirror results`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val resultReference = heap.internClassMirror("Result")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "Result"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "pickClass",
+                                descriptor = "()Ljava/lang/Class;",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticObjectMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmReferenceValue = resultReference
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getStaticMethodId(classHandle, "pickClass", "()Ljava/lang/Class;")
+
+        val resultHandle = environment.callStaticObjectMethod(classHandle, methodHandle)
+
+        assertEquals("Result", handles.resolveClass(resultHandle!!))
+    }
+
+    @Test
     fun `CallStaticObjectMethod rejects class that is not assignable to method owner`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
