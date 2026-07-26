@@ -2195,7 +2195,7 @@ class JvmSimulatedJniEnvironment(
         )
         return when (value) {
             JvmNullValue -> null
-            is JvmObjectReferenceValue -> handles.newObjectHandle(value)
+            is JvmObjectReferenceValue -> newJObjectHandle(value)
             else -> throw JvmJniFieldAccessException(
                 "GetObjectField read ${value::class.simpleName} from ${field.ownerClassName}.${field.name}:${field.descriptor}",
             )
@@ -2217,7 +2217,7 @@ class JvmSimulatedJniEnvironment(
         val value = if (valueHandle == null) {
             JvmNullValue
         } else {
-            handles.resolveObject(valueHandle)
+            resolveJObjectValue(valueHandle)
         }
         heap.putInstanceField(
             reference,

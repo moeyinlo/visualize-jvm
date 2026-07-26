@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
@@ -3986,6 +3987,45 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectField returns jclass handles for stored guest class mirrors`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "type",
+                                descriptor = "Ljava/lang/Class;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "type", "Ljava/lang/Class;")
+        heap.putInstanceField(
+            objectReference,
+            JvmFieldReference(ownerClassName = "Example", name = "type", descriptor = "Ljava/lang/Class;"),
+            heap.internClassMirror("Child"),
+        )
+
+        val resultHandle = environment.getObjectField(objectHandle, fieldHandle)
+
+        assertEquals("Child", handles.resolveClass(resultHandle!!))
+    }
+
+    @Test
     fun `GetObjectField returns null for an unwritten guest object instance field`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -4091,6 +4131,46 @@ class JvmSimulatedJniEnvironmentTest {
                 JvmFieldReference(ownerClassName = "Example", name = "child", descriptor = "LChild;"),
             ),
         )
+    }
+
+    @Test
+    fun `SetObjectField accepts jclass handles for guest class mirror fields`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "type",
+                                descriptor = "Ljava/lang/Class;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject("Example")
+        val objectHandle = handles.newObjectHandle(objectReference)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "type", "Ljava/lang/Class;")
+        val valueHandle = environment.findClass("Child")
+
+        environment.setObjectField(objectHandle, fieldHandle, valueHandle)
+
+        val storedValue = heap.getInstanceField(
+            objectReference,
+            JvmFieldReference(ownerClassName = "Example", name = "type", descriptor = "Ljava/lang/Class;"),
+        ) as JvmObjectReferenceValue
+        assertEquals("java/lang/Class", heap.get(storedValue).className)
+        assertEquals(JvmClassPayload("Child"), heap.get(storedValue).payload)
     }
 
     @Test
