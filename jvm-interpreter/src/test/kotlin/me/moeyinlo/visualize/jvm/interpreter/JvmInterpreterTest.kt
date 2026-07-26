@@ -12001,6 +12001,62 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc2_w dynamic constant native bootstrap retains native library unload hook`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+        val unloadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "bootstrap",
+                            descriptor = dynamicConstantLongBootstrapDescriptor,
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("pkg/Bootstrap", "bootstrap", dynamicConstantLongBootstrapDescriptor, isStatic = true) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    assertEquals(3, invocation.arguments.size)
+                    context.unloadNativeLibraryHandler("condy-long-bootstrap-native")
+                    JvmLongValue(42L)
+                },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x14.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = dynamicConstantBootstrapExecutionConstantPool("J", dynamicConstantLongBootstrapDescriptor),
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
+            ),
+            dynamicConstants = dynamicConstants,
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("condy-long-bootstrap-native"), unloadedLogicalNames)
+        assertEquals(listOf(JvmLongValue(42L)), result.operandStack.toList())
+        assertEquals(JvmLongValue(42L), dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(1)))
+    }
+
+    @Test
     fun `constant execution respects max stack bounds`() {
         assertFailsWith<JvmOperandStackOverflowException> {
             JvmInterpreter.execute(

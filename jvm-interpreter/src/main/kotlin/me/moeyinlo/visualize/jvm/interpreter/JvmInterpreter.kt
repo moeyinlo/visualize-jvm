@@ -1173,6 +1173,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             0x15,
             in 0x1A..0x1D,
@@ -4282,6 +4283,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -4309,6 +4313,7 @@ object JvmInterpreter {
                     invokeDynamicCallSites = invokeDynamicCallSites,
                     dynamicConstants = dynamicConstants,
                     loadNativeLibraryHandler = loadNativeLibraryHandler,
+                    unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 )
                 if (value.category.slotWidth != 2) {
                     throw JvmUnsupportedInstructionException(
