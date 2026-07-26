@@ -232,9 +232,9 @@ class JvmClassHierarchy(
                 guestClassName = "java/lang/NoClassDefFoundError",
                 message = receiverClassName,
             )
-        return receiverClass.findDeclaredMethod(name, descriptor)
+        return receiverClass.findDeclaredVirtualSelectionMethod(name, descriptor, resolvedMethod)
             ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
-            ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
+            ?: findSuperclassVirtualSelectionMethod(receiverClass.superclassName, name, descriptor, resolvedMethod)
             ?: selectMaximallySpecificInterfaceMethod(
                 receiverClassName,
                 collectClassAndSuperclassInterfaceNames(receiverClass),
@@ -309,6 +309,14 @@ class JvmClassHierarchy(
                     exceptionHandlers = method.exceptionHandlers,
                 )
             }
+
+    private fun JvmClassDefinition.findDeclaredVirtualSelectionMethod(
+        name: String,
+        descriptor: String,
+        resolvedMethod: JvmResolvedMethod?,
+    ): JvmResolvedMethod? =
+        findDeclaredMethod(name, descriptor)
+            ?.takeIf { candidate -> resolvedMethod == null || !candidate.isPrivate }
 
     private fun JvmClassDefinition.findSignaturePolymorphicDeclaration(
         name: String,
@@ -429,6 +437,20 @@ class JvmClassHierarchy(
         val superclass = classesByName[superclassName] ?: return null
         return superclass.findDeclaredMethod(name, descriptor)
             ?: findSuperclassMethod(superclass.superclassName, name, descriptor)
+    }
+
+    private fun findSuperclassVirtualSelectionMethod(
+        superclassName: String?,
+        name: String,
+        descriptor: String,
+        resolvedMethod: JvmResolvedMethod?,
+    ): JvmResolvedMethod? {
+        if (superclassName == null) {
+            return null
+        }
+        val superclass = classesByName[superclassName] ?: return null
+        return superclass.findDeclaredVirtualSelectionMethod(name, descriptor, resolvedMethod)
+            ?: findSuperclassVirtualSelectionMethod(superclass.superclassName, name, descriptor, resolvedMethod)
     }
 
     private fun findSuperclassMethodForMethodResolution(
