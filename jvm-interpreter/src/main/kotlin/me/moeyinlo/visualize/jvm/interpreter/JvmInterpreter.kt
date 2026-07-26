@@ -5425,7 +5425,34 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
-        initializeClassForActiveUse(resolvedMethod.ownerClassName, classHierarchy, classInitializationStates, currentThreadId)
+        initializeClassForActiveUse(
+            resolvedMethod.ownerClassName,
+            classHierarchy,
+            classInitializationStates,
+            currentThreadId,
+        ) { classInitializer ->
+            executeStaticMethodWithArguments(
+                instruction = instruction,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+                resolvedMethod = classInitializer,
+                arguments = emptyList(),
+                opcodeMnemonic = "class initialization",
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+            )
+        }
         executeResolvedStaticMethod(
             instruction = instruction,
             operandStack = operandStack,
