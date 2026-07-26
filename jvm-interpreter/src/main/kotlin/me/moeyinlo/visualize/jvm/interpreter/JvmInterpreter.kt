@@ -1131,6 +1131,7 @@ object JvmInterpreter {
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             0x14 -> executeLdc2(
                 instruction = instruction,
@@ -1146,6 +1147,7 @@ object JvmInterpreter {
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             0x15,
             in 0x1A..0x1D,
@@ -4106,6 +4108,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -4149,6 +4154,7 @@ object JvmInterpreter {
                     bootstrapMethods = bootstrapMethods,
                     invokeDynamicCallSites = invokeDynamicCallSites,
                     dynamicConstants = dynamicConstants,
+                    loadNativeLibraryHandler = loadNativeLibraryHandler,
                 )
                 if (value.category.slotWidth != 1) {
                     throw JvmUnsupportedInstructionException(
@@ -4239,6 +4245,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -4265,6 +4274,7 @@ object JvmInterpreter {
                     bootstrapMethods = bootstrapMethods,
                     invokeDynamicCallSites = invokeDynamicCallSites,
                     dynamicConstants = dynamicConstants,
+                    loadNativeLibraryHandler = loadNativeLibraryHandler,
                 )
                 if (value.category.slotWidth != 2) {
                     throw JvmUnsupportedInstructionException(
@@ -4295,6 +4305,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmValue {
         val runtimeIndex = JvmRuntimeConstantPoolIndex(index.value)
         dynamicConstants.resolved(runtimeIndex)?.let { value -> return value }
@@ -4334,6 +4347,7 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
         if (invocation.bootstrapMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
             throw JvmUnsupportedInstructionException(
@@ -4369,6 +4383,7 @@ object JvmInterpreter {
             resolvedMethod = bootstrapMethod,
             arguments = bootstrapArguments,
             opcodeMnemonic = "CONSTANT_Dynamic bootstrap",
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         ) ?: throw JvmUnsupportedInstructionException(
             "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: bootstrap method " +
                 "${bootstrapMethod.ownerClassName}.${bootstrapMethod.name}:${bootstrapMethod.descriptor} " +
@@ -4405,6 +4420,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): List<JvmValue> =
         buildList {
             add(heap.internMethodHandlesLookup(currentClassName))
@@ -4426,6 +4444,7 @@ object JvmInterpreter {
                         bootstrapMethods = bootstrapMethods,
                         invokeDynamicCallSites = invokeDynamicCallSites,
                         dynamicConstants = dynamicConstants,
+                        loadNativeLibraryHandler = loadNativeLibraryHandler,
                     ),
                 )
             }
@@ -4445,6 +4464,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmValue =
         when (argument) {
             is JvmBootstrapArgument.ClassConstant -> heap.internClassMirror(argument.internalName)
@@ -4463,6 +4485,7 @@ object JvmInterpreter {
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             is JvmBootstrapArgument.FloatConstant -> argument.value
             is JvmBootstrapArgument.IntegerConstant -> argument.value
