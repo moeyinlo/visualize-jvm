@@ -626,7 +626,7 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): Long {
-        val receiver = handles.resolveObject(objectHandle)
+        val receiver = resolveJObjectValue(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceLongMethod("CallLongMethod")
         requireReceiverAssignableToMethod("CallLongMethod", receiver, method)
