@@ -14273,6 +14273,96 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `native instance upcalls retain monitor unblocked hook`() {
+        val heap = JvmHeap()
+        val upcaller = heap.allocateObject("Upcaller")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        val monitors = JvmMonitorState()
+        val unblocked = mutableListOf<Pair<JvmObjectReferenceValue, String>>()
+        localVariables.store(0, upcaller)
+        monitors.enter(upcaller, "owner")
+        monitors.tryEnter(upcaller, "contender")
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "entry",
+                            descriptor = "(LUpcaller;)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "Upcaller",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "release",
+                            descriptor = "()V",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x2A.toByte(),
+                                0xC3.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("NativeOwner", "entry", "(LUpcaller;)V", isStatic = true) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    context.callInstanceMethod(
+                        receiver = invocation.arguments.single() as JvmObjectReferenceValue,
+                        ownerClassName = "Upcaller",
+                        name = "release",
+                        descriptor = "()V",
+                        arguments = emptyList(),
+                    )
+                    null
+                },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("entry", "entry".encodeToByteArray()),
+                    ConstantUtf8Entry("(LUpcaller;)V", "(LUpcaller;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = "owner",
+            monitorUnblockedHandler = { objectReference, threadId ->
+                unblocked += objectReference to threadId
+            },
+        )
+
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(listOf(upcaller to "contender"), unblocked)
+        assertEquals(emptyList(), monitors.blockedThreads(upcaller))
+    }
+
+    @Test
     fun `invokestatic System loadLibrary loads through configured native library loader`() {
         val descriptor = JvmNativeLibraryDescriptor(
             logicalName = "loader-native",
