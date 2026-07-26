@@ -382,7 +382,7 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): JvmJniHandleId? {
-        val receiver = handles.resolveObject(objectHandle)
+        val receiver = resolveJObjectValue(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceObjectMethod("CallObjectMethod")
         requireReceiverAssignableToMethod("CallObjectMethod", receiver, method)

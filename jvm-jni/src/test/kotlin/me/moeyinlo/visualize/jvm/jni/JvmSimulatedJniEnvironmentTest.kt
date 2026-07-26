@@ -621,6 +621,72 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallObjectMethod accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedObjectUpcall>()
+        val resultReference = heap.allocateString("Example")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "mirrorName",
+                                descriptor = "()Ljava/lang/String;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callObjectMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmReferenceValue {
+                    calls += RecordedObjectUpcall(receiver, method, arguments)
+                    return resultReference
+                }
+            },
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val methodHandle = environment.getMethodId(classClassHandle, "mirrorName", "()Ljava/lang/String;")
+
+        val resultHandle = environment.callObjectMethod(receiverClassHandle, methodHandle)
+
+        assertEquals(resultReference, handles.resolveObject(resultHandle!!))
+        assertEquals(
+            listOf(
+                RecordedObjectUpcall(
+                    receiver = heap.internClassMirror("Example"),
+                    method = JvmResolvedMethod(
+                        ownerClassName = "java/lang/Class",
+                        name = "mirrorName",
+                        descriptor = "()Ljava/lang/String;",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallObjectMethod rejects receiver that is not assignable to method owner`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
