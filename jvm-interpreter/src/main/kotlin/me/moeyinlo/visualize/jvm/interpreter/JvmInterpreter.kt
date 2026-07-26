@@ -23,6 +23,8 @@ import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallDispatcher
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallException
 import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestException
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryLoader
+import me.moeyinlo.visualize.jvm.jni.JvmSimulatedJavaVm
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapArgument
@@ -719,7 +721,14 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        nativeLibraryLoader: JvmNativeLibraryLoader? = null,
+        javaVm: JvmSimulatedJavaVm? = null,
     ): JvmExecutionResult {
+        val effectiveLoadNativeLibraryHandler = nativeLibraryLoader?.loadHook(
+            javaVm ?: throw JvmUnsupportedInstructionException(
+                "Native library loader requires a simulated JavaVM",
+            ),
+        ) ?: loadNativeLibraryHandler
         val frameResult = executeFrame(
             code = code,
             maxStack = maxStack,
@@ -737,7 +746,7 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
-            loadNativeLibraryHandler = loadNativeLibraryHandler,
+            loadNativeLibraryHandler = effectiveLoadNativeLibraryHandler,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }

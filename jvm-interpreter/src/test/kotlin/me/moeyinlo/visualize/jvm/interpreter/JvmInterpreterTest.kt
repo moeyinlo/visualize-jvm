@@ -25,10 +25,17 @@ import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallReturn
 import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallTarget
 import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestException
 import me.moeyinlo.visualize.jvm.jni.JvmJniNativeMethodDescriptor
+import me.moeyinlo.visualize.jvm.jni.JvmJniVersions
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryBinding
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryCatalog
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryDescriptor
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryLifecycle
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryLoader
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryRegistry
 import me.moeyinlo.visualize.jvm.jni.JvmNativeMethodExportDescriptor
+import me.moeyinlo.visualize.jvm.jni.JvmNativeSymbolAddress
+import me.moeyinlo.visualize.jvm.jni.JvmPanamaDowncallBackend
+import me.moeyinlo.visualize.jvm.jni.JvmSimulatedJavaVm
 import me.moeyinlo.visualize.jvm.jni.JvmSimulatedJniEnvironment
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
@@ -12951,6 +12958,91 @@ class JvmInterpreterTest {
         )
 
         assertEquals(listOf("interpreter-native"), loadedLogicalNames)
+    }
+
+    @Test
+    fun `invokestatic System loadLibrary loads through configured native library loader`() {
+        val descriptor = JvmNativeLibraryDescriptor(
+            logicalName = "loader-native",
+            path = Path.of("loader-native.dll"),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        val invocations = mutableListOf<JvmNativeDowncallInvocation>()
+        val loader = JvmNativeLibraryLoader(
+            catalog = JvmNativeLibraryCatalog(listOf(descriptor)),
+            lifecycle = JvmNativeLibraryLifecycle(
+                backend = JvmPanamaDowncallBackend { path, symbolName ->
+                    if (path == descriptor.path && symbolName == "JNI_OnLoad") {
+                        JvmNativeSymbolAddress(symbolName, 0x1111L)
+                    } else {
+                        null
+                    }
+                },
+                registry = registry,
+                invokeDowncall = { invocation ->
+                    invocations += invocation
+                    JvmNativeDowncallReturn.IntPrimitive(JvmJniVersions.Version24)
+                },
+            ),
+        )
+        val heap = JvmHeap()
+        val staticFields = JvmStaticFields()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/System",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "loadLibrary",
+                            descriptor = "(Ljava/lang/String;)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+            ),
+        )
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, heap.internString("loader-native"))
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("java/lang/System", "java/lang/System".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("loadLibrary", "loadLibrary".encodeToByteArray()),
+                    ConstantUtf8Entry("(Ljava/lang/String;)V", "(Ljava/lang/String;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            currentClassName = "Caller",
+            nativeLibraryLoader = loader,
+            javaVm = javaVm,
+        )
+
+        val loaded = registry.loadedLibrary("loader-native")
+        assertEquals(descriptor, loaded?.library)
+        assertEquals(JvmJniVersions.Version24, loaded?.onLoadVersion)
+        assertEquals("JNI_OnLoad", invocations.single().target.symbolName)
     }
 
     @Test
