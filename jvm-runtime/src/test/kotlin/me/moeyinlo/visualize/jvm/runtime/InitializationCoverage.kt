@@ -33,7 +33,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "static field active-use operations",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmInterpreter getstatic executes target <clinit>:()V before reading prepared JvmStaticFields; putstatic still only covers no-<clinit> active-use initialization, and cached dynamic field-target <clinit> scheduling remains pending",
+            currentComponent = "JvmInterpreter getstatic executes target <clinit>:()V before reading prepared JvmStaticFields and putstatic executes target <clinit>:()V before storing into prepared JvmStaticFields; cached dynamic field-target <clinit> scheduling remains pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
@@ -47,7 +47,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "getstatic executes target <clinit>:()V before static field read; new, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; remaining <clinit> execution paths, recursive ordering, waiting, and error transitions remain pending",
+            currentComponent = "getstatic and putstatic execute target <clinit>:()V before static field access; new, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets mark prepared target classes initialized when no class initializer is present; remaining <clinit> execution paths, recursive ordering, waiting, and error transitions remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
