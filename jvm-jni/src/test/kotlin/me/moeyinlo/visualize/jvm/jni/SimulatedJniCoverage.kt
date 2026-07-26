@@ -45,6 +45,13 @@ object SimulatedJniCoverage {
             coveringTestClass = "JvmInterpreterTest",
         ),
         SimulatedJniCoverageEntry(
+            rule = "JNIEnv function table upcalls",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmSimulatedJniFunctionTable binds Call<Type>Method, CallNonvirtual<Type>Method, and CallStatic<Type>Method helpers to one simulated JNI environment whose upcall dispatcher re-enters guest interpreter execution",
+            status = SimulatedJniCoverageStatus.Implemented,
+            coveringTestClass = "JvmSimulatedJniFunctionTableTest",
+        ),
+        SimulatedJniCoverageEntry(
             rule = "instance and static field helpers",
             specSection = "JNI field operations",
             currentComponent = "JvmSimulatedJniEnvironment get/set instance and static primitive/object fields",
