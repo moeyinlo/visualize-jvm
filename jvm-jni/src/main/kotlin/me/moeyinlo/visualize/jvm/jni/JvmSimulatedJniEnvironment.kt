@@ -1759,7 +1759,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun getShortField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "S" || field.isStatic) {
             throw JvmJniFieldAccessException(

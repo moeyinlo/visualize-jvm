@@ -7317,6 +7317,44 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetShortField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "S",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "S")
+        val mirrorReference = heap.internClassMirror("Example")
+        heap.putInstanceField(
+            mirrorReference,
+            JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "S"),
+            JvmShortValue(-2468),
+        )
+
+        val result = environment.getShortField(receiverClassHandle, fieldHandle)
+
+        assertEquals(-2468, result)
+    }
+
+    @Test
     fun `GetShortField reads default zero for an unwritten guest short instance field`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
