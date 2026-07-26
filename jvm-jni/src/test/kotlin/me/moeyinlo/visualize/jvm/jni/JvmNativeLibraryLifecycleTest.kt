@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import java.nio.file.Path
+import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
@@ -93,6 +94,57 @@ class JvmNativeLibraryLifecycleTest {
 
         assertEquals(1, frameDepthDuringOnLoad)
         assertEquals(1, liveHandlesDuringOnLoad)
+        assertEquals(0, environment.localFrameDepth)
+        assertEquals(0, environment.handles.localFrameDepth)
+        assertEquals(0, environment.handles.liveHandleCount)
+    }
+
+    @Test
+    fun `load propagates pending JNI_OnLoad guest exceptions without registering library`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val backend = JvmPanamaDowncallBackend { path, symbolName ->
+            if (path == library.path && symbolName == "JNI_OnLoad") {
+                JvmNativeSymbolAddress(symbolName, 0x1111L)
+            } else {
+                null
+            }
+        }
+        val registry = JvmNativeLibraryRegistry()
+        val heap = JvmHeap()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(internalName = "java/lang/Throwable"),
+                JvmClassDefinition(internalName = "java/lang/IllegalStateException", superclassName = "java/lang/Throwable"),
+            ),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val throwable = heap.allocateObject("java/lang/IllegalStateException")
+        val javaVm = JvmSimulatedJavaVm(environment)
+        val lifecycle = JvmNativeLibraryLifecycle(
+            backend = backend,
+            registry = registry,
+            invokeDowncall = { invocation ->
+                val downcallJavaVm = (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJavaVm).javaVm
+                val downcallEnvironment = downcallJavaVm.getEnv(JvmJniVersions.Version24).environment!!
+                downcallEnvironment.throwObject(downcallEnvironment.handles.newObjectHandle(throwable))
+                JvmNativeDowncallReturn.IntPrimitive(JvmJniVersions.Version24)
+            },
+        )
+
+        val thrown = assertFailsWith<JvmNativeGuestException> {
+            lifecycle.load(library, javaVm)
+        }
+
+        assertEquals(throwable, thrown.throwable)
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(false, environment.exceptionCheck())
         assertEquals(0, environment.localFrameDepth)
         assertEquals(0, environment.handles.localFrameDepth)
         assertEquals(0, environment.handles.liveHandleCount)

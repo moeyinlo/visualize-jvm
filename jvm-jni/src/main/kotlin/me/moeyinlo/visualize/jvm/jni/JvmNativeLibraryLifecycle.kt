@@ -21,7 +21,7 @@ class JvmNativeLibraryLifecycle(
             ?.prepareOnLoadInvocation(javaVm)
             ?.let { invocation ->
                 javaVm.withNativeLibraryLifecycleLocalFrame {
-                    invokeDowncall.invoke(invocation).toOnLoadVersion()
+                    invokeDowncall.invoke(invocation).toOnLoadVersion(javaVm.environment)
                 }
             }
         return registry.markLoaded(binding, onLoadVersion)
@@ -50,6 +50,14 @@ private inline fun <T> JvmSimulatedJavaVm.withNativeLibraryLifecycleLocalFrame(a
     } finally {
         environment.popLocalFrame(null)
     }
+}
+
+private fun JvmNativeDowncallReturn.toOnLoadVersion(environment: JvmSimulatedJniEnvironment): Int {
+    val version = toOnLoadVersion()
+    environment.takePendingException()?.let { throwable ->
+        throw JvmNativeGuestException(throwable)
+    }
+    return version
 }
 
 private const val NativeLibraryLifecycleLocalCapacity: Int = 16
