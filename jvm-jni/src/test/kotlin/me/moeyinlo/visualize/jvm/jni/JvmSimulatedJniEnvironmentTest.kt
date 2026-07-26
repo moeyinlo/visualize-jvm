@@ -9801,6 +9801,28 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsSameObject compares class reference handles by guest class identity`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "First"),
+                    JvmClassDefinition(internalName = "Second"),
+                ),
+            ),
+            handles = handles,
+        )
+        val firstLocalHandle = environment.findClass("First")
+        val firstGlobalHandle = environment.newGlobalRef(firstLocalHandle)
+        val firstWeakGlobalHandle = environment.newWeakGlobalRef(firstLocalHandle)
+        val secondLocalHandle = environment.findClass("Second")
+
+        assertEquals(true, environment.isSameObject(firstLocalHandle, firstGlobalHandle))
+        assertEquals(true, environment.isSameObject(firstLocalHandle, firstWeakGlobalHandle))
+        assertEquals(false, environment.isSameObject(firstLocalHandle, secondLocalHandle))
+    }
+
+    @Test
     fun `NewLocalRef duplicates object local handles and preserves null references`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

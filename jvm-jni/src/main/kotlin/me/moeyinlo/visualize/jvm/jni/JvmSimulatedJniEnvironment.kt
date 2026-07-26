@@ -122,7 +122,7 @@ class JvmSimulatedJniEnvironment(
         if (left == null || right == null) {
             return left == right
         }
-        return handles.resolveObject(left) == handles.resolveObject(right)
+        return handles.snapshotLocalReference(left) == handles.snapshotLocalReference(right)
     }
 
     fun newGlobalRef(handle: JvmJniHandleId?): JvmJniHandleId? =
