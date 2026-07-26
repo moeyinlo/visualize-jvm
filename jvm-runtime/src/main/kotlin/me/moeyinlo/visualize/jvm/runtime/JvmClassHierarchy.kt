@@ -377,7 +377,9 @@ class JvmClassHierarchy(
                 continue
             }
             val interfaceClass = classesByName[interfaceName] ?: continue
-            interfaceClass.findDeclaredMethod(name, descriptor)?.let { resolved -> methods += resolved }
+            interfaceClass.findDeclaredMethod(name, descriptor)
+                ?.takeIf { method -> !method.isPrivate && !method.isStatic }
+                ?.let { resolved -> methods += resolved }
             methods += collectInterfaceMethods(interfaceClass.interfaceNames, name, descriptor, visited)
         }
         return methods

@@ -400,6 +400,45 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `interface method resolution ignores private superinterface fallback methods`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "ExampleFace",
+                    isInterface = true,
+                    interfaceNames = listOf("PrivateFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "PrivateFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isPrivate = true,
+                            code = byteArrayOf(0x05),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmNoSuchMethodError> {
+            hierarchy.resolveInterfaceMethod(
+                ownerClassName = "ExampleFace",
+                name = "value",
+                descriptor = "()I",
+            )
+        }
+
+        assertEquals("java/lang/NoSuchMethodError", exception.guestClassName)
+        assertEquals("ExampleFace.value:()I", exception.message)
+    }
+
+    @Test
     fun `class initialization method lookup returns declared static void clinit only`() {
         val hierarchy = JvmClassHierarchy(
             listOf(
