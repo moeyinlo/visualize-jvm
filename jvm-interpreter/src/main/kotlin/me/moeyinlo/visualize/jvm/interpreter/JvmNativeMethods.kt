@@ -179,26 +179,31 @@ class JvmNativeMethodRegistry(
                         .firstOrNull()
                 target?.let { resolvedTarget ->
                     JvmNativeMethodIntrinsic { _, invocation ->
-                        val downcallInvocation = if (key.isStatic) {
-                            val classHandle = environment.handles.newClassHandle(key.ownerClassName)
-                            resolvedTarget.prepareStaticInvocation(
-                                environment = environment,
-                                classHandle = classHandle,
-                                guestArguments = invocation.arguments,
-                            )
-                        } else {
-                            val receiver = invocation.receiver
-                                ?: throw JvmUnsupportedInstructionException(
-                                    "Loaded native instance export ${key.ownerClassName}.${key.name}:" +
-                                        "${key.descriptor} requires a receiver",
+                        environment.pushLocalFrame(NativeInvocationLocalCapacity)
+                        try {
+                            val downcallInvocation = if (key.isStatic) {
+                                val classHandle = environment.handles.newClassHandle(key.ownerClassName)
+                                resolvedTarget.prepareStaticInvocation(
+                                    environment = environment,
+                                    classHandle = classHandle,
+                                    guestArguments = invocation.arguments,
                                 )
-                            resolvedTarget.prepareInstanceInvocation(
-                                environment = environment,
-                                receiver = receiver,
-                                guestArguments = invocation.arguments,
-                            )
+                            } else {
+                                val receiver = invocation.receiver
+                                    ?: throw JvmUnsupportedInstructionException(
+                                        "Loaded native instance export ${key.ownerClassName}.${key.name}:" +
+                                            "${key.descriptor} requires a receiver",
+                                    )
+                                resolvedTarget.prepareInstanceInvocation(
+                                    environment = environment,
+                                    receiver = receiver,
+                                    guestArguments = invocation.arguments,
+                                )
+                            }
+                            return@JvmNativeMethodIntrinsic invokeDowncall.invoke(downcallInvocation).toGuestValue(environment)
+                        } finally {
+                            environment.popLocalFrame(null)
                         }
-                        invokeDowncall.invoke(downcallInvocation).toGuestValue(environment)
                     }
                 }
             }
@@ -206,6 +211,8 @@ class JvmNativeMethodRegistry(
                 dynamicSimulatedJniResolvers = listOf(loadedLibraryResolver),
             )
         }
+
+        private const val NativeInvocationLocalCapacity: Int = 16
     }
 }
 
