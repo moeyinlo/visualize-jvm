@@ -69,6 +69,11 @@ data class JvmNativeMethodContext(
             "Native method context cannot load native library $logicalName",
         )
     },
+    val unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+        throw JvmUnsupportedInstructionException(
+            "Native method context cannot unload native library $logicalName",
+        )
+    },
     internal val callStaticMethodHandler: (
         ownerClassName: String,
         name: String,
@@ -319,6 +324,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/String;)Ljava/lang/String;",
         isStatic = true,
     )
+    private val NativeLibrariesUnloadKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/loader/NativeLibraries",
+        name = "unload",
+        descriptor = "(Ljava/lang/String;ZJ)V",
+        isStatic = true,
+    )
     private val ClassInitClassNameKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "initClassName",
@@ -495,6 +506,10 @@ object JvmVmIntrinsics {
         requireStringArgument("NativeLibraries.findBuiltinLib", context, invocation)
         JvmNullValue
     }
+    private val NativeLibrariesUnload = JvmNativeMethodIntrinsic { context, invocation ->
+        context.unloadNativeLibraryHandler(requireNativeLibrariesUnloadName(context, invocation))
+        null
+    }
     private val ClassInitClassName = JvmNativeMethodIntrinsic { context, invocation ->
         val representedClassName = requireClassMirrorReceiver("Class.initClassName", context, invocation)
         context.heap.internString(representedClassName.toBinaryClassName())
@@ -583,6 +598,7 @@ object JvmVmIntrinsics {
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
         NativeLibrariesLoadKey to NativeLibrariesLoad,
         NativeLibrariesFindBuiltinLibKey to NativeLibrariesFindBuiltinLib,
+        NativeLibrariesUnloadKey to NativeLibrariesUnload,
         ClassInitClassNameKey to ClassInitClassName,
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
@@ -695,6 +711,29 @@ object JvmVmIntrinsics {
             }
         }
         return stringPayload("NativeLibraries.load", context, libraryName, "argument")
+    }
+
+    private fun requireNativeLibrariesUnloadName(
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): String {
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("NativeLibraries.unload intrinsic is static")
+        }
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException("NativeLibraries.unload expects String, boolean, long arguments")
+        }
+        val libraryName = invocation.arguments[0] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("NativeLibraries.unload expects a non-null java/lang/String argument")
+        val isBuiltin = invocation.arguments[1] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("NativeLibraries.unload expects a boolean builtin flag")
+        if (isBuiltin.value !in 0..1) {
+            throw JvmUnsupportedInstructionException("NativeLibraries.unload boolean flag must be 0 or 1")
+        }
+        if (invocation.arguments[2] !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException("NativeLibraries.unload expects a long native handle")
+        }
+        return stringPayload("NativeLibraries.unload", context, libraryName, "argument")
     }
 
     private fun stringPayload(
