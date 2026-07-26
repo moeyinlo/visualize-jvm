@@ -90,6 +90,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19121,6 +19123,53 @@ class JvmInterpreterTest {
         assertEquals(0, monitor.holdCount(receiver, "contender"))
     }
 
+    @Test
+    fun `monitorenter and monitorexit synchronize optional thread scheduler`() {
+        val heap = JvmHeap()
+        val monitor = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("pkg/Lock")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        monitor.enter(receiver, "owner")
+
+        assertFailsWith<JvmMonitorBlockedException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xC2.toByte(),
+                ),
+                maxStack = 1,
+                heap = heap,
+                localVariables = localVariables,
+                monitors = monitor,
+                currentThreadId = "contender",
+                threadScheduler = scheduler,
+            )
+        }
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = receiver,
+                ownerThreadId = "owner",
+            ),
+            scheduler.state("contender"),
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC3.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            monitors = monitor,
+            currentThreadId = "owner",
+            threadScheduler = scheduler,
+        )
+
+        assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("contender"))
+    }
     @Test
     fun `monitorenter throws guest NullPointerException for null object references`() {
         val localVariables = JvmLocalVariables(maxLocals = 1)
