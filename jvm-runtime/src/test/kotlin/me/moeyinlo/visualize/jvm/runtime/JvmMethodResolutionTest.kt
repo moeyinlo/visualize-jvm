@@ -92,6 +92,52 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `method resolution searches superinterface defaults after class and superclass miss`() {
+        val defaultCode = byteArrayOf(0x05)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    superclassName = "Parent",
+                    interfaceNames = listOf("DefaultFace"),
+                ),
+                JvmClassDefinition(internalName = "Parent"),
+                JvmClassDefinition(
+                    internalName = "DefaultFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = defaultCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "DefaultFace",
+                name = "answer",
+                descriptor = "()I",
+                isStatic = false,
+                code = defaultCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveMethod(
+                ownerClassName = "Example",
+                name = "answer",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `method resolution does not inherit instance initialization methods from superclasses`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

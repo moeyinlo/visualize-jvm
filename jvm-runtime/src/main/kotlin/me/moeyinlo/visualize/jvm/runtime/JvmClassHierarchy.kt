@@ -175,6 +175,12 @@ class JvmClassHierarchy(
         ownerClass.findSignaturePolymorphicDeclaration(name, descriptor)?.let { method -> return method }
         if (name != "<init>") {
             findSuperclassMethod(ownerClass.superclassName, name, descriptor)?.let { method -> return method }
+            selectMaximallySpecificInterfaceMethodOrNull(ownerClass.interfaceNames, name, descriptor)?.let { method ->
+                return method
+            }
+            collectInterfaceMethods(ownerClass.interfaceNames, name, descriptor).firstOrNull()?.let { method ->
+                return method
+            }
         }
         throw JvmNoSuchMethodError(
             guestClassName = "java/lang/NoSuchMethodError",
