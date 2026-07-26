@@ -71,4 +71,10 @@ class JvmSimulatedJavaVmFunctionTableTest {
         assertEquals(true, javaVm.isDestroyed)
         assertEquals(JvmJniStatus.EDetached, functions.getEnv(JvmJniVersions.Version24).status)
     }
+    @Test
+    fun `JavaVM function table exposes JNI invocation slot metadata`() {
+        assertEquals(3, JvmSimulatedJavaVmFunctionTable.ReservedSlotCount)
+        assertEquals(5, JvmSimulatedJavaVmFunctionTable.FunctionSlotCount)
+        assertEquals(8, JvmSimulatedJavaVmFunctionTable.SlotCount)
+    }
 }

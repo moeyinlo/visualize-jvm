@@ -152,6 +152,10 @@ data class JvmSimulatedJavaVmFunctionTable(
     val getEnv: (Int) -> JvmJavaVmGetEnvResult,
 ) {
     companion object {
+        const val ReservedSlotCount: Int = 3
+        const val FunctionSlotCount: Int = 5
+        const val SlotCount: Int = ReservedSlotCount + FunctionSlotCount
+
         fun bind(javaVm: JvmSimulatedJavaVm): JvmSimulatedJavaVmFunctionTable =
             JvmSimulatedJavaVmFunctionTable(
                 attachCurrentThread = javaVm::attachCurrentThread,
