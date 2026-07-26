@@ -115,6 +115,7 @@ data class JvmScheduledThreadsExecutionResult(
     val completedThreads: Map<String, JvmExecutionResult>,
     val suspendedThreads: Map<String, JvmThreadSuspendedException>,
     val executedThreadIds: List<String>,
+    val stalledThreadIds: List<String> = emptyList(),
 )
 
 private data class JvmFrameExecutionResult(
@@ -953,6 +954,7 @@ object JvmInterpreter {
         val completedThreads = linkedMapOf<String, JvmExecutionResult>()
         val suspendedThreads = linkedMapOf<String, JvmThreadSuspendedException>()
         val executedThreadIds = mutableListOf<String>()
+        var stalledThreadIds = emptyList<String>()
         var previousThreadId: String? = null
         var switchCount = 0
 
@@ -968,7 +970,10 @@ object JvmInterpreter {
             val threadId = threadScheduler.nextRunnableThreadId(
                 threadIds = remainingThreadIds,
                 afterThreadId = previousThreadId,
-            ) ?: break
+            ) ?: run {
+                stalledThreadIds = remainingThreadIds
+                break
+            }
             previousThreadId = threadId
 
             when (threadScheduler.resumePendingMonitorReentry(monitors, threadId)) {
@@ -1025,6 +1030,7 @@ object JvmInterpreter {
             completedThreads = completedThreads,
             suspendedThreads = suspendedThreads,
             executedThreadIds = executedThreadIds,
+            stalledThreadIds = stalledThreadIds,
         )
     }
 
