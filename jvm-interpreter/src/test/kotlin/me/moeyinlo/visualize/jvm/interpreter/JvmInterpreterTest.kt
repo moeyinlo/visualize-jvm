@@ -19158,6 +19158,71 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial interpreted callee retains monitor unblocked hook`() {
+        val heap = JvmHeap()
+        val monitor = JvmMonitorState()
+        val receiver = heap.allocateObject("pkg/Lock")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        val unblocked = mutableListOf<Pair<JvmObjectReferenceValue, String>>()
+        localVariables.store(0, receiver)
+        monitor.enter(receiver, "owner")
+        monitor.tryEnter(receiver, "contender")
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("pkg/Lock", "pkg/Lock".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("release", "release".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Lock",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "release",
+                                descriptor = "()V",
+                                isStatic = false,
+                                code = byteArrayOf(
+                                    0x2A.toByte(),
+                                    0xC3.toByte(),
+                                    0xB1.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            monitors = monitor,
+            currentThreadId = "owner",
+            currentClassName = "pkg/Lock",
+            monitorUnblockedHandler = { objectReference, threadId ->
+                unblocked += objectReference to threadId
+            },
+        )
+
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(listOf(receiver to "contender"), unblocked)
+        assertEquals(emptyList(), monitor.blockedThreads(receiver))
+    }
+
+    @Test
     fun `monitorexit throws guest NullPointerException for null object references`() {
         val localVariables = JvmLocalVariables(maxLocals = 1)
         localVariables.store(0, JvmNullValue)
