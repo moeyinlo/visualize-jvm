@@ -6648,6 +6648,7 @@ object JvmInterpreter {
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )
         if (frameResult.returnValue != null) {
             throw JvmUnsupportedInstructionException(
