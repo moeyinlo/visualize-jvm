@@ -45,7 +45,6 @@ class InitializationCoverageTest {
 
         assertEquals(
             listOf(
-                "ConstantValue attribute assignment",
                 "active use triggers initialization",
                 "class initialization state machine",
                 "superclass and superinterface initialization",

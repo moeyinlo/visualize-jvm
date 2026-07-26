@@ -26,8 +26,9 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "ConstantValue attribute assignment",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "ClassFileParser parses ConstantValue, but runtime preparation assignment is not implemented",
-            status = InitializationCoverageStatus.NotYetImplemented,
+            currentComponent = "ClassFileParser parses ConstantValue and JvmStaticFields.prepare assigns modeled ConstantValue metadata; classfile-to-runtime metadata wiring remains pending",
+            status = InitializationCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmStaticFieldsTest",
         ),
         InitializationCoverageEntry(
             rule = "static field active-use operations",

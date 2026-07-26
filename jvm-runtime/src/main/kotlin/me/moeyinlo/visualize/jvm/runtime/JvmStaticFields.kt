@@ -15,6 +15,15 @@ data class JvmFieldReference(
 class JvmStaticFields {
     private val values = linkedMapOf<JvmFieldReference, JvmValue>()
 
+    fun prepare(classDefinition: JvmClassDefinition) {
+        classDefinition.fields
+            .filter { field -> field.isStatic }
+            .forEach { field ->
+                val reference = JvmFieldReference(classDefinition.internalName, field.name, field.descriptor)
+                values[reference] = field.constantValue ?: reference.defaultFieldValue()
+            }
+    }
+
     fun put(field: JvmFieldReference, value: JvmValue) {
         values[field] = value
     }

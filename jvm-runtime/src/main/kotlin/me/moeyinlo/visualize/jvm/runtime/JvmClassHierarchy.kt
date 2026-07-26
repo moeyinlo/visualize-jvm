@@ -18,6 +18,7 @@ data class JvmFieldDefinition(
     val isPrivate: Boolean = false,
     val isPackagePrivate: Boolean = false,
     val isProtected: Boolean = false,
+    val constantValue: JvmValue? = null,
 )
 
 data class JvmResolvedField(

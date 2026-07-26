@@ -17,4 +17,65 @@ class JvmStaticFieldsTest {
 
         assertEquals(JvmIntValue(7), fields.get(field))
     }
+
+    @Test
+    fun `preparation assigns ConstantValue attributes to static fields`() {
+        val fields = JvmStaticFields()
+
+        fields.prepare(
+            JvmClassDefinition(
+                internalName = "Example",
+                fields = listOf(
+                    JvmFieldDefinition(
+                        name = "answer",
+                        descriptor = "I",
+                        isStatic = true,
+                        constantValue = JvmIntValue(42),
+                    ),
+                    JvmFieldDefinition(
+                        name = "defaulted",
+                        descriptor = "I",
+                        isStatic = true,
+                    ),
+                    JvmFieldDefinition(
+                        name = "instanceConstant",
+                        descriptor = "I",
+                        isStatic = false,
+                        constantValue = JvmIntValue(99),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmIntValue(42),
+            fields.get(
+                JvmFieldReference(
+                    ownerClassName = "Example",
+                    name = "answer",
+                    descriptor = "I",
+                ),
+            ),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            fields.get(
+                JvmFieldReference(
+                    ownerClassName = "Example",
+                    name = "defaulted",
+                    descriptor = "I",
+                ),
+            ),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            fields.get(
+                JvmFieldReference(
+                    ownerClassName = "Example",
+                    name = "instanceConstant",
+                    descriptor = "I",
+                ),
+            ),
+        )
+    }
 }
