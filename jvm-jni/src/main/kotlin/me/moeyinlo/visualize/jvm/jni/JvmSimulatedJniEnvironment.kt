@@ -2207,7 +2207,7 @@ class JvmSimulatedJniEnvironment(
         fieldIdHandle: JvmJniHandleId,
         valueHandle: JvmJniHandleId?,
     ) {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (!field.descriptor.isReferenceFieldDescriptor() || field.isStatic) {
             throw JvmJniFieldAccessException(
