@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.runtime
 class JvmThreadScheduler {
     private val statesByThreadId = linkedMapOf<String, JvmThreadSchedulingState>()
     private val pendingReentryHoldCountsByThreadId = linkedMapOf<String, Int>()
+    private val pendingReentryReferencesByThreadId = linkedMapOf<String, JvmObjectReferenceValue>()
 
     fun state(threadId: String): JvmThreadSchedulingState {
         require(threadId.isNotBlank()) { "thread id must not be blank" }
@@ -90,6 +91,7 @@ class JvmThreadScheduler {
         if (notifiedThreadId != null) {
             val pendingReentryHoldCount = waitReleasedHoldCount(notifiedThreadId)
             pendingReentryHoldCountsByThreadId[notifiedThreadId] = pendingReentryHoldCount
+            pendingReentryReferencesByThreadId[notifiedThreadId] = reference
             val result = monitors.tryEnter(reference, notifiedThreadId)
             recordMonitorEnterResult(reference, notifiedThreadId, result, pendingReentryHoldCount)
         }
@@ -105,10 +107,22 @@ class JvmThreadScheduler {
         for (notifiedThreadId in notifiedThreadIds) {
             val pendingReentryHoldCount = waitReleasedHoldCount(notifiedThreadId)
             pendingReentryHoldCountsByThreadId[notifiedThreadId] = pendingReentryHoldCount
+            pendingReentryReferencesByThreadId[notifiedThreadId] = reference
             val result = monitors.tryEnter(reference, notifiedThreadId)
             recordMonitorEnterResult(reference, notifiedThreadId, result, pendingReentryHoldCount)
         }
         return notifiedThreadIds
+    }
+
+    fun resumePendingMonitorReentry(
+        monitors: JvmMonitorState,
+        threadId: String,
+    ): JvmMonitorEnterResult? {
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+        val reference = pendingReentryReferencesByThreadId[threadId]
+            ?: (statesByThreadId[threadId] as? JvmThreadSchedulingState.BlockedOnMonitor)?.reference
+            ?: return null
+        return resumeMonitorReentry(monitors, reference, threadId)
     }
 
     fun resumeMonitorReentry(
@@ -127,6 +141,7 @@ class JvmThreadScheduler {
                     monitors.enter(reference, threadId)
                 }
                 pendingReentryHoldCountsByThreadId.remove(threadId)
+                pendingReentryReferencesByThreadId.remove(threadId)
                 statesByThreadId[threadId] = JvmThreadSchedulingState.Runnable
                 return JvmMonitorEnterResult.Acquired(holdCount = pendingReentryHoldCount)
             }
