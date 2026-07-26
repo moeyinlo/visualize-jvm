@@ -112,6 +112,23 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `execute can start at a bytecode offset for scheduled resume`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+            ),
+            maxStack = 1,
+            startBytecodeOffset = 4,
+        )
+
+        assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+    }
+
+    @Test
     fun `iconst instructions push int values onto the operand stack`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

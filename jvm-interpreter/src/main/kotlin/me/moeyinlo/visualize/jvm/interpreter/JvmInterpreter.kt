@@ -788,6 +788,7 @@ object JvmInterpreter {
         },
         nativeLibraryLoader: JvmNativeLibraryLoader? = null,
         javaVm: JvmSimulatedJavaVm? = null,
+        startBytecodeOffset: Int = 0,
     ): JvmExecutionResult {
         val effectiveLoadNativeLibraryHandler = if (nativeLibraryLoader == null) {
             loadNativeLibraryHandler
@@ -810,6 +811,7 @@ object JvmInterpreter {
         val frameResult = executeFrame(
             code = code,
             maxStack = maxStack,
+            startBytecodeOffset = startBytecodeOffset,
             constantPool = constantPool,
             heap = heap,
             localVariables = localVariables,
@@ -835,6 +837,7 @@ object JvmInterpreter {
     private fun executeFrame(
         code: ByteArray,
         maxStack: Int,
+        startBytecodeOffset: Int = 0,
         constantPool: ConstantPool,
         heap: JvmHeap,
         localVariables: JvmLocalVariables,
@@ -863,7 +866,14 @@ object JvmInterpreter {
         val instructionIndexByOffset = instructions
             .mapIndexed { index, instruction -> instruction.offset to index }
             .toMap()
-        var instructionIndex = 0
+        var instructionIndex = if (instructions.isEmpty()) {
+            0
+        } else {
+            instructionIndexByOffset[startBytecodeOffset]
+                ?: throw JvmUnsupportedInstructionException(
+                    "Invalid start bytecode offset $startBytecodeOffset: target is not an instruction offset",
+                )
+        }
         while (instructionIndex < instructions.size) {
             val instruction = instructions[instructionIndex]
             try {
