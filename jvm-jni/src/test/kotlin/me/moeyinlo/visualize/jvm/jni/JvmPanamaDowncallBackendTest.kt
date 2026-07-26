@@ -560,6 +560,45 @@ class JvmPanamaDowncallBackendTest {
     }
 
     @Test
+    fun `Panama backend marshals guest class mirrors into jclass argument handles`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "acceptClass",
+            methodDescriptor = "(Ljava/lang/Class;)V",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_acceptClass",
+        )
+        val target = JvmNativeDowncallTarget(
+            library = JvmNativeLibraryDescriptor(
+                logicalName = "native-api",
+                path = Path.of("native-api.dll"),
+                exports = listOf(export),
+            ),
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x1234L,
+        )
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/NativeApi"),
+                ),
+            ),
+            heap = heap,
+        )
+        val classMirror = heap.internClassMirror("pkg/NativeApi")
+
+        val invocation = target.prepareInvocation(
+            environment = environment,
+            guestArguments = listOf(classMirror),
+        )
+
+        val classArgument = invocation.arguments[1] as JvmNativeDowncallArgument.ObjectHandle
+        assertEquals("pkg/NativeApi", environment.handles.resolveClass(classArgument.handle!!))
+    }
+
+    @Test
     fun `Panama backend marshals JNI return values back into guest values`() {
         val heap = JvmHeap()
         val environment = JvmSimulatedJniEnvironment(

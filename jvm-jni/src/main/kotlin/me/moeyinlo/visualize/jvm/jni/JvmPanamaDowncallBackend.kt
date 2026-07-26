@@ -361,7 +361,7 @@ private fun JvmValue.toDowncallArgument(environment: JvmSimulatedJniEnvironment)
         is JvmLongValue -> JvmNativeDowncallArgument.LongPrimitive(value)
         is JvmFloatValue -> JvmNativeDowncallArgument.FloatPrimitive(value)
         is JvmDoubleValue -> JvmNativeDowncallArgument.DoublePrimitive(value)
-        is JvmObjectReferenceValue -> JvmNativeDowncallArgument.ObjectHandle(environment.handles.newObjectHandle(this))
+        is JvmObjectReferenceValue -> JvmNativeDowncallArgument.ObjectHandle(environment.newJObjectHandle(this))
         JvmNullValue -> JvmNativeDowncallArgument.ObjectHandle(null)
         else -> JvmNativeDowncallArgument.GuestValue(this)
     }

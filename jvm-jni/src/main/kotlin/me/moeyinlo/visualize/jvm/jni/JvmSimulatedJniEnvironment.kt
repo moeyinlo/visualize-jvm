@@ -6,6 +6,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
+import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmDirectByteBufferPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
@@ -143,6 +144,12 @@ class JvmSimulatedJniEnvironment(
         when (val reference = handles.snapshotLocalReference(handle)) {
             is JvmJniLocalReferenceSnapshot.ObjectReference -> reference.reference
             is JvmJniLocalReferenceSnapshot.ClassReference -> heap.internClassMirror(reference.className)
+        }
+
+    internal fun newJObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
+        when (val payload = heap.get(reference).payload) {
+            is JvmClassPayload -> handles.newClassHandle(payload.representedClassName)
+            else -> handles.newObjectHandle(reference)
         }
 
     fun newGlobalRef(handle: JvmJniHandleId?): JvmJniHandleId? =
