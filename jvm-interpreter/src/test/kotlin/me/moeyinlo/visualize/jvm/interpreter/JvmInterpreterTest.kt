@@ -13148,6 +13148,77 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial native methods retain native library load hook`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("NativeLibraryBridge")
+        val libraryName = heap.internString("special-native")
+        val localVariables = JvmLocalVariables(maxLocals = 2)
+        localVariables.store(0, receiver)
+        localVariables.store(1, libraryName)
+        val loadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeLibraryBridge",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "loadSpecial",
+                            descriptor = "(Ljava/lang/String;)V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey(
+                ownerClassName = "NativeLibraryBridge",
+                name = "loadSpecial",
+                descriptor = "(Ljava/lang/String;)V",
+                isStatic = false,
+            ) to JvmNativeMethodIntrinsic { context, invocation ->
+                assertEquals(receiver, invocation.receiver)
+                val name = context.heap.get(invocation.arguments.single() as JvmObjectReferenceValue)
+                    .payload as JvmStringPayload
+                context.loadNativeLibraryHandler(name.value)
+                null
+            },
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x2B.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeLibraryBridge", "NativeLibraryBridge".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("loadSpecial", "loadSpecial".encodeToByteArray()),
+                    ConstantUtf8Entry(
+                        "(Ljava/lang/String;)V",
+                        "(Ljava/lang/String;)V".encodeToByteArray(),
+                    ),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("special-native"), loadedLogicalNames)
+    }
+
+    @Test
     fun `native instance upcalls retain native library load hook`() {
         val heap = JvmHeap()
         val upcaller = heap.allocateObject("Upcaller")
