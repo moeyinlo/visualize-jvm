@@ -57,4 +57,18 @@ class JvmSimulatedJavaVmFunctionTableTest {
         assertSame(environment, attached.environment)
         assertEquals(true, javaVm.isCurrentThreadDaemonAttached)
     }
+    @Test
+    fun `JavaVM function table delegates DestroyJavaVM`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+        val functions = javaVm.functions
+
+        assertEquals(JvmJniStatus.Ok, functions.destroyJavaVm())
+
+        assertEquals(true, javaVm.isDestroyed)
+        assertEquals(JvmJniStatus.EDetached, functions.getEnv(JvmJniVersions.Version24).status)
+    }
 }
