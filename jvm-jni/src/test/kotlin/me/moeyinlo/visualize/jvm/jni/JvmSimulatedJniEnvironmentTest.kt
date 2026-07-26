@@ -3467,6 +3467,74 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualDoubleMethod accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedDoubleUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "mirrorScore",
+                                descriptor = "()D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callDoubleMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmDoubleValue {
+                    calls += RecordedDoubleUpcall(receiver, method, arguments)
+                    return JvmDoubleValue(42.25)
+                }
+            },
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val methodHandle = environment.getMethodId(classClassHandle, "mirrorScore", "()D")
+
+        val result = environment.callNonvirtualDoubleMethod(
+            objectHandle = receiverClassHandle,
+            classHandle = classClassHandle,
+            methodIdHandle = methodHandle,
+        )
+
+        assertEquals(42.25, result)
+        assertEquals(
+            listOf(
+                RecordedDoubleUpcall(
+                    receiver = heap.internClassMirror("Example"),
+                    method = JvmResolvedMethod(
+                        ownerClassName = "java/lang/Class",
+                        name = "mirrorScore",
+                        descriptor = "()D",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallDoubleMethod rejects receiver that is not assignable to method owner`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
