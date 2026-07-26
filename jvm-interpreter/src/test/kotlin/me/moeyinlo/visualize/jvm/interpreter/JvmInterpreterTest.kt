@@ -12272,6 +12272,56 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic initializes resolved method class without class initializer`() {
+        val initializationStates = JvmClassInitializationStates()
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "answer",
+                                descriptor = "()I",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x08.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(
+            JvmClassInitializationState.Initialized,
+            initializationStates.get("Example"),
+        )
+    }
+
+    @Test
     fun `invokestatic passes int arguments into callee locals`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

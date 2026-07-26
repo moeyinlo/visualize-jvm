@@ -1730,6 +1730,7 @@ object JvmInterpreter {
                 heap,
                 classHierarchy,
                 staticFields,
+                classInitializationStates,
                 nativeMethods,
                 monitors,
                 threadScheduler,
@@ -5287,6 +5288,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        classInitializationStates: JvmClassInitializationStates,
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         threadScheduler: JvmThreadScheduler? = null,
@@ -5306,6 +5308,7 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        initializeClassForActiveUse(resolvedMethod.ownerClassName, classHierarchy, classInitializationStates, currentThreadId)
         executeResolvedStaticMethod(
             instruction = instruction,
             operandStack = operandStack,
