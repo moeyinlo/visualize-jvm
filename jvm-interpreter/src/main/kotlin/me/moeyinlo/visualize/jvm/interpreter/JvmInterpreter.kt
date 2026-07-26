@@ -466,6 +466,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -486,6 +487,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -513,6 +515,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -540,6 +543,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -567,6 +571,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -594,6 +599,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -621,6 +627,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -647,6 +654,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -673,6 +681,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -699,6 +708,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
             )
@@ -5043,6 +5053,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = resolvedMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -5284,6 +5295,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = targetMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -5449,6 +5461,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = resolvedMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -6332,6 +6345,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = targetMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -6520,6 +6534,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = targetMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -6665,6 +6680,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = constructor.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -6864,6 +6880,7 @@ object JvmInterpreter {
                 nativeMethods = nativeMethods,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = targetMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -6956,6 +6973,7 @@ object JvmInterpreter {
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         dynamicConstants: JvmDynamicConstantRegistry,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
@@ -6993,6 +7011,7 @@ object JvmInterpreter {
                         nativeMethods = nativeMethods,
                         monitors = monitors,
                         currentThreadId = currentThreadId,
+                        monitorUnblockedHandler = monitorUnblockedHandler,
                         currentClassName = currentClassName,
                         dynamicConstants = dynamicConstants,
                         loadNativeLibraryHandler = loadNativeLibraryHandler,
@@ -7037,6 +7056,7 @@ object JvmInterpreter {
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         dynamicConstants: JvmDynamicConstantRegistry,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
@@ -7095,6 +7115,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             monitors = monitors,
             currentThreadId = currentThreadId,
+            monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = resolvedMethod.ownerClassName,
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,

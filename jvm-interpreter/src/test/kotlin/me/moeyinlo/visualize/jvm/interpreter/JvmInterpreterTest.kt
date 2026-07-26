@@ -13651,6 +13651,96 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `native static upcalls retain monitor unblocked hook`() {
+        val heap = JvmHeap()
+        val lock = heap.allocateObject("Lock")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        val monitors = JvmMonitorState()
+        val unblocked = mutableListOf<Pair<JvmObjectReferenceValue, String>>()
+        localVariables.store(0, lock)
+        monitors.enter(lock, "owner")
+        monitors.tryEnter(lock, "contender")
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(internalName = "Lock"),
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "entry",
+                            descriptor = "(LLock;)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "Upcaller",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "release",
+                            descriptor = "(LLock;)V",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x2A.toByte(),
+                                0xC3.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("NativeOwner", "entry", "(LLock;)V", isStatic = true) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    context.callStaticMethod(
+                        ownerClassName = "Upcaller",
+                        name = "release",
+                        descriptor = "(LLock;)V",
+                        arguments = invocation.arguments,
+                    )
+                    null
+                },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("entry", "entry".encodeToByteArray()),
+                    ConstantUtf8Entry("(LLock;)V", "(LLock;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            monitors = monitors,
+            currentThreadId = "owner",
+            monitorUnblockedHandler = { objectReference, threadId ->
+                unblocked += objectReference to threadId
+            },
+        )
+
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(listOf(lock to "contender"), unblocked)
+        assertEquals(emptyList(), monitors.blockedThreads(lock))
+    }
+
+    @Test
     fun `invokespecial native methods retain native library load hook`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeLibraryBridge")
