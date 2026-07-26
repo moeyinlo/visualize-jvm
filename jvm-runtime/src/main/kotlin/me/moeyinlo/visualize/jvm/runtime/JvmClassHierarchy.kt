@@ -222,7 +222,11 @@ class JvmClassHierarchy(
         receiverClassName: String,
         name: String,
         descriptor: String,
+        resolvedMethod: JvmResolvedMethod? = null,
     ): JvmResolvedMethod {
+        if (resolvedMethod?.isPrivate == true) {
+            return resolvedMethod
+        }
         val receiverClass = classesByName[receiverClassName]
             ?: throw JvmNoClassDefFoundError(
                 guestClassName = "java/lang/NoClassDefFoundError",

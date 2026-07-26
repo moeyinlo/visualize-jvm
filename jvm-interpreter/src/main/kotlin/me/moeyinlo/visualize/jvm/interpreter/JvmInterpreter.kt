@@ -5633,6 +5633,7 @@ object JvmInterpreter {
             receiverClassName = receiverClassName,
             name = resolvedMethod.name,
             descriptor = resolvedMethod.descriptor,
+            resolvedMethod = resolvedMethod,
         )
         requireInstanceMethod(instruction, targetMethod)
         if (targetMethod.isAbstract) {
@@ -7581,6 +7582,7 @@ object JvmInterpreter {
             receiverClassName = receiverClassName,
             name = resolvedMethod.name,
             descriptor = resolvedMethod.descriptor,
+            resolvedMethod = resolvedMethod,
         )
         requireInstanceUpcallMethod(targetMethod)
         if (targetMethod.isAbstract) {
