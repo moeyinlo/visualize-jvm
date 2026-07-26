@@ -1156,6 +1156,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             0x14 -> executeLdc2(
                 instruction = instruction,
@@ -4140,6 +4141,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -4184,6 +4188,7 @@ object JvmInterpreter {
                     invokeDynamicCallSites = invokeDynamicCallSites,
                     dynamicConstants = dynamicConstants,
                     loadNativeLibraryHandler = loadNativeLibraryHandler,
+                    unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 )
                 if (value.category.slotWidth != 1) {
                     throw JvmUnsupportedInstructionException(
@@ -4337,6 +4342,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ): JvmValue {
         val runtimeIndex = JvmRuntimeConstantPoolIndex(index.value)
         dynamicConstants.resolved(runtimeIndex)?.let { value -> return value }
@@ -4377,6 +4385,7 @@ object JvmInterpreter {
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )
         if (invocation.bootstrapMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
             throw JvmUnsupportedInstructionException(
@@ -4413,6 +4422,7 @@ object JvmInterpreter {
             arguments = bootstrapArguments,
             opcodeMnemonic = "CONSTANT_Dynamic bootstrap",
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         ) ?: throw JvmUnsupportedInstructionException(
             "Invalid CONSTANT_Dynamic $index at offset ${instruction.offset}: bootstrap method " +
                 "${bootstrapMethod.ownerClassName}.${bootstrapMethod.name}:${bootstrapMethod.descriptor} " +
@@ -4452,6 +4462,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ): List<JvmValue> =
         buildList {
             add(heap.internMethodHandlesLookup(currentClassName))
@@ -4474,6 +4487,7 @@ object JvmInterpreter {
                         invokeDynamicCallSites = invokeDynamicCallSites,
                         dynamicConstants = dynamicConstants,
                         loadNativeLibraryHandler = loadNativeLibraryHandler,
+                        unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                     ),
                 )
             }
@@ -4496,6 +4510,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ): JvmValue =
         when (argument) {
             is JvmBootstrapArgument.ClassConstant -> heap.internClassMirror(argument.internalName)
@@ -4515,6 +4532,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             is JvmBootstrapArgument.FloatConstant -> argument.value
             is JvmBootstrapArgument.IntegerConstant -> argument.value

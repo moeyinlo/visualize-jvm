@@ -11314,6 +11314,61 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc dynamic constant native bootstrap retains native library unload hook`() {
+        val dynamicConstants = JvmDynamicConstantRegistry()
+        val unloadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Bootstrap",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "bootstrap",
+                            descriptor = dynamicConstantIntBootstrapDescriptor,
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("pkg/Bootstrap", "bootstrap", dynamicConstantIntBootstrapDescriptor, isStatic = true) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    assertEquals(3, invocation.arguments.size)
+                    context.unloadNativeLibraryHandler("condy-bootstrap-native")
+                    JvmIntValue(42)
+                },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = dynamicConstantBootstrapExecutionConstantPool("I", dynamicConstantIntBootstrapDescriptor),
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            bootstrapMethods = JvmBootstrapMethodTable(
+                listOf(
+                    JvmBootstrapMethod(
+                        bootstrapMethodRef = JvmRuntimeConstantPoolIndex(11),
+                        bootstrapArguments = emptyList(),
+                    ),
+                ),
+            ),
+            dynamicConstants = dynamicConstants,
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("condy-bootstrap-native"), unloadedLogicalNames)
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        assertEquals(JvmIntValue(42), dynamicConstants.resolved(JvmRuntimeConstantPoolIndex(1)))
+    }
+
+    @Test
     fun `ldc resolves nested dynamic constant bootstrap static arguments`() {
         val dynamicConstants = JvmDynamicConstantRegistry()
 
