@@ -612,6 +612,8 @@ object JvmVmIntrinsics {
         ThreadSleepNanos0Key to ThreadSleepNanos0,
     )
 
+    private const val NativeLibrariesNativeLibraryImplClassName =
+        "jdk/internal/loader/NativeLibraries\$NativeLibraryImpl"
     private val PrimitiveClassNames = setOf(
         "boolean",
         "byte",
@@ -702,7 +704,12 @@ object JvmVmIntrinsics {
         }
         val nativeLibrary = invocation.arguments[0] as? JvmObjectReferenceValue
             ?: throw JvmUnsupportedInstructionException("NativeLibraries.load expects a non-null NativeLibraryImpl argument")
-        context.heap.get(nativeLibrary)
+        val nativeLibraryObject = context.heap.get(nativeLibrary)
+        if (!context.classHierarchy.isAssignable(nativeLibraryObject.className, NativeLibrariesNativeLibraryImplClassName)) {
+            throw JvmUnsupportedInstructionException(
+                "NativeLibraries.load first argument must be a $NativeLibrariesNativeLibraryImplClassName object",
+            )
+        }
         val libraryName = invocation.arguments[1] as? JvmObjectReferenceValue
             ?: throw JvmUnsupportedInstructionException("NativeLibraries.load expects a non-null java/lang/String argument")
         invocation.arguments.drop(2).forEach { argument ->
