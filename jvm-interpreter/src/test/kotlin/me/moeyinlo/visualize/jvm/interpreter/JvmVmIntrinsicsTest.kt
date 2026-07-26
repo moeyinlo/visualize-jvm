@@ -176,6 +176,37 @@ class JvmVmIntrinsicsTest {
 
 
     @Test
+    fun `System mapLibraryName intrinsic returns the platform mapped library name`() {
+        val heap = JvmHeap()
+        val logicalName = heap.internString("tiny-native")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "java/lang/System",
+                name = "mapLibraryName",
+                descriptor = "(Ljava/lang/String;)Ljava/lang/String;",
+                isStatic = true,
+                isNative = true,
+            ),
+        ) ?: error("System.mapLibraryName intrinsic should resolve")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = listOf(logicalName)),
+        ) as JvmObjectReferenceValue
+
+        assertEquals(
+            java.lang.System.mapLibraryName("tiny-native"),
+            (heap.get(result).payload as JvmStringPayload).value,
+        )
+    }
+
+    @Test
     fun `System loadLibrary intrinsic delegates logical names to the native library load hook`() {
         val loadedLogicalNames = mutableListOf<String>()
         val heap = JvmHeap()

@@ -282,6 +282,12 @@ object JvmVmIntrinsics {
         descriptor = "()J",
         isStatic = true,
     )
+    private val SystemMapLibraryNameKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "mapLibraryName",
+        descriptor = "(Ljava/lang/String;)Ljava/lang/String;",
+        isStatic = true,
+    )
     private val SystemLoadLibraryKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/System",
         name = "loadLibrary",
@@ -450,6 +456,10 @@ object JvmVmIntrinsics {
         requireNoArguments("System.nanoTime", invocation)
         JvmLongValue(context.nanoTimeProvider())
     }
+    private val SystemMapLibraryName = JvmNativeMethodIntrinsic { context, invocation ->
+        val logicalName = requireStringArgument("System.mapLibraryName", context, invocation)
+        context.heap.internString(java.lang.System.mapLibraryName(logicalName))
+    }
     private val SystemLoadLibrary = JvmNativeMethodIntrinsic { context, invocation ->
         context.loadNativeLibraryHandler(requireStringArgument("System.loadLibrary", context, invocation))
         null
@@ -541,6 +551,7 @@ object JvmVmIntrinsics {
         SystemIdentityHashCodeKey to SystemIdentityHashCode,
         SystemCurrentTimeMillisKey to SystemCurrentTimeMillis,
         SystemNanoTimeKey to SystemNanoTime,
+        SystemMapLibraryNameKey to SystemMapLibraryName,
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
         ClassInitClassNameKey to ClassInitClassName,
