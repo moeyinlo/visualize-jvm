@@ -6379,7 +6379,7 @@ object JvmInterpreter {
         val frameResult = executeFrame(
             code = methodCode,
             maxStack = targetMethod.maxStack,
-            constantPool = constantPool,
+            constantPool = targetMethod.constantPool ?: constantPool,
             heap = heap,
             localVariables = calleeLocals,
             classHierarchy = classHierarchy,

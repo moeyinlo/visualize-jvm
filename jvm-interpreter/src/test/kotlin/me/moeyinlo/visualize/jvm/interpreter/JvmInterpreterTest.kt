@@ -19956,6 +19956,113 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic executes cached invoke interface target with the selected method constant pool`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Impl")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/TargetInterface",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isAbstract = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Impl",
+                    interfaceNames = listOf("pkg/TargetInterface"),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0xB8.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                    ConstantClassEntry(ConstantPoolIndex(3)),
+                                    ConstantUtf8Entry("pkg/Helper", "pkg/Helper".encodeToByteArray()),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                    ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Helper",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(0x10.toByte(), 0x2A.toByte(), 0xAC.toByte()),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 1),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "value",
+                    descriptor = "(Lpkg/TargetInterface;)I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/TargetInterface",
+                    name = "value",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicInterfaceReceiverCallSiteConstantPool(),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokedynamic cached linked interface native target retains native library load hook`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Impl")
