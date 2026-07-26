@@ -307,6 +307,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Class;Ljava/lang/String;)V",
         isStatic = false,
     )
+    private val NativeLibrariesLoadKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/loader/NativeLibraries",
+        name = "load",
+        descriptor = "(Ljdk/internal/loader/NativeLibraries\$NativeLibraryImpl;Ljava/lang/String;ZZ)Z",
+        isStatic = true,
+    )
     private val ClassInitClassNameKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "initClassName",
@@ -475,6 +481,10 @@ object JvmVmIntrinsics {
         context.loadNativeLibraryHandler(requireRuntimeLoadLibrary0Name(context, invocation))
         null
     }
+    private val NativeLibrariesLoad = JvmNativeMethodIntrinsic { context, invocation ->
+        context.loadNativeLibraryHandler(requireNativeLibrariesLoadName(context, invocation))
+        JvmIntValue(1)
+    }
     private val ClassInitClassName = JvmNativeMethodIntrinsic { context, invocation ->
         val representedClassName = requireClassMirrorReceiver("Class.initClassName", context, invocation)
         context.heap.internString(representedClassName.toBinaryClassName())
@@ -561,6 +571,7 @@ object JvmVmIntrinsics {
         SystemMapLibraryNameKey to SystemMapLibraryName,
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
+        NativeLibrariesLoadKey to NativeLibrariesLoad,
         ClassInitClassNameKey to ClassInitClassName,
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
@@ -650,6 +661,29 @@ object JvmVmIntrinsics {
         val libraryName = invocation.arguments[1] as? JvmObjectReferenceValue
             ?: throw JvmUnsupportedInstructionException("Runtime.loadLibrary0 expects a non-null java/lang/String argument")
         return stringPayload("Runtime.loadLibrary0", context, libraryName, "argument")
+    }
+
+    private fun requireNativeLibrariesLoadName(
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): String {
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("NativeLibraries.load intrinsic is static")
+        }
+        if (invocation.arguments.size != 4) {
+            throw JvmUnsupportedInstructionException("NativeLibraries.load expects NativeLibraryImpl, String, boolean, boolean arguments")
+        }
+        val nativeLibrary = invocation.arguments[0] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("NativeLibraries.load expects a non-null NativeLibraryImpl argument")
+        context.heap.get(nativeLibrary)
+        val libraryName = invocation.arguments[1] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("NativeLibraries.load expects a non-null java/lang/String argument")
+        invocation.arguments.drop(2).forEach { argument ->
+            if (argument !is JvmIntValue || argument.value !in 0..1) {
+                throw JvmUnsupportedInstructionException("NativeLibraries.load boolean flags must be 0 or 1")
+            }
+        }
+        return stringPayload("NativeLibraries.load", context, libraryName, "argument")
     }
 
     private fun stringPayload(
