@@ -7455,6 +7455,45 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetShortField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "S",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "S")
+        val mirrorReference = heap.internClassMirror("Example")
+
+        environment.setShortField(receiverClassHandle, fieldHandle, -1357)
+
+        assertEquals(
+            JvmShortValue(-1357),
+            heap.getInstanceField(
+                mirrorReference,
+                JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "S"),
+            ),
+        )
+    }
+
+    @Test
     fun `SetShortField rejects non short guest field handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
