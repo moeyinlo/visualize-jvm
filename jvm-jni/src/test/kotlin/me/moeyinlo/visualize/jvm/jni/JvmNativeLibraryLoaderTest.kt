@@ -47,4 +47,49 @@ class JvmNativeLibraryLoaderTest {
         assertEquals(loaded, registry.loadedLibrary("native-api"))
         assertEquals("JNI_OnLoad", invocations.single().target.symbolName)
     }
+    @Test
+    fun `unloadLibrary delegates logical unload through lifecycle`() {
+        val descriptor = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val onUnload = JvmNativeDowncallTarget(
+            library = descriptor,
+            guestMethod = null,
+            symbolName = "JNI_OnUnload",
+            address = 0x2222L,
+        )
+        val registry = JvmNativeLibraryRegistry()
+        val invocations = mutableListOf<JvmNativeDowncallInvocation>()
+        val loader = JvmNativeLibraryLoader(
+            catalog = JvmNativeLibraryCatalog(listOf(descriptor)),
+            lifecycle = JvmNativeLibraryLifecycle(
+                backend = JvmPanamaDowncallBackend { _, _ -> null },
+                registry = registry,
+                invokeDowncall = { invocation ->
+                    invocations += invocation
+                    JvmNativeDowncallReturn.Void
+                },
+            ),
+        )
+        val binding = JvmNativeLibraryBinding(
+            library = descriptor,
+            onLoadTarget = null,
+            onUnloadTarget = onUnload,
+            exportTargets = emptyMap(),
+        )
+        val loaded = registry.markLoaded(binding, onLoadVersion = null)
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = JvmClassHierarchy(),
+                staticFields = JvmStaticFields(),
+            ),
+        )
+
+        val unloaded = loader.unloadLibrary("native-api", javaVm)
+
+        assertEquals(loaded, unloaded)
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(onUnload, invocations.single().target)
+    }
 }

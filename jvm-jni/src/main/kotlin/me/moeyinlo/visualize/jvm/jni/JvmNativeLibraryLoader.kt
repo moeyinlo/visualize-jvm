@@ -12,4 +12,13 @@ class JvmNativeLibraryLoader(
             library = catalog.resolveOrThrow(logicalName),
             javaVm = javaVm,
         )
+
+    fun unloadLibrary(
+        logicalName: String,
+        javaVm: JvmSimulatedJavaVm,
+    ): JvmLoadedNativeLibrary =
+        lifecycle.unload(
+            logicalName = logicalName,
+            javaVm = javaVm,
+        )
 }
