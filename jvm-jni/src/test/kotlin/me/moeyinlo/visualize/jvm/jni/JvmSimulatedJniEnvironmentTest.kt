@@ -1967,6 +1967,74 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualCharMethod accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedCharUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "mirrorLetter",
+                                descriptor = "()C",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callCharMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmCharValue {
+                    calls += RecordedCharUpcall(receiver, method, arguments)
+                    return JvmCharValue('C'.code)
+                }
+            },
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val methodHandle = environment.getMethodId(classClassHandle, "mirrorLetter", "()C")
+
+        val result = environment.callNonvirtualCharMethod(
+            objectHandle = receiverClassHandle,
+            classHandle = classClassHandle,
+            methodIdHandle = methodHandle,
+        )
+
+        assertEquals('C'.code, result)
+        assertEquals(
+            listOf(
+                RecordedCharUpcall(
+                    receiver = heap.internClassMirror("Example"),
+                    method = JvmResolvedMethod(
+                        ownerClassName = "java/lang/Class",
+                        name = "mirrorLetter",
+                        descriptor = "()C",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallShortMethod routes instance method upcalls and returns a JNI short`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
