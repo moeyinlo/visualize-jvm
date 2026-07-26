@@ -35,4 +35,14 @@ class JvmNativeLibraryCatalogTest {
 
         assertEquals("duplicate native library descriptor for native-api", exception.message)
     }
+    @Test
+    fun `resolveOrThrow reports missing descriptors as native load errors`() {
+        val catalog = JvmNativeLibraryCatalog(emptyList())
+
+        val exception = assertFailsWith<JvmNativeLibraryLoadException> {
+            catalog.resolveOrThrow("native-api")
+        }
+
+        assertEquals("native library descriptor native-api is not configured", exception.message)
+    }
 }

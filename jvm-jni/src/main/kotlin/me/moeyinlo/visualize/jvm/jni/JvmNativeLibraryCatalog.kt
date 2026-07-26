@@ -9,6 +9,10 @@ class JvmNativeLibraryCatalog(
     fun resolve(logicalName: String): JvmNativeLibraryDescriptor? =
         descriptorsByLogicalName[logicalName]
 
+    fun resolveOrThrow(logicalName: String): JvmNativeLibraryDescriptor =
+        resolve(logicalName)
+            ?: throw JvmNativeLibraryLoadException("native library descriptor $logicalName is not configured")
+
     private fun Iterable<JvmNativeLibraryDescriptor>.associateByUniqueLogicalName():
         Map<String, JvmNativeLibraryDescriptor> {
         val result = linkedMapOf<String, JvmNativeLibraryDescriptor>()
