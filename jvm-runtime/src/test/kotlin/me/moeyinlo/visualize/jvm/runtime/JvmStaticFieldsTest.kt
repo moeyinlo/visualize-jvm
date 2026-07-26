@@ -30,7 +30,7 @@ class JvmStaticFieldsTest {
                         name = "answer",
                         descriptor = "I",
                         isStatic = true,
-                        constantValue = JvmIntValue(42),
+                        constantValue = JvmFieldConstantValue.Numeric(JvmIntValue(42)),
                     ),
                     JvmFieldDefinition(
                         name = "defaulted",
@@ -41,7 +41,7 @@ class JvmStaticFieldsTest {
                         name = "instanceConstant",
                         descriptor = "I",
                         isStatic = false,
-                        constantValue = JvmIntValue(99),
+                        constantValue = JvmFieldConstantValue.Numeric(JvmIntValue(99)),
                     ),
                 ),
             ),

@@ -42,14 +42,14 @@ private fun FieldInfo.toJvmFieldDefinition(constantPool: ConstantPool): JvmField
         constantValue = constantValue(constantPool),
     )
 
-private fun FieldInfo.constantValue(constantPool: ConstantPool): JvmValue? {
+private fun FieldInfo.constantValue(constantPool: ConstantPool): JvmFieldConstantValue? {
     val attribute = attributes.filterIsInstance<ConstantValueAttribute>().singleOrNull()
         ?: return null
     return when (val entry = constantPool[attribute.constantValueIndex]) {
-        is ConstantIntegerEntry -> JvmIntValue(entry.value)
-        is ConstantFloatEntry -> JvmFloatValue(entry.value)
-        is ConstantLongEntry -> JvmLongValue(entry.value)
-        is ConstantDoubleEntry -> JvmDoubleValue(entry.value)
+        is ConstantIntegerEntry -> JvmFieldConstantValue.Numeric(JvmIntValue(entry.value))
+        is ConstantFloatEntry -> JvmFieldConstantValue.Numeric(JvmFloatValue(entry.value))
+        is ConstantLongEntry -> JvmFieldConstantValue.Numeric(JvmLongValue(entry.value))
+        is ConstantDoubleEntry -> JvmFieldConstantValue.Numeric(JvmDoubleValue(entry.value))
         is ConstantStringEntry -> throw JvmClassfileRuntimeAdapterException(
             "String ConstantValue attributes require guest String heap preparation",
         )

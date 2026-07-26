@@ -18,8 +18,12 @@ data class JvmFieldDefinition(
     val isPrivate: Boolean = false,
     val isPackagePrivate: Boolean = false,
     val isProtected: Boolean = false,
-    val constantValue: JvmValue? = null,
+    val constantValue: JvmFieldConstantValue? = null,
 )
+
+sealed interface JvmFieldConstantValue {
+    data class Numeric(val value: JvmValue) : JvmFieldConstantValue
+}
 
 data class JvmResolvedField(
     val ownerClassName: String,

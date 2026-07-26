@@ -20,7 +20,10 @@ class JvmStaticFields {
             .filter { field -> field.isStatic }
             .forEach { field ->
                 val reference = JvmFieldReference(classDefinition.internalName, field.name, field.descriptor)
-                values[reference] = field.constantValue ?: reference.defaultFieldValue()
+                values[reference] = when (val constantValue = field.constantValue) {
+                    is JvmFieldConstantValue.Numeric -> constantValue.value
+                    null -> reference.defaultFieldValue()
+                }
             }
     }
 

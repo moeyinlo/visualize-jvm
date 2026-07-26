@@ -207,7 +207,7 @@ class JvmClassfileRuntimeAdapterTest {
                 descriptor = "I",
                 isStatic = true,
                 isPackagePrivate = true,
-                constantValue = JvmIntValue(42),
+                constantValue = JvmFieldConstantValue.Numeric(JvmIntValue(42)),
             ),
             classFile.toJvmClassDefinition().fields.single(),
         )
