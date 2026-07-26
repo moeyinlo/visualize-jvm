@@ -215,6 +215,12 @@ class JvmUnsatisfiedLinkError(
     message: String,
 ) : UnsatisfiedLinkError(message)
 
+class JvmExceptionInInitializerError(
+    val guestClassName: String,
+    val causeGuestClassName: String,
+    message: String,
+) : ExceptionInInitializerError(message)
+
 object JvmInterpreter {
     private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
 
@@ -5211,12 +5217,13 @@ object JvmInterpreter {
                         if (exception is JvmThreadSuspendedException || exception is JvmMonitorBlockedException) {
                             throw exception
                         }
+                        val initializationFailure = exception.initializationFailureForActiveUse(classHierarchy)
                         classInitializationStates.failInitialization(
                             className = className,
                             threadId = currentThreadId,
-                            errorClassName = exception.initializationErrorClassName(),
+                            errorClassName = initializationFailure.initializationErrorClassName(),
                         )
-                        throw exception
+                        throw initializationFailure
                     }
                     classInitializationStates.completeInitialization(className, currentThreadId)
                 }
@@ -5246,10 +5253,25 @@ object JvmInterpreter {
             is JvmNoClassDefFoundError -> guestClassName
             is JvmNoSuchFieldError -> guestClassName
             is JvmNoSuchMethodError -> guestClassName
+            is JvmExceptionInInitializerError -> guestClassName
             is JvmNativeGuestException -> "java/lang/Throwable"
             is JvmThrownException -> "java/lang/Throwable"
             else -> "java/lang/ExceptionInInitializerError"
         }
+
+    private fun Throwable.initializationFailureForActiveUse(
+        classHierarchy: JvmClassHierarchy,
+    ): Throwable {
+        val failureClassName = initializationErrorClassName()
+        if (classHierarchy.isAssignable(sourceClassName = failureClassName, targetClassName = "java/lang/Error")) {
+            return this
+        }
+        return JvmExceptionInInitializerError(
+            guestClassName = "java/lang/ExceptionInInitializerError",
+            causeGuestClassName = failureClassName,
+            message = message ?: failureClassName,
+        )
+    }
 
     private fun executeGetStatic(
         instruction: DecodedInstruction,

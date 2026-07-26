@@ -550,6 +550,7 @@ class JvmClassHierarchy(
             "java/lang/RuntimeException" to "java/lang/Exception",
             "java/lang/Error" to "java/lang/Throwable",
             "java/lang/LinkageError" to "java/lang/Error",
+            "java/lang/ExceptionInInitializerError" to "java/lang/LinkageError",
             "java/lang/IllegalArgumentException" to "java/lang/RuntimeException",
             "java/lang/IllegalStateException" to "java/lang/RuntimeException",
             "java/lang/IndexOutOfBoundsException" to "java/lang/RuntimeException",

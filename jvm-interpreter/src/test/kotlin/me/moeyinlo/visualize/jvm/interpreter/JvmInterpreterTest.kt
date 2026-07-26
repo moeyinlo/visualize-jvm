@@ -5949,10 +5949,10 @@ class JvmInterpreterTest {
     }
 
     @Test
-    fun `getstatic failing class initializer marks target class erroneous`() {
+    fun `getstatic wraps non Error class initializer failure as ExceptionInInitializerError`() {
         val initializationStates = JvmClassInitializationStates()
 
-        val exception = assertFailsWith<JvmArithmeticException> {
+        val exception = assertFailsWith<JvmExceptionInInitializerError> {
             JvmInterpreter.execute(
                 code = byteArrayOf(
                     0xB2.toByte(),
@@ -5997,9 +5997,10 @@ class JvmInterpreterTest {
             )
         }
 
-        assertEquals("java/lang/ArithmeticException", exception.guestClassName)
+        assertEquals("java/lang/ExceptionInInitializerError", exception.guestClassName)
+        assertEquals("java/lang/ArithmeticException", exception.causeGuestClassName)
         assertEquals(
-            JvmClassInitializationState.Erroneous("java/lang/ArithmeticException"),
+            JvmClassInitializationState.Erroneous("java/lang/ExceptionInInitializerError"),
             initializationStates.get("Example"),
         )
     }
