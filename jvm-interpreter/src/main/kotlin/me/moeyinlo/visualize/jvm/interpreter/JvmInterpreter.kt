@@ -1802,13 +1802,23 @@ object JvmInterpreter {
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(
-                instruction,
-                operandStack,
-                constantPool,
-                heap,
-                classHierarchy,
-                classInitializationStates,
-                currentThreadId,
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
             0xBE -> executeArrayLength(instruction, operandStack, heap)
@@ -8188,11 +8198,52 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        staticFields: JvmStaticFields,
         classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+        nativeMethods: JvmNativeMethodRegistry,
+        monitors: JvmMonitorState,
+        threadScheduler: JvmThreadScheduler? = null,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
+        bootstrapMethods: JvmBootstrapMethodTable,
+        invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
+        dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         val className = resolveConstantClassName(instruction, constantPool)
-        initializeClassForActiveUse(className, classHierarchy, classInitializationStates, currentThreadId)
+        initializeClassForActiveUse(
+            className,
+            classHierarchy,
+            classInitializationStates,
+            currentThreadId,
+        ) { classInitializer ->
+            executeStaticMethodWithArguments(
+                instruction = instruction,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                bootstrapMethods = bootstrapMethods,
+                invokeDynamicCallSites = invokeDynamicCallSites,
+                dynamicConstants = dynamicConstants,
+                resolvedMethod = classInitializer,
+                arguments = emptyList(),
+                opcodeMnemonic = "class initialization",
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+            )
+        }
         operandStack.push(heap.allocateUninitializedObject(className))
     }
 

@@ -3850,6 +3850,76 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new executes class initializer before allocating object`() {
+        val heap = JvmHeap()
+        val initializationStates = JvmClassInitializationStates()
+        val staticFields = JvmStaticFields()
+        val initializedField = JvmFieldReference(
+            ownerClassName = "example/Foo",
+            name = "initialized",
+            descriptor = "I",
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBB.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "example/Foo",
+                        fields = listOf(JvmFieldDefinition(name = "initialized", descriptor = "I", isStatic = true)),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x04.toByte(),
+                                    0xB3.toByte(),
+                                    0x00.toByte(),
+                                    0x01.toByte(),
+                                    0xB1.toByte(),
+                                ),
+                                constantPool = ConstantPool.fromEntries(
+                                    listOf(
+                                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                        ConstantClassEntry(ConstantPoolIndex(3)),
+                                        ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                        ConstantUtf8Entry("initialized", "initialized".encodeToByteArray()),
+                                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                                    ),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            classInitializationStates = initializationStates,
+        )
+
+        val reference = result.operandStack.toList().single() as JvmObjectReferenceValue
+        assertFalse(heap.isInitialized(reference))
+        assertEquals("example/Foo", heap.get(reference).className)
+        assertEquals(JvmIntValue(1), staticFields.get(initializedField))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("example/Foo"))
+    }
+
+    @Test
     fun `invokespecial initializes an uninitialized object after constructor returns`() {
         val heap = JvmHeap()
 
