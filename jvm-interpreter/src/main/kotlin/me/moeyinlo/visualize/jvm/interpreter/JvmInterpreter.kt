@@ -60,6 +60,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLinkedInvokeDynamicCallSite
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleTarget
+import me.moeyinlo.visualize.jvm.runtime.JvmMonitorEnterResult
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
@@ -129,6 +130,13 @@ class JvmIllegalMonitorStateException(
     val guestClassName: String,
     message: String,
 ) : IllegalMonitorStateException(message)
+
+class JvmMonitorBlockedException(
+    val objectReference: JvmObjectReferenceValue,
+    val ownerThreadId: String,
+    val blockedThreadIds: List<String>,
+    message: String,
+) : IllegalStateException(message)
 
 class JvmIncompatibleClassChangeError(
     val guestClassName: String,
@@ -4646,7 +4654,16 @@ object JvmInterpreter {
         }
 
         heap.get(objectref)
-        monitors.enter(objectref, currentThreadId)
+        when (val result = monitors.tryEnter(objectref, currentThreadId)) {
+            is JvmMonitorEnterResult.Acquired -> Unit
+            is JvmMonitorEnterResult.Blocked -> throw JvmMonitorBlockedException(
+                objectReference = objectref,
+                ownerThreadId = result.ownerThreadId,
+                blockedThreadIds = result.blockedThreadIds,
+                message = "Thread $currentThreadId is blocked entering monitor ${objectref.referenceId.value} " +
+                    "owned by ${result.ownerThreadId} at offset ${instruction.offset}",
+            )
+        }
     }
 
     private fun executeMonitorExit(

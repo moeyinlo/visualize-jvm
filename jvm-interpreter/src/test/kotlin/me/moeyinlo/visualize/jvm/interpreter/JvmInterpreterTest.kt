@@ -18911,6 +18911,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `monitorenter reports blocked contention without guest exception translation`() {
+        val heap = JvmHeap()
+        val monitor = JvmMonitorState()
+        val receiver = heap.allocateObject("pkg/Lock")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        monitor.enter(receiver, "owner")
+
+        val exception = assertFailsWith<JvmMonitorBlockedException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xC2.toByte(),
+                ),
+                maxStack = 1,
+                heap = heap,
+                localVariables = localVariables,
+                monitors = monitor,
+                currentThreadId = "contender",
+            )
+        }
+
+        assertEquals(receiver, exception.objectReference)
+        assertEquals("owner", exception.ownerThreadId)
+        assertEquals(listOf("contender"), exception.blockedThreadIds)
+        assertEquals(listOf("contender"), monitor.blockedThreads(receiver))
+        assertEquals(1, monitor.holdCount(receiver, "owner"))
+        assertEquals(0, monitor.holdCount(receiver, "contender"))
+    }
+
+    @Test
     fun `monitorenter throws guest NullPointerException for null object references`() {
         val localVariables = JvmLocalVariables(maxLocals = 1)
         localVariables.store(0, JvmNullValue)
