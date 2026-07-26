@@ -118,6 +118,13 @@ data class JvmScheduledThreadsExecutionResult(
     val stalledThreadIds: List<String> = emptyList(),
 )
 
+class JvmScheduledThreadSwitchLimitException(
+    val maxThreadSwitches: Int,
+    val executedThreadIds: List<String>,
+    val remainingThreadIds: List<String>,
+    message: String,
+) : IllegalStateException(message)
+
 private data class JvmFrameExecutionResult(
     val operandStack: JvmOperandStack,
     val hasReturned: Boolean = false,
@@ -959,14 +966,17 @@ object JvmInterpreter {
         var switchCount = 0
 
         while (remainingFrames.isNotEmpty()) {
+            val remainingThreadIds = threadOrder.filter { threadId -> threadId in remainingFrames }
             if (switchCount >= maxThreadSwitches) {
-                throw JvmUnsupportedInstructionException(
-                    "Scheduled execution exceeded max thread switches $maxThreadSwitches",
+                throw JvmScheduledThreadSwitchLimitException(
+                    maxThreadSwitches = maxThreadSwitches,
+                    executedThreadIds = executedThreadIds.toList(),
+                    remainingThreadIds = remainingThreadIds,
+                    message = "Scheduled execution exceeded max thread switches $maxThreadSwitches",
                 )
             }
             switchCount += 1
 
-            val remainingThreadIds = threadOrder.filter { threadId -> threadId in remainingFrames }
             val threadId = threadScheduler.nextRunnableThreadId(
                 threadIds = remainingThreadIds,
                 afterThreadId = previousThreadId,

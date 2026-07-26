@@ -19562,6 +19562,31 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop switch limit exception reports progress state`() {
+        val exception = assertFailsWith<JvmScheduledThreadSwitchLimitException> {
+            JvmInterpreter.executeScheduledThreads(
+                frames = listOf(
+                    JvmScheduledThreadFrame(
+                        threadId = "first",
+                        code = byteArrayOf(0x03.toByte()),
+                        maxStack = 1,
+                    ),
+                    JvmScheduledThreadFrame(
+                        threadId = "second",
+                        code = byteArrayOf(0x04.toByte()),
+                        maxStack = 1,
+                    ),
+                ),
+                maxThreadSwitches = 1,
+            )
+        }
+
+        assertEquals(1, exception.maxThreadSwitches)
+        assertEquals(listOf("first"), exception.executedThreadIds)
+        assertEquals(listOf("second"), exception.remainingThreadIds)
+    }
+
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()
