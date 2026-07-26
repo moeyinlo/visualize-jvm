@@ -86,6 +86,12 @@ object NativeResolverCoverage {
             status = NativeResolverCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmVmIntrinsicsTest",
         ),        NativeResolverCoverageEntry(
+            rule = "interpreter native library load hook dispatch",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmInterpreter threads the VM native-library load hook into invokestatic native dispatch so java/lang/System.loadLibrary can trigger VM-owned loading from interpreted bytecode",
+            status = NativeResolverCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmInterpreterTest",
+        ),        NativeResolverCoverageEntry(
             rule = "System mapLibraryName VM intrinsic",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
             currentComponent = "JvmVmIntrinsics resolves java/lang/System.mapLibraryName(Ljava/lang/String;)Ljava/lang/String; through the platform library-name mapper and returns a guest String",

@@ -12841,6 +12841,58 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic System loadLibrary delegates to VM native library load hook`() {
+        val loadedLogicalNames = mutableListOf<String>()
+        val heap = JvmHeap()
+        val libraryName = heap.internString("interpreter-native")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, libraryName)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/System",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "loadLibrary",
+                            descriptor = "(Ljava/lang/String;)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("java/lang/System", "java/lang/System".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("loadLibrary", "loadLibrary".encodeToByteArray()),
+                    ConstantUtf8Entry("(Ljava/lang/String;)V", "(Ljava/lang/String;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            currentClassName = "Caller",
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("interpreter-native"), loadedLogicalNames)
+    }
+
+    @Test
     fun `invokestatic executes registered native static methods from loaded libraries`() {
         val heap = JvmHeap()
         val classHierarchy = JvmClassHierarchy(

@@ -716,6 +716,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
         dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmExecutionResult {
         val frameResult = executeFrame(
             code = code,
@@ -734,6 +737,7 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -755,6 +759,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack(maxStack = maxStack)
         val instructions = BytecodeDecoder.decode(code)
@@ -809,6 +816,7 @@ object JvmInterpreter {
                             bootstrapMethods,
                             invokeDynamicCallSites,
                             dynamicConstants,
+                            loadNativeLibraryHandler,
                         )
                         null
                     }
@@ -1083,6 +1091,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -1317,6 +1328,7 @@ object JvmInterpreter {
                 bootstrapMethods,
                 invokeDynamicCallSites,
                 dynamicConstants,
+                loadNativeLibraryHandler,
             )
             0xB9 -> executeInvokeInterface(
                 instruction,
@@ -4755,6 +4767,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
@@ -4774,6 +4789,7 @@ object JvmInterpreter {
             dynamicConstants = dynamicConstants,
             resolvedMethod = resolvedMethod,
             opcodeMnemonic = "invokestatic",
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
     }
 
@@ -4792,6 +4808,9 @@ object JvmInterpreter {
         dynamicConstants: JvmDynamicConstantRegistry,
         resolvedMethod: JvmResolvedMethod,
         opcodeMnemonic: String,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
@@ -4825,6 +4844,7 @@ object JvmInterpreter {
             resolvedMethod = resolvedMethod,
             arguments = arguments,
             opcodeMnemonic = opcodeMnemonic,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )?.let { returnValue ->
             operandStack.push(returnValue)
         }
@@ -4845,6 +4865,9 @@ object JvmInterpreter {
         resolvedMethod: JvmResolvedMethod,
         arguments: List<JvmValue>,
         opcodeMnemonic: String,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmValue? {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         if (arguments.size != argumentDescriptors.size) {
@@ -4879,6 +4902,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 currentClassName = resolvedMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -6644,6 +6668,9 @@ object JvmInterpreter {
         currentThreadId: String,
         currentClassName: String?,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmValue? {
         val intrinsic = nativeMethods.resolve(method)
             ?: throw JvmUnsatisfiedLinkError(
@@ -6659,6 +6686,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 monitors = monitors,
                 currentThreadId = currentThreadId,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
                 callStaticMethodHandler = { ownerClassName, name, descriptor, upcallArguments ->
                     executeStaticMethodUpcall(
                         ownerClassName = ownerClassName,
