@@ -139,6 +139,7 @@ class JvmUnsupportedInstructionException(message: String) : IllegalStateExceptio
 
 class JvmThrownException(
     val throwable: JvmObjectReferenceValue,
+    val guestClassName: String,
     message: String,
 ) : RuntimeException(message)
 
@@ -5056,6 +5057,7 @@ object JvmInterpreter {
         val throwableClassName = heap.get(throwable).className
         throw JvmThrownException(
             throwable = throwable,
+            guestClassName = throwableClassName,
             message = "Unhandled guest exception $throwableClassName thrown by athrow at offset ${instruction.offset}",
         )
     }
@@ -5255,7 +5257,7 @@ object JvmInterpreter {
             is JvmNoSuchMethodError -> guestClassName
             is JvmExceptionInInitializerError -> guestClassName
             is JvmNativeGuestException -> "java/lang/Throwable"
-            is JvmThrownException -> "java/lang/Throwable"
+            is JvmThrownException -> guestClassName
             else -> "java/lang/ExceptionInInitializerError"
         }
 

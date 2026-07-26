@@ -6074,6 +6074,68 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic preserves athrow Error class initializer failure without wrapping`() {
+        val initializationStates = JvmClassInitializationStates()
+
+        val exception = assertFailsWith<JvmThrownException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                    code = byteArrayOf(
+                                        0xBB.toByte(),
+                                        0x00.toByte(),
+                                        0x01.toByte(),
+                                        0xBF.toByte(),
+                                    ),
+                                    constantPool = ConstantPool.fromEntries(
+                                        listOf(
+                                            ConstantClassEntry(ConstantPoolIndex(2)),
+                                            ConstantUtf8Entry("java/lang/Error", "java/lang/Error".encodeToByteArray()),
+                                        ),
+                                    ),
+                                    maxStack = 1,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                classInitializationStates = initializationStates,
+            )
+        }
+
+        assertEquals("java/lang/Error", exception.guestClassName)
+        assertEquals(
+            JvmClassInitializationState.Erroneous("java/lang/Error"),
+            initializationStates.get("Example"),
+        )
+    }
+
+    @Test
     fun `getstatic throws NoClassDefFoundError for erroneous target class initialization state`() {
         val initializationStates = JvmClassInitializationStates()
         initializationStates.startInitialization("Example", "initializer")
