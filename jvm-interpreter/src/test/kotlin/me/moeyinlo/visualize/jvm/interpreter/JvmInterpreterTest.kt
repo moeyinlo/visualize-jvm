@@ -19393,6 +19393,111 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop resumes waiter after notifier releases monitor`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("java/lang/Object")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "waiter")
+        val waiterLocals = JvmLocalVariables(maxLocals = 1)
+        waiterLocals.store(0, receiver)
+        val notifierLocals = JvmLocalVariables(maxLocals = 1)
+        notifierLocals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/Object",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "wait",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                        JvmMethodDefinition(
+                            name = "notify",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val waitConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("wait", "wait".encodeToByteArray()),
+                ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+            ),
+        )
+        val notifyConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("notify", "notify".encodeToByteArray()),
+                ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+            ),
+        )
+
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "waiter",
+                    code = byteArrayOf(
+                        0x2A.toByte(),
+                        0xB6.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x2A.toByte(),
+                        0xC3.toByte(),
+                        0x03.toByte(),
+                    ),
+                    maxStack = 1,
+                    constantPool = waitConstantPool,
+                    localVariables = waiterLocals,
+                    currentClassName = "pkg/Waiter",
+                ),
+                JvmScheduledThreadFrame(
+                    threadId = "notifier",
+                    code = byteArrayOf(
+                        0x2A.toByte(),
+                        0xC2.toByte(),
+                        0x2A.toByte(),
+                        0xB6.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x2A.toByte(),
+                        0xC3.toByte(),
+                        0x04.toByte(),
+                    ),
+                    maxStack = 1,
+                    constantPool = notifyConstantPool,
+                    localVariables = notifierLocals,
+                    currentClassName = "pkg/Notifier",
+                ),
+            ),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            monitors = monitors,
+            threadScheduler = scheduler,
+        )
+
+        assertEquals(listOf("waiter", "notifier", "waiter"), result.executedThreadIds)
+        assertEquals(emptyMap(), result.suspendedThreads)
+        assertEquals(listOf(JvmIntValue(0)), result.completedThreads.getValue("waiter").operandStack.toList())
+        assertEquals(listOf(JvmIntValue(1)), result.completedThreads.getValue("notifier").operandStack.toList())
+        assertEquals(0, monitors.holdCount(receiver, threadId = "waiter"))
+        assertEquals(0, monitors.holdCount(receiver, threadId = "notifier"))
+    }
+
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()

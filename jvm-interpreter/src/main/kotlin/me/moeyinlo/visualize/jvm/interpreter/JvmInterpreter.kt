@@ -111,6 +111,12 @@ data class JvmScheduledThreadFrame(
     }
 }
 
+data class JvmScheduledThreadsExecutionResult(
+    val completedThreads: Map<String, JvmExecutionResult>,
+    val suspendedThreads: Map<String, JvmThreadSuspendedException>,
+    val executedThreadIds: List<String>,
+)
+
 private data class JvmFrameExecutionResult(
     val operandStack: JvmOperandStack,
     val hasReturned: Boolean = false,
@@ -918,6 +924,109 @@ object JvmInterpreter {
         } catch (exception: JvmThreadSuspendedException) {
             JvmScheduledThreadExecutionResult.Suspended(exception)
         }
+
+    fun executeScheduledThreads(
+        frames: List<JvmScheduledThreadFrame>,
+        heap: JvmHeap = JvmHeap(),
+        classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
+        staticFields: JvmStaticFields = JvmStaticFields(),
+        nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
+        monitors: JvmMonitorState = JvmMonitorState(),
+        threadScheduler: JvmThreadScheduler = JvmThreadScheduler(),
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
+        nativeLibraryLoader: JvmNativeLibraryLoader? = null,
+        javaVm: JvmSimulatedJavaVm? = null,
+        maxThreadSwitches: Int = 1024,
+    ): JvmScheduledThreadsExecutionResult {
+        require(maxThreadSwitches > 0) { "max thread switches must be positive: $maxThreadSwitches" }
+        val threadOrder = frames.map { frame -> frame.threadId }
+        require(threadOrder.toSet().size == threadOrder.size) { "scheduled thread ids must be unique" }
+
+        val remainingFrames = linkedMapOf<String, JvmScheduledThreadFrame>()
+        frames.forEach { frame -> remainingFrames[frame.threadId] = frame }
+        val completedThreads = linkedMapOf<String, JvmExecutionResult>()
+        val suspendedThreads = linkedMapOf<String, JvmThreadSuspendedException>()
+        val executedThreadIds = mutableListOf<String>()
+        var previousThreadId: String? = null
+        var switchCount = 0
+
+        while (remainingFrames.isNotEmpty()) {
+            if (switchCount >= maxThreadSwitches) {
+                throw JvmUnsupportedInstructionException(
+                    "Scheduled execution exceeded max thread switches $maxThreadSwitches",
+                )
+            }
+            switchCount += 1
+
+            val remainingThreadIds = threadOrder.filter { threadId -> threadId in remainingFrames }
+            val threadId = threadScheduler.nextRunnableThreadId(
+                threadIds = remainingThreadIds,
+                afterThreadId = previousThreadId,
+            ) ?: break
+            previousThreadId = threadId
+
+            when (threadScheduler.resumePendingMonitorReentry(monitors, threadId)) {
+                is JvmMonitorEnterResult.Blocked -> continue
+                is JvmMonitorEnterResult.Acquired,
+                null,
+                -> Unit
+            }
+
+            val frame = remainingFrames.getValue(threadId)
+            executedThreadIds += threadId
+            when (
+                val result = executeScheduledThread(
+                    code = frame.code,
+                    maxStack = frame.maxStack,
+                    constantPool = frame.constantPool,
+                    heap = heap,
+                    localVariables = frame.localVariables,
+                    classHierarchy = classHierarchy,
+                    staticFields = staticFields,
+                    nativeMethods = nativeMethods,
+                    monitors = monitors,
+                    threadScheduler = threadScheduler,
+                    currentThreadId = threadId,
+                    monitorUnblockedHandler = monitorUnblockedHandler,
+                    currentClassName = frame.currentClassName,
+                    exceptionHandlers = frame.exceptionHandlers,
+                    bootstrapMethods = frame.bootstrapMethods,
+                    invokeDynamicCallSites = frame.invokeDynamicCallSites,
+                    dynamicConstants = frame.dynamicConstants,
+                    loadNativeLibraryHandler = loadNativeLibraryHandler,
+                    unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                    nativeLibraryLoader = nativeLibraryLoader,
+                    javaVm = javaVm,
+                    startBytecodeOffset = frame.startBytecodeOffset,
+                )
+            ) {
+                is JvmScheduledThreadExecutionResult.Completed -> {
+                    remainingFrames.remove(threadId)
+                    suspendedThreads.remove(threadId)
+                    completedThreads[threadId] = result.result
+                }
+                is JvmScheduledThreadExecutionResult.Suspended -> {
+                    suspendedThreads[threadId] = result.suspension
+                    val nextBytecodeOffset = result.suspension.nextBytecodeOffset
+                    if (nextBytecodeOffset != null) {
+                        remainingFrames[threadId] = frame.copy(startBytecodeOffset = nextBytecodeOffset)
+                    }
+                }
+            }
+        }
+
+        return JvmScheduledThreadsExecutionResult(
+            completedThreads = completedThreads,
+            suspendedThreads = suspendedThreads,
+            executedThreadIds = executedThreadIds,
+        )
+    }
 
     private fun executeFrame(
         code: ByteArray,
