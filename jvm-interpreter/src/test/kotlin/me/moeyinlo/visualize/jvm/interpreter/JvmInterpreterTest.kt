@@ -19,6 +19,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestException
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
@@ -12464,6 +12465,77 @@ class JvmInterpreterTest {
         val caught = localVariables.load(0) as JvmObjectReferenceValue
         assertEquals("java/lang/UnsatisfiedLinkError", heap.get(caught).className)
         assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
+    fun `invokestatic native downcall guest exceptions transfer control to matching handler`() {
+        val heap = JvmHeap()
+        val throwable = heap.allocateObject("ExampleException")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x4B.toByte(),
+                0x07.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeThrow", "nativeThrow".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeThrow",
+                                descriptor = "()V",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "ExampleException",
+                        superclassName = "java/lang/RuntimeException",
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.fromSimulatedJni(
+                JvmNativeMethodKey(
+                    ownerClassName = "Example",
+                    name = "nativeThrow",
+                    descriptor = "()V",
+                    isStatic = true,
+                ) to JvmNativeMethodIntrinsic { _, _ ->
+                    throw JvmNativeGuestException(throwable)
+                },
+            ),
+            currentClassName = "Caller",
+            exceptionHandlers = listOf(
+                JvmExceptionHandler(
+                    startPc = 0,
+                    endPc = 3,
+                    handlerPc = 3,
+                    catchClassName = "java/lang/RuntimeException",
+                ),
+            ),
+        )
+
+        assertEquals(throwable, localVariables.load(0))
+        assertEquals(listOf(JvmIntValue(4)), result.operandStack.toList())
     }
 
     @Test

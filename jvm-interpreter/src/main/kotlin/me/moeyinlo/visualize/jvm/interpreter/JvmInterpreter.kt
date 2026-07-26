@@ -22,6 +22,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallDispatcher
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallException
+import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestException
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapArgument
@@ -946,6 +947,17 @@ object JvmInterpreter {
                 instructionIndex = dispatchCreatedGuestThrowableToHandler(
                     instruction = instruction,
                     guestClassName = exception.guestClassName,
+                    originalException = exception,
+                    operandStack = operandStack,
+                    heap = heap,
+                    classHierarchy = classHierarchy,
+                    exceptionHandlers = exceptionHandlers,
+                    instructionIndexByOffset = instructionIndexByOffset,
+                )
+            } catch (exception: JvmNativeGuestException) {
+                instructionIndex = dispatchExistingGuestThrowableToHandler(
+                    instruction = instruction,
+                    throwable = exception.throwable,
                     originalException = exception,
                     operandStack = operandStack,
                     heap = heap,
