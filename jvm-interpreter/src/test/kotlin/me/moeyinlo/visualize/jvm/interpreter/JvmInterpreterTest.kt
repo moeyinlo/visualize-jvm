@@ -19845,6 +19845,74 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked static native target retains native library unload hook`() {
+        val unloadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Targets",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Targets",
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("pkg/Targets", "answer", "()I", isStatic = true) to
+                JvmNativeMethodIntrinsic { context, _ ->
+                    context.unloadNativeLibraryHandler("indy-static-native")
+                    JvmIntValue(42)
+                },
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicIntCallSiteConstantPool(),
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("indy-static-native"), unloadedLogicalNames)
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokedynamic executes cached get static field target`() {
         val staticFields = JvmStaticFields()
         val field = JvmFieldReference(

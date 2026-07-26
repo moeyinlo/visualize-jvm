@@ -5524,6 +5524,7 @@ object JvmInterpreter {
                     dynamicConstants = dynamicConstants,
                     linkedCallSite = linkedCallSite,
                     loadNativeLibraryHandler = loadNativeLibraryHandler,
+                    unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 )
                 return
             }
@@ -5644,6 +5645,7 @@ object JvmInterpreter {
             dynamicConstants = dynamicConstants,
             linkedCallSite = linkedCallSite,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )
     }
 
@@ -5712,6 +5714,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         when (linkedCallSite.targetMethodHandle.referenceKind) {
             JvmMethodHandleReferenceKind.GetField -> executeLinkedInvokeDynamicGetFieldTarget(
@@ -5759,6 +5764,7 @@ object JvmInterpreter {
                 dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
+                unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
             JvmMethodHandleReferenceKind.InvokeVirtual -> executeLinkedInvokeDynamicVirtualTarget(
                 instruction = instruction,
@@ -6029,6 +6035,9 @@ object JvmInterpreter {
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ) {
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, linkedCallSite.targetMethod.descriptor)
@@ -6048,6 +6057,7 @@ object JvmInterpreter {
             resolvedMethod = linkedCallSite.targetMethod,
             opcodeMnemonic = "invokedynamic",
             loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )
     }
 
