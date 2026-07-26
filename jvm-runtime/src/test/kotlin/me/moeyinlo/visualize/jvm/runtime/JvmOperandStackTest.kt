@@ -65,4 +65,28 @@ class JvmOperandStackTest {
         assertEquals(1, stack.slotDepth)
         assertEquals(JvmIntValue(1), stack.peek())
     }
+
+    @Test
+    fun `operand stack can be rebuilt from snapshot values`() {
+        val reference = JvmObjectReferenceValue(JvmReferenceId(9))
+
+        val stack = JvmOperandStack.fromValues(
+            maxStack = 4,
+            values = listOf(JvmIntValue(1), JvmLongValue(2L), reference),
+        )
+
+        assertEquals(listOf(JvmIntValue(1), JvmLongValue(2L), reference), stack.toList())
+        assertEquals(4, stack.slotDepth)
+        assertEquals(3, stack.valueCount)
+    }
+
+    @Test
+    fun `operand stack rebuild rejects snapshots beyond max stack`() {
+        assertFailsWith<JvmOperandStackOverflowException> {
+            JvmOperandStack.fromValues(
+                maxStack = 1,
+                values = listOf(JvmIntValue(1), JvmLongValue(2L)),
+            )
+        }
+    }
 }

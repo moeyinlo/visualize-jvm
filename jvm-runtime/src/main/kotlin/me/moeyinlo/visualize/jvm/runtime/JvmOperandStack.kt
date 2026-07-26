@@ -38,6 +38,13 @@ class JvmOperandStack(maxStack: Int) {
             ?: throw JvmOperandStackUnderflowException("Operand stack is empty")
 
     fun toList(): List<JvmValue> = values.toList()
+
+    companion object {
+        fun fromValues(maxStack: Int, values: List<JvmValue>): JvmOperandStack =
+            JvmOperandStack(maxStack = maxStack).also { stack ->
+                values.forEach(stack::push)
+            }
+    }
 }
 
 class JvmOperandStackOverflowException(message: String) : IllegalStateException(message)
