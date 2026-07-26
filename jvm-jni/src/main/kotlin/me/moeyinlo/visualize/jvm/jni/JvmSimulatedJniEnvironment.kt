@@ -1652,7 +1652,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun setBooleanField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId, value: Boolean) {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "Z" || field.isStatic) {
             throw JvmJniFieldAccessException(
