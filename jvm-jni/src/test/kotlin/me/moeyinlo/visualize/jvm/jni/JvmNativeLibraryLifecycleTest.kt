@@ -151,6 +151,47 @@ class JvmNativeLibraryLifecycleTest {
     }
 
     @Test
+    fun `load propagates explicit JNI_OnLoad guest exception returns`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val backend = JvmPanamaDowncallBackend { path, symbolName ->
+            if (path == library.path && symbolName == "JNI_OnLoad") {
+                JvmNativeSymbolAddress(symbolName, 0x1111L)
+            } else {
+                null
+            }
+        }
+        val registry = JvmNativeLibraryRegistry()
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val throwable = heap.allocateObject("java/lang/IllegalStateException")
+        val javaVm = JvmSimulatedJavaVm(environment)
+        val lifecycle = JvmNativeLibraryLifecycle(
+            backend = backend,
+            registry = registry,
+            invokeDowncall = {
+                JvmNativeDowncallReturn.ThrownGuestException(environment.handles.newObjectHandle(throwable))
+            },
+        )
+
+        val thrown = assertFailsWith<JvmNativeGuestException> {
+            lifecycle.load(library, javaVm)
+        }
+
+        assertEquals(throwable, thrown.throwable)
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(0, environment.localFrameDepth)
+        assertEquals(0, environment.handles.localFrameDepth)
+        assertEquals(0, environment.handles.liveHandleCount)
+    }
+
+    @Test
     fun `unload invokes JNI_OnUnload and returns unloaded library`() {
         val library = JvmNativeLibraryDescriptor(
             logicalName = "native-api",

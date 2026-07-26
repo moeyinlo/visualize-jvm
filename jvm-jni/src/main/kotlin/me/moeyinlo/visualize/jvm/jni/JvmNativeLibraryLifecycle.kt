@@ -53,6 +53,9 @@ private inline fun <T> JvmSimulatedJavaVm.withNativeLibraryLifecycleLocalFrame(a
 }
 
 private fun JvmNativeDowncallReturn.toOnLoadVersion(environment: JvmSimulatedJniEnvironment): Int {
+    if (this is JvmNativeDowncallReturn.ThrownGuestException) {
+        throw JvmNativeGuestException(environment.handles.resolveObject(throwableHandle))
+    }
     val version = toOnLoadVersion()
     environment.takePendingException()?.let { throwable ->
         throw JvmNativeGuestException(throwable)
