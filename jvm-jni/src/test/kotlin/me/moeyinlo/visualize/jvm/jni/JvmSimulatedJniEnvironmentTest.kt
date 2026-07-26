@@ -41,6 +41,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 
 class JvmSimulatedJniEnvironmentTest {
     @Test
@@ -48,6 +49,38 @@ class JvmSimulatedJniEnvironmentTest {
         val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
 
         assertEquals(0x00180000, environment.getVersion())
+    }
+
+    @Test
+    fun `GetJavaVM returns the owning simulated JavaVM when the environment is VM-bound`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        val result = environment.getJavaVm()
+
+        assertEquals(JvmJniStatus.Ok, result.status)
+        assertSame(javaVm, result.javaVm)
+    }
+
+    @Test
+    fun `JNIEnv function table delegates GetJavaVM to the owning simulated JavaVM`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        val javaVm = JvmSimulatedJavaVm(environment)
+
+        val result = environment.functions.getJavaVm()
+
+        assertEquals(JvmJniStatus.Ok, result.status)
+        assertSame(javaVm, result.javaVm)
+    }
+
+    @Test
+    fun `GetJavaVM reports JNI error when the environment is not VM-bound`() {
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+
+        val result = environment.getJavaVm()
+
+        assertEquals(JvmJniStatus.Err, result.status)
+        assertEquals(null, result.javaVm)
     }
 
     @Test

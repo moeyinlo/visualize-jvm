@@ -58,10 +58,24 @@ class JvmSimulatedJniEnvironment(
         get() = localFrameCapacities.size
     val functions: JvmSimulatedJniFunctionTable =
         JvmSimulatedJniFunctionTable.bind(this)
+    private var owningJavaVm: JvmSimulatedJavaVm? = null
     var maxLocalFrameCapacity: Int = 0
         private set
 
     fun getVersion(): Int = JvmJniVersions.Version24
+
+    fun getJavaVm(): JvmJniGetJavaVmResult {
+        val javaVm = owningJavaVm
+        return if (javaVm == null) {
+            JvmJniGetJavaVmResult(status = JvmJniStatus.Err, javaVm = null)
+        } else {
+            JvmJniGetJavaVmResult(status = JvmJniStatus.Ok, javaVm = javaVm)
+        }
+    }
+
+    internal fun bindJavaVm(javaVm: JvmSimulatedJavaVm) {
+        owningJavaVm = javaVm
+    }
 
     fun registerNatives(
         classHandle: JvmJniHandleId,

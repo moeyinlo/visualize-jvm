@@ -54,6 +54,10 @@ data class JvmNativeDowncallInvocation(
 data class JvmSimulatedJavaVm(
     val environment: JvmSimulatedJniEnvironment,
 ) {
+    init {
+        environment.bindJavaVm(this)
+    }
+
     private var attached: Boolean = true
     private var daemonAttached: Boolean = false
     private var destroyed: Boolean = false
@@ -170,6 +174,11 @@ data class JvmSimulatedJavaVmFunctionTable(
 data class JvmJavaVmGetEnvResult(
     val status: Int,
     val environment: JvmSimulatedJniEnvironment?,
+)
+
+data class JvmJniGetJavaVmResult(
+    val status: Int,
+    val javaVm: JvmSimulatedJavaVm?,
 )
 
 object JvmJniStatus {
