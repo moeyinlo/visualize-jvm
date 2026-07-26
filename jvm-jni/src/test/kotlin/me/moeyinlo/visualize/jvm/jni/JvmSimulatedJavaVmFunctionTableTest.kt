@@ -41,4 +41,20 @@ class JvmSimulatedJavaVmFunctionTableTest {
         assertEquals(JvmJniStatus.Ok, attached.status)
         assertSame(environment, attached.environment)
     }
+    @Test
+    fun `JavaVM function table delegates AttachCurrentThreadAsDaemon`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+        val functions = javaVm.functions
+
+        assertEquals(JvmJniStatus.Ok, functions.detachCurrentThread())
+        val attached = functions.attachCurrentThreadAsDaemon(JvmJniVersions.Version24)
+
+        assertEquals(JvmJniStatus.Ok, attached.status)
+        assertSame(environment, attached.environment)
+        assertEquals(true, javaVm.isCurrentThreadDaemonAttached)
+    }
 }

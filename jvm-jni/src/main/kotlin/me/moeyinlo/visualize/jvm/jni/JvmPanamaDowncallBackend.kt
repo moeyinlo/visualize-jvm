@@ -123,6 +123,7 @@ data class JvmSimulatedJavaVm(
 
 data class JvmSimulatedJavaVmFunctionTable(
     val attachCurrentThread: (Int) -> JvmJavaVmGetEnvResult,
+    val attachCurrentThreadAsDaemon: (Int) -> JvmJavaVmGetEnvResult,
     val detachCurrentThread: () -> Int,
     val getEnv: (Int) -> JvmJavaVmGetEnvResult,
 ) {
@@ -130,6 +131,7 @@ data class JvmSimulatedJavaVmFunctionTable(
         fun bind(javaVm: JvmSimulatedJavaVm): JvmSimulatedJavaVmFunctionTable =
             JvmSimulatedJavaVmFunctionTable(
                 attachCurrentThread = javaVm::attachCurrentThread,
+                attachCurrentThreadAsDaemon = javaVm::attachCurrentThreadAsDaemon,
                 detachCurrentThread = javaVm::detachCurrentThread,
                 getEnv = javaVm::getEnv,
             )
