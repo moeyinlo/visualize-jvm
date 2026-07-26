@@ -6720,6 +6720,7 @@ object JvmInterpreter {
                         currentThreadId = currentThreadId,
                         currentClassName = currentClassName,
                         dynamicConstants = dynamicConstants,
+                        loadNativeLibraryHandler = loadNativeLibraryHandler,
                     )
                 },
                 callInstanceMethodHandler = { upcallReceiver, ownerClassName, name, descriptor, upcallArguments ->
@@ -6760,6 +6761,9 @@ object JvmInterpreter {
         currentThreadId: String,
         currentClassName: String?,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
             ownerClassName = ownerClassName,
@@ -6802,7 +6806,7 @@ object JvmInterpreter {
         val frameResult = executeFrame(
             code = methodCode,
             maxStack = resolvedMethod.maxStack,
-            constantPool = ConstantPool.fromEntries(emptyList()),
+            constantPool = resolvedMethod.constantPool ?: ConstantPool.fromEntries(emptyList()),
             heap = heap,
             localVariables = calleeLocals,
             classHierarchy = classHierarchy,
@@ -6816,6 +6820,7 @@ object JvmInterpreter {
             bootstrapMethods = JvmBootstrapMethodTable(),
             invokeDynamicCallSites = JvmInvokeDynamicCallSiteRegistry(),
             dynamicConstants = dynamicConstants,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI static upcall",
