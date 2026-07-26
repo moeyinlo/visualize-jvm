@@ -159,11 +159,28 @@ class JvmNativeMethodRegistry(
                     methodDescriptor = key.descriptor,
                     isStatic = key.isStatic,
                 )
-                loadedLibraries.resolveExport(signature)?.let { target ->
+                val target = loadedLibraries.resolveExport(signature)
+                    ?: if (key.isStatic) {
+                        loadedLibraries.loadedLibraries()
+                            .asSequence()
+                            .mapNotNull { loaded ->
+                                environment.registeredNativeMethods.resolveDowncallTarget(
+                                    library = loaded.library,
+                                    className = key.ownerClassName,
+                                    name = key.name,
+                                    descriptor = key.descriptor,
+                                    isStatic = true,
+                                )
+                            }
+                            .firstOrNull()
+                    } else {
+                        null
+                    }
+                target?.let { resolvedTarget ->
                     JvmNativeMethodIntrinsic { _, invocation ->
                         val downcallInvocation = if (key.isStatic) {
                             val classHandle = environment.handles.newClassHandle(key.ownerClassName)
-                            target.prepareStaticInvocation(
+                            resolvedTarget.prepareStaticInvocation(
                                 environment = environment,
                                 classHandle = classHandle,
                                 guestArguments = invocation.arguments,
@@ -174,7 +191,7 @@ class JvmNativeMethodRegistry(
                                     "Loaded native instance export ${key.ownerClassName}.${key.name}:" +
                                         "${key.descriptor} requires a receiver",
                                 )
-                            target.prepareInstanceInvocation(
+                            resolvedTarget.prepareInstanceInvocation(
                                 environment = environment,
                                 receiver = receiver,
                                 guestArguments = invocation.arguments,

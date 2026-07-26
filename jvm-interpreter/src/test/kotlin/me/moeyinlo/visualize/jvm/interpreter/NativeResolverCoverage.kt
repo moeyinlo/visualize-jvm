@@ -86,5 +86,12 @@ object NativeResolverCoverage {
             status = NativeResolverCoverageStatus.Implemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
+        NativeResolverCoverageEntry(
+            rule = "registered native static dispatch",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmNativeMethodRegistry resolves JNI RegisterNatives static entries through loaded library ownership into simulated JNI downcalls",
+            status = NativeResolverCoverageStatus.Implemented,
+            coveringTestClass = "JvmInterpreterTest",
+        ),
     )
 }

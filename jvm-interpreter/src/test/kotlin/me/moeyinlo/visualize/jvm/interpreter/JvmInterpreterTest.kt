@@ -24,6 +24,7 @@ import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallInvocation
 import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallReturn
 import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallTarget
 import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestException
+import me.moeyinlo.visualize.jvm.jni.JvmJniNativeMethodDescriptor
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryBinding
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryDescriptor
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryRegistry
@@ -12837,6 +12838,94 @@ class JvmInterpreterTest {
         assertTrue(invocation.arguments[0] is JvmNativeDowncallArgument.SimulatedJniEnv)
         val receiverArgument = invocation.arguments[1] as JvmNativeDowncallArgument.ObjectHandle
         assertEquals(receiver, environment.handles.resolveObject(receiverArgument.handle!!))
+    }
+
+    @Test
+    fun `invokestatic executes registered native static methods from loaded libraries`() {
+        val heap = JvmHeap()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "registeredValue",
+                            descriptor = "()I",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+        )
+        environment.registeredNativeMethods.register(
+            className = "NativeOwner",
+            methods = listOf(
+                JvmJniNativeMethodDescriptor(
+                    name = "registeredValue",
+                    descriptor = "()I",
+                    functionAddress = 0xCAFE_BABEL,
+                ),
+            ),
+        )
+        val loadedLibraries = JvmNativeLibraryRegistry()
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        loadedLibraries.markLoaded(
+            binding = JvmNativeLibraryBinding(
+                library = library,
+                onLoadTarget = null,
+                onUnloadTarget = null,
+                exportTargets = emptyMap(),
+            ),
+            onLoadVersion = null,
+        )
+        val invocations = mutableListOf<JvmNativeDowncallInvocation>()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("registeredValue", "registeredValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmNativeMethodRegistry.fromLoadedNativeLibraries(
+                loadedLibraries = loadedLibraries,
+                environment = environment,
+                invokeDowncall = { invocation ->
+                    invocations += invocation
+                    JvmNativeDowncallReturn.IntPrimitive(44)
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(44)), result.operandStack.toList())
+        val invocation = invocations.single()
+        assertEquals("RegisterNatives:NativeOwner.registeredValue:()I", invocation.target.symbolName)
+        assertEquals(0xCAFE_BABEL, invocation.target.address)
+        assertEquals(library, invocation.target.library)
+        assertTrue(invocation.arguments[0] is JvmNativeDowncallArgument.SimulatedJniEnv)
+        val classArgument = invocation.arguments[1] as JvmNativeDowncallArgument.ClassHandle
+        assertEquals("NativeOwner", environment.handles.resolveClass(classArgument.handle))
     }
 
     @Test
