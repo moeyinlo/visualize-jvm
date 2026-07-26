@@ -21580,6 +21580,116 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked interface interpreted target retains monitor unblocked hook`() {
+        val heap = JvmHeap()
+        val monitor = JvmMonitorState()
+        val receiver = heap.allocateObject("pkg/Impl")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        val unblocked = mutableListOf<Pair<JvmObjectReferenceValue, String>>()
+        locals.store(0, receiver)
+        monitor.enter(receiver, "owner")
+        monitor.tryEnter(receiver, "contender")
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/TargetInterface",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "release",
+                            descriptor = "()V",
+                            isStatic = false,
+                            isAbstract = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Impl",
+                    interfaceNames = listOf("pkg/TargetInterface"),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "release",
+                            descriptor = "()V",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x2A.toByte(),
+                                0xC3.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 1),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "release",
+                    descriptor = "(Lpkg/TargetInterface;)V",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/TargetInterface",
+                    name = "release",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantInvokeDynamicEntry(
+                        bootstrapMethodIndex = BootstrapMethodIndex(0),
+                        nameAndTypeIndex = ConstantPoolIndex(2),
+                    ),
+                    ConstantNameAndTypeEntry(
+                        nameIndex = ConstantPoolIndex(3),
+                        descriptorIndex = ConstantPoolIndex(4),
+                    ),
+                    ConstantUtf8Entry("release", "release".encodeToByteArray()),
+                    ConstantUtf8Entry(
+                        "(Lpkg/TargetInterface;)V",
+                        "(Lpkg/TargetInterface;)V".encodeToByteArray(),
+                    ),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = classHierarchy,
+            monitors = monitor,
+            currentThreadId = "owner",
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            monitorUnblockedHandler = { objectReference, threadId ->
+                unblocked += objectReference to threadId
+            },
+        )
+
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(listOf(receiver to "contender"), unblocked)
+        assertEquals(emptyList(), monitor.blockedThreads(receiver))
+    }
+
+    @Test
     fun `invokedynamic cached linked interface native target retains native library load hook`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Impl")
