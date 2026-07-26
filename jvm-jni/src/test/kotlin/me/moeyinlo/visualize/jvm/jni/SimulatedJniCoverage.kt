@@ -110,8 +110,8 @@ object SimulatedJniCoverage {
         SimulatedJniCoverageEntry(
             rule = "weak global references",
             specSection = "JNI weak global references",
-            currentComponent = "JvmSimulatedJniEnvironment.newWeakGlobalRef creates weak-global object handles outside local frames, deleteWeakGlobalRef releases only weak-global references, and object ref type reports weak-global scope",
-            status = SimulatedJniCoverageStatus.PartiallyImplemented,
+            currentComponent = "JvmSimulatedJniEnvironment.newWeakGlobalRef creates nullable object/class weak-global handles outside local frames, weak globals survive local frame pop, deleteWeakGlobalRef releases only weak globals, getObjectRefType reports weak-global scope, and isSameObject compares weak globals by guest identity",
+            status = SimulatedJniCoverageStatus.Implemented,
             coveringTestClass = "JvmSimulatedJniEnvironmentTest",
         ),
         SimulatedJniCoverageEntry(

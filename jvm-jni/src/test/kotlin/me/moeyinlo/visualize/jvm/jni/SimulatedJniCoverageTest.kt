@@ -51,6 +51,15 @@ class SimulatedJniCoverageTest {
     }
 
     @Test
+    fun `weak global reference coverage is fully implemented`() {
+        val weakGlobals = SimulatedJniCoverage.entries.single { entry ->
+            entry.rule == "weak global references"
+        }
+
+        assertEquals(SimulatedJniCoverageStatus.Implemented, weakGlobals.status)
+    }
+
+    @Test
     fun `current unsupported simulated JNI work is named explicitly`() {
         val unsupportedRules = SimulatedJniCoverage.entries
             .filter { entry -> entry.status == SimulatedJniCoverageStatus.NotYetImplemented }
