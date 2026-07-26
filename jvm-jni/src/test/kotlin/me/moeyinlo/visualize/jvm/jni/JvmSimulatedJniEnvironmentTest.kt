@@ -1641,6 +1641,74 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualByteMethod accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedByteUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "mirrorCode",
+                                descriptor = "()B",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callByteMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmByteValue {
+                    calls += RecordedByteUpcall(receiver, method, arguments)
+                    return JvmByteValue(-7)
+                }
+            },
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val methodHandle = environment.getMethodId(classClassHandle, "mirrorCode", "()B")
+
+        val result = environment.callNonvirtualByteMethod(
+            objectHandle = receiverClassHandle,
+            classHandle = classClassHandle,
+            methodIdHandle = methodHandle,
+        )
+
+        assertEquals(-7, result)
+        assertEquals(
+            listOf(
+                RecordedByteUpcall(
+                    receiver = heap.internClassMirror("Example"),
+                    method = JvmResolvedMethod(
+                        ownerClassName = "java/lang/Class",
+                        name = "mirrorCode",
+                        descriptor = "()B",
+                        isStatic = false,
+                    ),
+                    arguments = emptyList(),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallCharMethod routes instance method upcalls and returns a JNI char`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
