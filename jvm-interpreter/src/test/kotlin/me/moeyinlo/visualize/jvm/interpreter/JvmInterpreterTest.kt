@@ -19587,6 +19587,49 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop reports monitorenter contention as resumable suspension`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("pkg/Lock")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "owner")
+        val contenderLocals = JvmLocalVariables(maxLocals = 1)
+        contenderLocals.store(0, receiver)
+
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "contender",
+                    code = byteArrayOf(
+                        0x2A.toByte(),
+                        0xC2.toByte(),
+                        0x03.toByte(),
+                    ),
+                    maxStack = 1,
+                    localVariables = contenderLocals,
+                    currentClassName = "pkg/Contender",
+                ),
+            ),
+            heap = heap,
+            monitors = monitors,
+            threadScheduler = scheduler,
+        )
+
+        val suspension = result.suspendedThreads.getValue("contender")
+        assertEquals(listOf("contender"), result.executedThreadIds)
+        assertEquals(listOf("contender"), result.stalledThreadIds)
+        assertEquals(1, suspension.suspendedAtBytecodeOffset)
+        assertEquals(1, suspension.nextBytecodeOffset)
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = receiver,
+                ownerThreadId = "owner",
+            ),
+            suspension.state,
+        )
+    }
+
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()

@@ -175,8 +175,10 @@ class JvmIllegalMonitorStateException(
 
 class JvmMonitorBlockedException(
     val objectReference: JvmObjectReferenceValue,
+    val threadId: String,
     val ownerThreadId: String,
     val blockedThreadIds: List<String>,
+    val bytecodeOffset: Int,
     message: String,
 ) : IllegalStateException(message)
 
@@ -931,6 +933,22 @@ object JvmInterpreter {
             )
         } catch (exception: JvmThreadSuspendedException) {
             JvmScheduledThreadExecutionResult.Suspended(exception)
+        } catch (exception: JvmMonitorBlockedException) {
+            val schedulerState = threadScheduler?.state(currentThreadId)
+                ?.takeIf { state -> state != JvmThreadSchedulingState.Runnable }
+                ?: JvmThreadSchedulingState.BlockedOnMonitor(
+                    reference = exception.objectReference,
+                    ownerThreadId = exception.ownerThreadId,
+                )
+            JvmScheduledThreadExecutionResult.Suspended(
+                JvmThreadSuspendedException(
+                    threadId = exception.threadId,
+                    state = schedulerState,
+                    suspendedAtBytecodeOffset = exception.bytecodeOffset,
+                    nextBytecodeOffset = exception.bytecodeOffset,
+                    message = exception.message ?: "Thread ${exception.threadId} is blocked entering a monitor",
+                ),
+            )
         }
 
     fun executeScheduledThreads(
@@ -4996,8 +5014,10 @@ object JvmInterpreter {
             is JvmMonitorEnterResult.Acquired -> Unit
             is JvmMonitorEnterResult.Blocked -> throw JvmMonitorBlockedException(
                 objectReference = objectref,
+                threadId = currentThreadId,
                 ownerThreadId = result.ownerThreadId,
                 blockedThreadIds = result.blockedThreadIds,
+                bytecodeOffset = instruction.offset,
                 message = "Thread $currentThreadId is blocked entering monitor ${objectref.referenceId.value} " +
                     "owned by ${result.ownerThreadId} at offset ${instruction.offset}",
             )
