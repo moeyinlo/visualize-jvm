@@ -1407,7 +1407,7 @@ class JvmSimulatedJniEnvironment(
             ?: throw JvmJniArrayAccessException("JNI array index $index is out of bounds")
         return when (element) {
             JvmNullValue -> null
-            is JvmObjectReferenceValue -> handles.newObjectHandle(element)
+            is JvmObjectReferenceValue -> newJObjectHandle(element)
         }
     }
 
@@ -1422,8 +1422,8 @@ class JvmSimulatedJniEnvironment(
             throw JvmJniArrayAccessException("JNI array index $index is out of bounds")
         }
         val value = valueHandle?.let { handle ->
-            val reference = handles.resolveObject(handle)
-            val valueClassName = heap.get(reference).className
+            val reference = resolveJObjectValue(handle)
+            val valueClassName = resolveJObjectClassName(handle)
             val componentClassName = arrayObject.className.referenceArrayComponentClassName()
             if (!classHierarchy.isAssignable(sourceClassName = valueClassName, targetClassName = componentClassName)) {
                 throw JvmJniArrayAccessException(

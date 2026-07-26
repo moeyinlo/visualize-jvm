@@ -9350,6 +9350,31 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectArrayElement returns jclass handles for guest class mirror array slots`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val arrayHandle = environment.newObjectArray(1, classClassHandle, null)
+        val arrayReference = handles.resolveObject(arrayHandle)
+        val array = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        array.elements[0] = heap.internClassMirror("Child")
+
+        val result = environment.getObjectArrayElement(arrayHandle, 0)
+
+        assertEquals("Child", handles.resolveClass(result!!))
+    }
+
+    @Test
     fun `GetObjectArrayElement rejects primitive guest arrays`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -9412,6 +9437,33 @@ class JvmSimulatedJniEnvironmentTest {
             handles.resolveObject(environment.getObjectArrayElement(arrayHandle, 0)!!),
         )
         assertEquals(null, environment.getObjectArrayElement(arrayHandle, 1))
+    }
+
+    @Test
+    fun `SetObjectArrayElement accepts jclass handles for guest Class arrays`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val childClassHandle = environment.findClass("Child")
+        val arrayHandle = environment.newObjectArray(1, classClassHandle, null)
+
+        environment.setObjectArrayElement(arrayHandle, 0, childClassHandle)
+
+        val arrayReference = handles.resolveObject(arrayHandle)
+        val array = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        val storedValue = array.elements[0] as JvmObjectReferenceValue
+        assertEquals("java/lang/Class", heap.get(storedValue).className)
+        assertEquals(JvmClassPayload("Child"), heap.get(storedValue).payload)
     }
 
     @Test
