@@ -3,7 +3,6 @@ package me.moeyinlo.visualize.jvm.runtime
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlags
 import me.moeyinlo.visualize.jvm.classfile.ClassFile
 import me.moeyinlo.visualize.jvm.classfile.ClassFileKind
@@ -214,7 +213,7 @@ class JvmClassfileRuntimeAdapterTest {
     }
 
     @Test
-    fun `classfile adapter reports String ConstantValue requires guest string preparation`() {
+    fun `classfile adapter maps String ConstantValue field attributes to runtime metadata`() {
         val classFile = ClassFile(
             magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
             version = ClassFileVersion(offset = 4, minor = 0, major = 70),
@@ -242,13 +241,15 @@ class JvmClassfileRuntimeAdapterTest {
             attributes = emptyList(),
         )
 
-        val exception = assertFailsWith<JvmClassfileRuntimeAdapterException> {
-            classFile.toJvmClassDefinition()
-        }
-
         assertEquals(
-            "String ConstantValue attributes require guest String heap preparation",
-            exception.message,
+            JvmFieldDefinition(
+                name = "name",
+                descriptor = "Ljava/lang/String;",
+                isStatic = true,
+                isPackagePrivate = true,
+                constantValue = JvmFieldConstantValue.StringLiteral("literal"),
+            ),
+            classFile.toJvmClassDefinition().fields.single(),
         )
     }
 

@@ -50,9 +50,7 @@ private fun FieldInfo.constantValue(constantPool: ConstantPool): JvmFieldConstan
         is ConstantFloatEntry -> JvmFieldConstantValue.Numeric(JvmFloatValue(entry.value))
         is ConstantLongEntry -> JvmFieldConstantValue.Numeric(JvmLongValue(entry.value))
         is ConstantDoubleEntry -> JvmFieldConstantValue.Numeric(JvmDoubleValue(entry.value))
-        is ConstantStringEntry -> throw JvmClassfileRuntimeAdapterException(
-            "String ConstantValue attributes require guest String heap preparation",
-        )
+        is ConstantStringEntry -> JvmFieldConstantValue.StringLiteral(constantPool.utf8(entry.stringIndex))
         else -> throw JvmClassfileRuntimeAdapterException(
             "Invalid ConstantValue entry ${attribute.constantValueIndex}: found ${entry.javaClass.simpleName}",
         )
