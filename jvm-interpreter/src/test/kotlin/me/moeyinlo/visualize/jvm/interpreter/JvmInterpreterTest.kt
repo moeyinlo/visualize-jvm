@@ -12841,6 +12841,67 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual Runtime loadLibrary0 delegates to VM native library load hook`() {
+        val loadedLogicalNames = mutableListOf<String>()
+        val heap = JvmHeap()
+        val runtime = heap.allocateObject("java/lang/Runtime")
+        val fromClass = heap.internClassMirror("Caller")
+        val libraryName = heap.internString("virtual-native")
+        val localVariables = JvmLocalVariables(maxLocals = 3)
+        localVariables.store(0, runtime)
+        localVariables.store(1, fromClass)
+        localVariables.store(2, libraryName)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "java/lang/Runtime",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "loadLibrary0",
+                            descriptor = "(Ljava/lang/Class;Ljava/lang/String;)V",
+                            isStatic = false,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x2B.toByte(),
+                0x2C.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 3,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("java/lang/Runtime", "java/lang/Runtime".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("loadLibrary0", "loadLibrary0".encodeToByteArray()),
+                    ConstantUtf8Entry(
+                        "(Ljava/lang/Class;Ljava/lang/String;)V",
+                        "(Ljava/lang/Class;Ljava/lang/String;)V".encodeToByteArray(),
+                    ),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            currentClassName = "Caller",
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("virtual-native"), loadedLogicalNames)
+    }
+
+    @Test
     fun `invokestatic System loadLibrary delegates to VM native library load hook`() {
         val loadedLogicalNames = mutableListOf<String>()
         val heap = JvmHeap()

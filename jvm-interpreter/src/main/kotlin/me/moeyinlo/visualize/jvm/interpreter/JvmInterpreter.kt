@@ -1298,6 +1298,7 @@ object JvmInterpreter {
                 bootstrapMethods,
                 invokeDynamicCallSites,
                 dynamicConstants,
+                loadNativeLibraryHandler,
             )
             0xB7 -> executeInvokeSpecial(
                 instruction,
@@ -4989,6 +4990,9 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
@@ -5044,6 +5048,7 @@ object JvmInterpreter {
             receiver = objectref,
             arguments = arguments,
             opcodeMnemonic = "invokevirtual",
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )?.let { returnValue ->
             operandStack.push(returnValue)
         }
@@ -5066,6 +5071,9 @@ object JvmInterpreter {
         receiver: JvmObjectReferenceValue,
         arguments: List<JvmValue>,
         opcodeMnemonic: String,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ): JvmValue? {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         if (arguments.size != argumentDescriptors.size) {
@@ -5122,6 +5130,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -5174,6 +5183,7 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
