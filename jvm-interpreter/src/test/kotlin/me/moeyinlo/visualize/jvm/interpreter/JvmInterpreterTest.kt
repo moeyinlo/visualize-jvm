@@ -18998,6 +18998,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `monitorexit reports the selected blocked contender when the monitor is released`() {
+        val heap = JvmHeap()
+        val monitor = JvmMonitorState()
+        val receiver = heap.allocateObject("pkg/Lock")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        val unblocked = mutableListOf<Pair<JvmObjectReferenceValue, String>>()
+        localVariables.store(0, receiver)
+        monitor.enter(receiver, "owner")
+        monitor.tryEnter(receiver, "contender")
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xC3.toByte(),
+            ),
+            maxStack = 1,
+            heap = heap,
+            localVariables = localVariables,
+            monitors = monitor,
+            currentThreadId = "owner",
+            monitorUnblockedHandler = { objectReference, threadId ->
+                unblocked += objectReference to threadId
+            },
+        )
+
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(listOf(receiver to "contender"), unblocked)
+        assertEquals(emptyList(), monitor.blockedThreads(receiver))
+    }
+
+    @Test
     fun `monitorexit throws guest NullPointerException for null object references`() {
         val localVariables = JvmLocalVariables(maxLocals = 1)
         localVariables.store(0, JvmNullValue)

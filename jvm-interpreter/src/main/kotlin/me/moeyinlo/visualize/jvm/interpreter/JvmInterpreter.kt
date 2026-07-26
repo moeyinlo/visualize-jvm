@@ -168,6 +168,7 @@ object JvmInterpreter {
         nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
         monitors: JvmMonitorState = JvmMonitorState(),
         currentThreadId: String = "main",
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String? = null,
         dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
     ): JvmJniUpcallDispatcher = object : JvmJniUpcallDispatcher {
@@ -721,6 +722,7 @@ object JvmInterpreter {
         nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
         monitors: JvmMonitorState = JvmMonitorState(),
         currentThreadId: String = "main",
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String? = null,
         exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
         bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
@@ -764,6 +766,7 @@ object JvmInterpreter {
             nativeMethods = nativeMethods,
             monitors = monitors,
             currentThreadId = currentThreadId,
+            monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = currentClassName,
             allowReturn = false,
             exceptionHandlers = exceptionHandlers,
@@ -787,6 +790,7 @@ object JvmInterpreter {
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         allowReturn: Boolean,
         exceptionHandlers: List<JvmExceptionHandler>,
@@ -849,6 +853,7 @@ object JvmInterpreter {
                             nativeMethods,
                             monitors,
                             currentThreadId,
+                            monitorUnblockedHandler,
                             currentClassName,
                             bootstrapMethods,
                             invokeDynamicCallSites,
@@ -1125,6 +1130,7 @@ object JvmInterpreter {
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
@@ -1422,7 +1428,14 @@ object JvmInterpreter {
             0xC0 -> executeCheckCast(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
             0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, currentThreadId)
-            0xC3 -> executeMonitorExit(instruction, operandStack, heap, monitors, currentThreadId)
+            0xC3 -> executeMonitorExit(
+                instruction,
+                operandStack,
+                heap,
+                monitors,
+                currentThreadId,
+                monitorUnblockedHandler,
+            )
             0xC5 -> executeMultiANewArray(instruction, operandStack, constantPool, heap)
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -4672,6 +4685,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         monitors: JvmMonitorState,
         currentThreadId: String,
+        monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
     ) {
         val objectref = operandStack.pop()
         if (objectref == JvmNullValue) {
@@ -4690,7 +4704,10 @@ object JvmInterpreter {
 
         heap.get(objectref)
         try {
-            monitors.exit(objectref, currentThreadId)
+            val result = monitors.exitAndSelectUnblocked(objectref, currentThreadId)
+            result.unblockedThreadId?.let { threadId ->
+                monitorUnblockedHandler(objectref, threadId)
+            }
         } catch (exception: JvmMonitorOwnershipException) {
             throw JvmIllegalMonitorStateException(
                 guestClassName = "java/lang/IllegalMonitorStateException",
