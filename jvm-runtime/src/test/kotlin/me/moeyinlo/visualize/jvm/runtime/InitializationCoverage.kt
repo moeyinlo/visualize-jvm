@@ -47,7 +47,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "getstatic, putstatic, and invokestatic mark prepared target classes initialized when no class initializer is present; new triggers, real <clinit> execution, recursive ordering, waiting, and error transitions remain pending",
+            currentComponent = "new, getstatic, putstatic, and invokestatic mark prepared target classes initialized when no class initializer is present; real <clinit> execution, recursive ordering, waiting, and error transitions remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
