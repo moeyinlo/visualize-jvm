@@ -176,6 +176,37 @@ class JvmVmIntrinsicsTest {
 
 
     @Test
+    fun `System loadLibrary intrinsic delegates logical names to the native library load hook`() {
+        val loadedLogicalNames = mutableListOf<String>()
+        val heap = JvmHeap()
+        val libraryName = heap.internString("tiny-native")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(
+            JvmResolvedMethod(
+                ownerClassName = "java/lang/System",
+                name = "loadLibrary",
+                descriptor = "(Ljava/lang/String;)V",
+                isStatic = true,
+                isNative = true,
+            ),
+        ) ?: error("System.loadLibrary intrinsic should resolve")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+            loadNativeLibraryHandler = { logicalName -> loadedLogicalNames += logicalName },
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = listOf(libraryName)),
+        )
+
+        assertEquals(null, result)
+        assertEquals(listOf("tiny-native"), loadedLogicalNames)
+    }
+
+    @Test
     fun `intrinsic miss enters simulated JNI implementation`() {
         val key = JvmNativeMethodKey(
             ownerClassName = "java/lang/System",

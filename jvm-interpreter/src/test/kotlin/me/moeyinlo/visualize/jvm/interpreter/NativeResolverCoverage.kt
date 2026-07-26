@@ -75,9 +75,16 @@ object NativeResolverCoverage {
         NativeResolverCoverageEntry(
             rule = "automatic descriptor-to-library binding",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
-            currentComponent = "JvmNativeLibraryLoader resolves logical loadLibrary names through JvmNativeLibraryCatalog before lifecycle binding; runtime System.loadLibrary wiring remains pending",
-            status = NativeResolverCoverageStatus.PartiallyImplemented,
+            currentComponent = "JvmNativeLibraryLoader resolves logical loadLibrary names through JvmNativeLibraryCatalog before lifecycle binding",
+            status = NativeResolverCoverageStatus.Implemented,
             coveringTestClass = "JvmNativeLibraryLoaderTest",
+        ),
+        NativeResolverCoverageEntry(
+            rule = "System loadLibrary VM intrinsic hook",
+            specSection = "JVMS 5.6 Binding Native Method Implementations",
+            currentComponent = "JvmVmIntrinsics resolves java/lang/System.loadLibrary(Ljava/lang/String;)V and delegates the logical library name to the VM native-library load hook",
+            status = NativeResolverCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmVmIntrinsicsTest",
         ),
         NativeResolverCoverageEntry(
             rule = "loaded native library export dispatch",

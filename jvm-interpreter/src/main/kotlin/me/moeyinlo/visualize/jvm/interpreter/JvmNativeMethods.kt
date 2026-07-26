@@ -64,6 +64,11 @@ data class JvmNativeMethodContext(
     val nanoTimeProvider: () -> Long = System::nanoTime,
     val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },
     val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
+    val loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+        throw JvmUnsupportedInstructionException(
+            "Native method context cannot load native library $logicalName",
+        )
+    },
     internal val callStaticMethodHandler: (
         ownerClassName: String,
         name: String,
@@ -277,6 +282,12 @@ object JvmVmIntrinsics {
         descriptor = "()J",
         isStatic = true,
     )
+    private val SystemLoadLibraryKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "loadLibrary",
+        descriptor = "(Ljava/lang/String;)V",
+        isStatic = true,
+    )
     private val ClassInitClassNameKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "initClassName",
@@ -433,6 +444,10 @@ object JvmVmIntrinsics {
         requireNoArguments("System.nanoTime", invocation)
         JvmLongValue(context.nanoTimeProvider())
     }
+    private val SystemLoadLibrary = JvmNativeMethodIntrinsic { context, invocation ->
+        context.loadNativeLibraryHandler(requireStringArgument("System.loadLibrary", context, invocation))
+        null
+    }
     private val ClassInitClassName = JvmNativeMethodIntrinsic { context, invocation ->
         val representedClassName = requireClassMirrorReceiver("Class.initClassName", context, invocation)
         context.heap.internString(representedClassName.toBinaryClassName())
@@ -516,6 +531,7 @@ object JvmVmIntrinsics {
         SystemIdentityHashCodeKey to SystemIdentityHashCode,
         SystemCurrentTimeMillisKey to SystemCurrentTimeMillis,
         SystemNanoTimeKey to SystemNanoTime,
+        SystemLoadLibraryKey to SystemLoadLibrary,
         ClassInitClassNameKey to ClassInitClassName,
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
@@ -571,13 +587,34 @@ object JvmVmIntrinsics {
         requireNoArguments(name, invocation)
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("$name intrinsic requires a receiver")
-        return when (val payload = context.heap.get(receiver).payload) {
+        return stringPayload(name, context, receiver, "receiver")
+    }
+
+    private fun requireStringArgument(
+        name: String,
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): String {
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("$name expects one java/lang/String argument")
+        }
+        val argument = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("$name expects a non-null java/lang/String argument")
+        return stringPayload(name, context, argument, "argument")
+    }
+
+    private fun stringPayload(
+        name: String,
+        context: JvmNativeMethodContext,
+        reference: JvmObjectReferenceValue,
+        role: String,
+    ): String =
+        when (val payload = context.heap.get(reference).payload) {
             is JvmStringPayload -> payload.value
             else -> throw JvmUnsupportedInstructionException(
-                "$name intrinsic requires a java/lang/String receiver",
+                "$name intrinsic requires a java/lang/String $role",
             )
         }
-    }
 
     private fun requireSleepMillisArgument(
         name: String,
