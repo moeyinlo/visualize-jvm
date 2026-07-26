@@ -1,5 +1,11 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallInvoker
+import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestMethodSignature
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryRegistry
+import me.moeyinlo.visualize.jvm.jni.JvmSimulatedJniEnvironment
+import me.moeyinlo.visualize.jvm.jni.prepareStaticInvocation
+import me.moeyinlo.visualize.jvm.jni.toGuestValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
@@ -104,14 +110,19 @@ fun interface JvmNativeMethodIntrinsic {
     ): JvmValue?
 }
 
+private typealias DynamicNativeMethodResolver = (JvmNativeMethodKey) -> JvmNativeMethodIntrinsic?
+
 class JvmNativeMethodRegistry(
     private val intrinsics: Map<JvmNativeMethodKey, JvmNativeMethodIntrinsic> = emptyMap(),
     private val simulatedJni: Map<JvmNativeMethodKey, JvmNativeMethodIntrinsic> = emptyMap(),
+    private val dynamicSimulatedJniResolvers: List<DynamicNativeMethodResolver> = emptyList(),
     private val intrinsicOwnerWhitelist: Set<String>? = null,
 ) {
     fun resolve(method: JvmResolvedMethod): JvmNativeMethodIntrinsic? =
         JvmNativeMethodKey.from(method).let { key ->
-            key.intrinsicWhenWhitelisted() ?: simulatedJni[key]
+            key.intrinsicWhenWhitelisted()
+                ?: simulatedJni[key]
+                ?: key.resolveDynamicSimulatedJni()
         }
 
     private fun JvmNativeMethodKey.intrinsicWhenWhitelisted(): JvmNativeMethodIntrinsic? {
@@ -120,6 +131,9 @@ class JvmNativeMethodRegistry(
         }
         return intrinsics[this]
     }
+
+    private fun JvmNativeMethodKey.resolveDynamicSimulatedJni(): JvmNativeMethodIntrinsic? =
+        dynamicSimulatedJniResolvers.firstNotNullOfOrNull { resolver -> resolver(this) }
 
     companion object {
         val Empty: JvmNativeMethodRegistry = JvmNativeMethodRegistry()
@@ -131,6 +145,42 @@ class JvmNativeMethodRegistry(
             vararg entries: Pair<JvmNativeMethodKey, JvmNativeMethodIntrinsic>,
         ): JvmNativeMethodRegistry =
             JvmNativeMethodRegistry(simulatedJni = entries.toMap())
+
+        fun fromLoadedNativeLibraries(
+            loadedLibraries: JvmNativeLibraryRegistry,
+            environment: JvmSimulatedJniEnvironment,
+            invokeDowncall: JvmNativeDowncallInvoker,
+        ): JvmNativeMethodRegistry {
+            val loadedLibraryResolver: DynamicNativeMethodResolver = { key ->
+                if (!key.isStatic) {
+                    null
+                } else {
+                    val signature = JvmNativeGuestMethodSignature(
+                        ownerClassName = key.ownerClassName,
+                        methodName = key.name,
+                        methodDescriptor = key.descriptor,
+                        isStatic = true,
+                    )
+                    loadedLibraries.resolveExport(signature)?.let { target ->
+                        JvmNativeMethodIntrinsic { _, invocation ->
+                            val classHandle = environment.handles.newClassHandle(key.ownerClassName)
+                            invokeDowncall
+                                .invoke(
+                                    target.prepareStaticInvocation(
+                                        environment = environment,
+                                        classHandle = classHandle,
+                                        guestArguments = invocation.arguments,
+                                    ),
+                                )
+                                .toGuestValue(environment)
+                        }
+                    }
+                }
+            }
+            return JvmNativeMethodRegistry(
+                dynamicSimulatedJniResolvers = listOf(loadedLibraryResolver),
+            )
+        }
     }
 }
 

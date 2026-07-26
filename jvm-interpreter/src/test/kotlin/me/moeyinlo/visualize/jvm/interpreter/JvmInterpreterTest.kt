@@ -19,7 +19,16 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallArgument
+import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallInvocation
+import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallReturn
+import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallTarget
 import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestException
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryBinding
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryDescriptor
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryRegistry
+import me.moeyinlo.visualize.jvm.jni.JvmNativeMethodExportDescriptor
+import me.moeyinlo.visualize.jvm.jni.JvmSimulatedJniEnvironment
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
@@ -73,6 +82,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -12642,6 +12652,96 @@ class JvmInterpreterTest {
 
         assertEquals(listOf(JvmIntValue(4)), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `invokestatic executes loaded native library static exports`() {
+        val heap = JvmHeap()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "nativeValue",
+                            descriptor = "()I",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+        )
+        val loadedLibraries = JvmNativeLibraryRegistry()
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "NativeOwner",
+            methodName = "nativeValue",
+            methodDescriptor = "()I",
+            isStatic = true,
+            symbolName = "Java_NativeOwner_nativeValue",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(export),
+        )
+        val target = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x1234L,
+        )
+        loadedLibraries.markLoaded(
+            binding = JvmNativeLibraryBinding(
+                library = library,
+                onLoadTarget = null,
+                onUnloadTarget = null,
+                exportTargets = mapOf(export.guestMethod to target),
+            ),
+            onLoadVersion = null,
+        )
+        val invocations = mutableListOf<JvmNativeDowncallInvocation>()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmNativeMethodRegistry.fromLoadedNativeLibraries(
+                loadedLibraries = loadedLibraries,
+                environment = environment,
+                invokeDowncall = { invocation ->
+                    invocations += invocation
+                    JvmNativeDowncallReturn.IntPrimitive(42)
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(42)), result.operandStack.toList())
+        val invocation = invocations.single()
+        assertEquals(target, invocation.target)
+        assertTrue(invocation.arguments[0] is JvmNativeDowncallArgument.SimulatedJniEnv)
+        val classArgument = invocation.arguments[1] as JvmNativeDowncallArgument.ClassHandle
+        assertEquals("NativeOwner", environment.handles.resolveClass(classArgument.handle))
     }
 
     @Test
