@@ -9284,6 +9284,34 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObjectArray accepts jclass initial elements for guest Class arrays`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "Child"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val childClassHandle = environment.findClass("Child")
+
+        val arrayHandle = environment.newObjectArray(2, classClassHandle, childClassHandle)
+
+        val arrayReference = handles.resolveObject(arrayHandle)
+        val array = heap.get(arrayReference).payload as JvmReferenceArrayPayload
+        array.elements.forEach { element ->
+            val classMirror = element as JvmObjectReferenceValue
+            assertEquals("java/lang/Class", heap.get(classMirror).className)
+            assertEquals(JvmClassPayload("Child"), heap.get(classMirror).payload)
+        }
+    }
+
+    @Test
     fun `NewObjectArray rejects non assignable initial objects`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

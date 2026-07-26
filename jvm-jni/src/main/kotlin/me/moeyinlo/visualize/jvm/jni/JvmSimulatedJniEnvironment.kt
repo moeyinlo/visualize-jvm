@@ -1382,8 +1382,8 @@ class JvmSimulatedJniEnvironment(
     ): JvmJniHandleId {
         val elementClassName = handles.resolveClass(elementClassHandle)
         val initialElement = initialElementHandle?.let { handle ->
-            val reference = handles.resolveObject(handle)
-            val elementClass = heap.get(reference).className
+            val reference = resolveJObjectValue(handle)
+            val elementClass = resolveJObjectClassName(handle)
             if (!classHierarchy.isAssignable(sourceClassName = elementClass, targetClassName = elementClassName)) {
                 throw JvmJniArrayAccessException(
                     "NewObjectArray initial element $elementClass is not assignable to $elementClassName",
