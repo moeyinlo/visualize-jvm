@@ -918,8 +918,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
-        val reference = handles.resolveObject(objectHandle)
-        val className = requireLoadedClass(heap.get(reference).className)
+        val className = requireLoadedClass(resolveJObjectClassName(objectHandle))
         return handles.newClassHandle(className)
     }
 
@@ -927,12 +926,16 @@ class JvmSimulatedJniEnvironment(
         if (objectHandle == null) {
             return true
         }
-        val reference = handles.resolveObject(objectHandle)
-        val sourceClassName = heap.get(reference).className
-        requireLoadedClass(sourceClassName)
+        val sourceClassName = requireLoadedClass(resolveJObjectClassName(objectHandle))
         val targetClassName = handles.resolveClass(classHandle)
         return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
     }
+
+    private fun resolveJObjectClassName(handle: JvmJniHandleId): String =
+        when (val reference = handles.snapshotLocalReference(handle)) {
+            is JvmJniLocalReferenceSnapshot.ObjectReference -> heap.get(reference.reference).className
+            is JvmJniLocalReferenceSnapshot.ClassReference -> "java/lang/Class"
+        }
 
     fun getFieldId(
         classHandle: JvmJniHandleId,

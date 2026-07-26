@@ -3527,6 +3527,25 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectClass accepts jclass handles as jobject references`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+
+        val result = environment.getObjectClass(classHandle)
+
+        assertEquals("java/lang/Class", handles.resolveClass(result))
+    }
+
+    @Test
     fun `IsInstanceOf throws guest NoClassDefFoundError when source runtime class is not loaded`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -3593,6 +3612,26 @@ class JvmSimulatedJniEnvironmentTest {
         val result = environment.isInstanceOf(objectHandle, classHandle)
 
         assertEquals(false, result)
+    }
+
+    @Test
+    fun `IsInstanceOf accepts jclass handles as jobject references`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Class"),
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        val sourceClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val exampleClassHandle = environment.findClass("Example")
+
+        assertEquals(true, environment.isInstanceOf(sourceClassHandle, classClassHandle))
+        assertEquals(false, environment.isInstanceOf(sourceClassHandle, exampleClassHandle))
     }
 
     @Test
