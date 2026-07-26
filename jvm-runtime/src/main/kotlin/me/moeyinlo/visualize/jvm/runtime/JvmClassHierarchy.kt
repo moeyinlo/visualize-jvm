@@ -252,7 +252,12 @@ class JvmClassHierarchy(
         return receiverClass.findDeclaredMethod(name, descriptor)
             ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
             ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
-            ?: selectMaximallySpecificInterfaceMethod(receiverClassName, receiverClass.interfaceNames, name, descriptor)
+            ?: selectMaximallySpecificInterfaceMethod(
+                receiverClassName,
+                collectClassAndSuperclassInterfaceNames(receiverClass),
+                name,
+                descriptor,
+            )
     }
 
     fun classInitializationMethod(ownerClassName: String): JvmResolvedMethod? {

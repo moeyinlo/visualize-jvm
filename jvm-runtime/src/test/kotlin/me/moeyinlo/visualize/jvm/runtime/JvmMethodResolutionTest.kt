@@ -439,6 +439,54 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `interface method target resolution selects interface defaults inherited through superclasses`() {
+        val defaultCode = byteArrayOf(0x05)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Child",
+                    superclassName = "Parent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    interfaceNames = listOf("DefaultFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "DefaultFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = defaultCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "DefaultFace",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                code = defaultCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveInterfaceMethodTarget(
+                receiverClassName = "Child",
+                name = "value",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `interface method target resolution prefers child interface default over parent default`() {
         val parentCode = byteArrayOf(0x05)
         val childCode = byteArrayOf(0x06)
