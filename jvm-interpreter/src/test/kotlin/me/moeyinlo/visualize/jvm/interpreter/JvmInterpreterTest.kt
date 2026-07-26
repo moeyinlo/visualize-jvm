@@ -129,6 +129,36 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `execute can start with preloaded operand stack values`() {
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x06.toByte(),
+                0x60.toByte(),
+            ),
+            maxStack = 2,
+            initialOperandStackValues = listOf(JvmIntValue(2)),
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
+    fun `scheduled thread execution API can start with preloaded operand stack values`() {
+        val result = JvmInterpreter.executeScheduledThread(
+            code = byteArrayOf(
+                0x07.toByte(),
+                0x60.toByte(),
+            ),
+            maxStack = 2,
+            currentThreadId = "worker",
+            initialOperandStackValues = listOf(JvmIntValue(2)),
+        )
+
+        val completed = result as JvmScheduledThreadExecutionResult.Completed
+        assertEquals(listOf(JvmIntValue(6)), completed.result.operandStack.toList())
+    }
+
+    @Test
     fun `iconst instructions push int values onto the operand stack`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(

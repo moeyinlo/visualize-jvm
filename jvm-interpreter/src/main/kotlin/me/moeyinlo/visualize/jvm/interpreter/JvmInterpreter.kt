@@ -832,6 +832,7 @@ object JvmInterpreter {
         },
         nativeLibraryLoader: JvmNativeLibraryLoader? = null,
         javaVm: JvmSimulatedJavaVm? = null,
+        initialOperandStackValues: List<JvmValue> = emptyList(),
         startBytecodeOffset: Int = 0,
     ): JvmExecutionResult {
         val effectiveLoadNativeLibraryHandler = if (nativeLibraryLoader == null) {
@@ -874,6 +875,7 @@ object JvmInterpreter {
             dynamicConstants = dynamicConstants,
             loadNativeLibraryHandler = effectiveLoadNativeLibraryHandler,
             unloadNativeLibraryHandler = effectiveUnloadNativeLibraryHandler,
+            initialOperandStackValues = initialOperandStackValues,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -904,6 +906,7 @@ object JvmInterpreter {
         },
         nativeLibraryLoader: JvmNativeLibraryLoader? = null,
         javaVm: JvmSimulatedJavaVm? = null,
+        initialOperandStackValues: List<JvmValue> = emptyList(),
         startBytecodeOffset: Int = 0,
     ): JvmScheduledThreadExecutionResult =
         try {
@@ -930,6 +933,7 @@ object JvmInterpreter {
                     unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                     nativeLibraryLoader = nativeLibraryLoader,
                     javaVm = javaVm,
+                    initialOperandStackValues = initialOperandStackValues,
                     startBytecodeOffset = startBytecodeOffset,
                 ),
             )
@@ -1090,8 +1094,9 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        initialOperandStackValues: List<JvmValue> = emptyList(),
     ): JvmFrameExecutionResult {
-        val operandStack = JvmOperandStack(maxStack = maxStack)
+        val operandStack = JvmOperandStack.fromValues(maxStack = maxStack, values = initialOperandStackValues)
         val instructions = BytecodeDecoder.decode(code)
         val instructionIndexByOffset = instructions
             .mapIndexed { index, instruction -> instruction.offset to index }
