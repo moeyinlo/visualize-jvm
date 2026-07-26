@@ -186,6 +186,18 @@ class JvmPanamaDowncallBackendTest {
         }
     }
     @Test
+    fun `Panama backend accepts void JNI_OnUnload returns`() {
+        JvmNativeDowncallReturn.Void.requireOnUnloadVoid()
+    }
+
+    @Test
+    fun `Panama backend rejects non void JNI_OnUnload returns`() {
+        assertFailsWith<JvmJniOnUnloadException> {
+            JvmNativeDowncallReturn.IntPrimitive(0).requireOnUnloadVoid()
+        }
+    }
+
+    @Test
     fun `Panama backend prepares JNI_OnLoad invocation with simulated JavaVM and reserved null`() {
         val library = JvmNativeLibraryDescriptor(
             logicalName = "native-api",

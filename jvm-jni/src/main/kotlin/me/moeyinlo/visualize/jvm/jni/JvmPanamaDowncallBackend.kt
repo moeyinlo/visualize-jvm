@@ -219,6 +219,12 @@ fun JvmNativeDowncallReturn.toOnLoadVersion(): Int {
     return version
 }
 
+fun JvmNativeDowncallReturn.requireOnUnloadVoid() {
+    if (this != JvmNativeDowncallReturn.Void) {
+        throw JvmJniOnUnloadException("JNI_OnUnload must return void, got ${this::class.simpleName}")
+    }
+}
+
 fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment): JvmValue? {
     val value = when (this) {
         JvmNativeDowncallReturn.Void -> null
@@ -265,6 +271,8 @@ object JvmJniVersions {
 }
 
 class JvmJniOnLoadException(message: String) : UnsatisfiedLinkError(message)
+
+class JvmJniOnUnloadException(message: String) : UnsatisfiedLinkError(message)
 
 fun JvmNativeDowncallTarget.prepareInvocation(
     environment: JvmSimulatedJniEnvironment,
