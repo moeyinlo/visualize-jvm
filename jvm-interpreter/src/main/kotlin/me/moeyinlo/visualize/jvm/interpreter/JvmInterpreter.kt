@@ -35,6 +35,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantBootstrapInvocation
@@ -220,6 +222,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields = JvmStaticFields(),
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
         monitors: JvmMonitorState = JvmMonitorState(),
         threadScheduler: JvmThreadScheduler? = null,
@@ -815,6 +818,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
         classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
         staticFields: JvmStaticFields = JvmStaticFields(),
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
         monitors: JvmMonitorState = JvmMonitorState(),
         threadScheduler: JvmThreadScheduler? = null,
@@ -863,6 +867,7 @@ object JvmInterpreter {
             localVariables = localVariables,
             classHierarchy = classHierarchy,
             staticFields = staticFields,
+            classInitializationStates = classInitializationStates,
             nativeMethods = nativeMethods,
             monitors = monitors,
             threadScheduler = threadScheduler,
@@ -889,6 +894,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
         classHierarchy: JvmClassHierarchy = JvmClassHierarchy.Empty,
         staticFields: JvmStaticFields = JvmStaticFields(),
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
         monitors: JvmMonitorState = JvmMonitorState(),
         threadScheduler: JvmThreadScheduler? = null,
@@ -920,6 +926,7 @@ object JvmInterpreter {
                     localVariables = localVariables,
                     classHierarchy = classHierarchy,
                     staticFields = staticFields,
+                    classInitializationStates = classInitializationStates,
                     nativeMethods = nativeMethods,
                     monitors = monitors,
                     threadScheduler = threadScheduler,
@@ -1083,6 +1090,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         threadScheduler: JvmThreadScheduler? = null,
@@ -1155,6 +1163,7 @@ object JvmInterpreter {
                             localVariables,
                             classHierarchy,
                             staticFields,
+                            classInitializationStates,
                             nativeMethods,
                             monitors,
                             threadScheduler,
@@ -1460,6 +1469,7 @@ object JvmInterpreter {
         localVariables: JvmLocalVariables,
         classHierarchy: JvmClassHierarchy,
         staticFields: JvmStaticFields,
+        classInitializationStates: JvmClassInitializationStates,
         nativeMethods: JvmNativeMethodRegistry,
         monitors: JvmMonitorState,
         threadScheduler: JvmThreadScheduler? = null,
@@ -1644,6 +1654,8 @@ object JvmInterpreter {
                 staticFields,
                 heap,
                 classHierarchy,
+                classInitializationStates,
+                currentThreadId,
                 currentClassName,
             )
             0xB3 -> executePutStatic(
@@ -5134,6 +5146,28 @@ object JvmInterpreter {
         operandStack.push(JvmIntValue(0))
     }
 
+    private fun initializeClassForActiveUse(
+        className: String,
+        classHierarchy: JvmClassHierarchy,
+        classInitializationStates: JvmClassInitializationStates,
+        currentThreadId: String,
+    ) {
+        if (!classHierarchy.hasClass(className)) {
+            return
+        }
+        when (val state = classInitializationStates.get(className)) {
+            JvmClassInitializationState.Prepared -> {
+                classInitializationStates.startInitialization(className, currentThreadId)
+                if (classHierarchy.classInitializationMethod(className) == null) {
+                    classInitializationStates.completeInitialization(className, currentThreadId)
+                }
+            }
+            JvmClassInitializationState.Initialized -> Unit
+            is JvmClassInitializationState.Initializing -> Unit
+            is JvmClassInitializationState.Erroneous -> Unit
+        }
+    }
+
     private fun executeGetStatic(
         instruction: DecodedInstruction,
         operandStack: JvmOperandStack,
@@ -5141,11 +5175,14 @@ object JvmInterpreter {
         staticFields: JvmStaticFields,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        classInitializationStates: JvmClassInitializationStates,
+        currentThreadId: String,
         currentClassName: String?,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
         requireAccessibleField(resolvedField, currentClassName, classHierarchy)
+        initializeClassForActiveUse(resolvedField.reference.ownerClassName, classHierarchy, classInitializationStates, currentThreadId)
         val field = resolvedField.reference
         val value = staticFields.get(field)
         requireFieldValue(instruction, field, value)

@@ -42,6 +42,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandler
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
@@ -5735,6 +5737,54 @@ class JvmInterpreterTest {
 
         assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `getstatic initializes resolved field class without class initializer`() {
+        val initializationStates = JvmClassInitializationStates()
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "counter",
+                descriptor = "I",
+            ),
+            JvmIntValue(7),
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    ),
+                ),
+            ),
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(
+            JvmClassInitializationState.Initialized,
+            initializationStates.get("Example"),
+        )
     }
 
     @Test
