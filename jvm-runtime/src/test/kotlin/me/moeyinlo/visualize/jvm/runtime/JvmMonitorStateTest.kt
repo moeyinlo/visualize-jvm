@@ -33,6 +33,43 @@ class JvmMonitorStateTest {
     }
 
     @Test
+    fun `monitor tryEnter records contended threads without changing ownership`() {
+        val monitors = JvmMonitorState()
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        monitors.enter(reference, threadId = "owner")
+
+        val result = monitors.tryEnter(reference, threadId = "contender")
+
+        assertEquals(
+            JvmMonitorEnterResult.Blocked(
+                ownerThreadId = "owner",
+                blockedThreadIds = listOf("contender"),
+            ),
+            result,
+        )
+        assertEquals(1, monitors.holdCount(reference, threadId = "owner"))
+        assertEquals(0, monitors.holdCount(reference, threadId = "contender"))
+        assertEquals(listOf("contender"), monitors.blockedThreads(reference))
+    }
+
+    @Test
+    fun `blocked contender can acquire monitor after owner releases it`() {
+        val monitors = JvmMonitorState()
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        monitors.enter(reference, threadId = "owner")
+        monitors.tryEnter(reference, threadId = "contender")
+
+        assertEquals(0, monitors.exit(reference, threadId = "owner"))
+
+        assertEquals(
+            JvmMonitorEnterResult.Acquired(holdCount = 1),
+            monitors.tryEnter(reference, threadId = "contender"),
+        )
+        assertEquals(1, monitors.holdCount(reference, threadId = "contender"))
+        assertEquals(emptyList(), monitors.blockedThreads(reference))
+    }
+
+    @Test
     fun `monitor exit decrements ownership and rejects non owners`() {
         val monitors = JvmMonitorState()
         val reference = JvmObjectReferenceValue(JvmReferenceId(1))

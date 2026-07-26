@@ -4,25 +4,44 @@ class JvmMonitorState {
     private val entries = linkedMapOf<JvmReferenceId, JvmMonitorEntry>()
 
     fun enter(reference: JvmObjectReferenceValue, threadId: String): Int {
+        return when (val result = tryEnter(reference, threadId)) {
+            is JvmMonitorEnterResult.Acquired -> result.holdCount
+            is JvmMonitorEnterResult.Blocked -> throw JvmMonitorOwnershipException(
+                "Monitor ${reference.referenceId.value} is owned by thread ${result.ownerThreadId} " +
+                    "and cannot be entered by thread $threadId",
+            )
+        }
+    }
+
+    fun tryEnter(reference: JvmObjectReferenceValue, threadId: String): JvmMonitorEnterResult {
         require(threadId.isNotBlank()) { "thread id must not be blank" }
         val current = entries[reference.referenceId]
         if (current == null) {
             entries[reference.referenceId] = JvmMonitorEntry(ownerThreadId = threadId, holdCount = 1)
-            return 1
+            return JvmMonitorEnterResult.Acquired(holdCount = 1)
         }
         if (current.ownerThreadId == null) {
-            entries[reference.referenceId] = current.copy(ownerThreadId = threadId, holdCount = 1)
-            return 1
+            val blockedThreadIds = current.blockedThreadIds.copyToLinkedSet()
+            blockedThreadIds.remove(threadId)
+            entries[reference.referenceId] = current.copy(
+                ownerThreadId = threadId,
+                holdCount = 1,
+                blockedThreadIds = blockedThreadIds,
+            )
+            return JvmMonitorEnterResult.Acquired(holdCount = 1)
         }
         if (current.ownerThreadId != threadId) {
-            throw JvmMonitorOwnershipException(
-                "Monitor ${reference.referenceId.value} is owned by thread ${current.ownerThreadId} " +
-                    "and cannot be entered by thread $threadId",
+            val blockedThreadIds = current.blockedThreadIds.copyToLinkedSet()
+            blockedThreadIds.add(threadId)
+            entries[reference.referenceId] = current.copy(blockedThreadIds = blockedThreadIds)
+            return JvmMonitorEnterResult.Blocked(
+                ownerThreadId = current.ownerThreadId,
+                blockedThreadIds = blockedThreadIds.toList(),
             )
         }
         val nextCount = current.holdCount + 1
         entries[reference.referenceId] = current.copy(holdCount = nextCount)
-        return nextCount
+        return JvmMonitorEnterResult.Acquired(holdCount = nextCount)
     }
 
     fun exit(reference: JvmObjectReferenceValue, threadId: String): Int {
@@ -75,6 +94,9 @@ class JvmMonitorState {
     fun waitingThreads(reference: JvmObjectReferenceValue): List<String> =
         entries[reference.referenceId]?.waitingThreadIds?.toList().orEmpty()
 
+    fun blockedThreads(reference: JvmObjectReferenceValue): List<String> =
+        entries[reference.referenceId]?.blockedThreadIds?.toList().orEmpty()
+
     private fun requireOwned(
         reference: JvmObjectReferenceValue,
         threadId: String,
@@ -99,7 +121,7 @@ class JvmMonitorState {
     }
 
     private fun storeOrRemove(reference: JvmObjectReferenceValue, entry: JvmMonitorEntry) {
-        if (entry.ownerThreadId == null && entry.waitingThreadIds.isEmpty()) {
+        if (entry.ownerThreadId == null && entry.waitingThreadIds.isEmpty() && entry.blockedThreadIds.isEmpty()) {
             entries.remove(reference.referenceId)
         } else {
             entries[reference.referenceId] = entry
@@ -107,10 +129,20 @@ class JvmMonitorState {
     }
 }
 
+sealed interface JvmMonitorEnterResult {
+    data class Acquired(val holdCount: Int) : JvmMonitorEnterResult
+
+    data class Blocked(
+        val ownerThreadId: String,
+        val blockedThreadIds: List<String>,
+    ) : JvmMonitorEnterResult
+}
+
 private data class JvmMonitorEntry(
     val ownerThreadId: String?,
     val holdCount: Int,
     val waitingThreadIds: Set<String> = linkedSetOf(),
+    val blockedThreadIds: Set<String> = linkedSetOf(),
 )
 
 class JvmMonitorOwnershipException(message: String) : IllegalStateException(message)
