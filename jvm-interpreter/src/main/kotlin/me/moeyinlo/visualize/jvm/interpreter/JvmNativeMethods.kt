@@ -313,6 +313,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljdk/internal/loader/NativeLibraries\$NativeLibraryImpl;Ljava/lang/String;ZZ)Z",
         isStatic = true,
     )
+    private val NativeLibrariesFindBuiltinLibKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/loader/NativeLibraries",
+        name = "findBuiltinLib",
+        descriptor = "(Ljava/lang/String;)Ljava/lang/String;",
+        isStatic = true,
+    )
     private val ClassInitClassNameKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "initClassName",
@@ -485,6 +491,10 @@ object JvmVmIntrinsics {
         context.loadNativeLibraryHandler(requireNativeLibrariesLoadName(context, invocation))
         JvmIntValue(1)
     }
+    private val NativeLibrariesFindBuiltinLib = JvmNativeMethodIntrinsic { context, invocation ->
+        requireStringArgument("NativeLibraries.findBuiltinLib", context, invocation)
+        JvmNullValue
+    }
     private val ClassInitClassName = JvmNativeMethodIntrinsic { context, invocation ->
         val representedClassName = requireClassMirrorReceiver("Class.initClassName", context, invocation)
         context.heap.internString(representedClassName.toBinaryClassName())
@@ -572,6 +582,7 @@ object JvmVmIntrinsics {
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
         NativeLibrariesLoadKey to NativeLibrariesLoad,
+        NativeLibrariesFindBuiltinLibKey to NativeLibrariesFindBuiltinLib,
         ClassInitClassNameKey to ClassInitClassName,
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
