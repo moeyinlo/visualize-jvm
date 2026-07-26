@@ -10335,6 +10335,28 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsSameObject compares jclass handles with guest Class mirror object handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(internalName = "Other"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = environment.findClass("Example")
+        val classMirrorHandle = handles.newObjectHandle(heap.internClassMirror("Example"))
+        val otherClassMirrorHandle = handles.newObjectHandle(heap.internClassMirror("Other"))
+
+        assertEquals(true, environment.isSameObject(classHandle, classMirrorHandle))
+        assertEquals(false, environment.isSameObject(classHandle, otherClassMirrorHandle))
+    }
+
+    @Test
     fun `NewLocalRef duplicates object local handles and preserves null references`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

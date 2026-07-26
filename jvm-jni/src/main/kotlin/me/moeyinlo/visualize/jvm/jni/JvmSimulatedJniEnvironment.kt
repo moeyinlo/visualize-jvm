@@ -137,7 +137,7 @@ class JvmSimulatedJniEnvironment(
         if (left == null || right == null) {
             return left == right
         }
-        return handles.snapshotLocalReference(left) == handles.snapshotLocalReference(right)
+        return resolveJObjectValue(left) == resolveJObjectValue(right)
     }
 
     internal fun resolveJObjectValue(handle: JvmJniHandleId): JvmObjectReferenceValue =
