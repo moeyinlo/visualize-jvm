@@ -251,7 +251,7 @@ fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment
         is JvmNativeDowncallReturn.LongPrimitive -> JvmLongValue(value)
         is JvmNativeDowncallReturn.FloatPrimitive -> JvmFloatValue(value)
         is JvmNativeDowncallReturn.DoublePrimitive -> JvmDoubleValue(value)
-        is JvmNativeDowncallReturn.ObjectHandle -> handle?.let(environment.handles::resolveObject) ?: JvmNullValue
+        is JvmNativeDowncallReturn.ObjectHandle -> handle?.let(environment::resolveJObjectValue) ?: JvmNullValue
         is JvmNativeDowncallReturn.ThrownGuestException -> error("handled before normal return conversion")
     }
     return value

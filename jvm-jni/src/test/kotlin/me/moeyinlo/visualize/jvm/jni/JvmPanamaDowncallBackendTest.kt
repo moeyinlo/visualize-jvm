@@ -1,15 +1,18 @@
 package me.moeyinlo.visualize.jvm.jni
 
-import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
+import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
+import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
+import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import java.lang.foreign.Arena
@@ -578,6 +581,26 @@ class JvmPanamaDowncallBackendTest {
         assertEquals(JvmDoubleValue(6.5), JvmNativeDowncallReturn.DoublePrimitive(6.5).toGuestValue(environment))
         assertEquals(objectReference, JvmNativeDowncallReturn.ObjectHandle(objectHandle).toGuestValue(environment))
         assertEquals(JvmNullValue, JvmNativeDowncallReturn.ObjectHandle(null).toGuestValue(environment))
+    }
+
+    @Test
+    fun `Panama backend marshals returned jclass handles into guest class mirrors`() {
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/NativeApi"),
+                ),
+            ),
+            heap = heap,
+        )
+        val classHandle = environment.findClass("pkg/NativeApi")
+
+        val value = JvmNativeDowncallReturn.ObjectHandle(classHandle).toGuestValue(environment)
+
+        val mirror = value as JvmObjectReferenceValue
+        assertEquals("java/lang/Class", heap.get(mirror).className)
+        assertEquals(JvmClassPayload("pkg/NativeApi"), heap.get(mirror).payload)
     }
 
     @Test
