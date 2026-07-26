@@ -5268,6 +5268,44 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetIntField accepts jclass receivers as guest Class mirror objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                    JvmClassDefinition(
+                        internalName = "java/lang/Class",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "mirrorValue",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val receiverClassHandle = environment.findClass("Example")
+        val classClassHandle = environment.findClass("java/lang/Class")
+        val fieldHandle = environment.getFieldId(classClassHandle, "mirrorValue", "I")
+        val mirrorReference = heap.internClassMirror("Example")
+        heap.putInstanceField(
+            mirrorReference,
+            JvmFieldReference(ownerClassName = "java/lang/Class", name = "mirrorValue", descriptor = "I"),
+            JvmIntValue(84),
+        )
+
+        val result = environment.getIntField(receiverClassHandle, fieldHandle)
+
+        assertEquals(84, result)
+    }
+
+    @Test
     fun `GetIntField reads default zero for an unwritten guest int instance field`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

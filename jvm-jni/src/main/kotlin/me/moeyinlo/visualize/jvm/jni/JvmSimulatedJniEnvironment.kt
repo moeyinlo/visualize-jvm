@@ -1463,7 +1463,7 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun getIntField(objectHandle: JvmJniHandleId, fieldIdHandle: JvmJniHandleId): Int {
-        val reference = handles.resolveObject(objectHandle)
+        val reference = resolveJObjectValue(objectHandle)
         val field = handles.resolveFieldId(fieldIdHandle)
         if (field.descriptor != "I" || field.isStatic) {
             throw JvmJniFieldAccessException(
