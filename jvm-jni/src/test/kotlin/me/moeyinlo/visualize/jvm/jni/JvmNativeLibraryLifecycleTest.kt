@@ -149,6 +149,57 @@ class JvmNativeLibraryLifecycleTest {
         )
     }
     @Test
+    fun `unload invokes JNI_OnUnload inside an automatic JNI local frame`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val onUnload = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = null,
+            symbolName = "JNI_OnUnload",
+            address = 0x2222L,
+        )
+        val binding = JvmNativeLibraryBinding(
+            library = library,
+            onLoadTarget = null,
+            onUnloadTarget = onUnload,
+            exportTargets = emptyMap(),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        registry.markLoaded(binding, onLoadVersion = null)
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val javaVm = JvmSimulatedJavaVm(environment)
+        var frameDepthDuringOnUnload = -1
+        var liveHandlesDuringOnUnload = -1
+        val lifecycle = JvmNativeLibraryLifecycle(
+            backend = JvmPanamaDowncallBackend { _, _ -> null },
+            registry = registry,
+            invokeDowncall = { invocation ->
+                val downcallJavaVm = (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJavaVm).javaVm
+                val downcallEnvironment = downcallJavaVm.getEnv(JvmJniVersions.Version24).environment!!
+                frameDepthDuringOnUnload = downcallEnvironment.localFrameDepth
+                downcallEnvironment.handles.newObjectHandle(heap.allocateObject("java/lang/Object"))
+                liveHandlesDuringOnUnload = downcallEnvironment.handles.liveHandleCount
+                JvmNativeDowncallReturn.Void
+            },
+        )
+
+        lifecycle.unload("native-api", javaVm)
+
+        assertEquals(1, frameDepthDuringOnUnload)
+        assertEquals(1, liveHandlesDuringOnUnload)
+        assertEquals(0, environment.localFrameDepth)
+        assertEquals(0, environment.handles.localFrameDepth)
+        assertEquals(0, environment.handles.liveHandleCount)
+    }
+
+    @Test
     fun `duplicate load is rejected before invoking JNI_OnLoad again`() {
         val library = JvmNativeLibraryDescriptor(
             logicalName = "native-api",

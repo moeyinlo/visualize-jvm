@@ -33,7 +33,11 @@ class JvmNativeLibraryLifecycle(
     ): JvmLoadedNativeLibrary {
         val request = registry.unloadOrThrow(logicalName, javaVm)
         request.onUnloadInvocation
-            ?.let(invokeDowncall::invoke)
+            ?.let { invocation ->
+                javaVm.withNativeLibraryLifecycleLocalFrame {
+                    invokeDowncall.invoke(invocation)
+                }
+            }
             ?.requireOnUnloadVoid()
         return request.loadedLibrary
     }
