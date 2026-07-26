@@ -112,6 +112,36 @@ class JvmPanamaDowncallBackendTest {
     }
 
     @Test
+    fun `Panama backend binds optional JNI_OnUnload symbols`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = emptyList(),
+        )
+        val backend = JvmPanamaDowncallBackend(
+            symbolLookup = JvmNativeSymbolLookup { path, symbolName ->
+                if (path == library.path && symbolName == "JNI_OnUnload") {
+                    JvmNativeSymbolAddress(symbolName, 0x5678L)
+                } else {
+                    null
+                }
+            },
+        )
+        val missingOnUnloadBackend = JvmPanamaDowncallBackend(symbolLookup = JvmNativeSymbolLookup { _, _ -> null })
+
+        assertEquals(
+            JvmNativeDowncallTarget(
+                library = library,
+                guestMethod = null,
+                symbolName = "JNI_OnUnload",
+                address = 0x5678L,
+            ),
+            backend.bindOnUnload(library),
+        )
+        assertEquals(null, missingOnUnloadBackend.bindOnUnload(library))
+    }
+
+    @Test
     fun `simulated JavaVM GetEnv returns attached environment for supported versions`() {
         val environment = JvmSimulatedJniEnvironment(
             classHierarchy = JvmClassHierarchy(),
@@ -257,6 +287,7 @@ class JvmPanamaDowncallBackendTest {
             symbolLookup = JvmNativeSymbolLookup { path, symbolName ->
                 when {
                     path == library.path && symbolName == "JNI_OnLoad" -> JvmNativeSymbolAddress(symbolName, 0x1111L)
+                    path == library.path && symbolName == "JNI_OnUnload" -> JvmNativeSymbolAddress(symbolName, 0x3333L)
                     path == library.path && symbolName == export.symbolName -> JvmNativeSymbolAddress(symbolName, 0x2222L)
                     else -> null
                 }
@@ -269,6 +300,10 @@ class JvmPanamaDowncallBackendTest {
         assertEquals(
             JvmNativeDowncallTarget(library = library, guestMethod = null, symbolName = "JNI_OnLoad", address = 0x1111L),
             binding.onLoadTarget,
+        )
+        assertEquals(
+            JvmNativeDowncallTarget(library = library, guestMethod = null, symbolName = "JNI_OnUnload", address = 0x3333L),
+            binding.onUnloadTarget,
         )
         assertEquals(
             JvmNativeDowncallTarget(

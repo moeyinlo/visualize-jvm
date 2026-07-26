@@ -24,6 +24,7 @@ class JvmNativeLibraryRegistryTest {
         val binding = JvmNativeLibraryBinding(
             library = library,
             onLoadTarget = null,
+            onUnloadTarget = null,
             exportTargets = mapOf(export.guestMethod to target),
         )
         val registry = JvmNativeLibraryRegistry()
@@ -39,7 +40,7 @@ class JvmNativeLibraryRegistryTest {
     @Test
     fun `duplicate native libraries are rejected by logical name`() {
         val library = JvmNativeLibraryDescriptor("native-api", Path.of("native-api.dll"))
-        val binding = JvmNativeLibraryBinding(library, onLoadTarget = null, exportTargets = emptyMap())
+        val binding = JvmNativeLibraryBinding(library, onLoadTarget = null, onUnloadTarget = null, exportTargets = emptyMap())
         val registry = JvmNativeLibraryRegistry()
         registry.markLoaded(binding, onLoadVersion = null)
 

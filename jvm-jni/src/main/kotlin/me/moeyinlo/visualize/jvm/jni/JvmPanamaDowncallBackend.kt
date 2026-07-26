@@ -42,6 +42,7 @@ data class JvmNativeDowncallTarget(
 data class JvmNativeLibraryBinding(
     val library: JvmNativeLibraryDescriptor,
     val onLoadTarget: JvmNativeDowncallTarget?,
+    val onUnloadTarget: JvmNativeDowncallTarget?,
     val exportTargets: Map<JvmNativeGuestMethodSignature, JvmNativeDowncallTarget>,
 )
 
@@ -288,6 +289,7 @@ class JvmPanamaDowncallBackend(
         JvmNativeLibraryBinding(
             library = library,
             onLoadTarget = bindOnLoad(library),
+            onUnloadTarget = bindOnUnload(library),
             exportTargets = bindExports(library),
         )
 
@@ -306,6 +308,16 @@ class JvmPanamaDowncallBackend(
 
     fun bindOnLoad(library: JvmNativeLibraryDescriptor): JvmNativeDowncallTarget? {
         val address = symbolLookup.find(library.path, library.onLoadSymbol) ?: return null
+        return JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = null,
+            symbolName = address.symbolName,
+            address = address.address,
+        )
+    }
+
+    fun bindOnUnload(library: JvmNativeLibraryDescriptor): JvmNativeDowncallTarget? {
+        val address = symbolLookup.find(library.path, library.onUnloadSymbol) ?: return null
         return JvmNativeDowncallTarget(
             library = library,
             guestMethod = null,

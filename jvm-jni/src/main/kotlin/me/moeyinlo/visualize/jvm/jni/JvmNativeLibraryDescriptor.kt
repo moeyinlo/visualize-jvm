@@ -36,11 +36,13 @@ data class JvmNativeLibraryDescriptor(
     val path: Path,
     val exports: List<JvmNativeMethodExportDescriptor> = emptyList(),
     val onLoadSymbol: String = "JNI_OnLoad",
+    val onUnloadSymbol: String = "JNI_OnUnload",
 ) {
     init {
         require(logicalName.isNotBlank()) { "native library logical name must not be blank" }
         require(path.toString().isNotBlank()) { "native library path must not be blank" }
         require(onLoadSymbol.isNotBlank()) { "native library JNI_OnLoad symbol must not be blank" }
+        require(onUnloadSymbol.isNotBlank()) { "native library JNI_OnUnload symbol must not be blank" }
 
         val duplicate = exports
             .groupingBy { export -> export.guestMethod }
