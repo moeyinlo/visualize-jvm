@@ -38,7 +38,7 @@ class JvmNativeLibraryLifecycle(
                     invokeDowncall.invoke(invocation)
                 }
             }
-            ?.requireOnUnloadVoid()
+            ?.requireOnUnloadVoid(javaVm.environment)
         return request.loadedLibrary
     }
 }
@@ -58,6 +58,13 @@ private fun JvmNativeDowncallReturn.toOnLoadVersion(environment: JvmSimulatedJni
         throw JvmNativeGuestException(throwable)
     }
     return version
+}
+
+private fun JvmNativeDowncallReturn.requireOnUnloadVoid(environment: JvmSimulatedJniEnvironment) {
+    requireOnUnloadVoid()
+    environment.takePendingException()?.let { throwable ->
+        throw JvmNativeGuestException(throwable)
+    }
 }
 
 private const val NativeLibraryLifecycleLocalCapacity: Int = 16

@@ -252,6 +252,63 @@ class JvmNativeLibraryLifecycleTest {
     }
 
     @Test
+    fun `unload propagates pending JNI_OnUnload guest exceptions`() {
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val onUnload = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = null,
+            symbolName = "JNI_OnUnload",
+            address = 0x2222L,
+        )
+        val binding = JvmNativeLibraryBinding(
+            library = library,
+            onLoadTarget = null,
+            onUnloadTarget = onUnload,
+            exportTargets = emptyMap(),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        registry.markLoaded(binding, onLoadVersion = null)
+        val heap = JvmHeap()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(internalName = "java/lang/Throwable"),
+                JvmClassDefinition(internalName = "java/lang/IllegalStateException", superclassName = "java/lang/Throwable"),
+            ),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val throwable = heap.allocateObject("java/lang/IllegalStateException")
+        val javaVm = JvmSimulatedJavaVm(environment)
+        val lifecycle = JvmNativeLibraryLifecycle(
+            backend = JvmPanamaDowncallBackend { _, _ -> null },
+            registry = registry,
+            invokeDowncall = { invocation ->
+                val downcallJavaVm = (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJavaVm).javaVm
+                val downcallEnvironment = downcallJavaVm.getEnv(JvmJniVersions.Version24).environment!!
+                downcallEnvironment.throwObject(downcallEnvironment.handles.newObjectHandle(throwable))
+                JvmNativeDowncallReturn.Void
+            },
+        )
+
+        val thrown = assertFailsWith<JvmNativeGuestException> {
+            lifecycle.unload("native-api", javaVm)
+        }
+
+        assertEquals(throwable, thrown.throwable)
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(false, environment.exceptionCheck())
+        assertEquals(0, environment.localFrameDepth)
+        assertEquals(0, environment.handles.localFrameDepth)
+        assertEquals(0, environment.handles.liveHandleCount)
+    }
+
+    @Test
     fun `duplicate load is rejected before invoking JNI_OnLoad again`() {
         val library = JvmNativeLibraryDescriptor(
             logicalName = "native-api",
