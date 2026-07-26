@@ -321,8 +321,19 @@ class JvmClassHierarchy(
     ): JvmResolvedMethod? =
         findDeclaredMethod(name, descriptor)
             ?.takeIf { candidate ->
-                resolvedMethod == null || (!candidate.isPrivate && !candidate.isStatic)
+                candidate.canOverrideResolvedMethod(resolvedMethod)
             }
+
+    private fun JvmResolvedMethod.canOverrideResolvedMethod(resolvedMethod: JvmResolvedMethod?): Boolean {
+        if (resolvedMethod == null || this == resolvedMethod) {
+            return true
+        }
+        if (isPrivate || isStatic) {
+            return false
+        }
+        return !resolvedMethod.isPackagePrivate ||
+            ownerClassName.packageName() == resolvedMethod.ownerClassName.packageName()
+    }
 
     private fun JvmClassDefinition.findSignaturePolymorphicDeclaration(
         name: String,
@@ -494,6 +505,9 @@ class JvmClassHierarchy(
 
     private fun String.isReferenceArrayClassName(): Boolean =
         startsWith("[L") && endsWith(";") || startsWith("[[")
+
+    private fun String.packageName(): String =
+        substringBeforeLast(delimiter = "/", missingDelimiterValue = "")
 
     private fun String.referenceArrayComponentClassName(): String =
         if (startsWith("[L") && endsWith(";")) {

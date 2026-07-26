@@ -471,6 +471,130 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `virtual method resolution skips package private methods from different packages`() {
+        val baseCode = byteArrayOf(0x05)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "q/Sub",
+                    superclassName = "p/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isPackagePrivate = true,
+                            code = byteArrayOf(0x06),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "p/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isPackagePrivate = true,
+                            code = baseCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val resolvedMethod = hierarchy.resolveMethod(
+            ownerClassName = "p/Base",
+            name = "value",
+            descriptor = "()I",
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "p/Base",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                isPackagePrivate = true,
+                code = baseCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveVirtualMethod(
+                receiverClassName = "q/Sub",
+                name = "value",
+                descriptor = "()I",
+                resolvedMethod = resolvedMethod,
+            ),
+        )
+    }
+
+    @Test
+    fun `virtual method resolution allows package private methods in the same package`() {
+        val subCode = byteArrayOf(0x06)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "p/Sub",
+                    superclassName = "p/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isPackagePrivate = true,
+                            code = subCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "p/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isPackagePrivate = true,
+                            code = byteArrayOf(0x05),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val resolvedMethod = hierarchy.resolveMethod(
+            ownerClassName = "p/Base",
+            name = "value",
+            descriptor = "()I",
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "p/Sub",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                isPackagePrivate = true,
+                code = subCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveVirtualMethod(
+                receiverClassName = "p/Sub",
+                name = "value",
+                descriptor = "()I",
+                resolvedMethod = resolvedMethod,
+            ),
+        )
+    }
+
+    @Test
     fun `interface method target resolution uses receiver class implementation before defaults`() {
         val hierarchy = JvmClassHierarchy(
             listOf(
