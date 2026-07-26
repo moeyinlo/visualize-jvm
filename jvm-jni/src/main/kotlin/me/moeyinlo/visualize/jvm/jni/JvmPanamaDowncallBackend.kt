@@ -226,6 +226,12 @@ fun JvmNativeDowncallReturn.requireOnUnloadVoid() {
 }
 
 fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment): JvmValue? {
+    if (this is JvmNativeDowncallReturn.ThrownGuestException) {
+        throw JvmNativeGuestException(environment.handles.resolveObject(throwableHandle))
+    }
+    environment.takePendingException()?.let { throwable ->
+        throw JvmNativeGuestException(throwable)
+    }
     val value = when (this) {
         JvmNativeDowncallReturn.Void -> null
         is JvmNativeDowncallReturn.BooleanPrimitive -> JvmBooleanValue(value)
@@ -237,11 +243,7 @@ fun JvmNativeDowncallReturn.toGuestValue(environment: JvmSimulatedJniEnvironment
         is JvmNativeDowncallReturn.FloatPrimitive -> JvmFloatValue(value)
         is JvmNativeDowncallReturn.DoublePrimitive -> JvmDoubleValue(value)
         is JvmNativeDowncallReturn.ObjectHandle -> handle?.let(environment.handles::resolveObject) ?: JvmNullValue
-        is JvmNativeDowncallReturn.ThrownGuestException ->
-            throw JvmNativeGuestException(environment.handles.resolveObject(throwableHandle))
-    }
-    environment.takePendingException()?.let { throwable ->
-        throw JvmNativeGuestException(throwable)
+        is JvmNativeDowncallReturn.ThrownGuestException -> error("handled before normal return conversion")
     }
     return value
 }

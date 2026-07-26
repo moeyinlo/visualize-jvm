@@ -619,6 +619,26 @@ class JvmPanamaDowncallBackendTest {
     }
 
     @Test
+    fun `Panama backend prioritizes pending JNI exceptions over return handle conversion`() {
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(),
+            heap = heap,
+            staticFields = JvmStaticFields(),
+        )
+        val throwableReference = heap.allocateObject("java/lang/IllegalStateException")
+        val throwableHandle = environment.handles.newObjectHandle(throwableReference)
+        environment.throwObject(throwableHandle)
+
+        val thrown = assertFailsWith<JvmNativeGuestException> {
+            JvmNativeDowncallReturn.ObjectHandle(JvmJniHandleId(999)).toGuestValue(environment)
+        }
+
+        assertEquals(throwableReference, thrown.throwable)
+        assertEquals(false, environment.exceptionCheck())
+    }
+
+    @Test
     fun `Panama backend runs tiny native library with upcall fixture`(@TempDir tempDir: Path) {
         val library = compileTinyUpcallFixture(tempDir)
 
