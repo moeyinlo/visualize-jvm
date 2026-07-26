@@ -114,4 +114,48 @@ class JvmNativeLibraryRegistryTest {
             invocation?.arguments,
         )
     }
+    @Test
+    fun `unload returns loaded library and prepared finalizer while removing exports`() {
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "call",
+            methodDescriptor = "()I",
+            isStatic = true,
+            symbolName = "Java_pkg_NativeApi_call",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(export),
+        )
+        val onUnload = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = null,
+            symbolName = "JNI_OnUnload",
+            address = 0x5678L,
+        )
+        val binding = JvmNativeLibraryBinding(
+            library = library,
+            onLoadTarget = null,
+            onUnloadTarget = onUnload,
+            exportTargets = mapOf(
+                export.guestMethod to JvmNativeDowncallTarget(library, export.guestMethod, export.symbolName, 0x1234L),
+            ),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        val loaded = registry.markLoaded(binding, onLoadVersion = JvmJniVersions.Version24)
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = JvmClassHierarchy(),
+                staticFields = JvmStaticFields(),
+            ),
+        )
+
+        val request = registry.unload("native-api", javaVm)
+
+        assertEquals(loaded, request?.loadedLibrary)
+        assertEquals(onUnload, request?.onUnloadInvocation?.target)
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(null, registry.resolveExport(export.guestMethod))
+    }
 }

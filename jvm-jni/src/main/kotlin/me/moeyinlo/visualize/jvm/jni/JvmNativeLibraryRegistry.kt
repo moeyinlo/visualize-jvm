@@ -6,6 +6,11 @@ data class JvmLoadedNativeLibrary(
     val onLoadVersion: Int?,
 )
 
+data class JvmNativeLibraryUnloadRequest(
+    val loadedLibrary: JvmLoadedNativeLibrary,
+    val onUnloadInvocation: JvmNativeDowncallInvocation?,
+)
+
 class JvmNativeLibraryRegistry {
     private val loadedByLogicalName = linkedMapOf<String, JvmLoadedNativeLibrary>()
 
@@ -40,6 +45,17 @@ class JvmNativeLibraryRegistry {
             ?.binding
             ?.onUnloadTarget
             ?.prepareOnUnloadInvocation(javaVm)
+
+    fun unload(
+        logicalName: String,
+        javaVm: JvmSimulatedJavaVm,
+    ): JvmNativeLibraryUnloadRequest? {
+        val loaded = loadedByLogicalName.remove(logicalName) ?: return null
+        return JvmNativeLibraryUnloadRequest(
+            loadedLibrary = loaded,
+            onUnloadInvocation = loaded.binding.onUnloadTarget?.prepareOnUnloadInvocation(javaVm),
+        )
+    }
 
     fun resolveExport(signature: JvmNativeGuestMethodSignature): JvmNativeDowncallTarget? =
         loadedByLogicalName.values
