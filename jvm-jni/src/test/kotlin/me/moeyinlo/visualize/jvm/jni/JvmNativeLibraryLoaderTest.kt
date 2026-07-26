@@ -135,4 +135,50 @@ class JvmNativeLibraryLoaderTest {
         assertEquals(null, registry.loadedLibrary("native-api"))
         assertEquals(onUnload, invocations.single().target)
     }
+
+    @Test
+    fun `unloadHook adapts loader into interpreter native library handler`() {
+        val descriptor = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val onUnload = JvmNativeDowncallTarget(
+            library = descriptor,
+            guestMethod = null,
+            symbolName = "JNI_OnUnload",
+            address = 0x2222L,
+        )
+        val registry = JvmNativeLibraryRegistry()
+        val invocations = mutableListOf<JvmNativeDowncallInvocation>()
+        val loader = JvmNativeLibraryLoader(
+            catalog = JvmNativeLibraryCatalog(listOf(descriptor)),
+            lifecycle = JvmNativeLibraryLifecycle(
+                backend = JvmPanamaDowncallBackend { _, _ -> null },
+                registry = registry,
+                invokeDowncall = { invocation ->
+                    invocations += invocation
+                    JvmNativeDowncallReturn.Void
+                },
+            ),
+        )
+        val binding = JvmNativeLibraryBinding(
+            library = descriptor,
+            onLoadTarget = null,
+            onUnloadTarget = onUnload,
+            exportTargets = emptyMap(),
+        )
+        registry.markLoaded(binding, onLoadVersion = null)
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = JvmClassHierarchy(),
+                staticFields = JvmStaticFields(),
+            ),
+        )
+
+        val unloadNativeLibraryHandler: (String) -> Unit = loader.unloadHook(javaVm)
+        unloadNativeLibraryHandler("native-api")
+
+        assertEquals(null, registry.loadedLibrary("native-api"))
+        assertEquals(onUnload, invocations.single().target)
+    }
 }

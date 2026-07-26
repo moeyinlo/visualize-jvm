@@ -17,6 +17,10 @@ class JvmNativeLibraryLoader(
         loadLibrary(logicalName, javaVm)
     }
 
+    fun unloadHook(javaVm: JvmSimulatedJavaVm): (logicalName: String) -> Unit = { logicalName ->
+        unloadLibrary(logicalName, javaVm)
+    }
+
     fun unloadLibrary(
         logicalName: String,
         javaVm: JvmSimulatedJavaVm,
