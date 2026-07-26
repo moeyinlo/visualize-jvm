@@ -231,7 +231,12 @@ class JvmClassHierarchy(
         return receiverClass.findDeclaredMethod(name, descriptor)
             ?: receiverClass.findSignaturePolymorphicDeclaration(name, descriptor)
             ?: findSuperclassMethod(receiverClass.superclassName, name, descriptor)
-            ?: selectMaximallySpecificInterfaceMethod(receiverClassName, receiverClass.interfaceNames, name, descriptor)
+            ?: selectMaximallySpecificInterfaceMethod(
+                receiverClassName,
+                collectClassAndSuperclassInterfaceNames(receiverClass),
+                name,
+                descriptor,
+            )
     }
 
     fun resolveInterfaceMethodTarget(
@@ -431,6 +436,16 @@ class JvmClassHierarchy(
             ?: findSuperclassMethodForMethodResolution(superclass.superclassName, name, descriptor)
             ?: selectMaximallySpecificInterfaceMethodOrNull(superclass.interfaceNames, name, descriptor)
             ?: collectInterfaceMethods(superclass.interfaceNames, name, descriptor).firstOrNull()
+    }
+
+    private fun collectClassAndSuperclassInterfaceNames(receiverClass: JvmClassDefinition): List<String> {
+        val interfaceNames = linkedSetOf<String>()
+        var currentClass: JvmClassDefinition? = receiverClass
+        while (currentClass != null) {
+            interfaceNames += currentClass.interfaceNames
+            currentClass = currentClass.superclassName?.let { superclassName -> classesByName[superclassName] }
+        }
+        return interfaceNames.toList()
     }
 
     private fun findPublicObjectMethod(name: String, descriptor: String): JvmResolvedMethod? =

@@ -304,6 +304,54 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `virtual method resolution selects interface defaults inherited through superclasses`() {
+        val defaultCode = byteArrayOf(0x05)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Child",
+                    superclassName = "Parent",
+                ),
+                JvmClassDefinition(
+                    internalName = "Parent",
+                    interfaceNames = listOf("DefaultFace"),
+                ),
+                JvmClassDefinition(
+                    internalName = "DefaultFace",
+                    isInterface = true,
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = defaultCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "DefaultFace",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                code = defaultCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveVirtualMethod(
+                receiverClassName = "Child",
+                name = "value",
+                descriptor = "()I",
+            ),
+        )
+    }
+
+    @Test
     fun `interface method target resolution uses receiver class implementation before defaults`() {
         val hierarchy = JvmClassHierarchy(
             listOf(
