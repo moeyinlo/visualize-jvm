@@ -704,7 +704,7 @@ class JvmSimulatedJniEnvironment(
         methodIdHandle: JvmJniHandleId,
         arguments: List<JvmValue> = emptyList(),
     ): Double {
-        val receiver = handles.resolveObject(objectHandle)
+        val receiver = resolveJObjectValue(objectHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireInstanceDoubleMethod("CallDoubleMethod")
         requireReceiverAssignableToMethod("CallDoubleMethod", receiver, method)
