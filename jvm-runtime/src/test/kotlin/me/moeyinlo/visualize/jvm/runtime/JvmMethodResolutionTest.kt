@@ -595,6 +595,80 @@ class JvmMethodResolutionTest {
     }
 
     @Test
+    fun `virtual method resolution allows transitive override of package private resolved methods`() {
+        val subCode = byteArrayOf(0x07)
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "q/Sub",
+                    superclassName = "p/Mid",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = subCode,
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "p/Mid",
+                    superclassName = "p/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            code = byteArrayOf(0x06),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "p/Base",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = false,
+                            isPackagePrivate = true,
+                            code = byteArrayOf(0x05),
+                            maxStack = 1,
+                            maxLocals = 1,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val resolvedMethod = hierarchy.resolveMethod(
+            ownerClassName = "p/Base",
+            name = "value",
+            descriptor = "()I",
+        )
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "q/Sub",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+                code = subCode,
+                maxStack = 1,
+                maxLocals = 1,
+            ),
+            hierarchy.resolveVirtualMethod(
+                receiverClassName = "q/Sub",
+                name = "value",
+                descriptor = "()I",
+                resolvedMethod = resolvedMethod,
+            ),
+        )
+    }
+
+    @Test
     fun `interface method target resolution uses receiver class implementation before defaults`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

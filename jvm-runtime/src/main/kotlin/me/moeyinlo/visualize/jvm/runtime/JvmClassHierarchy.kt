@@ -332,7 +332,25 @@ class JvmClassHierarchy(
             return false
         }
         return !resolvedMethod.isPackagePrivate ||
-            ownerClassName.packageName() == resolvedMethod.ownerClassName.packageName()
+            ownerClassName.packageName() == resolvedMethod.ownerClassName.packageName() ||
+            overridesThroughSuperclass(resolvedMethod)
+    }
+
+    private fun JvmResolvedMethod.overridesThroughSuperclass(resolvedMethod: JvmResolvedMethod): Boolean {
+        var superclassName = classesByName[ownerClassName]?.superclassName
+        while (superclassName != null && superclassName != resolvedMethod.ownerClassName) {
+            val superclassMethod = classesByName[superclassName]
+                ?.findDeclaredMethod(name, descriptor)
+            if (
+                superclassMethod != null &&
+                superclassMethod.canOverrideResolvedMethod(resolvedMethod) &&
+                canOverrideResolvedMethod(superclassMethod)
+            ) {
+                return true
+            }
+            superclassName = classesByName[superclassName]?.superclassName
+        }
+        return false
     }
 
     private fun JvmClassDefinition.findSignaturePolymorphicDeclaration(
