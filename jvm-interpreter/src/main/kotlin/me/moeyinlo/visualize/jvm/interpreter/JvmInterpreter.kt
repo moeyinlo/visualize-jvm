@@ -91,6 +91,26 @@ sealed interface JvmScheduledThreadExecutionResult {
     data class Suspended(val suspension: JvmThreadSuspendedException) : JvmScheduledThreadExecutionResult
 }
 
+data class JvmScheduledThreadFrame(
+    val threadId: String,
+    val code: ByteArray,
+    val maxStack: Int,
+    val constantPool: ConstantPool = ConstantPool.fromEntries(emptyList()),
+    val localVariables: JvmLocalVariables = JvmLocalVariables(maxLocals = 0),
+    val currentClassName: String? = null,
+    val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
+    val bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
+    val invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
+    val dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
+    val startBytecodeOffset: Int = 0,
+) {
+    init {
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+        require(maxStack >= 0) { "max_stack must not be negative: $maxStack" }
+        require(startBytecodeOffset >= 0) { "start bytecode offset must not be negative: $startBytecodeOffset" }
+    }
+}
+
 private data class JvmFrameExecutionResult(
     val operandStack: JvmOperandStack,
     val hasReturned: Boolean = false,

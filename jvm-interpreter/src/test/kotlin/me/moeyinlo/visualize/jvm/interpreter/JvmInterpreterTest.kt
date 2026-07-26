@@ -19360,6 +19360,39 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread frame records resume configuration`() {
+        val locals = JvmLocalVariables(maxLocals = 1)
+        val frame = JvmScheduledThreadFrame(
+            threadId = "worker",
+            code = byteArrayOf(0x03.toByte()),
+            maxStack = 1,
+            localVariables = locals,
+            currentClassName = "pkg/Worker",
+            startBytecodeOffset = 7,
+        )
+
+        assertEquals("worker", frame.threadId)
+        assertEquals(listOf(0x03.toByte()), frame.code.toList())
+        assertEquals(1, frame.maxStack)
+        assertEquals(locals, frame.localVariables)
+        assertEquals("pkg/Worker", frame.currentClassName)
+        assertEquals(7, frame.startBytecodeOffset)
+    }
+
+    @Test
+    fun `scheduled thread frame rejects invalid scheduler coordinates`() {
+        assertFailsWith<IllegalArgumentException> {
+            JvmScheduledThreadFrame(threadId = "", code = byteArrayOf(), maxStack = 0)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            JvmScheduledThreadFrame(threadId = "worker", code = byteArrayOf(), maxStack = -1)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            JvmScheduledThreadFrame(threadId = "worker", code = byteArrayOf(), maxStack = 0, startBytecodeOffset = -1)
+        }
+    }
+
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()
