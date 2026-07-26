@@ -13955,6 +13955,123 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `native instance upcalls retain native library unload hook`() {
+        val heap = JvmHeap()
+        val upcaller = heap.allocateObject("Upcaller")
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, upcaller)
+        val unloadedLogicalNames = mutableListOf<String>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "NativeOwner",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "entry",
+                            descriptor = "(LUpcaller;)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "Upcaller",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "unload",
+                            descriptor = "(Ljava/lang/String;)V",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x2B.toByte(),
+                                0xB8.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 2,
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                    ConstantClassEntry(ConstantPoolIndex(3)),
+                                    ConstantUtf8Entry(
+                                        "NativeLibraryBridge",
+                                        "NativeLibraryBridge".encodeToByteArray(),
+                                    ),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                    ConstantUtf8Entry("unload", "unload".encodeToByteArray()),
+                                    ConstantUtf8Entry(
+                                        "(Ljava/lang/String;)V",
+                                        "(Ljava/lang/String;)V".encodeToByteArray(),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "NativeLibraryBridge",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "unload",
+                            descriptor = "(Ljava/lang/String;)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("NativeOwner", "entry", "(LUpcaller;)V", isStatic = true) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    context.callInstanceMethod(
+                        receiver = invocation.arguments.single() as JvmObjectReferenceValue,
+                        ownerClassName = "Upcaller",
+                        name = "unload",
+                        descriptor = "(Ljava/lang/String;)V",
+                        arguments = listOf(context.heap.internString("instance-upcall-native")),
+                    )
+                    null
+                },
+            JvmNativeMethodKey("NativeLibraryBridge", "unload", "(Ljava/lang/String;)V", isStatic = true) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    val libraryName = context.heap.get(invocation.arguments.single() as JvmObjectReferenceValue)
+                        .payload as JvmStringPayload
+                    context.unloadNativeLibraryHandler(libraryName.value)
+                    null
+                },
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("entry", "entry".encodeToByteArray()),
+                    ConstantUtf8Entry("(LUpcaller;)V", "(LUpcaller;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            unloadNativeLibraryHandler = { logicalName -> unloadedLogicalNames += logicalName },
+        )
+
+        assertEquals(listOf("instance-upcall-native"), unloadedLogicalNames)
+    }
+
+    @Test
     fun `invokestatic System loadLibrary loads through configured native library loader`() {
         val descriptor = JvmNativeLibraryDescriptor(
             logicalName = "loader-native",
