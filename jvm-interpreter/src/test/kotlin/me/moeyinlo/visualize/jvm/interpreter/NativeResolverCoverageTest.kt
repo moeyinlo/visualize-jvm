@@ -25,7 +25,7 @@ class NativeResolverCoverageTest {
         assertNotNull(rulesByName["native library export lookup"])
         assertNotNull(rulesByName["loaded native library export dispatch"])
         assertNotNull(rulesByName["registered native dispatch"])
-        assertNotNull(rulesByName["System loadLibrary VM intrinsic hook"])
+        assertNotNull(rulesByName["System and Runtime loadLibrary VM intrinsic hooks"])
     }
 
     @Test

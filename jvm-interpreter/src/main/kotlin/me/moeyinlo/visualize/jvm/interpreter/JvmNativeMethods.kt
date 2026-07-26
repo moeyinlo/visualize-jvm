@@ -288,6 +288,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/String;)V",
         isStatic = true,
     )
+    private val RuntimeLoadLibrary0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Runtime",
+        name = "loadLibrary0",
+        descriptor = "(Ljava/lang/Class;Ljava/lang/String;)V",
+        isStatic = false,
+    )
     private val ClassInitClassNameKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "initClassName",
@@ -448,6 +454,10 @@ object JvmVmIntrinsics {
         context.loadNativeLibraryHandler(requireStringArgument("System.loadLibrary", context, invocation))
         null
     }
+    private val RuntimeLoadLibrary0 = JvmNativeMethodIntrinsic { context, invocation ->
+        context.loadNativeLibraryHandler(requireRuntimeLoadLibrary0Name(context, invocation))
+        null
+    }
     private val ClassInitClassName = JvmNativeMethodIntrinsic { context, invocation ->
         val representedClassName = requireClassMirrorReceiver("Class.initClassName", context, invocation)
         context.heap.internString(representedClassName.toBinaryClassName())
@@ -532,6 +542,7 @@ object JvmVmIntrinsics {
         SystemCurrentTimeMillisKey to SystemCurrentTimeMillis,
         SystemNanoTimeKey to SystemNanoTime,
         SystemLoadLibraryKey to SystemLoadLibrary,
+        RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
         ClassInitClassNameKey to ClassInitClassName,
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
@@ -601,6 +612,26 @@ object JvmVmIntrinsics {
         val argument = invocation.arguments.single() as? JvmObjectReferenceValue
             ?: throw JvmUnsupportedInstructionException("$name expects a non-null java/lang/String argument")
         return stringPayload(name, context, argument, "argument")
+    }
+
+    private fun requireRuntimeLoadLibrary0Name(
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): String {
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Runtime.loadLibrary0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Runtime.loadLibrary0 expects Class and String arguments")
+        }
+        val fromClass = invocation.arguments[0] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Runtime.loadLibrary0 expects a non-null Class argument")
+        if (context.heap.get(fromClass).payload !is JvmClassPayload) {
+            throw JvmUnsupportedInstructionException("Runtime.loadLibrary0 first argument must be a java/lang/Class mirror")
+        }
+        val libraryName = invocation.arguments[1] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Runtime.loadLibrary0 expects a non-null java/lang/String argument")
+        return stringPayload("Runtime.loadLibrary0", context, libraryName, "argument")
     }
 
     private fun stringPayload(

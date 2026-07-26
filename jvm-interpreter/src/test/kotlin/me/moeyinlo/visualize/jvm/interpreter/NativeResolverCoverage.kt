@@ -61,7 +61,7 @@ object NativeResolverCoverage {
         NativeResolverCoverageEntry(
             rule = "native library loading lifecycle",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
-            currentComponent = "JvmNativeLibraryLifecycle binds, loads, unloads, and calls optional JNI_OnLoad/JNI_OnUnload; runtime System.loadLibrary wiring remains pending",
+            currentComponent = "JvmNativeLibraryLifecycle binds, loads, unloads, and calls optional JNI_OnLoad/JNI_OnUnload; JDK NativeLibraries initialization wiring remains pending",
             status = NativeResolverCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmNativeLibraryLifecycleTest",
         ),
@@ -80,9 +80,9 @@ object NativeResolverCoverage {
             coveringTestClass = "JvmNativeLibraryLoaderTest",
         ),
         NativeResolverCoverageEntry(
-            rule = "System loadLibrary VM intrinsic hook",
+            rule = "System and Runtime loadLibrary VM intrinsic hooks",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
-            currentComponent = "JvmVmIntrinsics resolves java/lang/System.loadLibrary(Ljava/lang/String;)V and delegates the logical library name to the VM native-library load hook",
+            currentComponent = "JvmVmIntrinsics resolves java/lang/System.loadLibrary(Ljava/lang/String;)V and java/lang/Runtime.loadLibrary0(Ljava/lang/Class;Ljava/lang/String;)V and delegates logical library names to the VM native-library load hook",
             status = NativeResolverCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmVmIntrinsicsTest",
         ),
