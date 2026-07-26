@@ -23,6 +23,7 @@ data class JvmFieldDefinition(
 
 sealed interface JvmFieldConstantValue {
     data class Numeric(val value: JvmValue) : JvmFieldConstantValue
+    data class StringLiteral(val value: String) : JvmFieldConstantValue
 }
 
 data class JvmResolvedField(

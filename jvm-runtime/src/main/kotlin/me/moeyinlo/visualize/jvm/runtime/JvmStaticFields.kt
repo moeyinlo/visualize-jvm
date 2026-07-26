@@ -16,12 +16,24 @@ class JvmStaticFields {
     private val values = linkedMapOf<JvmFieldReference, JvmValue>()
 
     fun prepare(classDefinition: JvmClassDefinition) {
+        prepareInternal(classDefinition = classDefinition, heap = null)
+    }
+
+    fun prepare(classDefinition: JvmClassDefinition, heap: JvmHeap) {
+        prepareInternal(classDefinition = classDefinition, heap = heap)
+    }
+
+    private fun prepareInternal(classDefinition: JvmClassDefinition, heap: JvmHeap?) {
         classDefinition.fields
             .filter { field -> field.isStatic }
             .forEach { field ->
                 val reference = JvmFieldReference(classDefinition.internalName, field.name, field.descriptor)
                 values[reference] = when (val constantValue = field.constantValue) {
                     is JvmFieldConstantValue.Numeric -> constantValue.value
+                    is JvmFieldConstantValue.StringLiteral -> heap?.internString(constantValue.value)
+                        ?: throw JvmStaticFieldAccessException(
+                            "String ConstantValue for field $reference requires heap-aware preparation",
+                        )
                     null -> reference.defaultFieldValue()
                 }
             }

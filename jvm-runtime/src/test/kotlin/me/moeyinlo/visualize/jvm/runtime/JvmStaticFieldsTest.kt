@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.runtime
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class JvmStaticFieldsTest {
     @Test
@@ -76,6 +77,43 @@ class JvmStaticFieldsTest {
                     descriptor = "I",
                 ),
             ),
+        )
+    }
+
+    @Test
+    fun `heap-aware preparation assigns String ConstantValue attributes to guest strings`() {
+        val fields = JvmStaticFields()
+        val heap = JvmHeap()
+
+        fields.prepare(
+            JvmClassDefinition(
+                internalName = "Example",
+                fields = listOf(
+                    JvmFieldDefinition(
+                        name = "literal",
+                        descriptor = "Ljava/lang/String;",
+                        isStatic = true,
+                        constantValue = JvmFieldConstantValue.StringLiteral("hello"),
+                    ),
+                ),
+            ),
+            heap,
+        )
+
+        val value = fields.get(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "literal",
+                descriptor = "Ljava/lang/String;",
+            ),
+        )
+        val reference = assertIs<JvmObjectReferenceValue>(value)
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/String",
+                payload = JvmStringPayload("hello"),
+            ),
+            heap.get(reference),
         )
     }
 }
