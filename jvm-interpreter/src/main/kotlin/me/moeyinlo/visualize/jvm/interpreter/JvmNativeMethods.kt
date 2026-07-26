@@ -28,6 +28,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 
@@ -59,6 +60,7 @@ data class JvmNativeMethodContext(
     val staticFields: JvmStaticFields,
     val currentClassName: String?,
     val monitors: JvmMonitorState = JvmMonitorState(),
+    val threadScheduler: JvmThreadScheduler? = null,
     val currentThreadId: String = "main",
     val currentTimeMillisProvider: () -> Long = System::currentTimeMillis,
     val nanoTimeProvider: () -> Long = System::nanoTime,

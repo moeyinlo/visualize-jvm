@@ -19069,6 +19069,58 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `native method context retains optional thread scheduler`() {
+        val scheduler = JvmThreadScheduler()
+        var observedScheduler: JvmThreadScheduler? = null
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Native",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "ping",
+                            descriptor = "()V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("pkg/Native", "ping", "()V", isStatic = true) to
+                JvmNativeMethodIntrinsic { context, _ ->
+                    observedScheduler = context.threadScheduler
+                    null
+                },
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 0,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("pkg/Native", "pkg/Native".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("ping", "ping".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            currentClassName = "pkg/Caller",
+            threadScheduler = scheduler,
+        )
+
+        assertEquals(scheduler, observedScheduler)
+    }
+    @Test
     fun `monitorenter acquires the object monitor for the current thread`() {
         val heap = JvmHeap()
         val monitor = JvmMonitorState()
