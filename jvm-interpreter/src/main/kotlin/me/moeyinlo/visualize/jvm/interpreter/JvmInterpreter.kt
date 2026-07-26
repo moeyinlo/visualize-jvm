@@ -5589,6 +5589,8 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
+            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
         )
         if (invocation.bootstrapMethodHandle.referenceKind != JvmMethodHandleReferenceKind.InvokeStatic) {
             throw JvmUnsupportedInstructionException(
@@ -5686,6 +5688,12 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
+        unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
+        },
     ): List<JvmValue> =
         buildList {
             add(heap.internMethodHandlesLookup(currentClassName))
@@ -5708,6 +5716,8 @@ object JvmInterpreter {
                             bootstrapMethods = bootstrapMethods,
                             invokeDynamicCallSites = invokeDynamicCallSites,
                             dynamicConstants = dynamicConstants,
+                            loadNativeLibraryHandler = loadNativeLibraryHandler,
+                            unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                         )
                     } catch (exception: JvmDynamicConstantLinkageException) {
                         throw JvmUnsupportedInstructionException(
