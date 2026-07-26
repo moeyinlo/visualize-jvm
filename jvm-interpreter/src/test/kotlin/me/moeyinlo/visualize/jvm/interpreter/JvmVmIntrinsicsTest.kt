@@ -17,6 +17,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -747,6 +749,43 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Object wait intrinsic records scheduler waiting state when scheduler is present`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("Example")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "main")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "main")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectWaitLongMethod())
+            ?: error("Object.wait intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+            monitors = monitors,
+            threadScheduler = scheduler,
+            currentThreadId = "main",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = listOf(JvmLongValue(0L))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(0, monitors.holdCount(receiver, threadId = "main"))
+        assertEquals(listOf("main"), monitors.waitingThreads(receiver))
+        assertEquals(
+            JvmThreadSchedulingState.WaitingOnMonitor(
+                reference = receiver,
+                releasedHoldCount = 2,
+            ),
+            scheduler.state("main"),
+        )
+    }
+
+    @Test
     fun `Object notify intrinsic wakes one waiting thread from the receiver monitor`() {
         val heap = JvmHeap()
         val monitors = JvmMonitorState()
@@ -777,6 +816,53 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Object notify intrinsic moves one waiting thread through scheduler handoff when scheduler is present`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("Example")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "first")
+        scheduler.waitForMonitorNotification(monitors, receiver, threadId = "first")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "second")
+        scheduler.waitForMonitorNotification(monitors, receiver, threadId = "second")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "owner")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectNotifyMethod())
+            ?: error("Object.notify intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+            monitors = monitors,
+            threadScheduler = scheduler,
+            currentThreadId = "owner",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = receiver,
+                ownerThreadId = "owner",
+            ),
+            scheduler.state("first"),
+        )
+        assertEquals(
+            JvmThreadSchedulingState.WaitingOnMonitor(
+                reference = receiver,
+                releasedHoldCount = 1,
+            ),
+            scheduler.state("second"),
+        )
+        assertEquals(listOf("second"), monitors.waitingThreads(receiver))
+        assertEquals(listOf("first"), monitors.blockedThreads(receiver))
+    }
+
+    @Test
     fun `Object notifyAll intrinsic wakes every waiting thread from the receiver monitor`() {
         val heap = JvmHeap()
         val monitors = JvmMonitorState()
@@ -804,6 +890,53 @@ class JvmVmIntrinsicsTest {
 
         assertEquals(null, result)
         assertEquals(emptyList(), monitors.waitingThreads(receiver))
+    }
+
+    @Test
+    fun `Object notifyAll intrinsic moves all waiting threads through scheduler handoff when scheduler is present`() {
+        val heap = JvmHeap()
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val receiver = heap.allocateObject("Example")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "first")
+        scheduler.waitForMonitorNotification(monitors, receiver, threadId = "first")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "second")
+        scheduler.waitForMonitorNotification(monitors, receiver, threadId = "second")
+        scheduler.tryEnterMonitor(monitors, receiver, threadId = "owner")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectNotifyAllMethod())
+            ?: error("Object.notifyAll intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "Example",
+            monitors = monitors,
+            threadScheduler = scheduler,
+            currentThreadId = "owner",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = receiver,
+                ownerThreadId = "owner",
+            ),
+            scheduler.state("first"),
+        )
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = receiver,
+                ownerThreadId = "owner",
+            ),
+            scheduler.state("second"),
+        )
+        assertEquals(emptyList(), monitors.waitingThreads(receiver))
+        assertEquals(listOf("first", "second"), monitors.blockedThreads(receiver))
     }
 
     @Test

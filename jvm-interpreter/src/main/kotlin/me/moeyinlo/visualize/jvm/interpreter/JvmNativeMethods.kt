@@ -429,7 +429,8 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Object.wait intrinsic requires a receiver")
         validateWaitArguments(invocation.arguments)
         context.heap.get(receiver)
-        context.monitors.waitForNotification(receiver, context.currentThreadId)
+        context.threadScheduler?.waitForMonitorNotification(context.monitors, receiver, context.currentThreadId)
+            ?: context.monitors.waitForNotification(receiver, context.currentThreadId)
         null
     }
     private val ObjectNotify = JvmNativeMethodIntrinsic { context, invocation ->
@@ -437,7 +438,8 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Object.notify intrinsic requires a receiver")
         require(invocation.arguments.isEmpty()) { "Object.notify intrinsic expects no arguments" }
         context.heap.get(receiver)
-        context.monitors.notifyOne(receiver, context.currentThreadId)
+        context.threadScheduler?.notifyOneMonitor(context.monitors, receiver, context.currentThreadId)
+            ?: context.monitors.notifyOne(receiver, context.currentThreadId)
         null
     }
     private val ObjectNotifyAll = JvmNativeMethodIntrinsic { context, invocation ->
@@ -445,7 +447,8 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Object.notifyAll intrinsic requires a receiver")
         require(invocation.arguments.isEmpty()) { "Object.notifyAll intrinsic expects no arguments" }
         context.heap.get(receiver)
-        context.monitors.notifyAll(receiver, context.currentThreadId)
+        context.threadScheduler?.notifyAllMonitor(context.monitors, receiver, context.currentThreadId)
+            ?: context.monitors.notifyAll(receiver, context.currentThreadId)
         null
     }
     private val SystemArraycopy = JvmNativeMethodIntrinsic { context, invocation ->
