@@ -22125,6 +22125,121 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked constructor interpreted target retains monitor unblocked hook`() {
+        val heap = JvmHeap()
+        val monitor = JvmMonitorState()
+        val unblocked = mutableListOf<Pair<JvmObjectReferenceValue, String>>()
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/Constructed",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "<init>",
+                            descriptor = "()V",
+                            isStatic = false,
+                            code = byteArrayOf(
+                                0x2A.toByte(),
+                                0xC2.toByte(),
+                                0x2A.toByte(),
+                                0xB8.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0x2A.toByte(),
+                                0xC3.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 1,
+                            constantPool = ConstantPool.fromEntries(
+                                listOf(
+                                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                    ConstantClassEntry(ConstantPoolIndex(3)),
+                                    ConstantUtf8Entry("pkg/Helper", "pkg/Helper".encodeToByteArray()),
+                                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                    ConstantUtf8Entry("contend", "contend".encodeToByteArray()),
+                                    ConstantUtf8Entry(
+                                        "(Lpkg/Constructed;)V",
+                                        "(Lpkg/Constructed;)V".encodeToByteArray(),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Helper",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "contend",
+                            descriptor = "(Lpkg/Constructed;)V",
+                            isStatic = true,
+                            isNative = true,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val nativeMethods = JvmNativeMethodRegistry.from(
+            JvmNativeMethodKey("pkg/Helper", "contend", "(Lpkg/Constructed;)V", isStatic = true) to
+                JvmNativeMethodIntrinsic { context, invocation ->
+                    val target = invocation.arguments.single() as JvmObjectReferenceValue
+                    context.monitors.tryEnter(target, "contender")
+                    null
+                },
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicConstructorCallSiteConstantPool(),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = nativeMethods,
+            monitors = monitor,
+            currentThreadId = "owner",
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            monitorUnblockedHandler = { objectReference, threadId ->
+                unblocked += objectReference to threadId
+            },
+        )
+
+        val constructed = result.operandStack.toList().single() as JvmObjectReferenceValue
+        assertEquals("pkg/Constructed", heap.get(constructed).className)
+        assertTrue(heap.isInitialized(constructed))
+        assertEquals(listOf(constructed to "contender"), unblocked)
+        assertEquals(emptyList(), monitor.blockedThreads(constructed))
+    }
+
+    @Test
     fun `invokedynamic cached linked native constructor target retains native library load hook`() {
         val heap = JvmHeap()
         val loadedLogicalNames = mutableListOf<String>()
