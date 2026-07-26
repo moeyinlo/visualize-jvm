@@ -5724,6 +5724,7 @@ object JvmInterpreter {
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 linkedCallSite = linkedCallSite,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             JvmMethodHandleReferenceKind.NewInvokeSpecial -> executeLinkedInvokeDynamicConstructorTarget(
                 instruction = instruction,
@@ -6225,6 +6226,9 @@ object JvmInterpreter {
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+        loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
+            throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
+        },
     ) {
         val resolvedMethod = linkedCallSite.targetMethod
         requireInstanceMethod(instruction, resolvedMethod)
@@ -6313,6 +6317,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 currentClassName = targetMethod.ownerClassName,
                 dynamicConstants = dynamicConstants,
+                loadNativeLibraryHandler = loadNativeLibraryHandler,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -6364,6 +6369,7 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
+            loadNativeLibraryHandler = loadNativeLibraryHandler,
         )
         val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
