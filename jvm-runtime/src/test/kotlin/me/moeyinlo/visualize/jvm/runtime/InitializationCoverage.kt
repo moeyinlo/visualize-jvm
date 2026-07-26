@@ -67,8 +67,9 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "initialization error handling",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "No ExceptionInInitializerError or NoClassDefFoundError transition for failed <clinit> yet",
-            status = InitializationCoverageStatus.NotYetImplemented,
+            currentComponent = "Active use of a class already marked erroneous throws guest NoClassDefFoundError; executing failing <clinit>, ExceptionInInitializerError wrapping, and first-failure erroneous transitions remain pending",
+            status = InitializationCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "native class initialization boundary",

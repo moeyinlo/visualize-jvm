@@ -46,7 +46,6 @@ class InitializationCoverageTest {
         assertEquals(
             listOf(
                 "superclass and superinterface initialization",
-                "initialization error handling",
                 "native class initialization boundary",
             ),
             unsupportedRules,
