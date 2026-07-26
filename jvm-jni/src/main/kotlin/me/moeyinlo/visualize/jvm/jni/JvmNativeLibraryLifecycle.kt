@@ -19,4 +19,15 @@ class JvmNativeLibraryLifecycle(
             ?.let { invocation -> invokeDowncall.invoke(invocation).toOnLoadVersion() }
         return registry.markLoaded(binding, onLoadVersion)
     }
+
+    fun unload(
+        logicalName: String,
+        javaVm: JvmSimulatedJavaVm,
+    ): JvmLoadedNativeLibrary {
+        val request = registry.unloadOrThrow(logicalName, javaVm)
+        request.onUnloadInvocation
+            ?.let(invokeDowncall::invoke)
+            ?.requireOnUnloadVoid()
+        return request.loadedLibrary
+    }
 }
