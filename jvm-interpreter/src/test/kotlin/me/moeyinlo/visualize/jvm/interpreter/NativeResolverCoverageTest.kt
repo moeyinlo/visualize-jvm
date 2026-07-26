@@ -43,12 +43,7 @@ class NativeResolverCoverageTest {
             .filter { entry -> entry.status == NativeResolverCoverageStatus.NotYetImplemented }
             .map(NativeResolverCoverageEntry::rule)
 
-        assertEquals(
-            listOf(
-                "automatic descriptor-to-library binding",
-            ),
-            unsupportedRules,
-        )
+        assertEquals(emptyList(), unsupportedRules)
     }
 
     private fun testClassExists(testClass: String): Boolean =

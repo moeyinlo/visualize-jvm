@@ -75,8 +75,9 @@ object NativeResolverCoverage {
         NativeResolverCoverageEntry(
             rule = "automatic descriptor-to-library binding",
             specSection = "JVMS 5.6 Binding Native Method Implementations",
-            currentComponent = "Native registry is explicit; no loader-driven descriptor-to-export resolver yet",
-            status = NativeResolverCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmNativeLibraryLoader resolves logical loadLibrary names through JvmNativeLibraryCatalog before lifecycle binding; runtime System.loadLibrary wiring remains pending",
+            status = NativeResolverCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmNativeLibraryLoaderTest",
         ),
     )
 }
