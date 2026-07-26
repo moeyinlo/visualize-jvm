@@ -104,6 +104,23 @@ class JvmJniHandleTable {
         scopedHandles.forEach(entries::remove)
     }
 
+    fun snapshotLocalReference(handle: JvmJniHandleId): JvmJniLocalReferenceSnapshot =
+        when (val handleEntry = entry(handle)) {
+            is JvmJniHandleEntry.ObjectHandle -> JvmJniLocalReferenceSnapshot.ObjectReference(handleEntry.reference)
+            is JvmJniHandleEntry.ClassHandle -> JvmJniLocalReferenceSnapshot.ClassReference(handleEntry.className)
+            is JvmJniHandleEntry.MethodIdHandle,
+            is JvmJniHandleEntry.FieldIdHandle,
+            -> throw JvmJniHandleTypeException(
+                "JNI handle ${handle.value} has kind ${handleEntry::class.simpleName}, expected local reference",
+            )
+        }
+
+    fun newLocalReference(snapshot: JvmJniLocalReferenceSnapshot): JvmJniHandleId =
+        when (snapshot) {
+            is JvmJniLocalReferenceSnapshot.ObjectReference -> newObjectHandle(snapshot.reference)
+            is JvmJniLocalReferenceSnapshot.ClassReference -> newClassHandle(snapshot.className)
+        }
+
     private fun allocate(entry: JvmJniHandleEntry, scope: JvmJniHandleScope): JvmJniHandleId {
         val handle = JvmJniHandleId(nextHandleId)
         nextHandleId += 1
@@ -146,6 +163,12 @@ enum class JvmJniReferenceType {
     Local,
     Global,
     WeakGlobal,
+}
+
+sealed interface JvmJniLocalReferenceSnapshot {
+    data class ObjectReference(val reference: JvmObjectReferenceValue) : JvmJniLocalReferenceSnapshot
+
+    data class ClassReference(val className: String) : JvmJniLocalReferenceSnapshot
 }
 
 private fun JvmJniHandleScope.toReferenceType(): JvmJniReferenceType =

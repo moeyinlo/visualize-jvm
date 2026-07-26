@@ -9883,6 +9883,30 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `PopLocalFrame rebinds non null class results into the previous local frame`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        environment.pushLocalFrame(4)
+        val resultHandle = environment.findClass("Example")
+
+        val reboundResultHandle = environment.popLocalFrame(resultHandle)
+
+        assertEquals("Example", handles.resolveClass(reboundResultHandle!!))
+        assertEquals(false, reboundResultHandle == resultHandle)
+        assertEquals(0, environment.localFrameDepth)
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveClass(resultHandle)
+        }
+    }
+
+    @Test
     fun `PopLocalFrame deletes handles allocated in the popped local frame`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
