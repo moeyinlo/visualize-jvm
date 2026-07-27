@@ -96,6 +96,13 @@ class JvmUnsafeSyntheticMemory(
         return address
     }
 
+    fun freeNativeMemory(address: Long) {
+        if (address == 0L) {
+            return
+        }
+        nativeMemoryBlocks.remove(address)
+    }
+
     fun nativeMemoryBlockSize(address: Long): Long? = nativeMemoryBlocks[address]
 
     private fun Long.alignNativeMemoryAllocation(): Long =
@@ -1494,6 +1501,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "allocateMemory0",
         descriptor = "(J)J",
+        isStatic = false,
+    )
+    private val UnsafeFreeMemory0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "freeMemory0",
+        descriptor = "(J)V",
         isStatic = false,
     )
     private val UnsafeShouldBeInitialized0Key = JvmNativeMethodKey(
@@ -3977,6 +3990,18 @@ object JvmVmIntrinsics {
         }
         JvmLongValue(context.unsafeMemory.allocateNativeMemory(bytes.value))
     }
+    private val UnsafeFreeMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.freeMemory0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.freeMemory0 expects one long address argument")
+        }
+        val address = invocation.arguments.single() as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.freeMemory0 expects one long address argument")
+        context.unsafeMemory.freeNativeMemory(address.value)
+        null
+    }
     private val UnsafeShouldBeInitialized0 = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.shouldBeInitialized0 intrinsic requires a receiver")
@@ -4172,6 +4197,7 @@ object JvmVmIntrinsics {
         UnsafeWritebackPreSync0Key to UnsafeWritebackPreSync0,
         UnsafeWritebackPostSync0Key to UnsafeWritebackPostSync0,
         UnsafeAllocateMemory0Key to UnsafeAllocateMemory0,
+        UnsafeFreeMemory0Key to UnsafeFreeMemory0,
         UnsafeShouldBeInitialized0Key to UnsafeShouldBeInitialized0,
         UnsafeEnsureClassInitialized0Key to UnsafeEnsureClassInitialized0,
         UnsafeFullFenceKey to UnsafeFullFence,

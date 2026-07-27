@@ -4389,6 +4389,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe freeMemory0 intrinsic releases synthetic native addresses`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val address = memory.allocateNativeMemory(24L)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeFreeMemory0Method())
+            ?: error("Unsafe.freeMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(address))))
+
+        assertEquals(null, result)
+        assertEquals(null, memory.nativeMemoryBlockSize(address))
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4579,6 +4601,7 @@ class JvmVmIntrinsicsTest {
             unsafeWritebackPreSync0Method(),
             unsafeWritebackPostSync0Method(),
             unsafeAllocateMemory0Method(),
+            unsafeFreeMemory0Method(),
             unsafeShouldBeInitialized0Method(),
             unsafeEnsureClassInitialized0Method(),
             unsafeFullFenceMethod(),
@@ -5676,6 +5699,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "allocateMemory0",
         descriptor = "(J)J",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeFreeMemory0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "freeMemory0",
+        descriptor = "(J)V",
         isStatic = false,
         isNative = true,
     )
