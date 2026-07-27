@@ -5577,6 +5577,7 @@ object JvmInterpreter {
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
+                hostActiveUseHandler = hostActiveUseHandler,
                 resolvedMethod = classInitializer,
                 arguments = emptyList(),
                 opcodeMnemonic = "class initialization",
@@ -6776,6 +6777,7 @@ object JvmInterpreter {
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
+                hostActiveUseHandler = hostActiveUseHandler,
                 linkedCallSite = linkedCallSite,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
@@ -7185,6 +7187,7 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        hostActiveUseHandler: JvmHostActiveUseHandler = JvmHostActiveUseHandler.None,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
@@ -7210,6 +7213,7 @@ object JvmInterpreter {
                 currentLineNumberTable = currentLineNumberTable,
             ),
             threadScheduler,
+            hostActiveUseHandler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
@@ -7249,6 +7253,7 @@ object JvmInterpreter {
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
+            hostActiveUseHandler = hostActiveUseHandler,
             resolvedMethod = linkedCallSite.targetMethod,
             opcodeMnemonic = "invokedynamic",
             loadNativeLibraryHandler = loadNativeLibraryHandler,
