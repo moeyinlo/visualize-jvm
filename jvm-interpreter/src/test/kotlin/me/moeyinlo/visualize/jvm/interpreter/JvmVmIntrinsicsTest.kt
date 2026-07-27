@@ -4617,6 +4617,42 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putInt intrinsic writes guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("FieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("FieldOffsetOwner")
+        val fieldName = heap.internString("value")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("FieldOffsetOwner", "value", "I")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "FieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "value", descriptor = "I", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val putInt = JvmVmIntrinsics.Registry.resolve(unsafePutIntMethod())
+            ?: error("Unsafe.putInt intrinsic was not registered")
+
+        val result = putInt.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(5678))))
+
+        assertEquals(null, result)
+        assertEquals(JvmIntValue(5678), heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
