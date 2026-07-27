@@ -37,7 +37,7 @@ class JvmVmThreadSet {
     }
 
     fun terminateIfNoActiveNonDaemonThreads(termination: JvmVmTerminationState): JvmVmTerminationResult? =
-        if (activeNonDaemonThreadIds().isEmpty()) {
+        termination.result ?: if (activeNonDaemonThreadIds().isEmpty()) {
             termination.terminateNormally(exitCode = 0)
         } else {
             null

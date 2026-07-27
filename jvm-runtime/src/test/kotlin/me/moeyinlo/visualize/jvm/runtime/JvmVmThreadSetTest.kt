@@ -60,6 +60,20 @@ class JvmVmThreadSetTest {
     }
 
     @Test
+    fun `VM liveness check preserves an existing termination result`() {
+        val threads = JvmVmThreadSet()
+        val termination = JvmVmTerminationState()
+        val throwable = JvmObjectReferenceValue(JvmReferenceId(7))
+        termination.terminateAbruptly(throwable)
+        threads.startThread("daemon-worker", isDaemon = true)
+
+        val result = threads.terminateIfNoActiveNonDaemonThreads(termination)
+
+        assertEquals(JvmVmTerminationResult.UncaughtGuestException(throwable), result)
+        assertEquals(result, termination.result)
+    }
+
+    @Test
     fun `finishing the last non daemon thread abruptly terminates the VM with the uncaught throwable`() {
         val threads = JvmVmThreadSet()
         val termination = JvmVmTerminationState()
