@@ -826,6 +826,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)I",
         isStatic = false,
     )
+    private val UnsafeGetBooleanKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getBoolean",
+        descriptor = "(Ljava/lang/Object;J)Z",
+        isStatic = false,
+    )
     private val UnsafePutIntVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putIntVolatile",
@@ -1690,6 +1696,23 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(context.unsafeMemory.getStaticInt(offset.value))
     }
+    private val UnsafeGetBoolean = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getBoolean intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getBoolean expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getBoolean expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getBoolean currently supports only synthetic static boolean slots",
+            )
+        }
+        jvmBoolean(context.unsafeMemory.getStaticBoolean(offset.value))
+    }
     private val UnsafePutIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putIntVolatile intrinsic requires a receiver")
@@ -2062,6 +2085,7 @@ object JvmVmIntrinsics {
         UnsafeCompareAndExchangeReferenceKey to UnsafeCompareAndExchangeReference,
         UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
         UnsafeGetIntKey to UnsafeGetInt,
+        UnsafeGetBooleanKey to UnsafeGetBoolean,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
         UnsafePutIntKey to UnsafePutInt,
         UnsafeCompareAndSetIntKey to UnsafeCompareAndSetInt,

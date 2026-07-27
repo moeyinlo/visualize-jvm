@@ -2325,6 +2325,33 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getBoolean intrinsic reads synthetic static boolean slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetBooleanMethod())
+            ?: error("Unsafe.getBoolean intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticBooleanSlots = mapOf(7L to true)),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmIntValue(1), setResult)
+        assertEquals(JvmIntValue(0), defaultResult)
+    }
+
+    @Test
     fun `Unsafe putIntVolatile intrinsic writes synthetic static int slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2857,6 +2884,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndExchangeReferenceMethod(),
             unsafeGetIntVolatileMethod(),
             unsafeGetIntMethod(),
+            unsafeGetBooleanMethod(),
             unsafePutIntVolatileMethod(),
             unsafePutIntMethod(),
             unsafeCompareAndSetIntMethod(),
@@ -3444,6 +3472,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getInt",
         descriptor = "(Ljava/lang/Object;J)I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetBooleanMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getBoolean",
+        descriptor = "(Ljava/lang/Object;J)Z",
         isStatic = false,
         isNative = true,
     )
