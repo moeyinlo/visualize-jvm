@@ -4536,6 +4536,25 @@ object JvmVmIntrinsics {
         if (replacement.value !in 0..Char.MAX_VALUE.code) {
             throw JvmUnsupportedInstructionException("Unsafe.getAndSetChar replacement is outside char range")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "C") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetChar object field offset must map to a char field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetChar object field did not contain a char-compatible int value",
+                )
+            if (current.value !in Char.MIN_VALUE.code..Char.MAX_VALUE.code) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetChar object field char value is out of range",
+                )
+            }
+            context.heap.putInstanceField(base, field, replacement)
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndSetChar currently supports only synthetic static char slots",
