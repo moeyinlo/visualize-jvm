@@ -3711,6 +3711,35 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getAndSetDouble intrinsic returns witness for synthetic static double slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetAndSetDoubleMethod())
+            ?: error("Unsafe.getAndSetDouble intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory(staticDoubleSlots = mapOf(7L to 42.0))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val existing = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmDoubleValue(43.0))),
+        )
+        val defaulted = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmDoubleValue(-3.0))),
+        )
+
+        assertEquals(JvmDoubleValue(42.0), existing)
+        assertEquals(43.0, unsafeMemory.getStaticDouble(offset = 7L))
+        assertEquals(JvmDoubleValue(0.0), defaulted)
+        assertEquals(-3.0, unsafeMemory.getStaticDouble(offset = 9L))
+    }
+    @Test
     fun `Unsafe compareAndExchangeDouble intrinsic returns witness for synthetic static double slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4312,6 +4341,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetAndSetShortMethod(),
             unsafeGetAndSetCharMethod(),
             unsafeGetAndSetFloatMethod(),
+            unsafeGetAndSetDoubleMethod(),
             unsafeCompareAndExchangeFloatMethod(),
             unsafeCompareAndExchangeDoubleMethod(),
             unsafePutLongVolatileMethod(),
@@ -5212,6 +5242,13 @@ class JvmVmIntrinsicsTest {
         isNative = true,
     )
 
+    private fun unsafeGetAndSetDoubleMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndSetDouble",
+        descriptor = "(Ljava/lang/Object;JD)D",
+        isStatic = false,
+        isNative = true,
+    )
     private fun unsafeCompareAndExchangeDoubleMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndExchangeDouble",
