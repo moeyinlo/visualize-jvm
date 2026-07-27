@@ -2349,6 +2349,14 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getLong expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "J") {
+                throw JvmUnsupportedInstructionException("Unsafe.getLong object field offset must map to a long field")
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmLongValue
+                ?: throw JvmUnsupportedInstructionException("Unsafe.getLong object field did not contain a long value")
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getLong currently supports only synthetic static long slots",
