@@ -91,6 +91,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
@@ -6462,6 +6463,7 @@ class JvmInterpreterTest {
                 ),
                 classInitializationStates = initializationStates,
                 heap = heap,
+                currentClassName = "ActiveUser",
             )
         }
 
@@ -6471,6 +6473,17 @@ class JvmInterpreterTest {
         val detailMessage = payload.detailMessage as JvmObjectReferenceValue
         val detailMessagePayload = heap.get(detailMessage).payload as JvmStringPayload
         assertEquals("Class initializer failed with java/lang/ArithmeticException", detailMessagePayload.value)
+        assertEquals(
+            listOf(
+                JvmStackTraceFrame(
+                    declaringClass = "ActiveUser",
+                    methodName = "<active-use>",
+                    fileName = null,
+                    lineNumber = null,
+                ),
+            ),
+            payload.stackTrace,
+        )
         val cause = payload.cause as JvmObjectReferenceValue
         assertEquals("java/lang/ArithmeticException", heap.get(cause).className)
         assertEquals(

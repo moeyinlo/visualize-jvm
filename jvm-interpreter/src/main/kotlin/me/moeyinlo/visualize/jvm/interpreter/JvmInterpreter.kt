@@ -79,6 +79,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmReturnAddressValue
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmShortValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
+import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
@@ -5200,6 +5201,7 @@ object JvmInterpreter {
         classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         currentThreadId: String,
         activeUseBytecodeOffset: Int = -1,
+        activeUseStackTrace: List<JvmStackTraceFrame> = emptyList(),
         threadScheduler: JvmThreadScheduler? = null,
         executeClassInitializer: ((JvmResolvedMethod) -> Unit)? = null,
     ) {
@@ -5219,6 +5221,7 @@ object JvmInterpreter {
                                 classInitializationStates = classInitializationStates,
                                 currentThreadId = currentThreadId,
                                 activeUseBytecodeOffset = activeUseBytecodeOffset,
+                                activeUseStackTrace = activeUseStackTrace,
                                 threadScheduler = threadScheduler,
                                 executeClassInitializer = executeClassInitializer,
                             )
@@ -5231,6 +5234,7 @@ object JvmInterpreter {
                                 classInitializationStates = classInitializationStates,
                                 currentThreadId = currentThreadId,
                                 activeUseBytecodeOffset = activeUseBytecodeOffset,
+                                activeUseStackTrace = activeUseStackTrace,
                                 threadScheduler = threadScheduler,
                                 executeClassInitializer = executeClassInitializer,
                             )
@@ -5249,7 +5253,11 @@ object JvmInterpreter {
                     if (exception is JvmThreadSuspendedException || exception is JvmMonitorBlockedException) {
                         throw exception
                     }
-                    val initializationFailure = exception.initializationFailureForActiveUse(classHierarchy, heap)
+                    val initializationFailure = exception.initializationFailureForActiveUse(
+                        classHierarchy = classHierarchy,
+                        heap = heap,
+                        activeUseStackTrace = activeUseStackTrace,
+                    )
                     val waitingThreadIds = classInitializationStates.failInitialization(
                         className = className,
                         threadId = currentThreadId,
@@ -5307,6 +5315,7 @@ object JvmInterpreter {
     private fun Throwable.initializationFailureForActiveUse(
         classHierarchy: JvmClassHierarchy,
         heap: JvmHeap,
+        activeUseStackTrace: List<JvmStackTraceFrame>,
     ): Throwable {
         val failureClassName = initializationErrorClassName(heap)
         if (classHierarchy.isAssignable(sourceClassName = failureClassName, targetClassName = "java/lang/Error")) {
@@ -5315,6 +5324,7 @@ object JvmInterpreter {
         val detailMessage = "Class initializer failed with $failureClassName"
         val cause = initializationCauseReference(heap)
         val wrapper = heap.allocateObject("java/lang/ExceptionInInitializerError")
+        heap.recordThrowableStackTrace(wrapper, activeUseStackTrace)
         heap.recordThrowableDetailMessage(wrapper, heap.internString(detailMessage))
         heap.recordThrowableCause(wrapper, cause)
         return JvmThrownException(
@@ -5330,6 +5340,18 @@ object JvmInterpreter {
             is JvmThrownException -> throwable
             else -> heap.allocateObject(initializationErrorClassName(heap))
         }
+
+    private fun activeUseStackTrace(currentClassName: String?): List<JvmStackTraceFrame> =
+        currentClassName?.let { className ->
+            listOf(
+                JvmStackTraceFrame(
+                    declaringClass = className,
+                    methodName = "<active-use>",
+                    fileName = null,
+                    lineNumber = null,
+                ),
+            )
+        } ?: emptyList()
 
     private fun executeGetStatic(
         instruction: DecodedInstruction,
@@ -5365,6 +5387,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
+            activeUseStackTrace(currentClassName),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -5430,6 +5453,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
+            activeUseStackTrace(currentClassName),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -5561,6 +5585,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
+            activeUseStackTrace(currentClassName),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -6835,6 +6860,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
+            activeUseStackTrace(null),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -6916,6 +6942,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
+            activeUseStackTrace(null),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -6984,6 +7011,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
+            activeUseStackTrace(null),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -8471,6 +8499,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
+            activeUseStackTrace(null),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
