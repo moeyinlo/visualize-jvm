@@ -3974,6 +3974,70 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new class initializer failures use caller source lines`() {
+        val heap = JvmHeap()
+
+        val exception = assertFailsWith<JvmThrownException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBB.toByte(),
+                    0x00.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                    ),
+                ),
+                heap = heap,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "example/Foo",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                    code = byteArrayOf(
+                                        0x04.toByte(),
+                                        0x03.toByte(),
+                                        0x6C.toByte(),
+                                        0xB1.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                currentClassName = "ActiveUser",
+                currentMethodName = "create",
+                currentSourceFile = "ActiveUser.java",
+                currentLineNumberTable = listOf(
+                    JvmLineNumberTableEntry(startPc = 0, lineNumber = 99),
+                ),
+            )
+        }
+
+        val payload = heap.get(exception.throwable).payload as JvmThrowablePayload
+        assertEquals(
+            listOf(
+                JvmStackTraceFrame(
+                    declaringClass = "ActiveUser",
+                    methodName = "create",
+                    fileName = "ActiveUser.java",
+                    lineNumber = 99,
+                ),
+            ),
+            payload.stackTrace,
+        )
+    }
+
+    @Test
     fun `invokespecial initializes an uninitialized object after constructor returns`() {
         val heap = JvmHeap()
 
