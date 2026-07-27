@@ -6766,6 +6766,47 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmIntValue(42), witness)
         assertEquals(JvmIntValue(84), heap.getInstanceField(target, field))
     }
+
+    @Test
+    fun `Unsafe getAndSetBoolean intrinsic returns witness and replaces guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("AtomicBooleanFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("AtomicBooleanFieldOffsetOwner")
+        val fieldName = heap.internString("enabled")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("AtomicBooleanFieldOffsetOwner", "enabled", "Z")
+        heap.putInstanceField(target, field, JvmIntValue(0))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "AtomicBooleanFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "enabled", descriptor = "Z", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val getAndSetBoolean = JvmVmIntrinsics.Registry.resolve(unsafeGetAndSetBooleanMethod())
+            ?: error("Unsafe.getAndSetBoolean intrinsic was not registered")
+
+        val witness = getAndSetBoolean.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(1))),
+        )
+
+        assertEquals(JvmIntValue(0), witness)
+        assertEquals(JvmIntValue(1), heap.getInstanceField(target, field))
+    }
+
     @Test
     fun `Unsafe compareAndSetBoolean intrinsic updates guest object fields through synthetic offsets`() {
         val heap = JvmHeap()
