@@ -1811,6 +1811,31 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread setScopedValueCache intrinsic validates nullable object arrays as a simulated no op`() {
+        val heap = JvmHeap()
+        val cache = heap.allocateReferenceArray("java/lang/Object", 2)
+        val notArray = heap.allocateObject("java/lang/Object")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadSetScopedValueCacheMethod())
+            ?: error("Thread.setScopedValueCache intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val cacheResult = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(cache)))
+        val nullResult = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(JvmNullValue)))
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(notArray)))
+        }
+
+        assertEquals(null, cacheResult)
+        assertEquals(null, nullResult)
+        assertEquals("Thread.setScopedValueCache expects one nullable Object[] argument", exception.message)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -1979,6 +2004,7 @@ class JvmVmIntrinsicsTest {
             threadCurrentCarrierThreadMethod(),
             threadFindScopedValueBindingsMethod(),
             threadScopedValueCacheMethod(),
+            threadSetScopedValueCacheMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2327,6 +2353,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "scopedValueCache",
         descriptor = "()[Ljava/lang/Object;",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadSetScopedValueCacheMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "setScopedValueCache",
+        descriptor = "([Ljava/lang/Object;)V",
         isStatic = true,
         isNative = true,
     )

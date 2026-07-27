@@ -533,6 +533,12 @@ object JvmVmIntrinsics {
         descriptor = "()[Ljava/lang/Object;",
         isStatic = true,
     )
+    private val ThreadSetScopedValueCacheKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "setScopedValueCache",
+        descriptor = "([Ljava/lang/Object;)V",
+        isStatic = true,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -931,6 +937,28 @@ object JvmVmIntrinsics {
         requireNoArguments("Thread.scopedValueCache", invocation)
         JvmNullValue
     }
+    private val ThreadSetScopedValueCache = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null || invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException(
+                "Thread.setScopedValueCache expects one nullable Object[] argument",
+            )
+        }
+        when (val value = invocation.arguments.single()) {
+            JvmNullValue -> Unit
+            is JvmObjectReferenceValue -> {
+                val payload = context.heap.get(value).payload
+                if (payload !is JvmReferenceArrayPayload) {
+                    throw JvmUnsupportedInstructionException(
+                        "Thread.setScopedValueCache expects one nullable Object[] argument",
+                    )
+                }
+            }
+            else -> throw JvmUnsupportedInstructionException(
+                "Thread.setScopedValueCache expects one nullable Object[] argument",
+            )
+        }
+        null
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1036,6 +1064,7 @@ object JvmVmIntrinsics {
         ThreadCurrentCarrierThreadKey to ThreadCurrentCarrierThread,
         ThreadFindScopedValueBindingsKey to ThreadFindScopedValueBindings,
         ThreadScopedValueCacheKey to ThreadScopedValueCache,
+        ThreadSetScopedValueCacheKey to ThreadSetScopedValueCache,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,
