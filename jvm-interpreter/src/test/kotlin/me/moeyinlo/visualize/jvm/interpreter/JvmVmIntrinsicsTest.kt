@@ -20,6 +20,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmThreadPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
+import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
+import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -1121,6 +1123,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `System exit intrinsic terminates the VM with the supplied status`() {
+        val terminationState = JvmVmTerminationState()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemExitMethod())
+            ?: error("System.exit intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+            terminationState = terminationState,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = listOf(JvmIntValue(23))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(JvmVmTerminationResult.Normal(23), terminationState.result)
+    }
+
+    @Test
     fun `Class initClassName intrinsic returns the guest binary name string`() {
         val heap = JvmHeap()
         val classMirror = heap.internClassMirror("pkg/Example")
@@ -1450,6 +1474,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/System",
         name = "nanoTime",
         descriptor = "()J",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemExitMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "exit",
+        descriptor = "(I)V",
         isStatic = true,
         isNative = true,
     )

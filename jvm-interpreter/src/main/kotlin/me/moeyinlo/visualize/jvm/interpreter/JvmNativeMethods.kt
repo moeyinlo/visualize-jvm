@@ -298,6 +298,12 @@ object JvmVmIntrinsics {
         descriptor = "()J",
         isStatic = true,
     )
+    private val SystemExitKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "exit",
+        descriptor = "(I)V",
+        isStatic = true,
+    )
     private val SystemMapLibraryNameKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/System",
         name = "mapLibraryName",
@@ -493,6 +499,15 @@ object JvmVmIntrinsics {
         requireNoArguments("System.nanoTime", invocation)
         JvmLongValue(context.nanoTimeProvider())
     }
+    private val SystemExit = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null || invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("System.exit expects one int status argument")
+        }
+        val status = invocation.arguments.single() as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("System.exit expects one int status argument")
+        context.terminationState.terminateNormally(status.value)
+        null
+    }
     private val SystemMapLibraryName = JvmNativeMethodIntrinsic { context, invocation ->
         val logicalName = requireStringArgument("System.mapLibraryName", context, invocation)
         context.heap.internString(java.lang.System.mapLibraryName(logicalName))
@@ -600,6 +615,7 @@ object JvmVmIntrinsics {
         SystemIdentityHashCodeKey to SystemIdentityHashCode,
         SystemCurrentTimeMillisKey to SystemCurrentTimeMillis,
         SystemNanoTimeKey to SystemNanoTime,
+        SystemExitKey to SystemExit,
         SystemMapLibraryNameKey to SystemMapLibraryName,
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
