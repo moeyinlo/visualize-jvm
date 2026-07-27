@@ -4344,6 +4344,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe writeback intrinsics are simulated cache no ops`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val writeback = JvmVmIntrinsics.Registry.resolve(unsafeWriteback0Method())
+            ?: error("Unsafe.writeback0 intrinsic was not registered")
+        val preSync = JvmVmIntrinsics.Registry.resolve(unsafeWritebackPreSync0Method())
+            ?: error("Unsafe.writebackPreSync0 intrinsic was not registered")
+        val postSync = JvmVmIntrinsics.Registry.resolve(unsafeWritebackPostSync0Method())
+            ?: error("Unsafe.writebackPostSync0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        assertEquals(null, writeback.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(0x1000L)))))
+        assertEquals(null, preSync.invoke(context, JvmNativeMethodInvocation(unsafe, emptyList())))
+        assertEquals(null, postSync.invoke(context, JvmNativeMethodInvocation(unsafe, emptyList())))
+    }
+
+    @Test
     fun `VM intrinsic registry resolves the Phase 15 native intrinsic surface`() {
         val phase15Methods = listOf(
             objectGetClassMethod(),
@@ -4466,6 +4488,9 @@ class JvmVmIntrinsicsTest {
             unsafeArrayIndexScale0Method(),
             unsafeArrayBaseOffset0Method(),
             unsafeGetLoadAverage0Method(),
+            unsafeWriteback0Method(),
+            unsafeWritebackPreSync0Method(),
+            unsafeWritebackPostSync0Method(),
             unsafeFullFenceMethod(),
             unsafeLoadFenceMethod(),
             unsafeStoreFenceMethod(),
@@ -5529,6 +5554,30 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getLoadAverage0",
         descriptor = "([DI)I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeWriteback0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "writeback0",
+        descriptor = "(J)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeWritebackPreSync0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "writebackPreSync0",
+        descriptor = "()V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeWritebackPostSync0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "writebackPostSync0",
+        descriptor = "()V",
         isStatic = false,
         isNative = true,
     )

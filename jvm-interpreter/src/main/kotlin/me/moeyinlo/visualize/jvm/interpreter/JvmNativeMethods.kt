@@ -1444,6 +1444,24 @@ object JvmVmIntrinsics {
         descriptor = "([DI)I",
         isStatic = false,
     )
+    private val UnsafeWriteback0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "writeback0",
+        descriptor = "(J)V",
+        isStatic = false,
+    )
+    private val UnsafeWritebackPreSync0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "writebackPreSync0",
+        descriptor = "()V",
+        isStatic = false,
+    )
+    private val UnsafeWritebackPostSync0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "writebackPostSync0",
+        descriptor = "()V",
+        isStatic = false,
+    )
     private val UnsafeFullFenceKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "fullFence",
@@ -3876,6 +3894,29 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(0)
     }
+    private val UnsafeWriteback0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.writeback0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1 || invocation.arguments.single() !is JvmLongValue) {
+            throw JvmUnsupportedInstructionException("Unsafe.writeback0 expects one long address argument")
+        }
+        null
+    }
+    private val UnsafeWritebackPreSync0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.writebackPreSync0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        requireNoArguments("Unsafe.writebackPreSync0", invocation)
+        null
+    }
+    private val UnsafeWritebackPostSync0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.writebackPostSync0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        requireNoArguments("Unsafe.writebackPostSync0", invocation)
+        null
+    }
     private val UnsafeFullFence = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.fullFence intrinsic requires a receiver")
@@ -4039,6 +4080,9 @@ object JvmVmIntrinsics {
         UnsafeArrayBaseOffset0Key to UnsafeArrayBaseOffset0,
         UnsafeArrayIndexScale0Key to UnsafeArrayIndexScale0,
         UnsafeGetLoadAverage0Key to UnsafeGetLoadAverage0,
+        UnsafeWriteback0Key to UnsafeWriteback0,
+        UnsafeWritebackPreSync0Key to UnsafeWritebackPreSync0,
+        UnsafeWritebackPostSync0Key to UnsafeWritebackPostSync0,
         UnsafeFullFenceKey to UnsafeFullFence,
         UnsafeLoadFenceKey to UnsafeLoadFence,
         UnsafeStoreFenceKey to UnsafeStoreFence,
