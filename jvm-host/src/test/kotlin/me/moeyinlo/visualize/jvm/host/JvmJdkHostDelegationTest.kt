@@ -165,4 +165,35 @@ class JvmJdkHostDelegationTest {
             recorder.snapshots(),
         )
     }
+
+    @Test
+    fun `host initialization boundary exposes runtime active use handler`() {
+        val recorder = JvmHostBoundaryEventRecorder()
+        val initializationStates = JvmClassInitializationStates()
+        val handler = JvmHostInitializationBoundary.asActiveUseHandler(
+            executionPolicy = JvmClassExecutionPolicy.Default,
+            boundaryEvents = recorder,
+        )
+
+        val handled = handler.handleActiveUse(
+            className = "java/lang/Integer",
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(true, handled)
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get("java/lang/Integer"))
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = "java/lang/Integer",
+                    methodName = "<clinit>",
+                    descriptor = "()V",
+                    detail = "host-delegated initialization is opaque to guest state",
+                ),
+            ),
+            recorder.snapshots(),
+        )
+    }
 }
