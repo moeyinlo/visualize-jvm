@@ -448,6 +448,12 @@ object JvmVmIntrinsics {
         descriptor = "()Z",
         isStatic = false,
     )
+    private val ClassIsInstanceKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "isInstance",
+        descriptor = "(Ljava/lang/Object;)Z",
+        isStatic = false,
+    )
     private val ClassIsAssignableFromKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "isAssignableFrom",
@@ -728,6 +734,23 @@ object JvmVmIntrinsics {
         val representedClassName = requireClassMirrorReceiver("Class.isInterface", context, invocation)
         jvmBoolean(context.classHierarchy.isInterface(representedClassName))
     }
+    private val ClassIsInstance = JvmNativeMethodIntrinsic { context, invocation ->
+        val targetClassName = requireClassMirrorReceiverWithArguments("Class.isInstance", context, invocation)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Class.isInstance expects one reference argument")
+        }
+        when (val value = invocation.arguments.single()) {
+            JvmNullValue -> JvmIntValue(0)
+            is JvmObjectReferenceValue -> {
+                val sourceClassName = context.heap.get(value).className
+                jvmBoolean(
+                    targetClassName !in PrimitiveClassNames &&
+                        context.classHierarchy.isAssignable(sourceClassName, targetClassName),
+                )
+            }
+            else -> throw JvmUnsupportedInstructionException("Class.isInstance expects one reference argument")
+        }
+    }
     private val ClassIsAssignableFrom = JvmNativeMethodIntrinsic { context, invocation ->
         val targetClassName = requireClassMirrorReceiverWithArguments("Class.isAssignableFrom", context, invocation)
         if (invocation.arguments.size != 1) {
@@ -834,6 +857,7 @@ object JvmVmIntrinsics {
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
         ClassIsInterfaceKey to ClassIsInterface,
+        ClassIsInstanceKey to ClassIsInstance,
         ClassIsAssignableFromKey to ClassIsAssignableFrom,
         ClassGetSuperclassKey to ClassGetSuperclass,
         ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
