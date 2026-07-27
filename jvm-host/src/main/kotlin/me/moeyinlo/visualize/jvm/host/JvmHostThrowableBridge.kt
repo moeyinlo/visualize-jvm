@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
+import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 
 object JvmHostThrowableBridge {
@@ -27,8 +28,8 @@ object JvmHostThrowableBridge {
                 "Guest throwable ${heapObject.className} is not assignable to host ${targetType.name}",
             )
         }
-        val throwable = throwableClass.getConstructor().newInstance()
         val payload = heapObject.payload as? JvmThrowablePayload
+        val throwable = throwableClass.newThrowable(payload?.detailMessage.toHostMessage(heap))
         if (payload != null) {
             throwable.stackTrace = payload.stackTrace.map { frame -> frame.toHostStackTraceElement() }.toTypedArray()
             val cause = toHost(payload.cause, Throwable::class.java, heap, classLoader)
@@ -61,6 +62,9 @@ object JvmHostThrowableBridge {
             reference = heap.allocateObject(throwable::class.java.toGuestThrowableClassName()),
             stackTrace = throwable.stackTrace.map { element -> element.toGuestStackTraceFrame() },
         )
+        throwable.message?.let { message ->
+            heap.recordThrowableDetailMessage(reference, heap.internString(message))
+        }
         val cause = throwable.cause
         if (cause != null) {
             heap.recordThrowableCause(
@@ -97,6 +101,30 @@ object JvmHostThrowableBridge {
 
     private fun Class<out Throwable>.toGuestThrowableClassName(): String =
         name.replace('.', '/')
+
+    private fun Class<out Throwable>.newThrowable(message: String?): Throwable =
+        if (message == null) {
+            getConstructor().newInstance()
+        } else {
+            try {
+                getConstructor(String::class.java).newInstance(message)
+            } catch (_: NoSuchMethodException) {
+                getConstructor().newInstance()
+            }
+        }
+
+    private fun JvmReferenceValue?.toHostMessage(heap: JvmHeap): String? =
+        when (this) {
+            null, JvmNullValue -> null
+            is JvmObjectReferenceValue -> {
+                val messageObject = heap.get(this)
+                val payload = messageObject.payload as? JvmStringPayload
+                    ?: throw JvmHostThrowableBridgeException(
+                        "Guest throwable detailMessage ${messageObject.className} is not a java/lang/String payload",
+                    )
+                payload.value
+            }
+        }
 
     private fun JvmStackTraceFrame.toHostStackTraceElement(): StackTraceElement =
         StackTraceElement(

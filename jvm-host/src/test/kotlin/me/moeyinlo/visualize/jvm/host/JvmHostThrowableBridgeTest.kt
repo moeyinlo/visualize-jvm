@@ -4,6 +4,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
+import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,6 +39,18 @@ class JvmHostThrowableBridgeTest {
     }
 
     @Test
+    fun `converts guest throwable detail messages to host throwable messages`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("java/lang/RuntimeException")
+        heap.recordThrowableDetailMessage(reference, heap.internString("guest message"))
+
+        val hostThrowable = JvmHostThrowableBridge.toHost(reference, Throwable::class.java, heap)
+
+        assertIs<RuntimeException>(hostThrowable)
+        assertEquals("guest message", hostThrowable.message)
+    }
+
+    @Test
     fun `converts guest throwable causes to host throwable causes`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("java/lang/RuntimeException")
@@ -62,19 +75,21 @@ class JvmHostThrowableBridgeTest {
         val reference = guestValue as JvmObjectReferenceValue
         val heapObject = heap.get(reference)
         assertEquals("java/lang/IllegalArgumentException", heapObject.className)
+        val payload = heapObject.payload as JvmThrowablePayload
         assertEquals(
-            JvmThrowablePayload(
-                listOf(
-                    JvmStackTraceFrame(
-                        declaringClass = "demo/Host",
-                        methodName = "call",
-                        fileName = "Host.java",
-                        lineNumber = 7,
-                    ),
+            listOf(
+                JvmStackTraceFrame(
+                    declaringClass = "demo/Host",
+                    methodName = "call",
+                    fileName = "Host.java",
+                    lineNumber = 7,
                 ),
             ),
-            heapObject.payload,
+            payload.stackTrace,
         )
+        val detailMessage = payload.detailMessage as JvmObjectReferenceValue
+        val detailMessagePayload = heap.get(detailMessage).payload as JvmStringPayload
+        assertEquals("bad", detailMessagePayload.value)
     }
 
     @Test
