@@ -6298,6 +6298,72 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic marks subclass erroneous when superclass initialization fails`() {
+        val initializationStates = JvmClassInitializationStates()
+        val heap = JvmHeap()
+
+        val exception = assertFailsWith<JvmThrownException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Child", "Child".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Parent",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                    code = byteArrayOf(
+                                        0x04.toByte(),
+                                        0x03.toByte(),
+                                        0x6C.toByte(),
+                                        0xB1.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(
+                            internalName = "Child",
+                            superclassName = "Parent",
+                            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                        ),
+                    ),
+                ),
+                classInitializationStates = initializationStates,
+                heap = heap,
+            )
+        }
+
+        assertEquals("java/lang/ExceptionInInitializerError", exception.guestClassName)
+        assertEquals(
+            JvmClassInitializationState.Erroneous("java/lang/ExceptionInInitializerError"),
+            initializationStates.get("Parent"),
+        )
+        assertEquals(
+            JvmClassInitializationState.Erroneous("java/lang/ExceptionInInitializerError"),
+            initializationStates.get("Child"),
+        )
+    }
+
+    @Test
     fun `getstatic wraps non Error class initializer failure as ExceptionInInitializerError`() {
         val initializationStates = JvmClassInitializationStates()
         val heap = JvmHeap()

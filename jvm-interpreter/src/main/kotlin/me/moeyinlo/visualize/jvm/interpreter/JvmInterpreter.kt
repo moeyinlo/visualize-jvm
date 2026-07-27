@@ -5204,47 +5204,47 @@ object JvmInterpreter {
         when (val state = classInitializationStates.get(className)) {
             JvmClassInitializationState.Prepared -> {
                 classInitializationStates.startInitialization(className, currentThreadId)
-                if (!classHierarchy.isInterface(className)) {
-                    classHierarchy.directSuperclassName(className)?.let { superclassName ->
-                        initializeClassForActiveUse(
-                            className = superclassName,
-                            classHierarchy = classHierarchy,
-                            heap = heap,
-                            classInitializationStates = classInitializationStates,
-                            currentThreadId = currentThreadId,
-                            executeClassInitializer = executeClassInitializer,
-                        )
-                    }
-                    classHierarchy.defaultMethodSuperinterfaceNames(className).forEach { interfaceName ->
-                        initializeClassForActiveUse(
-                            className = interfaceName,
-                            classHierarchy = classHierarchy,
-                            heap = heap,
-                            classInitializationStates = classInitializationStates,
-                            currentThreadId = currentThreadId,
-                            executeClassInitializer = executeClassInitializer,
-                        )
-                    }
-                }
-                val classInitializer = classHierarchy.classInitializationMethod(className)
-                if (classInitializer == null) {
-                    classInitializationStates.completeInitialization(className, currentThreadId)
-                } else if (executeClassInitializer != null) {
-                    try {
-                        executeClassInitializer(classInitializer)
-                    } catch (exception: Throwable) {
-                        if (exception is JvmThreadSuspendedException || exception is JvmMonitorBlockedException) {
-                            throw exception
+                try {
+                    if (!classHierarchy.isInterface(className)) {
+                        classHierarchy.directSuperclassName(className)?.let { superclassName ->
+                            initializeClassForActiveUse(
+                                className = superclassName,
+                                classHierarchy = classHierarchy,
+                                heap = heap,
+                                classInitializationStates = classInitializationStates,
+                                currentThreadId = currentThreadId,
+                                executeClassInitializer = executeClassInitializer,
+                            )
                         }
-                        val initializationFailure = exception.initializationFailureForActiveUse(classHierarchy, heap)
-                        classInitializationStates.failInitialization(
-                            className = className,
-                            threadId = currentThreadId,
-                            errorClassName = initializationFailure.initializationErrorClassName(heap),
-                        )
-                        throw initializationFailure
+                        classHierarchy.defaultMethodSuperinterfaceNames(className).forEach { interfaceName ->
+                            initializeClassForActiveUse(
+                                className = interfaceName,
+                                classHierarchy = classHierarchy,
+                                heap = heap,
+                                classInitializationStates = classInitializationStates,
+                                currentThreadId = currentThreadId,
+                                executeClassInitializer = executeClassInitializer,
+                            )
+                        }
                     }
-                    classInitializationStates.completeInitialization(className, currentThreadId)
+                    val classInitializer = classHierarchy.classInitializationMethod(className)
+                    if (classInitializer == null) {
+                        classInitializationStates.completeInitialization(className, currentThreadId)
+                    } else if (executeClassInitializer != null) {
+                        executeClassInitializer(classInitializer)
+                        classInitializationStates.completeInitialization(className, currentThreadId)
+                    }
+                } catch (exception: Throwable) {
+                    if (exception is JvmThreadSuspendedException || exception is JvmMonitorBlockedException) {
+                        throw exception
+                    }
+                    val initializationFailure = exception.initializationFailureForActiveUse(classHierarchy, heap)
+                    classInitializationStates.failInitialization(
+                        className = className,
+                        threadId = currentThreadId,
+                        errorClassName = initializationFailure.initializationErrorClassName(heap),
+                    )
+                    throw initializationFailure
                 }
             }
             JvmClassInitializationState.Initialized -> Unit
