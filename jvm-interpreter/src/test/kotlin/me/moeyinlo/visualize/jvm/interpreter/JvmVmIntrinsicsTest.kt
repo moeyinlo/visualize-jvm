@@ -1352,6 +1352,27 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getPrimitiveClass intrinsic returns primitive class mirrors`() {
+        val heap = JvmHeap()
+        val intName = heap.internString("int")
+        val voidName = heap.internString("void")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetPrimitiveClassMethod())
+            ?: error("Class.getPrimitiveClass intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val intMirror = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(intName)))
+        val voidMirror = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(voidName)))
+
+        assertEquals(heap.internClassMirror("int"), intMirror)
+        assertEquals(heap.internClassMirror("void"), voidMirror)
+    }
+
+    @Test
     fun `Class initClassName intrinsic returns the guest binary name string`() {
         val heap = JvmHeap()
         val classMirror = heap.internClassMirror("pkg/Example")
@@ -1698,6 +1719,7 @@ class JvmVmIntrinsicsTest {
             systemCurrentTimeMillisMethod(),
             systemNanoTimeMethod(),
             classRegisterNativesMethod(),
+            classGetPrimitiveClassMethod(),
             classInitClassNameMethod(),
             classIsArrayMethod(),
             classIsPrimitiveMethod(),
@@ -1909,6 +1931,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "registerNatives",
         descriptor = "()V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun classGetPrimitiveClassMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getPrimitiveClass",
+        descriptor = "(Ljava/lang/String;)Ljava/lang/Class;",
         isStatic = true,
         isNative = true,
     )

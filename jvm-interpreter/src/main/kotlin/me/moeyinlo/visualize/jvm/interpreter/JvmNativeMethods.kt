@@ -430,6 +430,12 @@ object JvmVmIntrinsics {
         descriptor = "()V",
         isStatic = true,
     )
+    private val ClassGetPrimitiveClassKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getPrimitiveClass",
+        descriptor = "(Ljava/lang/String;)Ljava/lang/Class;",
+        isStatic = true,
+    )
     private val ClassIsArrayKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "isArray",
@@ -722,6 +728,16 @@ object JvmVmIntrinsics {
         requireNoArguments("Class.registerNatives", invocation)
         null
     }
+    private val ClassGetPrimitiveClass = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Class.getPrimitiveClass expects no receiver")
+        }
+        val primitiveName = requireStringArgument("Class.getPrimitiveClass", context, invocation)
+        if (primitiveName !in PrimitiveClassNames) {
+            throw JvmUnsupportedInstructionException("Class.getPrimitiveClass expects a primitive class name")
+        }
+        context.heap.internClassMirror(primitiveName)
+    }
     private val ClassIsArray = JvmNativeMethodIntrinsic { context, invocation ->
         val representedClassName = requireClassMirrorReceiver("Class.isArray", context, invocation)
         jvmBoolean(representedClassName.startsWith("["))
@@ -854,6 +870,7 @@ object JvmVmIntrinsics {
         NativeLibrariesUnloadKey to NativeLibrariesUnload,
         ClassInitClassNameKey to ClassInitClassName,
         ClassRegisterNativesKey to ClassRegisterNatives,
+        ClassGetPrimitiveClassKey to ClassGetPrimitiveClass,
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
         ClassIsInterfaceKey to ClassIsInterface,
