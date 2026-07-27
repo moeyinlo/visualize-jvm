@@ -1402,6 +1402,61 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isAssignableFrom intrinsic compares represented guest classes`() {
+        val heap = JvmHeap()
+        val baseMirror = heap.internClassMirror("pkg/Base")
+        val childMirror = heap.internClassMirror("pkg/Child")
+        val serviceMirror = heap.internClassMirror("pkg/Service")
+        val arrayObjectMirror = heap.internClassMirror("[Ljava/lang/Object;")
+        val arrayStringMirror = heap.internClassMirror("[Ljava/lang/String;")
+        val intMirror = heap.internClassMirror("int")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsAssignableFromMethod())
+            ?: error("Class.isAssignableFrom intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(
+                        internalName = "pkg/Child",
+                        superclassName = "pkg/Base",
+                        interfaceNames = listOf("pkg/Service"),
+                    ),
+                    JvmClassDefinition(internalName = "pkg/Service", isInterface = true),
+                    JvmClassDefinition(internalName = "java/lang/String", superclassName = "java/lang/Object"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(baseMirror, listOf(childMirror))),
+        )
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(serviceMirror, listOf(childMirror))),
+        )
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(arrayObjectMirror, listOf(arrayStringMirror))),
+        )
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(intMirror, listOf(intMirror))),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(childMirror, listOf(baseMirror))),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(baseMirror, listOf(intMirror))),
+        )
+    }
+
+    @Test
     fun `Class getSuperclass intrinsic returns object for arrays and declared superclass for ordinary classes`() {
         val heap = JvmHeap()
         val arrayMirror = heap.internClassMirror("[I")
@@ -1593,6 +1648,7 @@ class JvmVmIntrinsicsTest {
             classIsArrayMethod(),
             classIsPrimitiveMethod(),
             classIsInterfaceMethod(),
+            classIsAssignableFromMethod(),
             classGetSuperclassMethod(),
             throwableFillInStackTraceMethod(),
             stringInternMethod(),
@@ -1830,6 +1886,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "isInterface",
         descriptor = "()Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classIsAssignableFromMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "isAssignableFrom",
+        descriptor = "(Ljava/lang/Class;)Z",
         isStatic = false,
         isNative = true,
     )
