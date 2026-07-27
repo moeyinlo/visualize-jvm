@@ -669,6 +669,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)J",
         isStatic = false,
     )
+    private val UnsafeCompareAndSetLongKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "compareAndSetLong",
+        descriptor = "(Ljava/lang/Object;JJJ)Z",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -1242,6 +1248,41 @@ object JvmVmIntrinsics {
         }
         JvmLongValue(context.unsafeMemory.getStaticLong(offset.value))
     }
+    private val UnsafeCompareAndSetLong = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndSetLong intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 4) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetLong expects Object, long offset, expected, and replacement arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetLong expects Object, long offset, expected, and replacement arguments",
+            )
+        val expected = invocation.arguments[2] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetLong expects Object, long offset, expected, and replacement arguments",
+            )
+        val replacement = invocation.arguments[3] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetLong expects Object, long offset, expected, and replacement arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetLong currently supports only synthetic static long slots",
+            )
+        }
+        jvmBoolean(
+            context.unsafeMemory.compareAndSetStaticLong(
+                offset = offset.value,
+                expected = expected.value,
+                replacement = replacement.value,
+            ),
+        )
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -1313,6 +1354,7 @@ object JvmVmIntrinsics {
         ThreadSleepNanos0Key to ThreadSleepNanos0,
         UnsafeRegisterNativesKey to UnsafeRegisterNatives,
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
+        UnsafeCompareAndSetLongKey to UnsafeCompareAndSetLong,
     )
 
     private const val NativeLibrariesNativeLibraryImplClassName =
