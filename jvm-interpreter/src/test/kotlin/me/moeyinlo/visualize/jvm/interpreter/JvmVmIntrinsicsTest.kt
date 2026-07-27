@@ -2548,6 +2548,36 @@ class JvmVmIntrinsicsTest {
         assertEquals(1.25f, unsafeMemory.getStaticFloat(offset = 7L))
         assertEquals(-2.5f, unsafeMemory.getStaticFloat(offset = 9L))
     }
+
+    @Test
+    fun `Unsafe putDouble intrinsic writes synthetic static double slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutDoubleMethod())
+            ?: error("Unsafe.putDouble intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val firstResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmDoubleValue(1.25))),
+        )
+        val secondResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmDoubleValue(-2.5))),
+        )
+
+        assertEquals(null, firstResult)
+        assertEquals(null, secondResult)
+        assertEquals(1.25, unsafeMemory.getStaticDouble(offset = 7L))
+        assertEquals(-2.5, unsafeMemory.getStaticDouble(offset = 9L))
+    }
     @Test
     fun `Unsafe putByte intrinsic writes synthetic static byte slots`() {
         val heap = JvmHeap()
@@ -3472,6 +3502,7 @@ class JvmVmIntrinsicsTest {
             unsafePutShortMethod(),
             unsafePutCharMethod(),
             unsafePutFloatMethod(),
+            unsafePutDoubleMethod(),
             unsafePutBooleanMethod(),
             unsafePutBooleanVolatileMethod(),
             unsafePutIntVolatileMethod(),
@@ -4128,6 +4159,15 @@ class JvmVmIntrinsicsTest {
         isStatic = false,
         isNative = true,
     )
+
+    private fun unsafePutDoubleMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putDouble",
+        descriptor = "(Ljava/lang/Object;JD)V",
+        isStatic = false,
+        isNative = true,
+    )
+
     private fun unsafePutByteMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putByte",
