@@ -2155,6 +2155,44 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe compareAndExchangeReference intrinsic returns witness for synthetic static reference slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val initial = heap.allocateObject("java/lang/Object")
+        val replacement = heap.allocateObject("java/lang/String")
+        val mismatchReplacement = heap.allocateObject("java/lang/Thread")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCompareAndExchangeReferenceMethod())
+            ?: error("Unsafe.compareAndExchangeReference intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory(staticReferenceSlots = mapOf(7L to initial))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val mismatch = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(JvmNullValue, JvmLongValue(7L), replacement, mismatchReplacement),
+            ),
+        )
+        val match = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(JvmNullValue, JvmLongValue(7L), initial, replacement),
+            ),
+        )
+
+        assertEquals(initial, mismatch)
+        assertEquals(initial, match)
+        assertEquals(replacement, unsafeMemory.getStaticReference(offset = 7L))
+    }
+
+    @Test
     fun `Unsafe compareAndSetReference intrinsic updates synthetic static reference slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2733,6 +2771,7 @@ class JvmVmIntrinsicsTest {
             unsafePutReferenceVolatileMethod(),
             unsafePutReferenceMethod(),
             unsafeCompareAndSetReferenceMethod(),
+            unsafeCompareAndExchangeReferenceMethod(),
             unsafeGetIntVolatileMethod(),
             unsafeGetIntMethod(),
             unsafePutIntVolatileMethod(),
@@ -3294,6 +3333,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetReference",
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeCompareAndExchangeReferenceMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "compareAndExchangeReference",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
         isStatic = false,
         isNative = true,
     )

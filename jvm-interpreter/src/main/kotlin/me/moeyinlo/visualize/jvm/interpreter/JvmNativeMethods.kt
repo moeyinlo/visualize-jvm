@@ -787,6 +787,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Z",
         isStatic = false,
     )
+    private val UnsafeCompareAndExchangeReferenceKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "compareAndExchangeReference",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+        isStatic = false,
+    )
     private val UnsafeGetIntVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getIntVolatile",
@@ -1572,6 +1578,39 @@ object JvmVmIntrinsics {
             ),
         )
     }
+    private val UnsafeCompareAndExchangeReference = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeReference intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 4) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeReference expects Object, long offset, expected, and replacement arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeReference expects Object, long offset, expected, and replacement arguments",
+            )
+        val expected = invocation.arguments[2] as? JvmReferenceValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeReference expects Object, long offset, expected, and replacement arguments",
+            )
+        val replacement = invocation.arguments[3] as? JvmReferenceValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeReference expects Object, long offset, expected, and replacement arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeReference currently supports only synthetic static reference slots",
+            )
+        }
+        context.unsafeMemory.compareAndExchangeStaticReference(
+            offset = offset.value,
+            expected = expected,
+            replacement = replacement,
+        )
+    }
     private val UnsafeGetIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.getIntVolatile intrinsic requires a receiver")
@@ -1934,6 +1973,7 @@ object JvmVmIntrinsics {
         UnsafeGetReferenceKey to UnsafeGetReference,
         UnsafePutReferenceKey to UnsafePutReference,
         UnsafeCompareAndSetReferenceKey to UnsafeCompareAndSetReference,
+        UnsafeCompareAndExchangeReferenceKey to UnsafeCompareAndExchangeReference,
         UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
