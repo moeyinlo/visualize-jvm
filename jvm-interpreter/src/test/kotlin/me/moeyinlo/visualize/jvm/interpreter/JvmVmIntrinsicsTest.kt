@@ -2578,6 +2578,24 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe loadFence intrinsic is a simulated no op`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeLoadFenceMethod())
+            ?: error("Unsafe.loadFence intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, emptyList()))
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2783,6 +2801,7 @@ class JvmVmIntrinsicsTest {
             unsafePutLongVolatileMethod(),
             unsafePutLongMethod(),
             unsafeFullFenceMethod(),
+            unsafeLoadFenceMethod(),
         )
 
         phase15Methods.forEach { method ->
@@ -3418,6 +3437,14 @@ class JvmVmIntrinsicsTest {
     private fun unsafeFullFenceMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "fullFence",
+        descriptor = "()V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeLoadFenceMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "loadFence",
         descriptor = "()V",
         isStatic = false,
         isNative = true,
