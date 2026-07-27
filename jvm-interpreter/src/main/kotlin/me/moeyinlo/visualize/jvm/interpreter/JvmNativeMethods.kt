@@ -2902,6 +2902,16 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.putFloatVolatile expects Object, long offset, and float value arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "F") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.putFloatVolatile object field offset must map to a float field",
+                )
+            }
+            context.heap.putInstanceField(base, field, value)
+            return@JvmNativeMethodIntrinsic null
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.putFloatVolatile currently supports only synthetic static float slots",
