@@ -5295,6 +5295,42 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putIntVolatile intrinsic writes guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("VolatileIntFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("VolatileIntFieldOffsetOwner")
+        val fieldName = heap.internString("state")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("VolatileIntFieldOffsetOwner", "state", "I")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "VolatileIntFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "state", descriptor = "I", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val putIntVolatile = JvmVmIntrinsics.Registry.resolve(unsafePutIntVolatileMethod())
+            ?: error("Unsafe.putIntVolatile intrinsic was not registered")
+
+        val result = putIntVolatile.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(88))))
+
+        assertEquals(null, result)
+        assertEquals(JvmIntValue(88), heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")

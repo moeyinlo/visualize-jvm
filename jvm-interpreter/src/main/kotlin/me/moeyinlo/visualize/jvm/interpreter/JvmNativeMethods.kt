@@ -3341,6 +3341,16 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.putIntVolatile expects Object, long offset, and int value arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "I") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.putIntVolatile object field offset must map to an int field",
+                )
+            }
+            context.heap.putInstanceField(base, field, value)
+            return@JvmNativeMethodIntrinsic null
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.putIntVolatile currently supports only synthetic static int slots",
