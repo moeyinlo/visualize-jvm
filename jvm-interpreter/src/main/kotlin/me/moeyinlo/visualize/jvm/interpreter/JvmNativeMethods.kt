@@ -448,6 +448,7 @@ data class JvmNativeMethodContext(
     val threadYieldHandler: () -> Unit = Thread::yield,
     val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
     val classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+    val ensureClassInitializedHandler: (className: String) -> Unit = {},
     val loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
         throw JvmUnsupportedInstructionException(
             "Native method context cannot load native library $logicalName",
@@ -1469,6 +1470,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "shouldBeInitialized0",
         descriptor = "(Ljava/lang/Class;)Z",
+        isStatic = false,
+    )
+    private val UnsafeEnsureClassInitialized0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "ensureClassInitialized0",
+        descriptor = "(Ljava/lang/Class;)V",
         isStatic = false,
     )
     private val UnsafeFullFenceKey = JvmNativeMethodKey(
@@ -3939,6 +3946,21 @@ object JvmVmIntrinsics {
         val shouldInitialize = context.classInitializationStates.get(className) != JvmClassInitializationState.Initialized
         jvmBoolean(shouldInitialize)
     }
+    private val UnsafeEnsureClassInitialized0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.ensureClassInitialized0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.ensureClassInitialized0 expects one Class argument")
+        }
+        val classMirror = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.ensureClassInitialized0 expects a non-null Class argument",
+            )
+        val className = requireClassMirrorReference("Unsafe.ensureClassInitialized0", context, classMirror)
+        context.ensureClassInitializedHandler(className)
+        null
+    }
     private val UnsafeFullFence = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.fullFence intrinsic requires a receiver")
@@ -4106,6 +4128,7 @@ object JvmVmIntrinsics {
         UnsafeWritebackPreSync0Key to UnsafeWritebackPreSync0,
         UnsafeWritebackPostSync0Key to UnsafeWritebackPostSync0,
         UnsafeShouldBeInitialized0Key to UnsafeShouldBeInitialized0,
+        UnsafeEnsureClassInitialized0Key to UnsafeEnsureClassInitialized0,
         UnsafeFullFenceKey to UnsafeFullFence,
         UnsafeLoadFenceKey to UnsafeLoadFence,
         UnsafeStoreFenceKey to UnsafeStoreFence,
