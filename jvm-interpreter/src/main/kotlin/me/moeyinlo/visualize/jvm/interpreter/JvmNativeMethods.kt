@@ -2626,6 +2626,24 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.getBooleanVolatile expects Object and long offset arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "Z") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getBooleanVolatile object field offset must map to a boolean field",
+                )
+            }
+            val value = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getBooleanVolatile object field did not contain a boolean-compatible int value",
+                )
+            if (value.value !in 0..1) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getBooleanVolatile object field boolean value must be 0 or 1",
+                )
+            }
+            return@JvmNativeMethodIntrinsic jvmBoolean(value.value == 1)
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getBooleanVolatile currently supports only synthetic static boolean slots",
