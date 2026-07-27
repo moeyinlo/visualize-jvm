@@ -4444,6 +4444,25 @@ object JvmVmIntrinsics {
         if (replacement.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
             throw JvmUnsupportedInstructionException("Unsafe.getAndSetByte replacement is outside byte range")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "B") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetByte object field offset must map to a byte field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetByte object field did not contain a byte-compatible int value",
+                )
+            if (current.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetByte object field byte value is out of range",
+                )
+            }
+            context.heap.putInstanceField(base, field, replacement)
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndSetByte currently supports only synthetic static byte slots",
