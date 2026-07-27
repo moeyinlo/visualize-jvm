@@ -2132,6 +2132,30 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putIntVolatile intrinsic writes synthetic static int slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutIntVolatileMethod())
+            ?: error("Unsafe.putIntVolatile intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue(42))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(42, unsafeMemory.getStaticInt(offset = 7L))
+    }
+
+    @Test
     fun `Unsafe compareAndSetLong intrinsic updates synthetic static long slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2456,6 +2480,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
             unsafeGetIntVolatileMethod(),
+            unsafePutIntVolatileMethod(),
             unsafeCompareAndSetLongMethod(),
             unsafeCompareAndExchangeLongMethod(),
             unsafePutLongVolatileMethod(),
@@ -2979,6 +3004,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getIntVolatile",
         descriptor = "(Ljava/lang/Object;J)I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutIntVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putIntVolatile",
+        descriptor = "(Ljava/lang/Object;JI)V",
         isStatic = false,
         isNative = true,
     )
