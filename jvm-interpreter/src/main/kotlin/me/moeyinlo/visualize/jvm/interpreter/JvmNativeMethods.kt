@@ -865,6 +865,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)B",
         isStatic = false,
     )
+    private val UnsafePutByteKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putByte",
+        descriptor = "(Ljava/lang/Object;JB)V",
+        isStatic = false,
+    )
     private val UnsafePutBooleanKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putBoolean",
@@ -1794,6 +1800,35 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(context.unsafeMemory.getStaticByte(offset.value).toInt())
     }
+    private val UnsafePutByte = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.putByte intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putByte expects Object, long offset, and byte value arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putByte expects Object, long offset, and byte value arguments",
+            )
+        val value = invocation.arguments[2] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putByte expects Object, long offset, and byte value arguments",
+            )
+        if (value.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
+            throw JvmUnsupportedInstructionException("Unsafe.putByte byte value is out of range")
+        }
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putByte currently supports only synthetic static byte slots",
+            )
+        }
+        context.unsafeMemory.putStaticByte(offset = offset.value, value = value.value.toByte())
+        null
+    }
     private val UnsafePutBoolean = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putBoolean intrinsic requires a receiver")
@@ -2227,6 +2262,7 @@ object JvmVmIntrinsics {
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafeGetBooleanKey to UnsafeGetBoolean,
         UnsafeGetByteKey to UnsafeGetByte,
+        UnsafePutByteKey to UnsafePutByte,
         UnsafePutBooleanKey to UnsafePutBoolean,
         UnsafePutBooleanVolatileKey to UnsafePutBooleanVolatile,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
