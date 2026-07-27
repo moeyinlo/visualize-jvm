@@ -4696,6 +4696,27 @@ object JvmVmIntrinsics {
         ) {
             throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeByte byte values are out of range")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "B") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeByte object field offset must map to a byte field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeByte object field did not contain a byte-compatible int value",
+                )
+            if (current.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeByte object field byte value is out of range",
+                )
+            }
+            if (current.value == expected.value) {
+                context.heap.putInstanceField(base, field, replacement)
+            }
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeByte currently supports only synthetic static byte slots",
