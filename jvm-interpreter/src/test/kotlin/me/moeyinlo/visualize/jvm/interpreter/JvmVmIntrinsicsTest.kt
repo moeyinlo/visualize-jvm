@@ -2132,6 +2132,31 @@ class JvmVmIntrinsicsTest {
         assertEquals(reference, result)
     }
     @Test
+    fun `Unsafe putReferenceVolatile intrinsic writes synthetic static reference slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val reference = heap.allocateObject("java/lang/Object")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutReferenceVolatileMethod())
+            ?: error("Unsafe.putReferenceVolatile intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), reference)),
+        )
+
+        assertEquals(null, result)
+        assertEquals(reference, unsafeMemory.getStaticReference(offset = 7L))
+    }
+
+    @Test
     fun `Unsafe getIntVolatile intrinsic reads synthetic static int slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2618,6 +2643,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
             unsafeGetReferenceVolatileMethod(),
+            unsafePutReferenceVolatileMethod(),
             unsafeGetIntVolatileMethod(),
             unsafeGetIntMethod(),
             unsafePutIntVolatileMethod(),
@@ -3150,6 +3176,15 @@ class JvmVmIntrinsicsTest {
         isStatic = false,
         isNative = true,
     )
+
+    private fun unsafePutReferenceVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putReferenceVolatile",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;)V",
+        isStatic = false,
+        isNative = true,
+    )
+
     private fun unsafeGetIntVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getIntVolatile",

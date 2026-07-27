@@ -751,6 +751,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)Ljava/lang/Object;",
         isStatic = false,
     )
+    private val UnsafePutReferenceVolatileKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putReferenceVolatile",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;)V",
+        isStatic = false,
+    )
     private val UnsafeGetIntVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getIntVolatile",
@@ -1428,6 +1434,32 @@ object JvmVmIntrinsics {
         }
         context.unsafeMemory.getStaticReference(offset.value)
     }
+    private val UnsafePutReferenceVolatile = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.putReferenceVolatile intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putReferenceVolatile expects Object, long offset, and reference value arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putReferenceVolatile expects Object, long offset, and reference value arguments",
+            )
+        val value = invocation.arguments[2] as? JvmReferenceValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putReferenceVolatile expects Object, long offset, and reference value arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putReferenceVolatile currently supports only synthetic static reference slots",
+            )
+        }
+        context.unsafeMemory.putStaticReference(offset = offset.value, value = value)
+        null
+    }
     private val UnsafeGetIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.getIntVolatile intrinsic requires a receiver")
@@ -1786,6 +1818,7 @@ object JvmVmIntrinsics {
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
         UnsafeGetLongKey to UnsafeGetLong,
         UnsafeGetReferenceVolatileKey to UnsafeGetReferenceVolatile,
+        UnsafePutReferenceVolatileKey to UnsafePutReferenceVolatile,
         UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
