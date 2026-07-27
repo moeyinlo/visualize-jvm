@@ -4579,6 +4579,20 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetFloat expects Object, long offset, and float replacement arguments")
         val replacement = invocation.arguments[2] as? JvmFloatValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetFloat expects Object, long offset, and float replacement arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "F") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetFloat object field offset must map to a float field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmFloatValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetFloat object field did not contain a float value",
+                )
+            context.heap.putInstanceField(base, field, replacement)
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndSetFloat currently supports only synthetic static float slots",
