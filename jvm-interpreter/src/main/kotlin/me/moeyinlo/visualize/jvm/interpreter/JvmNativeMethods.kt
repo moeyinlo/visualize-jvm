@@ -2633,6 +2633,20 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndSetReference expects Object, long offset, and replacement arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (!field.descriptor.isReferenceDescriptor()) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetReference object field offset must map to a reference field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmReferenceValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetReference object field did not contain a reference value",
+                )
+            context.heap.putInstanceField(base, field, replacement)
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndSetReference currently supports only synthetic static reference slots",
