@@ -1,6 +1,8 @@
 package me.moeyinlo.visualize.jvm.host
 
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmClassExecutionPolicy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmPrimitiveValue
@@ -12,8 +14,17 @@ object JvmHostFieldAccessor {
         field: JvmHostFieldMirror,
         heap: JvmHeap,
         identityMap: JvmHostIdentityMap = JvmHostIdentityMap(),
+        executionPolicy: JvmClassExecutionPolicy = JvmClassExecutionPolicy.Default,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+        boundaryEvents: JvmHostBoundaryEventSink = JvmHostBoundaryEventSink.None,
     ): JvmValue {
         requireStatic(field, expectedStatic = true)
+        JvmHostInitializationBoundary.recordActiveUse(
+            className = field.owner.guestInternalName,
+            executionPolicy = executionPolicy,
+            classInitializationStates = classInitializationStates,
+            boundaryEvents = boundaryEvents,
+        )
         val hostValue = try {
             field.hostField.get(null)
         } catch (exception: IllegalAccessException) {

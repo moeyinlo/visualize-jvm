@@ -82,7 +82,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "host delegated native initialization boundary",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmHostMethodInvoker records host-delegated static method active use as an opaque boundary before reflective invocation without mutating guest initialization state; interpreter host-delegation wiring and host field access remain pending",
+            currentComponent = "JvmHostMethodInvoker and JvmHostFieldAccessor.getStatic record host-delegated static method active use and static field reads as opaque boundaries before reflective access without mutating guest initialization state; interpreter host-delegation wiring and host field writes remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmJdkHostDelegationTest",
         ),

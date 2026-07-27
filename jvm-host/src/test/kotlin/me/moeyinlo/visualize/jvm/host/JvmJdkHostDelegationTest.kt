@@ -104,6 +104,8 @@ class JvmJdkHostDelegationTest {
     @Test
     fun `reads delegated JDK static fields through host bridge`() {
         val heap = JvmHeap()
+        val recorder = JvmHostBoundaryEventRecorder()
+        val initializationStates = JvmClassInitializationStates()
         val mirror = JvmIsolatedHostClassLoader().loadClassMirror("java/lang/Integer")
         val field = JvmHostFieldResolver.resolveStaticField(
             owner = mirror,
@@ -114,9 +116,25 @@ class JvmJdkHostDelegationTest {
         val result = JvmHostFieldAccessor.getStatic(
             field = field,
             heap = heap,
+            classInitializationStates = initializationStates,
+            boundaryEvents = recorder,
         )
 
         assertEquals(JvmIntValue(Int.MAX_VALUE), result)
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get("java/lang/Integer"))
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = "java/lang/Integer",
+                    methodName = "<clinit>",
+                    descriptor = "()V",
+                    detail = "host-delegated initialization is opaque to guest state",
+                ),
+            ),
+            recorder.snapshots(),
+        )
     }
 
     @Test
