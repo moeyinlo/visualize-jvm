@@ -189,6 +189,46 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetMethodID returns method IDs that survive local frame pop`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "value",
+                                descriptor = "()I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        environment.pushLocalFrame(4)
+        val classHandle = environment.findClass("Example")
+        val methodHandle = environment.getMethodId(classHandle, "value", "()I")
+
+        environment.popLocalFrame(null)
+
+        assertEquals(
+            JvmResolvedMethod(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "()I",
+                isStatic = false,
+            ),
+            handles.resolveMethodId(methodHandle),
+        )
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveClass(classHandle)
+        }
+    }
+
+    @Test
     fun `GetStaticMethodID throws guest NoSuchMethodError for missing or non static methods`() {
         val environment = JvmSimulatedJniEnvironment(
             classHierarchy = JvmClassHierarchy(

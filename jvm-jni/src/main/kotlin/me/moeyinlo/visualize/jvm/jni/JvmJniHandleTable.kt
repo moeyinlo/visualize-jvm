@@ -44,7 +44,7 @@ class JvmJniHandleTable {
     }
 
     fun newMethodIdHandle(method: JvmResolvedMethod): JvmJniHandleId =
-        allocate(JvmJniHandleEntry.MethodIdHandle(method), JvmJniHandleScope.Local)
+        allocate(JvmJniHandleEntry.MethodIdHandle(method), JvmJniHandleScope.Id)
 
     fun newFieldIdHandle(field: JvmResolvedField): JvmJniHandleId =
         allocate(JvmJniHandleEntry.FieldIdHandle(field), JvmJniHandleScope.Local)
@@ -187,6 +187,7 @@ private enum class JvmJniHandleScope {
     Local,
     Global,
     WeakGlobal,
+    Id,
 }
 
 enum class JvmJniReferenceType {
@@ -207,6 +208,7 @@ private fun JvmJniHandleScope.toReferenceType(): JvmJniReferenceType =
         JvmJniHandleScope.Local -> JvmJniReferenceType.Local
         JvmJniHandleScope.Global -> JvmJniReferenceType.Global
         JvmJniHandleScope.WeakGlobal -> JvmJniReferenceType.WeakGlobal
+        JvmJniHandleScope.Id -> JvmJniReferenceType.Invalid
     }
 
 private sealed interface JvmJniHandleEntry {
