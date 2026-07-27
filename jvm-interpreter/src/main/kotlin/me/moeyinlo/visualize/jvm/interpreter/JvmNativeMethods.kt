@@ -229,7 +229,7 @@ class JvmUnsafeSyntheticMemory(
         replacement: Float,
     ): Boolean {
         val current = getStaticFloat(offset)
-        if (current != expected) {
+        if (current.toRawBits() != expected.toRawBits()) {
             return false
         }
         staticFloatSlots[offset] = replacement
@@ -248,7 +248,7 @@ class JvmUnsafeSyntheticMemory(
         replacement: Double,
     ): Boolean {
         val current = getStaticDouble(offset)
-        if (current != expected) {
+        if (current.toRawBits() != expected.toRawBits()) {
             return false
         }
         staticDoubleSlots[offset] = replacement

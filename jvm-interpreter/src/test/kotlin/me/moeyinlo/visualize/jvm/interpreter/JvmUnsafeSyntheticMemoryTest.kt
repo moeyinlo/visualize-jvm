@@ -121,6 +121,20 @@ class JvmUnsafeSyntheticMemoryTest {
     }
 
     @Test
+    fun `synthetic static float slots compare and set uses raw bits`() {
+        val storedNaN = java.lang.Float.intBitsToFloat(0x7fc00001)
+        val otherNaN = java.lang.Float.intBitsToFloat(0x7fc00002)
+        val memory = JvmUnsafeSyntheticMemory(staticFloatSlots = mapOf(7L to storedNaN, 9L to 0.0f))
+
+        assertEquals(false, memory.compareAndSetStaticFloat(offset = 7L, expected = otherNaN, replacement = 1.0f))
+        assertEquals(storedNaN.toRawBits(), memory.getStaticFloat(offset = 7L).toRawBits())
+        assertEquals(true, memory.compareAndSetStaticFloat(offset = 7L, expected = storedNaN, replacement = 1.0f))
+        assertEquals(1.0f, memory.getStaticFloat(offset = 7L))
+        assertEquals(false, memory.compareAndSetStaticFloat(offset = 9L, expected = -0.0f, replacement = 2.0f))
+        assertEquals(0.0f.toRawBits(), memory.getStaticFloat(offset = 9L).toRawBits())
+    }
+
+    @Test
     fun `synthetic static double slots default to zero can be written and compare and set atomically`() {
         val memory = JvmUnsafeSyntheticMemory(staticDoubleSlots = mapOf(7L to 1.25))
 
@@ -130,6 +144,20 @@ class JvmUnsafeSyntheticMemoryTest {
         assertEquals(false, memory.compareAndSetStaticDouble(offset = 7L, expected = 1.25, replacement = 3.75))
         assertEquals(true, memory.compareAndSetStaticDouble(offset = 7L, expected = 2.5, replacement = 3.75))
         assertEquals(3.75, memory.getStaticDouble(offset = 7L))
+    }
+
+    @Test
+    fun `synthetic static double slots compare and set uses raw bits`() {
+        val storedNaN = java.lang.Double.longBitsToDouble(0x7ff8000000000001L)
+        val otherNaN = java.lang.Double.longBitsToDouble(0x7ff8000000000002L)
+        val memory = JvmUnsafeSyntheticMemory(staticDoubleSlots = mapOf(7L to storedNaN, 9L to 0.0))
+
+        assertEquals(false, memory.compareAndSetStaticDouble(offset = 7L, expected = otherNaN, replacement = 1.0))
+        assertEquals(storedNaN.toRawBits(), memory.getStaticDouble(offset = 7L).toRawBits())
+        assertEquals(true, memory.compareAndSetStaticDouble(offset = 7L, expected = storedNaN, replacement = 1.0))
+        assertEquals(1.0, memory.getStaticDouble(offset = 7L))
+        assertEquals(false, memory.compareAndSetStaticDouble(offset = 9L, expected = -0.0, replacement = 2.0))
+        assertEquals(0.0.toRawBits(), memory.getStaticDouble(offset = 9L).toRawBits())
     }
 
     @Test
