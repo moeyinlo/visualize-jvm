@@ -16520,6 +16520,124 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `simulated JNI static upcalls initialize interpreted target classes`() {
+        val staticFields = JvmStaticFields()
+        val initializationStates = JvmClassInitializationStates()
+        val initializedField = JvmFieldReference(
+            ownerClassName = "Helper",
+            name = "initialized",
+            descriptor = "I",
+        )
+        val helperConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Helper", "Helper".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("initialized", "initialized".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x07.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeAddInitialized", "nativeAddInitialized".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)I", "(I)I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "NativeOwner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeAddInitialized",
+                                descriptor = "(I)I",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Helper",
+                        fields = listOf(
+                            JvmFieldDefinition(name = "initialized", descriptor = "I", isStatic = true),
+                        ),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x10.toByte(),
+                                    0x28.toByte(),
+                                    0xB3.toByte(),
+                                    0x00.toByte(),
+                                    0x01.toByte(),
+                                    0xB1.toByte(),
+                                ),
+                                constantPool = helperConstantPool,
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                            JvmMethodDefinition(
+                                name = "addInitialized",
+                                descriptor = "(I)I",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0xB2.toByte(),
+                                    0x00.toByte(),
+                                    0x01.toByte(),
+                                    0x1A.toByte(),
+                                    0x60.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                constantPool = helperConstantPool,
+                                maxStack = 2,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            classInitializationStates = initializationStates,
+            nativeMethods = JvmNativeMethodRegistry.fromSimulatedJni(
+                JvmNativeMethodKey(
+                    ownerClassName = "NativeOwner",
+                    name = "nativeAddInitialized",
+                    descriptor = "(I)I",
+                    isStatic = true,
+                ) to JvmNativeMethodIntrinsic { context, invocation ->
+                    context.callStaticMethod(
+                        ownerClassName = "Helper",
+                        name = "addInitialized",
+                        descriptor = "(I)I",
+                        arguments = invocation.arguments,
+                    )
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(44)), result.operandStack.toList())
+        assertEquals(JvmIntValue(40), staticFields.get(initializedField))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Helper"))
+    }
+
+    @Test
     fun `simulated JNI bindings can upcall interpreted instance guest methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeOwner")
