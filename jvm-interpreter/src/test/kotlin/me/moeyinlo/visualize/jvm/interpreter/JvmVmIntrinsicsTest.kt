@@ -4846,6 +4846,41 @@ class JvmVmIntrinsicsTest {
 
         assertEquals(JvmIntValue(1), result)
     }
+    @Test
+    fun `Unsafe putBoolean intrinsic writes guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("BooleanFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("BooleanFieldOffsetOwner")
+        val fieldName = heap.internString("enabled")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("BooleanFieldOffsetOwner", "enabled", "Z")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "BooleanFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "enabled", descriptor = "Z", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val putBoolean = JvmVmIntrinsics.Registry.resolve(unsafePutBooleanMethod())
+            ?: error("Unsafe.putBoolean intrinsic was not registered")
+
+        val result = putBoolean.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(1))))
+
+        assertEquals(null, result)
+        assertEquals(JvmIntValue(1), heap.getInstanceField(target, field))
+    }
 
     @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
