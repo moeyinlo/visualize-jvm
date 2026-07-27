@@ -3345,6 +3345,16 @@ object JvmVmIntrinsics {
         if (value.value !in 0..1) {
             throw JvmUnsupportedInstructionException("Unsafe.putBooleanVolatile boolean value must be 0 or 1")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "Z") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.putBooleanVolatile object field offset must map to a boolean field",
+                )
+            }
+            context.heap.putInstanceField(base, field, value)
+            return@JvmNativeMethodIntrinsic null
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.putBooleanVolatile currently supports only synthetic static boolean slots",
