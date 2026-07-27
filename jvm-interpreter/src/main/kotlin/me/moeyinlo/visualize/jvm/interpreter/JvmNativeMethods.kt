@@ -5189,8 +5189,16 @@ object JvmVmIntrinsics {
                         value = value.value.toByte(),
                     )
                 }
+                is JvmDoubleArrayPayload -> {
+                    payload.setRawBytes(
+                        operation = "Unsafe.setMemory0 double array",
+                        start = start,
+                        endExclusive = endExclusive,
+                        value = value.value.toByte(),
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.setMemory0 currently supports only guest boolean, byte, char, float, int, long, or short arrays for non-null base",
+                    "Unsafe.setMemory0 currently supports only guest boolean, byte, char, double, float, int, long, or short arrays for non-null base",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -6088,6 +6096,30 @@ object JvmVmIntrinsics {
                     elementBytes = Long.SIZE_BYTES,
                     value = value,
                 )
+        }
+    }
+
+    private fun JvmDoubleArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+        value: Byte,
+    ) {
+        val byteSize = elements.size.toLong() * Double.SIZE_BYTES.toLong()
+        if (start < 0L || endExclusive < start || endExclusive > byteSize) {
+            throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
+        }
+        for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Double.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Double.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex]
+                .toRawBits()
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Double.SIZE_BYTES,
+                    value = value,
+                )
+                .let(Double.Companion::fromBits)
         }
     }
 
