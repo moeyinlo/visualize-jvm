@@ -2606,6 +2606,33 @@ class JvmVmIntrinsicsTest {
         assertEquals(127.toByte(), unsafeMemory.getStaticByte(offset = 9L))
     }
 
+
+    @Test
+    fun `Unsafe getCharVolatile intrinsic reads synthetic static char slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetCharVolatileMethod())
+            ?: error("Unsafe.getCharVolatile intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticCharSlots = mapOf(7L to '\u03A9')),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmIntValue('\u03A9'.code), setResult)
+        assertEquals(JvmIntValue(0), defaultResult)
+    }
     @Test
     fun `Unsafe putShortVolatile intrinsic writes synthetic static short slots`() {
         val heap = JvmHeap()
@@ -3258,6 +3285,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetBooleanVolatileMethod(),
             unsafeGetByteVolatileMethod(),
             unsafeGetShortVolatileMethod(),
+            unsafeGetCharVolatileMethod(),
             unsafePutByteVolatileMethod(),
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
@@ -3931,6 +3959,14 @@ class JvmVmIntrinsicsTest {
         isNative = true,
     )
 
+
+    private fun unsafeGetCharVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getCharVolatile",
+        descriptor = "(Ljava/lang/Object;J)C",
+        isStatic = false,
+        isNative = true,
+    )
     private fun unsafePutByteVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putByteVolatile",
