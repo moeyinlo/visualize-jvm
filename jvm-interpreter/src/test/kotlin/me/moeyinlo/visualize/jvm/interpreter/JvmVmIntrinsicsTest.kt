@@ -1881,6 +1881,26 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread setNativeName intrinsic validates receiver and guest string name as a simulated no op`() {
+        val heap = JvmHeap()
+        val thread = heap.internThread("worker-3")
+        val name = heap.internString("guest-worker")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadSetNativeNameMethod())
+            ?: error("Thread.setNativeName intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(thread, listOf(name)))
+
+        assertEquals(null, result)
+        assertEquals(JvmThreadPayload("worker-3"), heap.get(thread).payload)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2052,6 +2072,7 @@ class JvmVmIntrinsicsTest {
             threadSetScopedValueCacheMethod(),
             threadGetThreadsMethod(),
             threadClearInterruptEventMethod(),
+            threadSetNativeNameMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2425,6 +2446,14 @@ class JvmVmIntrinsicsTest {
         name = "clearInterruptEvent",
         descriptor = "()V",
         isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadSetNativeNameMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "setNativeName",
+        descriptor = "(Ljava/lang/String;)V",
+        isStatic = false,
         isNative = true,
     )
 
