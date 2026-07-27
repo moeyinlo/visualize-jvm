@@ -6499,6 +6499,76 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putstatic class initializer failures use caller source lines`() {
+        val heap = JvmHeap()
+
+        val exception = assertFailsWith<JvmThrownException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x04.toByte(),
+                    0xB3.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                    code = byteArrayOf(
+                                        0x04.toByte(),
+                                        0x03.toByte(),
+                                        0x6C.toByte(),
+                                        0xB1.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                heap = heap,
+                currentClassName = "ActiveUser",
+                currentMethodName = "store",
+                currentSourceFile = "ActiveUser.java",
+                currentLineNumberTable = listOf(
+                    JvmLineNumberTableEntry(startPc = 1, lineNumber = 77),
+                ),
+            )
+        }
+
+        val payload = heap.get(exception.throwable).payload as JvmThrowablePayload
+        assertEquals(
+            listOf(
+                JvmStackTraceFrame(
+                    declaringClass = "ActiveUser",
+                    methodName = "store",
+                    fileName = "ActiveUser.java",
+                    lineNumber = 77,
+                ),
+            ),
+            payload.stackTrace,
+        )
+    }
+
+    @Test
     fun `getstatic preserves Error class initializer failure without wrapping`() {
         val initializationStates = JvmClassInitializationStates()
 

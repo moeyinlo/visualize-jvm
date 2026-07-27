@@ -1706,6 +1706,8 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 currentMethodName = currentMethodName,
+                currentSourceFile = currentSourceFile,
+                currentLineNumberTable = currentLineNumberTable,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -5473,6 +5475,8 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         currentMethodName: String,
+        currentSourceFile: String? = null,
+        currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -5493,7 +5497,13 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
-            activeUseStackTrace(currentClassName, currentMethodName),
+            activeUseStackTrace(
+                currentClassName = currentClassName,
+                currentMethodName = currentMethodName,
+                activeUseBytecodeOffset = instruction.offset,
+                currentSourceFile = currentSourceFile,
+                currentLineNumberTable = currentLineNumberTable,
+            ),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
