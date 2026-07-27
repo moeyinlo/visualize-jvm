@@ -139,6 +139,19 @@ class JvmUnsafeSyntheticMemory(
         }
     }
 
+    fun copyNativeMemory(sourceAddress: Long, targetAddress: Long, bytes: Long) {
+        require(bytes >= 0L) { "native memory size must be non-negative" }
+        if (bytes == 0L) {
+            return
+        }
+        requireNativeMemoryRange(sourceAddress, bytes)
+        requireNativeMemoryRange(targetAddress, bytes)
+        val snapshot = (0L until bytes).map { offset -> nativeMemoryBytes[sourceAddress + offset] ?: 0 }
+        snapshot.forEachIndexed { index, value ->
+            nativeMemoryBytes[targetAddress + index.toLong()] = value
+        }
+    }
+
     fun nativeMemoryByte(address: Long): Byte {
         requireNativeMemoryRange(address, 1L)
         return nativeMemoryBytes[address] ?: 0
@@ -1573,6 +1586,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "setMemory0",
         descriptor = "(Ljava/lang/Object;JJB)V",
+        isStatic = false,
+    )
+    private val UnsafeCopyMemory0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "copyMemory0",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;JJ)V",
         isStatic = false,
     )
     private val UnsafeFreeMemory0Key = JvmNativeMethodKey(
@@ -4120,6 +4139,40 @@ object JvmVmIntrinsics {
         context.unsafeMemory.setNativeMemory(offset.value, bytes.value, value.value.toByte())
         null
     }
+    private val UnsafeCopyMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.copyMemory0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 5) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.copyMemory0 expects source base, source offset, target base, target offset, and byte count arguments",
+            )
+        }
+        val sourceBase = invocation.arguments[0]
+        val sourceOffset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.copyMemory0 expects source base, source offset, target base, target offset, and byte count arguments",
+            )
+        val targetBase = invocation.arguments[2]
+        val targetOffset = invocation.arguments[3] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.copyMemory0 expects source base, source offset, target base, target offset, and byte count arguments",
+            )
+        val bytes = invocation.arguments[4] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.copyMemory0 expects source base, source offset, target base, target offset, and byte count arguments",
+            )
+        if (sourceBase != JvmNullValue || targetBase != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.copyMemory0 currently supports only synthetic native memory with null bases",
+            )
+        }
+        if (bytes.value < 0L) {
+            throw JvmUnsupportedInstructionException("Unsafe.copyMemory0 byte count must be non-negative")
+        }
+        context.unsafeMemory.copyNativeMemory(sourceOffset.value, targetOffset.value, bytes.value)
+        null
+    }
     private val UnsafeFreeMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.freeMemory0 intrinsic requires a receiver")
@@ -4329,6 +4382,7 @@ object JvmVmIntrinsics {
         UnsafeAllocateMemory0Key to UnsafeAllocateMemory0,
         UnsafeReallocateMemory0Key to UnsafeReallocateMemory0,
         UnsafeSetMemory0Key to UnsafeSetMemory0,
+        UnsafeCopyMemory0Key to UnsafeCopyMemory0,
         UnsafeFreeMemory0Key to UnsafeFreeMemory0,
         UnsafeShouldBeInitialized0Key to UnsafeShouldBeInitialized0,
         UnsafeEnsureClassInitialized0Key to UnsafeEnsureClassInitialized0,
