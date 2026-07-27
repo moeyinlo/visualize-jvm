@@ -1687,6 +1687,25 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread registerNatives intrinsic is a simulated no op`() {
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadRegisterNativesMethod())
+            ?: error("Thread.registerNatives intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun `Thread currentThread intrinsic returns the current guest thread mirror`() {
         val heap = JvmHeap()
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadCurrentThreadMethod())
@@ -1802,6 +1821,7 @@ class JvmVmIntrinsicsTest {
             classDesiredAssertionStatus0Method(),
             throwableFillInStackTraceMethod(),
             stringInternMethod(),
+            threadRegisterNativesMethod(),
             threadCurrentThreadMethod(),
             threadSleepMillisMethod(),
             threadSleepMillisNanosMethod(),
@@ -2101,6 +2121,14 @@ class JvmVmIntrinsicsTest {
         name = "intern",
         descriptor = "()Ljava/lang/String;",
         isStatic = false,
+        isNative = true,
+    )
+
+    private fun threadRegisterNativesMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "registerNatives",
+        descriptor = "()V",
+        isStatic = true,
         isNative = true,
     )
 
