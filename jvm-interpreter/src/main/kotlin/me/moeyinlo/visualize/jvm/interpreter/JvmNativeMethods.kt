@@ -859,6 +859,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Class;)I",
         isStatic = false,
     )
+    private val UnsafeArrayIndexScale0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "arrayIndexScale0",
+        descriptor = "(Ljava/lang/Class;)I",
+        isStatic = false,
+    )
     private val UnsafeFullFenceKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "fullFence",
@@ -1922,6 +1928,18 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(UnsafeSyntheticArrayBaseOffset)
     }
+    private val UnsafeArrayIndexScale0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.arrayIndexScale0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.arrayIndexScale0 expects one Class argument")
+        }
+        val arrayClass = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.arrayIndexScale0 expects a non-null Class argument")
+        val arrayClassName = requireClassMirrorReference("Unsafe.arrayIndexScale0", context, arrayClass)
+        JvmIntValue(arrayClassName.unsafeSyntheticArrayIndexScale())
+    }
     private val UnsafeFullFence = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.fullFence intrinsic requires a receiver")
@@ -2032,6 +2050,7 @@ object JvmVmIntrinsics {
         UnsafeCompareAndSetLongKey to UnsafeCompareAndSetLong,
         UnsafeCompareAndExchangeLongKey to UnsafeCompareAndExchangeLong,
         UnsafeArrayBaseOffset0Key to UnsafeArrayBaseOffset0,
+        UnsafeArrayIndexScale0Key to UnsafeArrayIndexScale0,
         UnsafeFullFenceKey to UnsafeFullFence,
         UnsafeLoadFenceKey to UnsafeLoadFence,
         UnsafeStoreFenceKey to UnsafeStoreFence,
@@ -2249,6 +2268,22 @@ object JvmVmIntrinsics {
 
     private fun String.toBinaryClassName(): String =
         replace('/', '.')
+
+    private fun String.unsafeSyntheticArrayIndexScale(): Int {
+        if (!startsWith("[")) {
+            throw JvmUnsupportedInstructionException("Unsafe.arrayIndexScale0 expects an array Class mirror")
+        }
+        return when (this[1]) {
+            'Z', 'B' -> 1
+            'C', 'S' -> 2
+            'I', 'F' -> 4
+            'J', 'D' -> 8
+            '[', 'L' -> 4
+            else -> throw JvmUnsupportedInstructionException(
+                "Unsafe.arrayIndexScale0 cannot compute a scale for array class $this",
+            )
+        }
+    }
 
     private fun validateWaitArguments(arguments: List<JvmValue>) {
         when (arguments.size) {

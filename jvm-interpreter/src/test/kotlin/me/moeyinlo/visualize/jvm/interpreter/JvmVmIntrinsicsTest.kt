@@ -2560,6 +2560,31 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe arrayIndexScale0 intrinsic returns synthetic array element scales`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val byteArrayClass = heap.internClassMirror("[B")
+        val charArrayClass = heap.internClassMirror("[C")
+        val intArrayClass = heap.internClassMirror("[I")
+        val longArrayClass = heap.internClassMirror("[J")
+        val referenceArrayClass = heap.internClassMirror("[Ljava/lang/Object;")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeArrayIndexScale0Method())
+            ?: error("Unsafe.arrayIndexScale0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        assertEquals(JvmIntValue(1), intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(byteArrayClass))))
+        assertEquals(JvmIntValue(2), intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(charArrayClass))))
+        assertEquals(JvmIntValue(4), intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(intArrayClass))))
+        assertEquals(JvmIntValue(8), intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(longArrayClass))))
+        assertEquals(JvmIntValue(4), intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(referenceArrayClass))))
+    }
+
+    @Test
     fun `Unsafe arrayBaseOffset0 intrinsic returns synthetic array base offset`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2840,6 +2865,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndExchangeLongMethod(),
             unsafePutLongVolatileMethod(),
             unsafePutLongMethod(),
+            unsafeArrayIndexScale0Method(),
             unsafeArrayBaseOffset0Method(),
             unsafeFullFenceMethod(),
             unsafeLoadFenceMethod(),
@@ -3472,6 +3498,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putLongVolatile",
         descriptor = "(Ljava/lang/Object;JJ)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeArrayIndexScale0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "arrayIndexScale0",
+        descriptor = "(Ljava/lang/Class;)I",
         isStatic = false,
         isNative = true,
     )
