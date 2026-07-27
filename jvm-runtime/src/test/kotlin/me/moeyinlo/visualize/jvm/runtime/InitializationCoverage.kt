@@ -47,7 +47,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, successful and failed terminal outcomes release and resume scheduler-tracked waiters, and resumed waiters can retry active use after successful or failed owner completion; duplicate superinterface ordering edge cases remain pending",
+            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, including duplicate shared-superinterface ordering through the runtime hierarchy enumeration; successful and failed terminal outcomes release and resume scheduler-tracked waiters, and resumed waiters can retry active use after successful or failed owner completion",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
@@ -61,7 +61,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "superclass and superinterface initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "Modeled classes initialize their direct superclass and recursive superinterfaces that declare default methods before executing the target class initializer; duplicate superinterface ordering edge cases remain pending",
+            currentComponent = "Modeled classes initialize their direct superclass and recursive superinterfaces that declare default methods before executing the target class initializer; runtime hierarchy enumeration visits duplicate shared default-method superinterface ancestors once before child interfaces",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
