@@ -5950,6 +5950,113 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic initializes direct superclass before target class initializer`() {
+        val initializationStates = JvmClassInitializationStates()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Child", "Child".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Observer",
+                        fields = listOf(JvmFieldDefinition(name = "value", descriptor = "I", isStatic = true)),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Parent",
+                        fields = emptyList(),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x06.toByte(),
+                                    0xB3.toByte(),
+                                    0x00.toByte(),
+                                    0x01.toByte(),
+                                    0xB1.toByte(),
+                                ),
+                                constantPool = ConstantPool.fromEntries(
+                                    listOf(
+                                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                        ConstantClassEntry(ConstantPoolIndex(3)),
+                                        ConstantUtf8Entry("Observer", "Observer".encodeToByteArray()),
+                                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                                    ),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Child",
+                        superclassName = "Parent",
+                        fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0xB2.toByte(),
+                                    0x00.toByte(),
+                                    0x07.toByte(),
+                                    0x04.toByte(),
+                                    0x60.toByte(),
+                                    0xB3.toByte(),
+                                    0x00.toByte(),
+                                    0x01.toByte(),
+                                    0xB1.toByte(),
+                                ),
+                                constantPool = ConstantPool.fromEntries(
+                                    listOf(
+                                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                        ConstantClassEntry(ConstantPoolIndex(3)),
+                                        ConstantUtf8Entry("Child", "Child".encodeToByteArray()),
+                                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                                        ConstantFieldRefEntry(ConstantPoolIndex(8), ConstantPoolIndex(10)),
+                                        ConstantClassEntry(ConstantPoolIndex(9)),
+                                        ConstantUtf8Entry("Observer", "Observer".encodeToByteArray()),
+                                        ConstantNameAndTypeEntry(ConstantPoolIndex(11), ConstantPoolIndex(6)),
+                                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                                    ),
+                                ),
+                                maxStack = 2,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(listOf(JvmIntValue(4)), result.operandStack.toList())
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Parent"))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Child"))
+    }
+
+    @Test
     fun `getstatic wraps non Error class initializer failure as ExceptionInInitializerError`() {
         val initializationStates = JvmClassInitializationStates()
         val heap = JvmHeap()

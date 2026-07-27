@@ -5204,6 +5204,18 @@ object JvmInterpreter {
         when (val state = classInitializationStates.get(className)) {
             JvmClassInitializationState.Prepared -> {
                 classInitializationStates.startInitialization(className, currentThreadId)
+                if (!classHierarchy.isInterface(className)) {
+                    classHierarchy.directSuperclassName(className)?.let { superclassName ->
+                        initializeClassForActiveUse(
+                            className = superclassName,
+                            classHierarchy = classHierarchy,
+                            heap = heap,
+                            classInitializationStates = classInitializationStates,
+                            currentThreadId = currentThreadId,
+                            executeClassInitializer = executeClassInitializer,
+                        )
+                    }
+                }
                 val classInitializer = classHierarchy.classInitializationMethod(className)
                 if (classInitializer == null) {
                     classInitializationStates.completeInitialization(className, currentThreadId)
