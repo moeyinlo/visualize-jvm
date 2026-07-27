@@ -109,6 +109,18 @@ class JvmClassHierarchy(
     fun directSuperclassName(internalName: String): String? =
         classesByName[internalName]?.superclassName
 
+    fun directSuperinterfaceNames(internalName: String): List<String> =
+        classesByName[internalName]?.interfaceNames.orEmpty()
+
+    fun declaresDefaultMethod(internalName: String): Boolean =
+        classesByName[internalName]?.let { classDefinition ->
+            classDefinition.isInterface &&
+                classDefinition.methods.any { method ->
+                    !method.isStatic && !method.isPrivate && !method.isAbstract &&
+                        method.name != "<init>" && method.name != "<clinit>"
+                }
+        } == true
+
     fun isInterface(internalName: String): Boolean =
         classesByName[internalName]?.isInterface == true
 
