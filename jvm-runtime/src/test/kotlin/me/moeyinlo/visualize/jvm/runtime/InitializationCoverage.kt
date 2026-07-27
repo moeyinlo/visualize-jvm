@@ -47,7 +47,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion is covered for modeled classes, while default-method superinterface ordering, waiting, and remaining error transitions remain pending",
+            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and direct default-method superinterface initialization are covered for modeled classes, while recursive superinterface ordering, waiting, and remaining error transitions remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
@@ -61,7 +61,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "superclass and superinterface initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "Modeled classes initialize their direct superclass before executing the target class initializer; default-method superinterface initialization ordering remains pending",
+            currentComponent = "Modeled classes initialize their direct superclass and direct superinterfaces that declare default methods before executing the target class initializer; recursive superinterface ordering remains pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
