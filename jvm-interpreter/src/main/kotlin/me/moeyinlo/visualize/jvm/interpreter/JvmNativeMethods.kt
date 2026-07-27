@@ -545,6 +545,12 @@ object JvmVmIntrinsics {
         descriptor = "()[Ljava/lang/Thread;",
         isStatic = true,
     )
+    private val ThreadClearInterruptEventKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "clearInterruptEvent",
+        descriptor = "()V",
+        isStatic = true,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -975,6 +981,13 @@ object JvmVmIntrinsics {
         payload.elements[0] = context.heap.internThread(context.currentThreadId)
         threads
     }
+    private val ThreadClearInterruptEvent = JvmNativeMethodIntrinsic { _, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Thread.clearInterruptEvent expects no receiver")
+        }
+        requireNoArguments("Thread.clearInterruptEvent", invocation)
+        null
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1082,6 +1095,7 @@ object JvmVmIntrinsics {
         ThreadScopedValueCacheKey to ThreadScopedValueCache,
         ThreadSetScopedValueCacheKey to ThreadSetScopedValueCache,
         ThreadGetThreadsKey to ThreadGetThreads,
+        ThreadClearInterruptEventKey to ThreadClearInterruptEvent,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,

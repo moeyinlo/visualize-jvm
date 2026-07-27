@@ -1862,6 +1862,25 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread clearInterruptEvent intrinsic is a simulated no op`() {
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadClearInterruptEventMethod())
+            ?: error("Thread.clearInterruptEvent intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2032,6 +2051,7 @@ class JvmVmIntrinsicsTest {
             threadScopedValueCacheMethod(),
             threadSetScopedValueCacheMethod(),
             threadGetThreadsMethod(),
+            threadClearInterruptEventMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2396,6 +2416,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "getThreads",
         descriptor = "()[Ljava/lang/Thread;",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadClearInterruptEventMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "clearInterruptEvent",
+        descriptor = "()V",
         isStatic = true,
         isNative = true,
     )
