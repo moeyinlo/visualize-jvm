@@ -1081,6 +1081,35 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `System stream setter intrinsics update the guest static stream fields`() {
+        val heap = JvmHeap()
+        val input = heap.allocateObject("java/io/InputStream")
+        val output = heap.allocateObject("java/io/PrintStream")
+        val error = heap.allocateObject("java/io/PrintStream")
+        val staticFields = JvmStaticFields()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = staticFields,
+            currentClassName = "java/lang/System",
+        )
+        val setIn = JvmVmIntrinsics.Registry.resolve(systemSetIn0Method())
+            ?: error("System.setIn0 intrinsic was not registered")
+        val setOut = JvmVmIntrinsics.Registry.resolve(systemSetOut0Method())
+            ?: error("System.setOut0 intrinsic was not registered")
+        val setErr = JvmVmIntrinsics.Registry.resolve(systemSetErr0Method())
+            ?: error("System.setErr0 intrinsic was not registered")
+
+        assertEquals(null, setIn.invoke(context, JvmNativeMethodInvocation(null, listOf(input))))
+        assertEquals(null, setOut.invoke(context, JvmNativeMethodInvocation(null, listOf(output))))
+        assertEquals(null, setErr.invoke(context, JvmNativeMethodInvocation(null, listOf(error))))
+
+        assertEquals(input, staticFields.get(JvmFieldReference("java/lang/System", "in", "Ljava/io/InputStream;")))
+        assertEquals(output, staticFields.get(JvmFieldReference("java/lang/System", "out", "Ljava/io/PrintStream;")))
+        assertEquals(error, staticFields.get(JvmFieldReference("java/lang/System", "err", "Ljava/io/PrintStream;")))
+    }
+
+    @Test
     fun `System currentTimeMillis intrinsic returns the context wall clock value`() {
         val heap = JvmHeap()
         val intrinsic = JvmVmIntrinsics.Registry.resolve(systemCurrentTimeMillisMethod())
@@ -1515,6 +1544,9 @@ class JvmVmIntrinsicsTest {
             objectNotifyAllMethod(),
             systemArraycopyMethod(),
             systemIdentityHashCodeMethod(),
+            systemSetIn0Method(),
+            systemSetOut0Method(),
+            systemSetErr0Method(),
             systemCurrentTimeMillisMethod(),
             systemNanoTimeMethod(),
             classInitClassNameMethod(),
@@ -1598,6 +1630,30 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/System",
         name = "identityHashCode",
         descriptor = "(Ljava/lang/Object;)I",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemSetIn0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "setIn0",
+        descriptor = "(Ljava/io/InputStream;)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemSetOut0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "setOut0",
+        descriptor = "(Ljava/io/PrintStream;)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemSetErr0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "setErr0",
+        descriptor = "(Ljava/io/PrintStream;)V",
         isStatic = true,
         isNative = true,
     )

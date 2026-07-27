@@ -14,6 +14,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
@@ -291,6 +292,24 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;)I",
         isStatic = true,
     )
+    private val SystemSetIn0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "setIn0",
+        descriptor = "(Ljava/io/InputStream;)V",
+        isStatic = true,
+    )
+    private val SystemSetOut0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "setOut0",
+        descriptor = "(Ljava/io/PrintStream;)V",
+        isStatic = true,
+    )
+    private val SystemSetErr0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "setErr0",
+        descriptor = "(Ljava/io/PrintStream;)V",
+        isStatic = true,
+    )
     private val SystemCurrentTimeMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/System",
         name = "currentTimeMillis",
@@ -544,6 +563,18 @@ object JvmVmIntrinsics {
             )
         }
     }
+    private val SystemSetIn0 = systemStreamSetter(
+        name = "System.setIn0",
+        field = JvmFieldReference("java/lang/System", "in", "Ljava/io/InputStream;"),
+    )
+    private val SystemSetOut0 = systemStreamSetter(
+        name = "System.setOut0",
+        field = JvmFieldReference("java/lang/System", "out", "Ljava/io/PrintStream;"),
+    )
+    private val SystemSetErr0 = systemStreamSetter(
+        name = "System.setErr0",
+        field = JvmFieldReference("java/lang/System", "err", "Ljava/io/PrintStream;"),
+    )
     private val SystemCurrentTimeMillis = JvmNativeMethodIntrinsic { context, invocation ->
         requireNoArguments("System.currentTimeMillis", invocation)
         JvmLongValue(context.currentTimeMillisProvider())
@@ -730,6 +761,9 @@ object JvmVmIntrinsics {
         ObjectNotifyAllKey to ObjectNotifyAll,
         SystemArraycopyKey to SystemArraycopy,
         SystemIdentityHashCodeKey to SystemIdentityHashCode,
+        SystemSetIn0Key to SystemSetIn0,
+        SystemSetOut0Key to SystemSetOut0,
+        SystemSetErr0Key to SystemSetErr0,
         SystemCurrentTimeMillisKey to SystemCurrentTimeMillis,
         SystemNanoTimeKey to SystemNanoTime,
         SystemExitKey to SystemExit,
@@ -779,6 +813,20 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("$name expects no arguments")
         }
     }
+
+    private fun systemStreamSetter(name: String, field: JvmFieldReference): JvmNativeMethodIntrinsic =
+        JvmNativeMethodIntrinsic { context, invocation ->
+            if (invocation.receiver != null || invocation.arguments.size != 1) {
+                throw JvmUnsupportedInstructionException("$name expects one reference argument")
+            }
+            val value = invocation.arguments.single() as? JvmReferenceValue
+                ?: throw JvmUnsupportedInstructionException("$name expects one reference argument")
+            if (value is JvmObjectReferenceValue) {
+                context.heap.get(value)
+            }
+            context.staticFields.put(field, value)
+            null
+        }
 
     private fun requireClassMirrorReceiver(
         name: String,
