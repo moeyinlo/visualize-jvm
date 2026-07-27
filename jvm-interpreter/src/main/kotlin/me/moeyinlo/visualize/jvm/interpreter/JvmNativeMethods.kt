@@ -898,6 +898,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)B",
         isStatic = false,
     )
+    private val UnsafeGetShortKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getShort",
+        descriptor = "(Ljava/lang/Object;J)S",
+        isStatic = false,
+    )
     private val UnsafePutByteKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putByte",
@@ -1881,6 +1887,23 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(context.unsafeMemory.getStaticByte(offset.value).toInt())
     }
+    private val UnsafeGetShort = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getShort intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getShort expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getShort expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getShort currently supports only synthetic static short slots",
+            )
+        }
+        JvmIntValue(context.unsafeMemory.getStaticShort(offset.value).toInt())
+    }
     private val UnsafePutByte = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putByte intrinsic requires a receiver")
@@ -2345,6 +2368,7 @@ object JvmVmIntrinsics {
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafeGetBooleanKey to UnsafeGetBoolean,
         UnsafeGetByteKey to UnsafeGetByte,
+        UnsafeGetShortKey to UnsafeGetShort,
         UnsafePutByteKey to UnsafePutByte,
         UnsafePutBooleanKey to UnsafePutBoolean,
         UnsafePutBooleanVolatileKey to UnsafePutBooleanVolatile,

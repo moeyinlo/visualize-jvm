@@ -2379,6 +2379,33 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getShort intrinsic reads synthetic static short slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetShortMethod())
+            ?: error("Unsafe.getShort intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticShortSlots = mapOf(7L to (-2).toShort())),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmIntValue(-2), setResult)
+        assertEquals(JvmIntValue(0), defaultResult)
+    }
+
+    @Test
     fun `Unsafe putByte intrinsic writes synthetic static byte slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -3090,6 +3117,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
             unsafeGetByteMethod(),
+            unsafeGetShortMethod(),
             unsafePutByteMethod(),
             unsafePutBooleanMethod(),
             unsafePutBooleanVolatileMethod(),
@@ -3696,6 +3724,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getByte",
         descriptor = "(Ljava/lang/Object;J)B",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetShortMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getShort",
+        descriptor = "(Ljava/lang/Object;J)S",
         isStatic = false,
         isNative = true,
     )
