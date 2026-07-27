@@ -5188,6 +5188,23 @@ object JvmVmIntrinsics {
             }
             return@JvmNativeMethodIntrinsic null
         }
+        if (sourceBase is JvmObjectReferenceValue && targetBase == JvmNullValue) {
+            val sourcePayload = context.heap.get(sourceBase).payload as? JvmByteArrayPayload
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.copyMemory0 currently supports only guest byte arrays for non-null bases",
+                )
+            val sourceStart = sourceOffset.value - UnsafeSyntheticArrayBaseOffset
+            val sourceEndExclusive = sourceStart + bytes.value
+            if (sourceStart < 0L || sourceEndExclusive < sourceStart || sourceEndExclusive > sourcePayload.elements.size) {
+                throw JvmUnsupportedInstructionException("Unsafe.copyMemory0 byte array range is outside array bounds")
+            }
+            val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
+                .map { index -> sourcePayload.elements[index] }
+            snapshot.forEachIndexed { index, byte ->
+                context.unsafeMemory.setNativeMemory(targetOffset.value + index.toLong(), 1L, byte)
+            }
+            return@JvmNativeMethodIntrinsic null
+        }
         if (sourceBase is JvmObjectReferenceValue || targetBase is JvmObjectReferenceValue) {
             if (sourceBase !is JvmObjectReferenceValue || targetBase !is JvmObjectReferenceValue) {
                 throw JvmUnsupportedInstructionException(
