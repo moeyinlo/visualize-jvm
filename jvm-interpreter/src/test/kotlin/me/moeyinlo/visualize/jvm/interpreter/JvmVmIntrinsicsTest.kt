@@ -4881,6 +4881,44 @@ class JvmVmIntrinsicsTest {
         assertEquals(null, result)
         assertEquals(JvmIntValue(1), heap.getInstanceField(target, field))
     }
+    @Test
+    fun `Unsafe getByte intrinsic reads guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("ByteFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("ByteFieldOffsetOwner")
+        val fieldName = heap.internString("tag")
+        val memory = JvmUnsafeSyntheticMemory()
+        heap.putInstanceField(
+            target,
+            JvmFieldReference("ByteFieldOffsetOwner", "tag", "B"),
+            JvmIntValue(-12),
+        )
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "ByteFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "tag", descriptor = "B", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val getByte = JvmVmIntrinsics.Registry.resolve(unsafeGetByteMethod())
+            ?: error("Unsafe.getByte intrinsic was not registered")
+
+        val result = getByte.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset)))
+
+        assertEquals(JvmIntValue(-12), result)
+    }
 
     @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
