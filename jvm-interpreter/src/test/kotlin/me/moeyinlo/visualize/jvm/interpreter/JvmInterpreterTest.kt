@@ -23806,6 +23806,93 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached get static field target failures use caller source lines`() {
+        val heap = JvmHeap()
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                    referenceIndex = 1,
+                ),
+                target = JvmMethodHandleTarget.Field(
+                    JvmResolvedField(
+                        ownerClassName = "pkg/Targets",
+                        name = "answer",
+                        descriptor = "I",
+                        isStatic = true,
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmThrownException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicIntCallSiteConstantPool(),
+                heap = heap,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Targets",
+                            fields = listOf(JvmFieldDefinition(name = "answer", descriptor = "I", isStatic = true)),
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                    code = byteArrayOf(
+                                        0x04.toByte(),
+                                        0x03.toByte(),
+                                        0x6C.toByte(),
+                                        0xB1.toByte(),
+                                    ),
+                                    maxStack = 2,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+                currentMethodName = "bootstrapCached",
+                currentSourceFile = "Caller.java",
+                currentLineNumberTable = listOf(
+                    JvmLineNumberTableEntry(startPc = 0, lineNumber = 123),
+                ),
+                invokeDynamicCallSites = callSites,
+            )
+        }
+
+        val payload = heap.get(exception.throwable).payload as JvmThrowablePayload
+        assertEquals(
+            listOf(
+                JvmStackTraceFrame(
+                    declaringClass = "pkg/Caller",
+                    methodName = "bootstrapCached",
+                    fileName = "Caller.java",
+                    lineNumber = 123,
+                ),
+            ),
+            payload.stackTrace,
+        )
+    }
+
+    @Test
     fun `invokedynamic executes cached get field target`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Targets")
