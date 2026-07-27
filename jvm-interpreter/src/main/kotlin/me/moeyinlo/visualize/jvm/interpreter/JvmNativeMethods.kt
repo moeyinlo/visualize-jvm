@@ -1017,6 +1017,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Class;)Ljava/lang/Object;",
         isStatic = false,
     )
+    private val UnsafeThrowExceptionKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "throwException",
+        descriptor = "(Ljava/lang/Throwable;)V",
+        isStatic = false,
+    )
     private val UnsafeGetLongVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getLongVolatile",
@@ -2009,6 +2015,22 @@ object JvmVmIntrinsics {
             )
         }
         context.heap.allocateObject(className)
+    }
+    private val UnsafeThrowException = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.throwException intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.throwException expects one Throwable argument")
+        }
+        val throwable = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.throwException expects a non-null Throwable argument")
+        val throwableClassName = context.heap.get(throwable).className
+        throw JvmThrownException(
+            throwable = throwable,
+            guestClassName = throwableClassName,
+            message = "Unsafe.throwException threw guest $throwableClassName",
+        )
     }
     private val UnsafeGetLongVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -3870,6 +3892,7 @@ object JvmVmIntrinsics {
         ThreadSleepNanos0Key to ThreadSleepNanos0,
         UnsafeRegisterNativesKey to UnsafeRegisterNatives,
         UnsafeAllocateInstanceKey to UnsafeAllocateInstance,
+        UnsafeThrowExceptionKey to UnsafeThrowException,
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
         UnsafeGetLongKey to UnsafeGetLong,
         UnsafeGetReferenceVolatileKey to UnsafeGetReferenceVolatile,

@@ -4249,6 +4249,27 @@ class JvmVmIntrinsicsTest {
         assertEquals("Example", heap.get(result).className)
     }
     @Test
+    fun `Unsafe throwException intrinsic throws the supplied guest throwable`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val throwable = heap.allocateObject("java/lang/IllegalStateException")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeThrowExceptionMethod())
+            ?: error("Unsafe.throwException intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        val thrown = assertFailsWith<JvmThrownException> {
+            intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(throwable)))
+        }
+
+        assertEquals(throwable, thrown.throwable)
+        assertEquals("java/lang/IllegalStateException", thrown.guestClassName)
+    }
+    @Test
     fun `VM intrinsic registry resolves the Phase 15 native intrinsic surface`() {
         val phase15Methods = listOf(
             objectGetClassMethod(),
@@ -4303,6 +4324,7 @@ class JvmVmIntrinsicsTest {
             threadSleepNanos0Method(),
             unsafeRegisterNativesMethod(),
             unsafeAllocateInstanceMethod(),
+            unsafeThrowExceptionMethod(),
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
             unsafeGetReferenceVolatileMethod(),
@@ -4864,6 +4886,13 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "allocateInstance",
         descriptor = "(Ljava/lang/Class;)Ljava/lang/Object;",
+        isStatic = false,
+        isNative = true,
+    )
+    private fun unsafeThrowExceptionMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "throwException",
+        descriptor = "(Ljava/lang/Throwable;)V",
         isStatic = false,
         isNative = true,
     )
