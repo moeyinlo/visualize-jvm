@@ -59,9 +59,11 @@ data class JvmNativeMethodInvocation(
 class JvmUnsafeSyntheticMemory(
     staticLongSlots: Map<Long, Long> = emptyMap(),
     staticIntSlots: Map<Long, Int> = emptyMap(),
+    staticReferenceSlots: Map<Long, JvmReferenceValue> = emptyMap(),
 ) {
     private val staticLongSlots = staticLongSlots.toMutableMap()
     private val staticIntSlots = staticIntSlots.toMutableMap()
+    private val staticReferenceSlots = staticReferenceSlots.toMutableMap()
 
     fun getStaticLong(offset: Long): Long = staticLongSlots[offset] ?: 0L
 
@@ -123,6 +125,25 @@ class JvmUnsafeSyntheticMemory(
             staticIntSlots[offset] = replacement
         }
         return current
+    }
+
+    fun getStaticReference(offset: Long): JvmReferenceValue = staticReferenceSlots[offset] ?: JvmNullValue
+
+    fun putStaticReference(offset: Long, value: JvmReferenceValue) {
+        staticReferenceSlots[offset] = value
+    }
+
+    fun compareAndSetStaticReference(
+        offset: Long,
+        expected: JvmReferenceValue,
+        replacement: JvmReferenceValue,
+    ): Boolean {
+        val current = getStaticReference(offset)
+        if (current != expected) {
+            return false
+        }
+        staticReferenceSlots[offset] = replacement
+        return true
     }
 }
 
