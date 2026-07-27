@@ -1792,6 +1792,25 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread scopedValueCache intrinsic returns null when no scoped value cache is modeled`() {
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadScopedValueCacheMethod())
+            ?: error("Thread.scopedValueCache intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(JvmNullValue, result)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -1959,6 +1978,7 @@ class JvmVmIntrinsicsTest {
             threadCurrentThreadMethod(),
             threadCurrentCarrierThreadMethod(),
             threadFindScopedValueBindingsMethod(),
+            threadScopedValueCacheMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2299,6 +2319,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "findScopedValueBindings",
         descriptor = "()Ljava/lang/Object;",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadScopedValueCacheMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "scopedValueCache",
+        descriptor = "()[Ljava/lang/Object;",
         isStatic = true,
         isNative = true,
     )
