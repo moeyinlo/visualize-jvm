@@ -35,6 +35,31 @@ class JvmVmThreadSetTest {
     }
 
     @Test
+    fun `VM terminates normally when there are no active non daemon threads`() {
+        val threads = JvmVmThreadSet()
+        val termination = JvmVmTerminationState()
+        threads.startThread("daemon-worker", isDaemon = true)
+
+        val result = threads.terminateIfNoActiveNonDaemonThreads(termination)
+
+        assertEquals(JvmVmTerminationResult.Normal(exitCode = 0), result)
+        assertEquals(result, termination.result)
+    }
+
+    @Test
+    fun `VM stays alive while any non daemon thread is active`() {
+        val threads = JvmVmThreadSet()
+        val termination = JvmVmTerminationState()
+        threads.startThread("main", isDaemon = false)
+        threads.startThread("daemon-worker", isDaemon = true)
+
+        assertEquals(null, threads.terminateIfNoActiveNonDaemonThreads(termination))
+
+        assertEquals(false, termination.isTerminated)
+        assertEquals(listOf("main"), threads.activeNonDaemonThreadIds())
+    }
+
+    @Test
     fun `finishing the last non daemon thread abruptly terminates the VM with the uncaught throwable`() {
         val threads = JvmVmThreadSet()
         val termination = JvmVmTerminationState()
