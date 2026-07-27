@@ -216,12 +216,6 @@ class JvmUnsatisfiedLinkError(
     message: String,
 ) : UnsatisfiedLinkError(message)
 
-class JvmExceptionInInitializerError(
-    val guestClassName: String,
-    val causeGuestClassName: String,
-    message: String,
-) : ExceptionInInitializerError(message)
-
 object JvmInterpreter {
     private val intLikeFieldDescriptors = setOf("Z", "B", "C", "S", "I")
 
@@ -5199,6 +5193,7 @@ object JvmInterpreter {
     private fun initializeClassForActiveUse(
         className: String,
         classHierarchy: JvmClassHierarchy,
+        heap: JvmHeap,
         classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         currentThreadId: String,
         executeClassInitializer: ((JvmResolvedMethod) -> Unit)? = null,
@@ -5219,11 +5214,11 @@ object JvmInterpreter {
                         if (exception is JvmThreadSuspendedException || exception is JvmMonitorBlockedException) {
                             throw exception
                         }
-                        val initializationFailure = exception.initializationFailureForActiveUse(classHierarchy)
+                        val initializationFailure = exception.initializationFailureForActiveUse(classHierarchy, heap)
                         classInitializationStates.failInitialization(
                             className = className,
                             threadId = currentThreadId,
-                            errorClassName = initializationFailure.initializationErrorClassName(),
+                            errorClassName = initializationFailure.initializationErrorClassName(heap),
                         )
                         throw initializationFailure
                     }
@@ -5239,7 +5234,7 @@ object JvmInterpreter {
         }
     }
 
-    private fun Throwable.initializationErrorClassName(): String =
+    private fun Throwable.initializationErrorClassName(heap: JvmHeap): String =
         when (this) {
             is JvmArithmeticException -> guestClassName
             is JvmNegativeArraySizeException -> guestClassName
@@ -5255,25 +5250,35 @@ object JvmInterpreter {
             is JvmNoClassDefFoundError -> guestClassName
             is JvmNoSuchFieldError -> guestClassName
             is JvmNoSuchMethodError -> guestClassName
-            is JvmExceptionInInitializerError -> guestClassName
-            is JvmNativeGuestException -> "java/lang/Throwable"
+            is JvmNativeGuestException -> heap.get(throwable).className
             is JvmThrownException -> guestClassName
             else -> "java/lang/ExceptionInInitializerError"
         }
 
     private fun Throwable.initializationFailureForActiveUse(
         classHierarchy: JvmClassHierarchy,
+        heap: JvmHeap,
     ): Throwable {
-        val failureClassName = initializationErrorClassName()
+        val failureClassName = initializationErrorClassName(heap)
         if (classHierarchy.isAssignable(sourceClassName = failureClassName, targetClassName = "java/lang/Error")) {
             return this
         }
-        return JvmExceptionInInitializerError(
+        val cause = initializationCauseReference(heap)
+        val wrapper = heap.allocateObject("java/lang/ExceptionInInitializerError")
+        heap.recordThrowableCause(wrapper, cause)
+        return JvmThrownException(
+            throwable = wrapper,
             guestClassName = "java/lang/ExceptionInInitializerError",
-            causeGuestClassName = failureClassName,
-            message = message ?: failureClassName,
+            message = "Class initializer failed with $failureClassName",
         )
     }
+
+    private fun Throwable.initializationCauseReference(heap: JvmHeap): JvmReferenceValue =
+        when (this) {
+            is JvmNativeGuestException -> throwable
+            is JvmThrownException -> throwable
+            else -> heap.allocateObject(initializationErrorClassName(heap))
+        }
 
     private fun executeGetStatic(
         instruction: DecodedInstruction,
@@ -5305,6 +5310,7 @@ object JvmInterpreter {
         initializeClassForActiveUse(
             resolvedField.reference.ownerClassName,
             classHierarchy,
+            heap,
             classInitializationStates,
             currentThreadId,
         ) { classInitializer ->
@@ -5367,6 +5373,7 @@ object JvmInterpreter {
         initializeClassForActiveUse(
             resolvedField.reference.ownerClassName,
             classHierarchy,
+            heap,
             classInitializationStates,
             currentThreadId,
         ) { classInitializer ->
@@ -5495,6 +5502,7 @@ object JvmInterpreter {
         initializeClassForActiveUse(
             resolvedMethod.ownerClassName,
             classHierarchy,
+            heap,
             classInitializationStates,
             currentThreadId,
         ) { classInitializer ->
@@ -6766,6 +6774,7 @@ object JvmInterpreter {
         initializeClassForActiveUse(
             resolvedField.ownerClassName,
             classHierarchy,
+            heap,
             classInitializationStates,
             currentThreadId,
         ) { classInitializer ->
@@ -6844,6 +6853,7 @@ object JvmInterpreter {
         initializeClassForActiveUse(
             resolvedField.ownerClassName,
             classHierarchy,
+            heap,
             classInitializationStates,
             currentThreadId,
         ) { classInitializer ->
@@ -6909,6 +6919,7 @@ object JvmInterpreter {
         initializeClassForActiveUse(
             linkedCallSite.targetMethod.ownerClassName,
             classHierarchy,
+            heap,
             classInitializationStates,
             currentThreadId,
         ) { classInitializer ->
@@ -8393,6 +8404,7 @@ object JvmInterpreter {
         initializeClassForActiveUse(
             className,
             classHierarchy,
+            heap,
             classInitializationStates,
             currentThreadId,
         ) { classInitializer ->

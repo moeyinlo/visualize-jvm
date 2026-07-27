@@ -94,6 +94,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
+import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -5951,8 +5952,9 @@ class JvmInterpreterTest {
     @Test
     fun `getstatic wraps non Error class initializer failure as ExceptionInInitializerError`() {
         val initializationStates = JvmClassInitializationStates()
+        val heap = JvmHeap()
 
-        val exception = assertFailsWith<JvmExceptionInInitializerError> {
+        val exception = assertFailsWith<JvmThrownException> {
             JvmInterpreter.execute(
                 code = byteArrayOf(
                     0xB2.toByte(),
@@ -5994,11 +5996,15 @@ class JvmInterpreterTest {
                     ),
                 ),
                 classInitializationStates = initializationStates,
+                heap = heap,
             )
         }
 
         assertEquals("java/lang/ExceptionInInitializerError", exception.guestClassName)
-        assertEquals("java/lang/ArithmeticException", exception.causeGuestClassName)
+        assertEquals("java/lang/ExceptionInInitializerError", heap.get(exception.throwable).className)
+        val payload = heap.get(exception.throwable).payload as JvmThrowablePayload
+        val cause = payload.cause as JvmObjectReferenceValue
+        assertEquals("java/lang/ArithmeticException", heap.get(cause).className)
         assertEquals(
             JvmClassInitializationState.Erroneous("java/lang/ExceptionInInitializerError"),
             initializationStates.get("Example"),
