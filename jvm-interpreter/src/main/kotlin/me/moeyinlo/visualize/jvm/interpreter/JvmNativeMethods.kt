@@ -1227,6 +1227,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JZ)Z",
         isStatic = false,
     )
+    private val UnsafeGetAndSetByteKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndSetByte",
+        descriptor = "(Ljava/lang/Object;JB)B",
+        isStatic = false,
+    )
     private val UnsafeCompareAndSetIntKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetInt",
@@ -3314,6 +3320,33 @@ object JvmVmIntrinsics {
             ),
         )
     }
+    private val UnsafeGetAndSetByte = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetByte intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException("Unsafe.getAndSetByte expects Object, long offset, and byte replacement arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetByte expects Object, long offset, and byte replacement arguments")
+        val replacement = invocation.arguments[2] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetByte expects Object, long offset, and byte replacement arguments")
+        if (replacement.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
+            throw JvmUnsupportedInstructionException("Unsafe.getAndSetByte replacement is outside byte range")
+        }
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getAndSetByte currently supports only synthetic static byte slots",
+            )
+        }
+        JvmIntValue(
+            context.unsafeMemory.getAndSetStaticByte(
+                offset = offset.value,
+                replacement = replacement.value.toByte(),
+            ).toInt(),
+        )
+    }
     private val UnsafeCompareAndExchangeDouble = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeDouble intrinsic requires a receiver")
@@ -3703,6 +3736,7 @@ object JvmVmIntrinsics {
         UnsafeGetAndAddIntKey to UnsafeGetAndAddInt,
         UnsafeGetAndSetIntKey to UnsafeGetAndSetInt,
         UnsafeGetAndSetBooleanKey to UnsafeGetAndSetBoolean,
+        UnsafeGetAndSetByteKey to UnsafeGetAndSetByte,
         UnsafeCompareAndSetIntKey to UnsafeCompareAndSetInt,
         UnsafeCompareAndExchangeIntKey to UnsafeCompareAndExchangeInt,
         UnsafePutLongVolatileKey to UnsafePutLongVolatile,
