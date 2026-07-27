@@ -8068,6 +8068,72 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putstatic host active use handler skips guest class initializer`() {
+        val initializationStates = JvmClassInitializationStates()
+        val staticFields = JvmStaticFields()
+        val field = JvmFieldReference(ownerClassName = "Example", name = "counter", descriptor = "I")
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "<clinit>",
+                            descriptor = "()V",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x09.toByte(),
+                                0xB3.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            constantPool = constantPool,
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val hostActiveUseHandler = JvmHostActiveUseHandler { className, states ->
+            assertEquals("Example", className)
+            assertEquals(JvmClassInitializationState.Prepared, states.get(className))
+            true
+        }
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x07.toByte(),
+                0xB3.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = constantPool,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            classInitializationStates = initializationStates,
+            hostActiveUseHandler = hostActiveUseHandler,
+        )
+
+        assertEquals(JvmIntValue(7), staticFields.get(field))
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get("Example"))
+    }
+    @Test
     fun `putstatic initializes resolved field class without class initializer`() {
         val initializationStates = JvmClassInitializationStates()
         val staticFields = JvmStaticFields()

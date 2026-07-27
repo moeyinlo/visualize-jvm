@@ -1728,6 +1728,7 @@ object JvmInterpreter {
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
+                hostActiveUseHandler = hostActiveUseHandler,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
@@ -5529,6 +5530,7 @@ object JvmInterpreter {
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
+        hostActiveUseHandler: JvmHostActiveUseHandler = JvmHostActiveUseHandler.None,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
@@ -5554,6 +5556,7 @@ object JvmInterpreter {
                 currentLineNumberTable = currentLineNumberTable,
             ),
             threadScheduler,
+            hostActiveUseHandler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
