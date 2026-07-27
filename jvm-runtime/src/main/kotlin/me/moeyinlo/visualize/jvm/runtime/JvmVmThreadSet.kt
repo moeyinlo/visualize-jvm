@@ -15,11 +15,22 @@ class JvmVmThreadSet {
         threadId: String,
         termination: JvmVmTerminationState,
     ): JvmVmTerminationResult? {
-        require(threadId.isNotBlank()) { "thread id must not be blank" }
-        val thread = threadsById.remove(threadId)
-            ?: throw JvmVmThreadLifecycleException("VM thread $threadId is not active")
+        val thread = removeActiveThread(threadId)
         return if (!thread.isDaemon && activeNonDaemonThreadIds().isEmpty()) {
             termination.terminateNormally(exitCode = 0)
+        } else {
+            null
+        }
+    }
+
+    fun finishThreadAbruptly(
+        threadId: String,
+        throwable: JvmObjectReferenceValue,
+        termination: JvmVmTerminationState,
+    ): JvmVmTerminationResult? {
+        val thread = removeActiveThread(threadId)
+        return if (!thread.isDaemon && activeNonDaemonThreadIds().isEmpty()) {
+            termination.terminateAbruptly(throwable)
         } else {
             null
         }
@@ -30,6 +41,12 @@ class JvmVmThreadSet {
             .filterValues { thread -> !thread.isDaemon }
             .keys
             .toList()
+
+    private fun removeActiveThread(threadId: String): JvmVmThreadRecord {
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+        return threadsById.remove(threadId)
+            ?: throw JvmVmThreadLifecycleException("VM thread $threadId is not active")
+    }
 }
 
 private data class JvmVmThreadRecord(
