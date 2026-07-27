@@ -2779,6 +2779,16 @@ object JvmVmIntrinsics {
         if (value.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
             throw JvmUnsupportedInstructionException("Unsafe.putByteVolatile byte value is out of range")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "B") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.putByteVolatile object field offset must map to a byte field",
+                )
+            }
+            context.heap.putInstanceField(base, field, value)
+            return@JvmNativeMethodIntrinsic null
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.putByteVolatile currently supports only synthetic static byte slots",

@@ -5523,6 +5523,45 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putByteVolatile intrinsic writes guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("VolatileByteFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("VolatileByteFieldOffsetOwner")
+        val fieldName = heap.internString("code")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("VolatileByteFieldOffsetOwner", "code", "B")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "VolatileByteFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "code", descriptor = "B", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val putByteVolatile = JvmVmIntrinsics.Registry.resolve(unsafePutByteVolatileMethod())
+            ?: error("Unsafe.putByteVolatile intrinsic was not registered")
+
+        val result = putByteVolatile.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(-8))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(JvmIntValue(-8), heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
