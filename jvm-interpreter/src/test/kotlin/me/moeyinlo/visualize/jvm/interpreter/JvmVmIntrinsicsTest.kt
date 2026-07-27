@@ -3471,6 +3471,36 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getAndSetLong intrinsic returns witness for synthetic static long slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetAndSetLongMethod())
+            ?: error("Unsafe.getAndSetLong intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory(staticLongSlots = mapOf(7L to 42L))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val existing = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmLongValue(43L))),
+        )
+        val defaulted = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmLongValue(-3L))),
+        )
+
+        assertEquals(JvmLongValue(42L), existing)
+        assertEquals(43L, unsafeMemory.getStaticLong(offset = 7L))
+        assertEquals(JvmLongValue(0L), defaulted)
+        assertEquals(-3L, unsafeMemory.getStaticLong(offset = 9L))
+    }
+
+    @Test
     fun `Unsafe getAndAddInt intrinsic returns witness for synthetic static int slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4094,6 +4124,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndExchangeShortMethod(),
             unsafeCompareAndExchangeCharMethod(),
             unsafeGetAndAddLongMethod(),
+            unsafeGetAndSetLongMethod(),
             unsafeGetAndAddIntMethod(),
             unsafeCompareAndExchangeFloatMethod(),
             unsafeCompareAndExchangeDoubleMethod(),
@@ -4926,6 +4957,14 @@ class JvmVmIntrinsicsTest {
     private fun unsafeGetAndAddLongMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getAndAddLong",
+        descriptor = "(Ljava/lang/Object;JJ)J",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetAndSetLongMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndSetLong",
         descriptor = "(Ljava/lang/Object;JJ)J",
         isStatic = false,
         isNative = true,
