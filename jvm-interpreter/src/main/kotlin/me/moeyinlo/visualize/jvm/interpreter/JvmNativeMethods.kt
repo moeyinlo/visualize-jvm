@@ -929,6 +929,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)C",
         isStatic = false,
     )
+    private val UnsafeGetFloatVolatileKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getFloatVolatile",
+        descriptor = "(Ljava/lang/Object;J)F",
+        isStatic = false,
+    )
     private val UnsafePutByteVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putByteVolatile",
@@ -1940,6 +1946,23 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(context.unsafeMemory.getStaticChar(offset.value).code)
     }
+    private val UnsafeGetFloatVolatile = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getFloatVolatile intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getFloatVolatile expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getFloatVolatile expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getFloatVolatile currently supports only synthetic static float slots",
+            )
+        }
+        JvmFloatValue(context.unsafeMemory.getStaticFloat(offset.value))
+    }
     private val UnsafePutByteVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putByteVolatile intrinsic requires a receiver")
@@ -2675,6 +2698,7 @@ object JvmVmIntrinsics {
         UnsafeGetByteVolatileKey to UnsafeGetByteVolatile,
         UnsafeGetShortVolatileKey to UnsafeGetShortVolatile,
         UnsafeGetCharVolatileKey to UnsafeGetCharVolatile,
+        UnsafeGetFloatVolatileKey to UnsafeGetFloatVolatile,
         UnsafePutByteVolatileKey to UnsafePutByteVolatile,
         UnsafePutShortVolatileKey to UnsafePutShortVolatile,
         UnsafePutCharVolatileKey to UnsafePutCharVolatile,

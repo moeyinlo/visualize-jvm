@@ -2634,6 +2634,33 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmIntValue(0), defaultResult)
     }
 
+
+    @Test
+    fun `Unsafe getFloatVolatile intrinsic reads synthetic static float slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetFloatVolatileMethod())
+            ?: error("Unsafe.getFloatVolatile intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticFloatSlots = mapOf(7L to 1.25f)),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmFloatValue(1.25f), setResult)
+        assertEquals(JvmFloatValue(0.0f), defaultResult)
+    }
     @Test
     fun `Unsafe putByteVolatile intrinsic writes synthetic static byte slots`() {
         val heap = JvmHeap()
@@ -3374,6 +3401,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetByteVolatileMethod(),
             unsafeGetShortVolatileMethod(),
             unsafeGetCharVolatileMethod(),
+            unsafeGetFloatVolatileMethod(),
             unsafePutByteVolatileMethod(),
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
@@ -4078,6 +4106,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putCharVolatile",
         descriptor = "(Ljava/lang/Object;JC)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetFloatVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getFloatVolatile",
+        descriptor = "(Ljava/lang/Object;J)F",
         isStatic = false,
         isNative = true,
     )
