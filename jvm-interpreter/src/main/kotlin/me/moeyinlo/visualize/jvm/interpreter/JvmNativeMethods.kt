@@ -509,6 +509,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Thread;",
         isStatic = true,
     )
+    private val ThreadCurrentCarrierThreadKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "currentCarrierThread",
+        descriptor = "()Ljava/lang/Thread;",
+        isStatic = true,
+    )
     private val ThreadRegisterNativesKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "registerNatives",
@@ -889,6 +895,10 @@ object JvmVmIntrinsics {
         requireNoArguments("Thread.currentThread", invocation)
         context.heap.internThread(context.currentThreadId)
     }
+    private val ThreadCurrentCarrierThread = JvmNativeMethodIntrinsic { context, invocation ->
+        requireNoArguments("Thread.currentCarrierThread", invocation)
+        context.heap.internThread(context.currentThreadId)
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -976,6 +986,7 @@ object JvmVmIntrinsics {
         StringInternKey to StringIntern,
         ThreadRegisterNativesKey to ThreadRegisterNatives,
         ThreadCurrentThreadKey to ThreadCurrentThread,
+        ThreadCurrentCarrierThreadKey to ThreadCurrentCarrierThread,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadSleepMillisKey to ThreadSleepMillis,

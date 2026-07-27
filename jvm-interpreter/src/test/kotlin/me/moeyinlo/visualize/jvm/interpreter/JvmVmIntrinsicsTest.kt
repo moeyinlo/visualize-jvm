@@ -1751,6 +1751,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread currentCarrierThread intrinsic returns the current guest carrier thread mirror`() {
+        val heap = JvmHeap()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadCurrentCarrierThreadMethod())
+            ?: error("Thread.currentCarrierThread intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+            currentThreadId = "carrier-1",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+
+        assertEquals(heap.internThread("carrier-1"), result)
+        assertEquals(JvmThreadPayload("carrier-1"), heap.get(result).payload)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -1896,6 +1918,7 @@ class JvmVmIntrinsicsTest {
             stringInternMethod(),
             threadRegisterNativesMethod(),
             threadCurrentThreadMethod(),
+            threadCurrentCarrierThreadMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadSleepMillisMethod(),
@@ -2218,6 +2241,14 @@ class JvmVmIntrinsicsTest {
     private fun threadCurrentThreadMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Thread",
         name = "currentThread",
+        descriptor = "()Ljava/lang/Thread;",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadCurrentCarrierThreadMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "currentCarrierThread",
         descriptor = "()Ljava/lang/Thread;",
         isStatic = true,
         isNative = true,
