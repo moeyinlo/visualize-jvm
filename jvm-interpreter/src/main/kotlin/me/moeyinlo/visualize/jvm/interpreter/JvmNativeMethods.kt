@@ -563,6 +563,12 @@ object JvmVmIntrinsics {
         descriptor = "(I)V",
         isStatic = false,
     )
+    private val ThreadInterrupt0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "interrupt0",
+        descriptor = "()V",
+        isStatic = false,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -1016,6 +1022,13 @@ object JvmVmIntrinsics {
         }
         null
     }
+    private val ThreadInterrupt0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Thread.interrupt0 intrinsic requires a receiver")
+        requireNoArguments("Thread.interrupt0", invocation)
+        context.heap.get(receiver)
+        null
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1126,6 +1139,7 @@ object JvmVmIntrinsics {
         ThreadClearInterruptEventKey to ThreadClearInterruptEvent,
         ThreadSetNativeNameKey to ThreadSetNativeName,
         ThreadSetPriority0Key to ThreadSetPriority0,
+        ThreadInterrupt0Key to ThreadInterrupt0,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,
