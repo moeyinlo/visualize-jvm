@@ -21405,6 +21405,81 @@ class JvmInterpreterTest {
         assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Example"))
     }
     @Test
+    fun `scheduled class initialization waiter retries after failed owner completion`() {
+        val initializationStates = JvmClassInitializationStates()
+        initializationStates.startInitialization("Example", threadId = "initializer")
+        val heap = JvmHeap()
+        val scheduler = JvmThreadScheduler()
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                ),
+            ),
+        )
+
+        val suspended = JvmInterpreter.executeScheduledThread(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            classInitializationStates = initializationStates,
+            threadScheduler = scheduler,
+            currentThreadId = "worker",
+        ) as JvmScheduledThreadExecutionResult.Suspended
+
+        val waitingThreadIds = initializationStates.failInitialization(
+            className = "Example",
+            threadId = "initializer",
+            errorClassName = "java/lang/ExceptionInInitializerError",
+        )
+        scheduler.resumeClassInitializationWaiters(waitingThreadIds)
+
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            JvmInterpreter.executeScheduledThread(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                classInitializationStates = initializationStates,
+                threadScheduler = scheduler,
+                currentThreadId = "worker",
+                initialOperandStackValues = suspended.suspension.operandStackValues,
+                startBytecodeOffset = suspended.suspension.nextBytecodeOffset ?: 0,
+            )
+        }
+
+        assertEquals(listOf("worker"), waitingThreadIds)
+        assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("worker"))
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
+        assertEquals("Example", exception.message)
+        assertEquals(
+            JvmClassInitializationState.Erroneous("java/lang/ExceptionInInitializerError"),
+            initializationStates.get("Example"),
+        )
+    }
+    @Test
     fun `scheduled thread loop stalls class initialization waiter when owner is not runnable`() {
         val initializationStates = JvmClassInitializationStates()
         initializationStates.startInitialization("Example", threadId = "initializer")
