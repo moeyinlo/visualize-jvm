@@ -24388,6 +24388,102 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached get static field target host active use handler skips guest class initializer`() {
+        val staticFields = JvmStaticFields()
+        val field = JvmFieldReference(
+            ownerClassName = "pkg/Targets",
+            name = "answer",
+            descriptor = "I",
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        val initializationStates = JvmClassInitializationStates()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                    referenceIndex = 1,
+                ),
+                target = JvmMethodHandleTarget.Field(
+                    JvmResolvedField(
+                        ownerClassName = "pkg/Targets",
+                        name = "answer",
+                        descriptor = "I",
+                        isStatic = true,
+                    ),
+                ),
+            ),
+        )
+        val hostActiveUseHandler = JvmHostActiveUseHandler { className, states ->
+            assertEquals("pkg/Targets", className)
+            assertEquals(JvmClassInitializationState.Prepared, states.get(className))
+            true
+        }
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicIntCallSiteConstantPool(),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Targets",
+                        fields = listOf(JvmFieldDefinition(name = "answer", descriptor = "I", isStatic = true)),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x10.toByte(),
+                                    0x09.toByte(),
+                                    0xB3.toByte(),
+                                    0x00.toByte(),
+                                    0x01.toByte(),
+                                    0xB1.toByte(),
+                                ),
+                                constantPool = ConstantPool.fromEntries(
+                                    listOf(
+                                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                                        ConstantClassEntry(ConstantPoolIndex(3)),
+                                        ConstantUtf8Entry("pkg/Targets", "pkg/Targets".encodeToByteArray()),
+                                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                                        ConstantUtf8Entry("answer", "answer".encodeToByteArray()),
+                                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                                    ),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            classInitializationStates = initializationStates,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            hostActiveUseHandler = hostActiveUseHandler,
+        )
+
+        assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get("pkg/Targets"))
+        assertEquals(JvmIntValue(0), staticFields.get(field))
+    }
+
+    @Test
     fun `invokedynamic cached get static field target failures use caller source lines`() {
         val heap = JvmHeap()
         val callSites = JvmInvokeDynamicCallSiteRegistry()
