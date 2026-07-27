@@ -1161,6 +1161,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JJJ)J",
         isStatic = false,
     )
+    private val UnsafeCompareAndExchangeFloatKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "compareAndExchangeFloat",
+        descriptor = "(Ljava/lang/Object;JFF)F",
+        isStatic = false,
+    )
     private val UnsafeCompareAndExchangeDoubleKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndExchangeDouble",
@@ -2880,6 +2886,41 @@ object JvmVmIntrinsics {
             ),
         )
     }
+    private val UnsafeCompareAndExchangeFloat = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeFloat intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 4) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeFloat expects Object, long offset, expected, and replacement arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeFloat expects Object, long offset, expected, and replacement arguments",
+            )
+        val expected = invocation.arguments[2] as? JvmFloatValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeFloat expects Object, long offset, expected, and replacement arguments",
+            )
+        val replacement = invocation.arguments[3] as? JvmFloatValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeFloat expects Object, long offset, expected, and replacement arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndExchangeFloat currently supports only synthetic static float slots",
+            )
+        }
+        JvmFloatValue(
+            context.unsafeMemory.compareAndExchangeStaticFloat(
+                offset = offset.value,
+                expected = expected.value,
+                replacement = replacement.value,
+            ),
+        )
+    }
     private val UnsafeArrayBaseOffset0 = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.arrayBaseOffset0 intrinsic requires a receiver")
@@ -3043,6 +3084,7 @@ object JvmVmIntrinsics {
         UnsafeCompareAndSetFloatKey to UnsafeCompareAndSetFloat,
         UnsafeCompareAndExchangeLongKey to UnsafeCompareAndExchangeLong,
         UnsafeCompareAndExchangeDoubleKey to UnsafeCompareAndExchangeDouble,
+        UnsafeCompareAndExchangeFloatKey to UnsafeCompareAndExchangeFloat,
         UnsafeArrayBaseOffset0Key to UnsafeArrayBaseOffset0,
         UnsafeArrayIndexScale0Key to UnsafeArrayIndexScale0,
         UnsafeFullFenceKey to UnsafeFullFence,
