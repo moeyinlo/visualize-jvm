@@ -31,6 +31,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
+import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
 
 data class JvmNativeMethodKey(
     val ownerClassName: String,
@@ -62,6 +63,7 @@ data class JvmNativeMethodContext(
     val monitors: JvmMonitorState = JvmMonitorState(),
     val threadScheduler: JvmThreadScheduler? = null,
     val currentThreadId: String = "main",
+    val terminationState: JvmVmTerminationState = JvmVmTerminationState(),
     val currentTimeMillisProvider: () -> Long = System::currentTimeMillis,
     val nanoTimeProvider: () -> Long = System::nanoTime,
     val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },

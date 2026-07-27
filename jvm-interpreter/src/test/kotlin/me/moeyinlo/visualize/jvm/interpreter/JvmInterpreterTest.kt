@@ -99,11 +99,13 @@ import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
+import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class JvmInterpreterTest {
@@ -15009,6 +15011,62 @@ class JvmInterpreterTest {
 
         assertEquals(listOf(JvmIntValue(9)), result.operandStack.toList())
         assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `native intrinsic context exposes shared VM termination state`() {
+        val terminationState = JvmVmTerminationState()
+        val observedTerminationStates = mutableListOf<JvmVmTerminationState>()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "nativeValue",
+                                descriptor = "()I",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey(
+                    ownerClassName = "Example",
+                    name = "nativeValue",
+                    descriptor = "()I",
+                    isStatic = true,
+                ) to JvmNativeMethodIntrinsic { context, _ ->
+                    observedTerminationStates += context.terminationState
+                    JvmIntValue(7)
+                },
+            ),
+            currentClassName = "Caller",
+            terminationState = terminationState,
+        )
+
+        assertSame(terminationState, observedTerminationStates.single())
+        assertEquals(listOf(JvmIntValue(7)), result.operandStack.toList())
     }
 
     @Test
