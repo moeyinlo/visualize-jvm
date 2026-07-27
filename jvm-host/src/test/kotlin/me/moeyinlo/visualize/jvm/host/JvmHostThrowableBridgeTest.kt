@@ -38,6 +38,19 @@ class JvmHostThrowableBridgeTest {
     }
 
     @Test
+    fun `converts guest throwable causes to host throwable causes`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("java/lang/RuntimeException")
+        val cause = heap.allocateObject("java/lang/IllegalArgumentException")
+        heap.recordThrowableCause(reference, cause)
+
+        val hostThrowable = JvmHostThrowableBridge.toHost(reference, Throwable::class.java, heap)
+
+        assertIs<RuntimeException>(hostThrowable)
+        assertIs<IllegalArgumentException>(hostThrowable.cause)
+    }
+
+    @Test
     fun `converts host throwables to guest throwable references`() {
         val heap = JvmHeap()
         val hostThrowable = IllegalArgumentException("bad").also { throwable ->
@@ -62,6 +75,20 @@ class JvmHostThrowableBridgeTest {
             ),
             heapObject.payload,
         )
+    }
+
+    @Test
+    fun `converts host throwable causes to guest throwable causes`() {
+        val heap = JvmHeap()
+        val hostThrowable = RuntimeException("outer", IllegalArgumentException("inner"))
+
+        val guestValue = JvmHostThrowableBridge.fromHost(hostThrowable, Throwable::class.java, heap)
+
+        val reference = guestValue as JvmObjectReferenceValue
+        val heapObject = heap.get(reference)
+        val payload = heapObject.payload as JvmThrowablePayload
+        val cause = payload.cause as JvmObjectReferenceValue
+        assertEquals("java/lang/IllegalArgumentException", heap.get(cause).className)
     }
 
     @Test

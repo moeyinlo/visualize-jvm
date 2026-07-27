@@ -31,6 +31,10 @@ object JvmHostThrowableBridge {
         val payload = heapObject.payload as? JvmThrowablePayload
         if (payload != null) {
             throwable.stackTrace = payload.stackTrace.map { frame -> frame.toHostStackTraceElement() }.toTypedArray()
+            val cause = toHost(payload.cause, Throwable::class.java, heap, classLoader)
+            if (cause != null) {
+                throwable.initCause(cause)
+            }
         }
         return throwable
     }
@@ -53,11 +57,18 @@ object JvmHostThrowableBridge {
                 "Host throwable ${throwable::class.java.name} is not assignable to source ${sourceType.name}",
             )
         }
-        val reference = heap.allocateObject(throwable::class.java.toGuestThrowableClassName())
-        return heap.recordThrowableStackTrace(
-            reference = reference,
+        val reference = heap.recordThrowableStackTrace(
+            reference = heap.allocateObject(throwable::class.java.toGuestThrowableClassName()),
             stackTrace = throwable.stackTrace.map { element -> element.toGuestStackTraceFrame() },
         )
+        val cause = throwable.cause
+        if (cause != null) {
+            heap.recordThrowableCause(
+                reference = reference,
+                cause = fromHost(cause, Throwable::class.java, heap),
+            )
+        }
+        return reference
     }
 
     private fun requireThrowableType(
