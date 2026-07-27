@@ -98,6 +98,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
+import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -162,6 +163,27 @@ class JvmInterpreterTest {
 
         val completed = result as JvmScheduledThreadExecutionResult.Completed
         assertEquals(listOf(JvmIntValue(6)), completed.result.operandStack.toList())
+    }
+
+    @Test
+    fun `scheduled thread loop reports normal VM termination when non daemon frames complete`() {
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "main",
+                    code = byteArrayOf(0x03.toByte()),
+                    maxStack = 1,
+                ),
+                JvmScheduledThreadFrame(
+                    threadId = "worker",
+                    code = byteArrayOf(0x04.toByte()),
+                    maxStack = 1,
+                ),
+            ),
+        )
+
+        assertEquals(JvmVmTerminationResult.Normal(exitCode = 0), result.terminationResult)
+        assertEquals(listOf("main", "worker"), result.completedThreads.keys.toList())
     }
 
     @Test

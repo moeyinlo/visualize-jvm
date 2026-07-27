@@ -85,6 +85,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmRuntimeConstantPoolIndex
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
+import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
+import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
+import me.moeyinlo.visualize.jvm.runtime.JvmVmThreadSet
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
@@ -109,6 +112,7 @@ data class JvmScheduledThreadFrame(
     val dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
     val operandStackValues: List<JvmValue> = emptyList(),
     val startBytecodeOffset: Int = 0,
+    val isDaemon: Boolean = false,
 ) {
     init {
         require(threadId.isNotBlank()) { "thread id must not be blank" }
@@ -123,6 +127,7 @@ data class JvmScheduledThreadsExecutionResult(
     val suspendedThreads: Map<String, JvmThreadSuspendedException>,
     val executedThreadIds: List<String>,
     val stalledThreadIds: List<String> = emptyList(),
+    val terminationResult: JvmVmTerminationResult? = null,
 )
 
 class JvmScheduledThreadSwitchLimitException(
@@ -1018,6 +1023,9 @@ object JvmInterpreter {
         val completedThreads = linkedMapOf<String, JvmExecutionResult>()
         val suspendedThreads = linkedMapOf<String, JvmThreadSuspendedException>()
         val executedThreadIds = mutableListOf<String>()
+        val vmThreads = JvmVmThreadSet()
+        val terminationState = JvmVmTerminationState()
+        frames.forEach { frame -> vmThreads.startThread(frame.threadId, frame.isDaemon) }
         var stalledThreadIds = emptyList<String>()
         var previousThreadId: String? = null
         var switchCount = 0
@@ -1084,6 +1092,7 @@ object JvmInterpreter {
                     remainingFrames.remove(threadId)
                     suspendedThreads.remove(threadId)
                     completedThreads[threadId] = result.result
+                    vmThreads.finishThread(threadId, terminationState)
                 }
                 is JvmScheduledThreadExecutionResult.Suspended -> {
                     suspendedThreads[threadId] = result.suspension
@@ -1103,6 +1112,7 @@ object JvmInterpreter {
             suspendedThreads = suspendedThreads,
             executedThreadIds = executedThreadIds,
             stalledThreadIds = stalledThreadIds,
+            terminationResult = terminationState.result,
         )
     }
 
