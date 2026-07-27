@@ -5253,6 +5253,7 @@ object JvmInterpreter {
             JvmClassInitializationState.Initialized -> Unit
             is JvmClassInitializationState.Initializing -> {
                 if (state.threadId != currentThreadId) {
+                    classInitializationStates.recordInitializationWaiter(className, currentThreadId)
                     val classMirror = heap.internClassMirror(className)
                     throw JvmThreadSuspendedException(
                         threadId = currentThreadId,

@@ -6599,6 +6599,7 @@ class JvmInterpreterTest {
         val blocked = exception.state as JvmThreadSchedulingState.BlockedOnMonitor
         assertEquals("initializer", blocked.ownerThreadId)
         assertEquals(JvmClassPayload("Example"), heap.get(blocked.reference).payload)
+        assertEquals(listOf("worker"), initializationStates.waitingThreads("Example"))
         assertEquals(JvmClassInitializationState.Initializing("initializer"), initializationStates.get("Example"))
     }
 
