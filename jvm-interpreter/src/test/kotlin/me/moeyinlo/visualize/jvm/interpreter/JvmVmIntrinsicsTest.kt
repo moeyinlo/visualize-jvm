@@ -2032,6 +2032,24 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread getNextThreadIdOffset intrinsic exposes a stable synthetic offset`() {
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadGetNextThreadIdOffsetMethod())
+            ?: error("Thread.getNextThreadIdOffset intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val first = intrinsic.invoke(context, JvmNativeMethodInvocation(null, emptyList())) as JvmLongValue
+        val second = intrinsic.invoke(context, JvmNativeMethodInvocation(null, emptyList())) as JvmLongValue
+
+        assertNotEquals(0L, first.value)
+        assertEquals(first, second)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2210,6 +2228,7 @@ class JvmVmIntrinsicsTest {
             threadSetCurrentThreadMethod(),
             threadGetStackTrace0Method(),
             threadDumpThreadsMethod(),
+            threadGetNextThreadIdOffsetMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2638,6 +2657,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "dumpThreads",
         descriptor = "([Ljava/lang/Thread;)[[Ljava/lang/StackTraceElement;",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadGetNextThreadIdOffsetMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "getNextThreadIdOffset",
+        descriptor = "()J",
         isStatic = true,
         isNative = true,
     )

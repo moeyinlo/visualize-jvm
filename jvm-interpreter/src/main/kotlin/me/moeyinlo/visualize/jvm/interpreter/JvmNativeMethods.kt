@@ -593,6 +593,12 @@ object JvmVmIntrinsics {
         descriptor = "([Ljava/lang/Thread;)[[Ljava/lang/StackTraceElement;",
         isStatic = true,
     )
+    private val ThreadGetNextThreadIdOffsetKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "getNextThreadIdOffset",
+        descriptor = "()J",
+        isStatic = true,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -1118,6 +1124,13 @@ object JvmVmIntrinsics {
         }
         snapshots
     }
+    private val ThreadGetNextThreadIdOffset = JvmNativeMethodIntrinsic { _, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Thread.getNextThreadIdOffset expects no receiver")
+        }
+        requireNoArguments("Thread.getNextThreadIdOffset", invocation)
+        JvmLongValue(ThreadNextThreadIdSyntheticOffset)
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1233,6 +1246,7 @@ object JvmVmIntrinsics {
         ThreadSetCurrentThreadKey to ThreadSetCurrentThread,
         ThreadGetStackTrace0Key to ThreadGetStackTrace0,
         ThreadDumpThreadsKey to ThreadDumpThreads,
+        ThreadGetNextThreadIdOffsetKey to ThreadGetNextThreadIdOffset,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,
@@ -1243,6 +1257,7 @@ object JvmVmIntrinsics {
 
     private const val NativeLibrariesNativeLibraryImplClassName =
         "jdk/internal/loader/NativeLibraries\$NativeLibraryImpl"
+    private const val ThreadNextThreadIdSyntheticOffset = 1L
     private val PrimitiveClassNames = setOf(
         "boolean",
         "byte",
