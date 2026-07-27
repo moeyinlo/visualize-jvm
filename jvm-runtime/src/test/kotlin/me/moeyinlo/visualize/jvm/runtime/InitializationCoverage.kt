@@ -47,14 +47,14 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, successful and failed terminal outcomes release and resume scheduler-tracked waiters, while duplicate superinterface ordering edge cases and retry semantics after resumed waiters remain pending",
+            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, successful and failed terminal outcomes release and resume scheduler-tracked waiters, and resumed waiters can retry active use after successful owner completion; duplicate superinterface ordering edge cases and failure-retry semantics after resumed waiters remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "class initialization state machine",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; getstatic drives Prepared -> Initializing -> Initialized around successful <clinit> execution, the scheduled thread loop can run frames against a shared caller-supplied ledger, records cross-thread active-use waiters, suspends them on the class mirror monitor, parks scheduled waiter frames as non-runnable while the owner is still initializing, JvmClassInitializationStates releases waiter ids on terminal outcomes, and successful and failed initialization resume scheduler-tracked waiters; retry semantics after resumed waiters remain pending",
+            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; getstatic drives Prepared -> Initializing -> Initialized around successful <clinit> execution, the scheduled thread loop can run frames against a shared caller-supplied ledger, records cross-thread active-use waiters, suspends them on the class mirror monitor, parks scheduled waiter frames as non-runnable while the owner is still initializing, JvmClassInitializationStates releases waiter ids on terminal outcomes, and successful and failed initialization resume scheduler-tracked waiters, and resumed waiters can retry active use after successful owner completion; failure-retry semantics after resumed waiters remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmClassInitializationStateTest",
         ),
