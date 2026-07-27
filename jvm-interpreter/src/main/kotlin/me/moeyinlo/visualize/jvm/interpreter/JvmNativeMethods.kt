@@ -4634,6 +4634,27 @@ object JvmVmIntrinsics {
         if (expected.value !in 0..1 || replacement.value !in 0..1) {
             throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeBoolean boolean values must be 0 or 1")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "Z") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeBoolean object field offset must map to a boolean field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeBoolean object field did not contain a boolean-compatible int value",
+                )
+            if (current.value !in 0..1) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeBoolean object field boolean value must be 0 or 1",
+                )
+            }
+            if (current.value == expected.value) {
+                context.heap.putInstanceField(base, field, replacement)
+            }
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeBoolean currently supports only synthetic static boolean slots",
