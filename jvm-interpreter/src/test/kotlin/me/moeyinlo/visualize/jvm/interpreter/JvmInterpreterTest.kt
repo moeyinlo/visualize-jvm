@@ -6556,6 +6556,53 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic suspends when another thread is initializing the target class`() {
+        val initializationStates = JvmClassInitializationStates()
+        initializationStates.startInitialization("Example", "initializer")
+        val heap = JvmHeap()
+
+        val exception = assertFailsWith<JvmThreadSuspendedException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "Example",
+                            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                        ),
+                    ),
+                ),
+                classInitializationStates = initializationStates,
+                currentThreadId = "worker",
+                heap = heap,
+            )
+        }
+
+        assertEquals("worker", exception.threadId)
+        assertEquals(0, exception.suspendedAtBytecodeOffset)
+        assertEquals(0, exception.nextBytecodeOffset)
+        val blocked = exception.state as JvmThreadSchedulingState.BlockedOnMonitor
+        assertEquals("initializer", blocked.ownerThreadId)
+        assertEquals(JvmClassPayload("Example"), heap.get(blocked.reference).payload)
+        assertEquals(JvmClassInitializationState.Initializing("initializer"), initializationStates.get("Example"))
+    }
+
+    @Test
     fun `getstatic throws NoClassDefFoundError for erroneous target class initialization state`() {
         val initializationStates = JvmClassInitializationStates()
         initializationStates.startInitialization("Example", "initializer")

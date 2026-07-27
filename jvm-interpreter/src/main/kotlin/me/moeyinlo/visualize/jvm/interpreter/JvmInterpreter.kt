@@ -5196,6 +5196,7 @@ object JvmInterpreter {
         heap: JvmHeap,
         classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         currentThreadId: String,
+        activeUseBytecodeOffset: Int = -1,
         executeClassInitializer: ((JvmResolvedMethod) -> Unit)? = null,
     ) {
         if (!classHierarchy.hasClass(className)) {
@@ -5213,6 +5214,7 @@ object JvmInterpreter {
                                 heap = heap,
                                 classInitializationStates = classInitializationStates,
                                 currentThreadId = currentThreadId,
+                                activeUseBytecodeOffset = activeUseBytecodeOffset,
                                 executeClassInitializer = executeClassInitializer,
                             )
                         }
@@ -5223,6 +5225,7 @@ object JvmInterpreter {
                                 heap = heap,
                                 classInitializationStates = classInitializationStates,
                                 currentThreadId = currentThreadId,
+                                activeUseBytecodeOffset = activeUseBytecodeOffset,
                                 executeClassInitializer = executeClassInitializer,
                             )
                         }
@@ -5248,7 +5251,21 @@ object JvmInterpreter {
                 }
             }
             JvmClassInitializationState.Initialized -> Unit
-            is JvmClassInitializationState.Initializing -> Unit
+            is JvmClassInitializationState.Initializing -> {
+                if (state.threadId != currentThreadId) {
+                    val classMirror = heap.internClassMirror(className)
+                    throw JvmThreadSuspendedException(
+                        threadId = currentThreadId,
+                        state = JvmThreadSchedulingState.BlockedOnMonitor(
+                            reference = classMirror,
+                            ownerThreadId = state.threadId,
+                        ),
+                        suspendedAtBytecodeOffset = activeUseBytecodeOffset,
+                        nextBytecodeOffset = activeUseBytecodeOffset,
+                        message = "Thread $currentThreadId is waiting for class $className initialization by ${state.threadId}",
+                    )
+                }
+            }
             is JvmClassInitializationState.Erroneous -> throw JvmNoClassDefFoundError(
                 guestClassName = "java/lang/NoClassDefFoundError",
                 message = className,
@@ -5335,6 +5352,7 @@ object JvmInterpreter {
             heap,
             classInitializationStates,
             currentThreadId,
+            instruction.offset,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
@@ -5398,6 +5416,7 @@ object JvmInterpreter {
             heap,
             classInitializationStates,
             currentThreadId,
+            instruction.offset,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
@@ -5527,6 +5546,7 @@ object JvmInterpreter {
             heap,
             classInitializationStates,
             currentThreadId,
+            instruction.offset,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
@@ -6799,6 +6819,7 @@ object JvmInterpreter {
             heap,
             classInitializationStates,
             currentThreadId,
+            instruction.offset,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
@@ -6878,6 +6899,7 @@ object JvmInterpreter {
             heap,
             classInitializationStates,
             currentThreadId,
+            instruction.offset,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
@@ -6944,6 +6966,7 @@ object JvmInterpreter {
             heap,
             classInitializationStates,
             currentThreadId,
+            instruction.offset,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
@@ -8429,6 +8452,7 @@ object JvmInterpreter {
             heap,
             classInitializationStates,
             currentThreadId,
+            instruction.offset,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
                 instruction = instruction,
