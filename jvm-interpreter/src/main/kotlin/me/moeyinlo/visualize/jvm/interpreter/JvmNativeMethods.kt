@@ -4246,6 +4246,20 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetInt expects Object, long offset, and int replacement arguments")
         val replacement = invocation.arguments[2] as? JvmIntValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetInt expects Object, long offset, and int replacement arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "I") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetInt object field offset must map to an int field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetInt object field did not contain an int value",
+                )
+            context.heap.putInstanceField(base, field, replacement)
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndSetInt currently supports only synthetic static int slots",
