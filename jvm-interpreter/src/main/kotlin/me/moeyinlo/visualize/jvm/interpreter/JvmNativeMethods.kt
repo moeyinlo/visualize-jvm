@@ -39,6 +39,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmThreadPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
+import java.nio.ByteOrder
 
 data class JvmNativeMethodKey(
     val ownerClassName: String,
@@ -764,6 +765,8 @@ class JvmNativeMethodRegistry(
 }
 
 object JvmVmIntrinsics {
+    private val SyntheticNativeByteOrder: ByteOrder = ByteOrder.nativeOrder()
+
     private val ObjectGetClassKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Object",
         name = "getClass",
@@ -5146,8 +5149,16 @@ object JvmVmIntrinsics {
                         payload.elements[index] = value.value == 1
                     }
                 }
+                is JvmShortArrayPayload -> {
+                    payload.setRawBytes(
+                        operation = "Unsafe.setMemory0 short array",
+                        start = start,
+                        endExclusive = endExclusive,
+                        value = value.value.toByte(),
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.setMemory0 currently supports only guest boolean or byte arrays for non-null base",
+                    "Unsafe.setMemory0 currently supports only guest boolean, byte, or short arrays for non-null base",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -5931,6 +5942,52 @@ object JvmVmIntrinsics {
                 "Unsafe.arrayIndexScale0 cannot compute a scale for array class $this",
             )
         }
+    }
+
+    private fun JvmShortArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+        value: Byte,
+    ) {
+        val byteSize = elements.size.toLong() * Short.SIZE_BYTES.toLong()
+        if (start < 0L || endExclusive < start || endExclusive > byteSize) {
+            throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
+        }
+        for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Short.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Short.SIZE_BYTES).toInt()
+            val rawValue = elements[elementIndex].toInt() and 0xffff
+            elements[elementIndex] = rawValue
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Short.SIZE_BYTES,
+                    value = value,
+                )
+                .toShort()
+        }
+    }
+
+    private fun Int.replaceSyntheticNativeByte(
+        byteIndex: Int,
+        elementBytes: Int,
+        value: Byte,
+    ): Int {
+        val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = elementBytes)
+        val mask = 0xff shl shift
+        return (this and mask.inv()) or ((value.toInt() and 0xff) shl shift)
+    }
+
+    private fun syntheticNativeByteShift(
+        byteIndex: Int,
+        elementBytes: Int,
+    ): Int {
+        val normalizedByteIndex = when (SyntheticNativeByteOrder) {
+            ByteOrder.LITTLE_ENDIAN -> byteIndex
+            ByteOrder.BIG_ENDIAN -> elementBytes - 1 - byteIndex
+            else -> throw JvmUnsupportedInstructionException("Unsupported synthetic native byte order $SyntheticNativeByteOrder")
+        }
+        return normalizedByteIndex * Byte.SIZE_BITS
     }
 
     private fun validateWaitArguments(arguments: List<JvmValue>) {
