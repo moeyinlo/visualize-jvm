@@ -3225,6 +3225,16 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.putDouble expects Object, long offset, and double value arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "D") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.putDouble object field offset must map to a double field",
+                )
+            }
+            context.heap.putInstanceField(base, field, value)
+            return@JvmNativeMethodIntrinsic null
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.putDouble currently supports only synthetic static double slots",
