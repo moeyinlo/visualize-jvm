@@ -4231,6 +4231,24 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe allocateInstance intrinsic allocates an uninitialized guest object for a class mirror`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val targetClass = heap.internClassMirror("Example")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeAllocateInstanceMethod())
+            ?: error("Unsafe.allocateInstance intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(targetClass))) as JvmObjectReferenceValue
+
+        assertEquals("Example", heap.get(result).className)
+    }
+    @Test
     fun `VM intrinsic registry resolves the Phase 15 native intrinsic surface`() {
         val phase15Methods = listOf(
             objectGetClassMethod(),
@@ -4284,6 +4302,7 @@ class JvmVmIntrinsicsTest {
             threadSleepMillisNanosMethod(),
             threadSleepNanos0Method(),
             unsafeRegisterNativesMethod(),
+            unsafeAllocateInstanceMethod(),
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
             unsafeGetReferenceVolatileMethod(),
@@ -4841,6 +4860,13 @@ class JvmVmIntrinsicsTest {
         isNative = true,
     )
 
+    private fun unsafeAllocateInstanceMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "allocateInstance",
+        descriptor = "(Ljava/lang/Class;)Ljava/lang/Object;",
+        isStatic = false,
+        isNative = true,
+    )
     private fun unsafeGetLongVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getLongVolatile",

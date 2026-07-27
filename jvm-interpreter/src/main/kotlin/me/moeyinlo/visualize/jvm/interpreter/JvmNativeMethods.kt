@@ -1011,6 +1011,12 @@ object JvmVmIntrinsics {
         descriptor = "()V",
         isStatic = true,
     )
+    private val UnsafeAllocateInstanceKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "allocateInstance",
+        descriptor = "(Ljava/lang/Class;)Ljava/lang/Object;",
+        isStatic = false,
+    )
     private val UnsafeGetLongVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getLongVolatile",
@@ -1986,6 +1992,23 @@ object JvmVmIntrinsics {
         }
         requireNoArguments("Unsafe.registerNatives", invocation)
         null
+    }
+    private val UnsafeAllocateInstance = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.allocateInstance intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.allocateInstance expects one Class argument")
+        }
+        val classMirror = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.allocateInstance expects a non-null Class argument")
+        val className = requireClassMirrorReference("Unsafe.allocateInstance", context, classMirror)
+        if (className in PrimitiveClassNames || className.startsWith("[")) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.allocateInstance currently supports only ordinary guest classes",
+            )
+        }
+        context.heap.allocateObject(className)
     }
     private val UnsafeGetLongVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -3846,6 +3869,7 @@ object JvmVmIntrinsics {
         ThreadSleepMillisNanosKey to ThreadSleepMillisNanos,
         ThreadSleepNanos0Key to ThreadSleepNanos0,
         UnsafeRegisterNativesKey to UnsafeRegisterNatives,
+        UnsafeAllocateInstanceKey to UnsafeAllocateInstance,
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
         UnsafeGetLongKey to UnsafeGetLong,
         UnsafeGetReferenceVolatileKey to UnsafeGetReferenceVolatile,
