@@ -2721,6 +2721,33 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getDoubleVolatile intrinsic reads synthetic static double slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetDoubleVolatileMethod())
+            ?: error("Unsafe.getDoubleVolatile intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticDoubleSlots = mapOf(7L to 1.25)),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmDoubleValue(1.25), setResult)
+        assertEquals(JvmDoubleValue(0.0), defaultResult)
+    }
+
+    @Test
     fun `Unsafe putFloatVolatile intrinsic writes synthetic static float slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -3490,6 +3517,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetShortVolatileMethod(),
             unsafeGetCharVolatileMethod(),
             unsafeGetFloatVolatileMethod(),
+            unsafeGetDoubleVolatileMethod(),
             unsafePutByteVolatileMethod(),
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
@@ -4221,6 +4249,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getFloatVolatile",
         descriptor = "(Ljava/lang/Object;J)F",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetDoubleVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getDoubleVolatile",
+        descriptor = "(Ljava/lang/Object;J)D",
         isStatic = false,
         isNative = true,
     )
