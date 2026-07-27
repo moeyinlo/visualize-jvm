@@ -2661,6 +2661,36 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmFloatValue(1.25f), setResult)
         assertEquals(JvmFloatValue(0.0f), defaultResult)
     }
+
+    @Test
+    fun `Unsafe putFloatVolatile intrinsic writes synthetic static float slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutFloatVolatileMethod())
+            ?: error("Unsafe.putFloatVolatile intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val firstResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmFloatValue(1.25f))),
+        )
+        val secondResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmFloatValue(-2.5f))),
+        )
+
+        assertEquals(null, firstResult)
+        assertEquals(null, secondResult)
+        assertEquals(1.25f, unsafeMemory.getStaticFloat(offset = 7L))
+        assertEquals(-2.5f, unsafeMemory.getStaticFloat(offset = 9L))
+    }
     @Test
     fun `Unsafe putByteVolatile intrinsic writes synthetic static byte slots`() {
         val heap = JvmHeap()
@@ -4114,6 +4144,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getFloatVolatile",
         descriptor = "(Ljava/lang/Object;J)F",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutFloatVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putFloatVolatile",
+        descriptor = "(Ljava/lang/Object;JF)V",
         isStatic = false,
         isNative = true,
     )
