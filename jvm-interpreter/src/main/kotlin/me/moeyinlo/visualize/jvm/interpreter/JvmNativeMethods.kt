@@ -4820,6 +4820,27 @@ object JvmVmIntrinsics {
         ) {
             throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeChar char values are out of range")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "C") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeChar object field offset must map to a char field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeChar object field did not contain a char-compatible int value",
+                )
+            if (current.value !in Char.MIN_VALUE.code..Char.MAX_VALUE.code) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeChar object field char value is out of range",
+                )
+            }
+            if (current.value == expected.value) {
+                context.heap.putInstanceField(base, field, replacement)
+            }
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeChar currently supports only synthetic static char slots",
