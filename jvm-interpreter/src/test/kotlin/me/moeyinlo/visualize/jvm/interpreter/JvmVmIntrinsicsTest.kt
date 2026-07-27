@@ -2123,6 +2123,30 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putLongVolatile intrinsic writes synthetic static long slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutLongVolatileMethod())
+            ?: error("Unsafe.putLongVolatile intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmLongValue(42L))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(42L, unsafeMemory.getStaticLong(offset = 7L))
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2311,6 +2335,7 @@ class JvmVmIntrinsicsTest {
             unsafeRegisterNativesMethod(),
             unsafeGetLongVolatileMethod(),
             unsafeCompareAndSetLongMethod(),
+            unsafePutLongVolatileMethod(),
         )
 
         phase15Methods.forEach { method ->
@@ -2813,6 +2838,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetLong",
         descriptor = "(Ljava/lang/Object;JJJ)Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutLongVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putLongVolatile",
+        descriptor = "(Ljava/lang/Object;JJ)V",
         isStatic = false,
         isNative = true,
     )
