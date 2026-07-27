@@ -4500,6 +4500,49 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe copySwapMemory0 intrinsic swaps synthetic native memory element bytes`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val source = memory.allocateNativeMemory(4L)
+        val target = memory.allocateNativeMemory(4L)
+        memory.setNativeMemory(source, 1L, 0x01.toByte())
+        memory.setNativeMemory(source + 1L, 1L, 0x02.toByte())
+        memory.setNativeMemory(source + 2L, 1L, 0x03.toByte())
+        memory.setNativeMemory(source + 3L, 1L, 0x04.toByte())
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCopySwapMemory0Method())
+            ?: error("Unsafe.copySwapMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(
+                    JvmNullValue,
+                    JvmLongValue(source),
+                    JvmNullValue,
+                    JvmLongValue(target),
+                    JvmLongValue(4L),
+                    JvmLongValue(2L),
+                ),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(0x02.toByte(), memory.nativeMemoryByte(target))
+        assertEquals(0x01.toByte(), memory.nativeMemoryByte(target + 1L))
+        assertEquals(0x04.toByte(), memory.nativeMemoryByte(target + 2L))
+        assertEquals(0x03.toByte(), memory.nativeMemoryByte(target + 3L))
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4693,6 +4736,7 @@ class JvmVmIntrinsicsTest {
             unsafeReallocateMemory0Method(),
             unsafeSetMemory0Method(),
             unsafeCopyMemory0Method(),
+            unsafeCopySwapMemory0Method(),
             unsafeFreeMemory0Method(),
             unsafeShouldBeInitialized0Method(),
             unsafeEnsureClassInitialized0Method(),
@@ -5815,6 +5859,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "copyMemory0",
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;JJ)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeCopySwapMemory0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "copySwapMemory0",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;JJJ)V",
         isStatic = false,
         isNative = true,
     )

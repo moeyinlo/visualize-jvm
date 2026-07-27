@@ -152,6 +152,31 @@ class JvmUnsafeSyntheticMemory(
         }
     }
 
+    fun copySwapNativeMemory(
+        sourceAddress: Long,
+        targetAddress: Long,
+        bytes: Long,
+        elementSize: Long,
+    ) {
+        require(bytes >= 0L) { "native memory size must be non-negative" }
+        require(elementSize in NativeMemorySwapElementSizes) { "native memory swap element size must be 2, 4, or 8" }
+        require(bytes % elementSize == 0L) { "native memory byte count must be a multiple of swap element size" }
+        if (bytes == 0L) {
+            return
+        }
+        requireNativeMemoryRange(sourceAddress, bytes)
+        requireNativeMemoryRange(targetAddress, bytes)
+        val snapshot = (0L until bytes).map { offset -> nativeMemoryBytes[sourceAddress + offset] ?: 0 }
+        var chunkStart = 0L
+        while (chunkStart < bytes) {
+            for (elementOffset in 0L until elementSize) {
+                val sourceIndex = (chunkStart + elementSize - 1L - elementOffset).toInt()
+                nativeMemoryBytes[targetAddress + chunkStart + elementOffset] = snapshot[sourceIndex]
+            }
+            chunkStart += elementSize
+        }
+    }
+
     fun nativeMemoryByte(address: Long): Byte {
         requireNativeMemoryRange(address, 1L)
         return nativeMemoryBytes[address] ?: 0
@@ -529,6 +554,7 @@ class JvmUnsafeSyntheticMemory(
     companion object {
         private const val NativeMemoryBaseAddress: Long = 0x1_0000L
         private const val NativeMemoryAlignment: Long = 8L
+        private val NativeMemorySwapElementSizes = setOf(2L, 4L, 8L)
     }
 }
 
@@ -1592,6 +1618,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "copyMemory0",
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;JJ)V",
+        isStatic = false,
+    )
+    private val UnsafeCopySwapMemory0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "copySwapMemory0",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;JJJ)V",
         isStatic = false,
     )
     private val UnsafeFreeMemory0Key = JvmNativeMethodKey(
@@ -4173,6 +4205,54 @@ object JvmVmIntrinsics {
         context.unsafeMemory.copyNativeMemory(sourceOffset.value, targetOffset.value, bytes.value)
         null
     }
+    private val UnsafeCopySwapMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.copySwapMemory0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 6) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 expects source base, source offset, target base, target offset, byte count, and element size arguments",
+            )
+        }
+        val sourceBase = invocation.arguments[0]
+        val sourceOffset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 expects source base, source offset, target base, target offset, byte count, and element size arguments",
+            )
+        val targetBase = invocation.arguments[2]
+        val targetOffset = invocation.arguments[3] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 expects source base, source offset, target base, target offset, byte count, and element size arguments",
+            )
+        val bytes = invocation.arguments[4] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 expects source base, source offset, target base, target offset, byte count, and element size arguments",
+            )
+        val elementSize = invocation.arguments[5] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 expects source base, source offset, target base, target offset, byte count, and element size arguments",
+            )
+        if (sourceBase != JvmNullValue || targetBase != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 currently supports only synthetic native memory with null bases",
+            )
+        }
+        if (bytes.value < 0L) {
+            throw JvmUnsupportedInstructionException("Unsafe.copySwapMemory0 byte count must be non-negative")
+        }
+        if (!elementSize.value.isSupportedNativeMemorySwapElementSize() || bytes.value % elementSize.value != 0L) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 element size must be 2, 4, or 8 and divide the byte count",
+            )
+        }
+        context.unsafeMemory.copySwapNativeMemory(
+            sourceAddress = sourceOffset.value,
+            targetAddress = targetOffset.value,
+            bytes = bytes.value,
+            elementSize = elementSize.value,
+        )
+        null
+    }
     private val UnsafeFreeMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.freeMemory0 intrinsic requires a receiver")
@@ -4383,6 +4463,7 @@ object JvmVmIntrinsics {
         UnsafeReallocateMemory0Key to UnsafeReallocateMemory0,
         UnsafeSetMemory0Key to UnsafeSetMemory0,
         UnsafeCopyMemory0Key to UnsafeCopyMemory0,
+        UnsafeCopySwapMemory0Key to UnsafeCopySwapMemory0,
         UnsafeFreeMemory0Key to UnsafeFreeMemory0,
         UnsafeShouldBeInitialized0Key to UnsafeShouldBeInitialized0,
         UnsafeEnsureClassInitialized0Key to UnsafeEnsureClassInitialized0,
@@ -4600,6 +4681,9 @@ object JvmVmIntrinsics {
 
     private fun jvmBoolean(value: Boolean): JvmIntValue =
         JvmIntValue(if (value) 1 else 0)
+
+    private fun Long.isSupportedNativeMemorySwapElementSize(): Boolean =
+        this == 2L || this == 4L || this == 8L
 
     private fun String.toBinaryClassName(): String =
         replace('/', '.')
