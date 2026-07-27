@@ -4,6 +4,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
+import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
@@ -2462,6 +2463,33 @@ class JvmVmIntrinsicsTest {
         assertEquals('\u03A9', unsafeMemory.getStaticChar(offset = 7L))
         assertEquals(Char.MAX_VALUE, unsafeMemory.getStaticChar(offset = 9L))
     }
+
+    @Test
+    fun `Unsafe getFloat intrinsic reads synthetic static float slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetFloatMethod())
+            ?: error("Unsafe.getFloat intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticFloatSlots = mapOf(7L to 1.25f)),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmFloatValue(1.25f), setResult)
+        assertEquals(JvmFloatValue(0.0f), defaultResult)
+    }
     @Test
     fun `Unsafe putByte intrinsic writes synthetic static byte slots`() {
         val heap = JvmHeap()
@@ -3322,6 +3350,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetByteMethod(),
             unsafeGetShortMethod(),
             unsafeGetCharMethod(),
+            unsafeGetFloatMethod(),
             unsafePutByteMethod(),
             unsafePutShortMethod(),
             unsafePutCharMethod(),
@@ -3954,6 +3983,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putChar",
         descriptor = "(Ljava/lang/Object;JC)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetFloatMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getFloat",
+        descriptor = "(Ljava/lang/Object;J)F",
         isStatic = false,
         isNative = true,
     )

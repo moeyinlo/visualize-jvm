@@ -14,6 +14,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
@@ -974,6 +975,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getChar",
         descriptor = "(Ljava/lang/Object;J)C",
+        isStatic = false,
+    )
+    private val UnsafeGetFloatKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getFloat",
+        descriptor = "(Ljava/lang/Object;J)F",
         isStatic = false,
     )
     private val UnsafePutByteKey = JvmNativeMethodKey(
@@ -2099,6 +2106,23 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(context.unsafeMemory.getStaticChar(offset.value).code)
     }
+    private val UnsafeGetFloat = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getFloat intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getFloat expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getFloat expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getFloat currently supports only synthetic static float slots",
+            )
+        }
+        JvmFloatValue(context.unsafeMemory.getStaticFloat(offset.value))
+    }
     private val UnsafePutByte = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putByte intrinsic requires a receiver")
@@ -2627,6 +2651,7 @@ object JvmVmIntrinsics {
         UnsafeGetByteKey to UnsafeGetByte,
         UnsafeGetShortKey to UnsafeGetShort,
         UnsafeGetCharKey to UnsafeGetChar,
+        UnsafeGetFloatKey to UnsafeGetFloat,
         UnsafePutByteKey to UnsafePutByte,
         UnsafePutShortKey to UnsafePutShort,
         UnsafePutCharKey to UnsafePutChar,
