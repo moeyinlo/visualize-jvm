@@ -12475,6 +12475,22 @@ class JvmSimulatedJniEnvironmentTest {
         val globalHandle = environment.newGlobalRef(localHandle)!!
         val weakGlobalHandle = environment.newWeakGlobalRef(localHandle)!!
         val deletedLocalHandle = handles.newObjectHandle(objectReference)
+        val methodIdHandle = handles.newMethodIdHandle(
+            JvmResolvedMethod(
+                ownerClassName = "Example",
+                name = "run",
+                descriptor = "()V",
+                isStatic = false,
+            ),
+        )
+        val fieldIdHandle = handles.newFieldIdHandle(
+            JvmResolvedField(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "I",
+                isStatic = false,
+            ),
+        )
 
         environment.deleteLocalRef(deletedLocalHandle)
 
@@ -12482,6 +12498,8 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(JvmJniReferenceType.Global, environment.getObjectRefType(globalHandle))
         assertEquals(JvmJniReferenceType.WeakGlobal, environment.getObjectRefType(weakGlobalHandle))
         assertEquals(JvmJniReferenceType.Invalid, environment.getObjectRefType(deletedLocalHandle))
+        assertEquals(JvmJniReferenceType.Invalid, environment.getObjectRefType(methodIdHandle))
+        assertEquals(JvmJniReferenceType.Invalid, environment.getObjectRefType(fieldIdHandle))
         assertEquals(JvmJniReferenceType.Invalid, environment.getObjectRefType(null))
     }
 
