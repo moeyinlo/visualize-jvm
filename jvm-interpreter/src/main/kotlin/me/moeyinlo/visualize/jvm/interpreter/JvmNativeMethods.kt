@@ -521,6 +521,12 @@ object JvmVmIntrinsics {
         descriptor = "()V",
         isStatic = true,
     )
+    private val ThreadFindScopedValueBindingsKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "findScopedValueBindings",
+        descriptor = "()Ljava/lang/Object;",
+        isStatic = true,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -905,6 +911,13 @@ object JvmVmIntrinsics {
         requireNoArguments("Thread.currentCarrierThread", invocation)
         context.heap.internThread(context.currentThreadId)
     }
+    private val ThreadFindScopedValueBindings = JvmNativeMethodIntrinsic { _, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Thread.findScopedValueBindings expects no receiver")
+        }
+        requireNoArguments("Thread.findScopedValueBindings", invocation)
+        JvmNullValue
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1008,6 +1021,7 @@ object JvmVmIntrinsics {
         ThreadRegisterNativesKey to ThreadRegisterNatives,
         ThreadCurrentThreadKey to ThreadCurrentThread,
         ThreadCurrentCarrierThreadKey to ThreadCurrentCarrierThread,
+        ThreadFindScopedValueBindingsKey to ThreadFindScopedValueBindings,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,
