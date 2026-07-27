@@ -64,6 +64,7 @@ class JvmUnsafeSyntheticMemory(
     staticByteSlots: Map<Long, Byte> = emptyMap(),
     staticShortSlots: Map<Long, Short> = emptyMap(),
     staticCharSlots: Map<Long, Char> = emptyMap(),
+    staticFloatSlots: Map<Long, Float> = emptyMap(),
 ) {
     private val staticLongSlots = staticLongSlots.toMutableMap()
     private val staticIntSlots = staticIntSlots.toMutableMap()
@@ -72,6 +73,7 @@ class JvmUnsafeSyntheticMemory(
     private val staticByteSlots = staticByteSlots.toMutableMap()
     private val staticShortSlots = staticShortSlots.toMutableMap()
     private val staticCharSlots = staticCharSlots.toMutableMap()
+    private val staticFloatSlots = staticFloatSlots.toMutableMap()
 
     fun getStaticLong(offset: Long): Long = staticLongSlots[offset] ?: 0L
 
@@ -208,6 +210,25 @@ class JvmUnsafeSyntheticMemory(
             return false
         }
         staticCharSlots[offset] = replacement
+        return true
+    }
+
+    fun getStaticFloat(offset: Long): Float = staticFloatSlots[offset] ?: 0.0f
+
+    fun putStaticFloat(offset: Long, value: Float) {
+        staticFloatSlots[offset] = value
+    }
+
+    fun compareAndSetStaticFloat(
+        offset: Long,
+        expected: Float,
+        replacement: Float,
+    ): Boolean {
+        val current = getStaticFloat(offset)
+        if (current != expected) {
+            return false
+        }
+        staticFloatSlots[offset] = replacement
         return true
     }
 
