@@ -32,6 +32,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
 import me.moeyinlo.visualize.jvm.runtime.JvmStaticFields
 import me.moeyinlo.visualize.jvm.runtime.JvmThreadScheduler
+import me.moeyinlo.visualize.jvm.runtime.JvmThreadPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStringPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmValue
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
@@ -1021,6 +1022,18 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "throwException",
         descriptor = "(Ljava/lang/Throwable;)V",
+        isStatic = false,
+    )
+    private val UnsafeParkKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "park",
+        descriptor = "(ZJ)V",
+        isStatic = false,
+    )
+    private val UnsafeUnparkKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "unpark",
+        descriptor = "(Ljava/lang/Object;)V",
         isStatic = false,
     )
     private val UnsafeGetLongVolatileKey = JvmNativeMethodKey(
@@ -2031,6 +2044,45 @@ object JvmVmIntrinsics {
             guestClassName = throwableClassName,
             message = "Unsafe.throwException threw guest $throwableClassName",
         )
+    }
+    private val UnsafePark = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.park intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.park expects boolean isAbsolute and long time arguments")
+        }
+        val isAbsolute = invocation.arguments[0] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.park expects boolean isAbsolute and long time arguments")
+        val time = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.park expects boolean isAbsolute and long time arguments")
+        if (isAbsolute.value !in 0..1) {
+            throw JvmUnsupportedInstructionException("Unsafe.park boolean isAbsolute must be 0 or 1")
+        }
+        context.threadScheduler?.parkThread(
+            threadId = context.currentThreadId,
+            isAbsolute = isAbsolute.value == 1,
+            time = time.value,
+        )
+        null
+    }
+    private val UnsafeUnpark = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.unpark intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.unpark expects one thread argument")
+        }
+        when (val thread = invocation.arguments.single()) {
+            JvmNullValue -> Unit
+            is JvmObjectReferenceValue -> {
+                val payload = context.heap.get(thread).payload as? JvmThreadPayload
+                    ?: throw JvmUnsupportedInstructionException("Unsafe.unpark expects a guest java/lang/Thread object")
+                context.threadScheduler?.unparkThread(payload.threadId)
+            }
+            else -> throw JvmUnsupportedInstructionException("Unsafe.unpark expects one thread argument")
+        }
+        null
     }
     private val UnsafeGetLongVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -3893,6 +3945,8 @@ object JvmVmIntrinsics {
         UnsafeRegisterNativesKey to UnsafeRegisterNatives,
         UnsafeAllocateInstanceKey to UnsafeAllocateInstance,
         UnsafeThrowExceptionKey to UnsafeThrowException,
+        UnsafeParkKey to UnsafePark,
+        UnsafeUnparkKey to UnsafeUnpark,
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
         UnsafeGetLongKey to UnsafeGetLong,
         UnsafeGetReferenceVolatileKey to UnsafeGetReferenceVolatile,

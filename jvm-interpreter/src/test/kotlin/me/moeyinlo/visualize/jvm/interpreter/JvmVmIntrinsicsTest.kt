@@ -4269,6 +4269,55 @@ class JvmVmIntrinsicsTest {
         assertEquals(throwable, thrown.throwable)
         assertEquals("java/lang/IllegalStateException", thrown.guestClassName)
     }
+
+    @Test
+    fun `Unsafe park intrinsic parks the current scheduler thread`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val scheduler = JvmThreadScheduler()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeParkMethod())
+            ?: error("Unsafe.park intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            threadScheduler = scheduler,
+            currentThreadId = "worker",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmIntValue(0), JvmLongValue(0L))))
+
+        assertEquals(null, result)
+        assertEquals(
+            JvmThreadSchedulingState.Parked(isAbsolute = false, time = 0L),
+            scheduler.state("worker"),
+        )
+    }
+
+    @Test
+    fun `Unsafe unpark intrinsic resumes a parked guest thread`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val targetThread = heap.internThread("worker")
+        val scheduler = JvmThreadScheduler()
+        scheduler.parkThread(threadId = "worker", isAbsolute = false, time = 0L)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeUnparkMethod())
+            ?: error("Unsafe.unpark intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            threadScheduler = scheduler,
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(targetThread)))
+
+        assertEquals(null, result)
+        assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("worker"))
+    }
+
     @Test
     fun `VM intrinsic registry resolves the Phase 15 native intrinsic surface`() {
         val phase15Methods = listOf(
@@ -4325,6 +4374,8 @@ class JvmVmIntrinsicsTest {
             unsafeRegisterNativesMethod(),
             unsafeAllocateInstanceMethod(),
             unsafeThrowExceptionMethod(),
+            unsafeParkMethod(),
+            unsafeUnparkMethod(),
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
             unsafeGetReferenceVolatileMethod(),
@@ -4896,6 +4947,23 @@ class JvmVmIntrinsicsTest {
         isStatic = false,
         isNative = true,
     )
+
+    private fun unsafeParkMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "park",
+        descriptor = "(ZJ)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeUnparkMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "unpark",
+        descriptor = "(Ljava/lang/Object;)V",
+        isStatic = false,
+        isNative = true,
+    )
+
     private fun unsafeGetLongVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getLongVolatile",
