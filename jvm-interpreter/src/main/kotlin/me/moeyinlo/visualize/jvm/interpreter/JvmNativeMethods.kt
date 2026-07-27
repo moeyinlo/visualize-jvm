@@ -2427,6 +2427,16 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.putReferenceVolatile expects Object, long offset, and reference value arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (!field.descriptor.isReferenceDescriptor()) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.putReferenceVolatile object field offset must map to a reference field",
+                )
+            }
+            context.heap.putInstanceField(base, field, value)
+            return@JvmNativeMethodIntrinsic null
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.putReferenceVolatile currently supports only synthetic static reference slots",

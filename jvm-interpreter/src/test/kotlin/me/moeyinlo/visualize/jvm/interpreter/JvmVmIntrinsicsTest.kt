@@ -5920,6 +5920,52 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putReferenceVolatile intrinsic writes guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("VolatileReferenceFieldOffsetOwner")
+        val reference = heap.allocateObject("ReferenceValue")
+        val ownerClass = heap.internClassMirror("VolatileReferenceFieldOffsetOwner")
+        val fieldName = heap.internString("value")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("VolatileReferenceFieldOffsetOwner", "value", "Ljava/lang/Object;")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "VolatileReferenceFieldOffsetOwner",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "Ljava/lang/Object;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val putReferenceVolatile = JvmVmIntrinsics.Registry.resolve(unsafePutReferenceVolatileMethod())
+            ?: error("Unsafe.putReferenceVolatile intrinsic was not registered")
+
+        val result = putReferenceVolatile.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, reference)),
+        )
+
+        assertEquals(null, result)
+        assertEquals(reference, heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
