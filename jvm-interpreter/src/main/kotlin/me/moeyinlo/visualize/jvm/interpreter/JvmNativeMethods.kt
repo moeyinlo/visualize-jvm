@@ -71,6 +71,7 @@ class JvmUnsafeSyntheticMemory(
     staticCharSlots: Map<Long, Char> = emptyMap(),
     staticFloatSlots: Map<Long, Float> = emptyMap(),
     staticDoubleSlots: Map<Long, Double> = emptyMap(),
+    nativeMemoryBlocks: Map<Long, Long> = emptyMap(),
 ) {
     private val staticLongSlots = staticLongSlots.toMutableMap()
     private val staticIntSlots = staticIntSlots.toMutableMap()
@@ -81,6 +82,24 @@ class JvmUnsafeSyntheticMemory(
     private val staticCharSlots = staticCharSlots.toMutableMap()
     private val staticFloatSlots = staticFloatSlots.toMutableMap()
     private val staticDoubleSlots = staticDoubleSlots.toMutableMap()
+    private val nativeMemoryBlocks = nativeMemoryBlocks.toMutableMap()
+    private var nextNativeAddress: Long = NativeMemoryBaseAddress
+
+    fun allocateNativeMemory(bytes: Long): Long {
+        require(bytes >= 0L) { "native memory size must be non-negative" }
+        if (bytes == 0L) {
+            return 0L
+        }
+        val address = nextNativeAddress
+        nativeMemoryBlocks[address] = bytes
+        nextNativeAddress += bytes.alignNativeMemoryAllocation()
+        return address
+    }
+
+    fun nativeMemoryBlockSize(address: Long): Long? = nativeMemoryBlocks[address]
+
+    private fun Long.alignNativeMemoryAllocation(): Long =
+        ((this + NativeMemoryAlignment - 1L) / NativeMemoryAlignment) * NativeMemoryAlignment
 
     fun getStaticLong(offset: Long): Long = staticLongSlots[offset] ?: 0L
 
@@ -425,6 +444,11 @@ class JvmUnsafeSyntheticMemory(
         val current = getStaticReference(offset)
         staticReferenceSlots[offset] = replacement
         return current
+    }
+
+    companion object {
+        private const val NativeMemoryBaseAddress: Long = 0x1_0000L
+        private const val NativeMemoryAlignment: Long = 8L
     }
 }
 
@@ -1464,6 +1488,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "writebackPostSync0",
         descriptor = "()V",
+        isStatic = false,
+    )
+    private val UnsafeAllocateMemory0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "allocateMemory0",
+        descriptor = "(J)J",
         isStatic = false,
     )
     private val UnsafeShouldBeInitialized0Key = JvmNativeMethodKey(
@@ -3933,6 +3963,20 @@ object JvmVmIntrinsics {
         requireNoArguments("Unsafe.writebackPostSync0", invocation)
         null
     }
+    private val UnsafeAllocateMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.allocateMemory0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.allocateMemory0 expects one long byte count argument")
+        }
+        val bytes = invocation.arguments.single() as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.allocateMemory0 expects one long byte count argument")
+        if (bytes.value < 0L) {
+            throw JvmUnsupportedInstructionException("Unsafe.allocateMemory0 byte count must be non-negative")
+        }
+        JvmLongValue(context.unsafeMemory.allocateNativeMemory(bytes.value))
+    }
     private val UnsafeShouldBeInitialized0 = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.shouldBeInitialized0 intrinsic requires a receiver")
@@ -4127,6 +4171,7 @@ object JvmVmIntrinsics {
         UnsafeWriteback0Key to UnsafeWriteback0,
         UnsafeWritebackPreSync0Key to UnsafeWritebackPreSync0,
         UnsafeWritebackPostSync0Key to UnsafeWritebackPostSync0,
+        UnsafeAllocateMemory0Key to UnsafeAllocateMemory0,
         UnsafeShouldBeInitialized0Key to UnsafeShouldBeInitialized0,
         UnsafeEnsureClassInitialized0Key to UnsafeEnsureClassInitialized0,
         UnsafeFullFenceKey to UnsafeFullFence,
