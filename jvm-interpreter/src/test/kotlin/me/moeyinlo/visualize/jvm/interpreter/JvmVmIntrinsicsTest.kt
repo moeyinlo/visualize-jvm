@@ -3439,6 +3439,36 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getAndAddInt intrinsic returns witness for synthetic static int slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetAndAddIntMethod())
+            ?: error("Unsafe.getAndAddInt intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory(staticIntSlots = mapOf(7L to 42))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val existing = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue(5))),
+        )
+        val defaulted = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmIntValue(-3))),
+        )
+
+        assertEquals(JvmIntValue(42), existing)
+        assertEquals(47, unsafeMemory.getStaticInt(offset = 7L))
+        assertEquals(JvmIntValue(0), defaulted)
+        assertEquals(-3, unsafeMemory.getStaticInt(offset = 9L))
+    }
+
+    @Test
     fun `Unsafe compareAndExchangeDouble intrinsic returns witness for synthetic static double slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4031,6 +4061,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndExchangeShortMethod(),
             unsafeCompareAndExchangeCharMethod(),
             unsafeGetAndAddLongMethod(),
+            unsafeGetAndAddIntMethod(),
             unsafeCompareAndExchangeFloatMethod(),
             unsafeCompareAndExchangeDoubleMethod(),
             unsafePutLongVolatileMethod(),
@@ -4855,6 +4886,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getAndAddLong",
         descriptor = "(Ljava/lang/Object;JJ)J",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetAndAddIntMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndAddInt",
+        descriptor = "(Ljava/lang/Object;JI)I",
         isStatic = false,
         isNative = true,
     )
