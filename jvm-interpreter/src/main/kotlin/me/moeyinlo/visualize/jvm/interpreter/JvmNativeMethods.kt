@@ -5181,8 +5181,16 @@ object JvmVmIntrinsics {
                         value = value.value.toByte(),
                     )
                 }
+                is JvmLongArrayPayload -> {
+                    payload.setRawBytes(
+                        operation = "Unsafe.setMemory0 long array",
+                        start = start,
+                        endExclusive = endExclusive,
+                        value = value.value.toByte(),
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.setMemory0 currently supports only guest boolean, byte, char, float, int, or short arrays for non-null base",
+                    "Unsafe.setMemory0 currently supports only guest boolean, byte, char, float, int, long, or short arrays for non-null base",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -6061,6 +6069,28 @@ object JvmVmIntrinsics {
         }
     }
 
+    private fun JvmLongArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+        value: Byte,
+    ) {
+        val byteSize = elements.size.toLong() * Long.SIZE_BYTES.toLong()
+        if (start < 0L || endExclusive < start || endExclusive > byteSize) {
+            throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
+        }
+        for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Long.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Long.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex]
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Long.SIZE_BYTES,
+                    value = value,
+                )
+        }
+    }
+
     private fun Int.replaceSyntheticNativeByte(
         byteIndex: Int,
         elementBytes: Int,
@@ -6069,6 +6099,16 @@ object JvmVmIntrinsics {
         val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = elementBytes)
         val mask = 0xff shl shift
         return (this and mask.inv()) or ((value.toInt() and 0xff) shl shift)
+    }
+
+    private fun Long.replaceSyntheticNativeByte(
+        byteIndex: Int,
+        elementBytes: Int,
+        value: Byte,
+    ): Long {
+        val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = elementBytes)
+        val mask = 0xffL shl shift
+        return (this and mask.inv()) or ((value.toLong() and 0xffL) shl shift)
     }
 
     private fun syntheticNativeByteShift(
