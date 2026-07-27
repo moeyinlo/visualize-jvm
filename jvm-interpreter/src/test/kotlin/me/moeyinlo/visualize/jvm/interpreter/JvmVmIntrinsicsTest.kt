@@ -1733,6 +1733,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread yield0 intrinsic delegates to the context yield handler`() {
+        var yields = 0
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
+            ?: error("Thread.yield0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+            threadYieldHandler = { yields += 1 },
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(1, yields)
+    }
+
+    @Test
     fun `Thread sleep intrinsics delegate validated guest sleep requests to the context`() {
         val heap = JvmHeap()
         val sleeps = mutableListOf<Pair<Long, Int>>()
@@ -1823,6 +1845,7 @@ class JvmVmIntrinsicsTest {
             stringInternMethod(),
             threadRegisterNativesMethod(),
             threadCurrentThreadMethod(),
+            threadYield0Method(),
             threadSleepMillisMethod(),
             threadSleepMillisNanosMethod(),
             threadSleepNanos0Method(),
@@ -2136,6 +2159,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "currentThread",
         descriptor = "()Ljava/lang/Thread;",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadYield0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "yield0",
+        descriptor = "()V",
         isStatic = true,
         isNative = true,
     )

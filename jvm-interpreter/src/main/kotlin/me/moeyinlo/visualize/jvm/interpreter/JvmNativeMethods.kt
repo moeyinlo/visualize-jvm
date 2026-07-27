@@ -73,6 +73,7 @@ data class JvmNativeMethodContext(
     val maxMemoryProvider: () -> Long = { Runtime.getRuntime().maxMemory() },
     val gcHandler: () -> Unit = { System.gc() },
     val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },
+    val threadYieldHandler: () -> Unit = Thread::yield,
     val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
     val loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
         throw JvmUnsupportedInstructionException(
@@ -514,6 +515,12 @@ object JvmVmIntrinsics {
         descriptor = "(J)V",
         isStatic = true,
     )
+    private val ThreadYield0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "yield0",
+        descriptor = "()V",
+        isStatic = true,
+    )
     private val ThreadSleepMillisNanosKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -866,6 +873,14 @@ object JvmVmIntrinsics {
         requireNoArguments("Thread.currentThread", invocation)
         context.heap.internThread(context.currentThreadId)
     }
+    private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
+        }
+        requireNoArguments("Thread.yield0", invocation)
+        context.threadYieldHandler()
+        null
+    }
     private val ThreadSleepMillis = JvmNativeMethodIntrinsic { context, invocation ->
         val millis = requireSleepMillisArgument("Thread.sleep(J)", invocation)
         context.threadSleepHandler(millis, 0)
@@ -931,6 +946,7 @@ object JvmVmIntrinsics {
         StringInternKey to StringIntern,
         ThreadRegisterNativesKey to ThreadRegisterNatives,
         ThreadCurrentThreadKey to ThreadCurrentThread,
+        ThreadYield0Key to ThreadYield0,
         ThreadSleepMillisKey to ThreadSleepMillis,
         ThreadSleepMillisNanosKey to ThreadSleepMillisNanos,
         ThreadSleepNanos0Key to ThreadSleepNanos0,
