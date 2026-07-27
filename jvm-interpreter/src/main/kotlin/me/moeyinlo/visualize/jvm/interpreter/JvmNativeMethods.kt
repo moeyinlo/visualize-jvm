@@ -2917,6 +2917,16 @@ object JvmVmIntrinsics {
         if (value.value !in Short.MIN_VALUE.toInt()..Short.MAX_VALUE.toInt()) {
             throw JvmUnsupportedInstructionException("Unsafe.putShortVolatile short value is out of range")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "S") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.putShortVolatile object field offset must map to a short field",
+                )
+            }
+            context.heap.putInstanceField(base, field, value)
+            return@JvmNativeMethodIntrinsic null
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.putShortVolatile currently supports only synthetic static short slots",
