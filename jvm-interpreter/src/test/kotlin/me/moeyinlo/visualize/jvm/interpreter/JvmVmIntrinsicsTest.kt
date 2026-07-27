@@ -1169,6 +1169,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Shutdown beforeHalt intrinsic is a simulated no op`() {
+        val terminationState = JvmVmTerminationState()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(shutdownBeforeHaltMethod())
+            ?: error("Shutdown.beforeHalt intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Shutdown",
+            terminationState = terminationState,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(null, terminationState.result)
+    }
+
+    @Test
     fun `Shutdown halt0 intrinsic terminates the VM with the supplied status`() {
         val terminationState = JvmVmTerminationState()
         val intrinsic = JvmVmIntrinsics.Registry.resolve(shutdownHalt0Method())
@@ -1537,6 +1559,14 @@ class JvmVmIntrinsicsTest {
         name = "exit",
         descriptor = "(I)V",
         isStatic = false,
+        isNative = true,
+    )
+
+    private fun shutdownBeforeHaltMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Shutdown",
+        name = "beforeHalt",
+        descriptor = "()V",
+        isStatic = true,
         isNative = true,
     )
 

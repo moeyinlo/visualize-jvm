@@ -328,6 +328,12 @@ object JvmVmIntrinsics {
         descriptor = "(I)V",
         isStatic = false,
     )
+    private val ShutdownBeforeHaltKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Shutdown",
+        name = "beforeHalt",
+        descriptor = "()V",
+        isStatic = true,
+    )
     private val ShutdownHalt0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Shutdown",
         name = "halt0",
@@ -544,6 +550,13 @@ object JvmVmIntrinsics {
         context.terminationState.terminateNormally(status.value)
         null
     }
+    private val ShutdownBeforeHalt = JvmNativeMethodIntrinsic { _, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Shutdown.beforeHalt expects no receiver")
+        }
+        requireNoArguments("Shutdown.beforeHalt", invocation)
+        null
+    }
     private val ShutdownHalt0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null || invocation.arguments.size != 1) {
             throw JvmUnsupportedInstructionException("Shutdown.halt0 expects one int status argument")
@@ -653,6 +666,7 @@ object JvmVmIntrinsics {
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
         RuntimeExitKey to RuntimeExit,
+        ShutdownBeforeHaltKey to ShutdownBeforeHalt,
         ShutdownHalt0Key to ShutdownHalt0,
         NativeLibrariesLoadKey to NativeLibrariesLoad,
         NativeLibrariesFindBuiltinLibKey to NativeLibrariesFindBuiltinLib,
