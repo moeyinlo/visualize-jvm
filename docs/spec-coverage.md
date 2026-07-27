@@ -704,6 +704,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.6 | Binding native method implementations | `jvm-native`, `jvm-jni`, `jvm-host` | `JvmLayeredNativeMethodResolverTest`, `JvmInterpreterTest.*native*`, `JvmSimulatedJniRegisteredNativesTest`, `JvmSimulatedJniFunctionTableTest` | PARTIAL |
 | 5.7 | VM termination | `jvm-runtime` | `JvmVmTerminationStateTest` | PARTIAL |
 | 5.7 | VM termination state records normal exit status and uncaught guest throwable termination results, exposes immutable final result state, and rejects duplicate termination attempts | `jvm-runtime` | `JvmVmTerminationStateTest` | IMPLEMENTED |
+| 5.7 | VM thread liveness tracks active daemon and non-daemon VM threads and terminates normally with exit code 0 when the last non-daemon thread finishes while rejecting duplicate or unknown lifecycle transitions | `jvm-runtime` | `JvmVmThreadSetTest` | IMPLEMENTED |
 
 ## Chapters 6 and 7 - Instruction Set and Opcode Mnemonics
 
