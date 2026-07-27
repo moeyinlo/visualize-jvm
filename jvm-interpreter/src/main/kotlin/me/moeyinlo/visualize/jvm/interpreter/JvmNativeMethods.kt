@@ -5273,17 +5273,56 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.copySwapMemory0 expects source base, source offset, target base, target offset, byte count, and element size arguments",
             )
-        if (sourceBase != JvmNullValue || targetBase != JvmNullValue) {
-            throw JvmUnsupportedInstructionException(
-                "Unsafe.copySwapMemory0 currently supports only synthetic native memory with null bases",
-            )
-        }
         if (bytes.value < 0L) {
             throw JvmUnsupportedInstructionException("Unsafe.copySwapMemory0 byte count must be non-negative")
         }
         if (!elementSize.value.isSupportedNativeMemorySwapElementSize() || bytes.value % elementSize.value != 0L) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.copySwapMemory0 element size must be 2, 4, or 8 and divide the byte count",
+            )
+        }
+        if (sourceBase is JvmObjectReferenceValue || targetBase is JvmObjectReferenceValue) {
+            if (sourceBase !is JvmObjectReferenceValue || targetBase !is JvmObjectReferenceValue) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.copySwapMemory0 currently supports only guest byte array pairs or synthetic native memory",
+                )
+            }
+            val sourcePayload = context.heap.get(sourceBase).payload as? JvmByteArrayPayload
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.copySwapMemory0 currently supports only guest byte arrays for non-null bases",
+                )
+            val targetPayload = context.heap.get(targetBase).payload as? JvmByteArrayPayload
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.copySwapMemory0 currently supports only guest byte arrays for non-null bases",
+                )
+            val sourceStart = sourceOffset.value - UnsafeSyntheticArrayBaseOffset
+            val sourceEndExclusive = sourceStart + bytes.value
+            val targetStart = targetOffset.value - UnsafeSyntheticArrayBaseOffset
+            val targetEndExclusive = targetStart + bytes.value
+            if (
+                sourceStart < 0L || sourceEndExclusive < sourceStart ||
+                sourceEndExclusive > sourcePayload.elements.size ||
+                targetStart < 0L || targetEndExclusive < targetStart ||
+                targetEndExclusive > targetPayload.elements.size
+            ) {
+                throw JvmUnsupportedInstructionException("Unsafe.copySwapMemory0 byte array range is outside array bounds")
+            }
+            val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
+                .map { index -> sourcePayload.elements[index] }
+            var chunkStart = 0L
+            while (chunkStart < bytes.value) {
+                for (elementOffset in 0L until elementSize.value) {
+                    val sourceIndex = (chunkStart + elementSize.value - 1L - elementOffset).toInt()
+                    targetPayload.elements[targetStart.toInt() + chunkStart.toInt() + elementOffset.toInt()] =
+                        snapshot[sourceIndex]
+                }
+                chunkStart += elementSize.value
+            }
+            return@JvmNativeMethodIntrinsic null
+        }
+        if (sourceBase != JvmNullValue || targetBase != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.copySwapMemory0 currently supports only synthetic native memory with null bases",
             )
         }
         context.unsafeMemory.copySwapNativeMemory(

@@ -4678,6 +4678,40 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe copySwapMemory0 intrinsic swaps guest byte array element bytes`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val source = heap.allocateByteArray(4)
+        val target = heap.allocateByteArray(4)
+        val sourcePayload = heap.get(source).payload as JvmByteArrayPayload
+        val targetPayload = heap.get(target).payload as JvmByteArrayPayload
+        sourcePayload.elements[0] = 0x01
+        sourcePayload.elements[1] = 0x02
+        sourcePayload.elements[2] = 0x03
+        sourcePayload.elements[3] = 0x04
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCopySwapMemory0Method())
+            ?: error("Unsafe.copySwapMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(source, JvmLongValue(0L), target, JvmLongValue(0L), JvmLongValue(4L), JvmLongValue(2L)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(listOf(0x02.toByte(), 0x01.toByte(), 0x04.toByte(), 0x03.toByte()), targetPayload.elements)
+    }
+
+    @Test
     fun `Unsafe objectFieldOffset1 intrinsic assigns stable guest instance field offsets`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
