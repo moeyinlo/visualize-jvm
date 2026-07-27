@@ -112,6 +112,18 @@ class JvmUnsafeSyntheticMemory(
         staticIntSlots[offset] = replacement
         return true
     }
+
+    fun compareAndExchangeStaticInt(
+        offset: Long,
+        expected: Int,
+        replacement: Int,
+    ): Int {
+        val current = getStaticInt(offset)
+        if (current == expected) {
+            staticIntSlots[offset] = replacement
+        }
+        return current
+    }
 }
 
 data class JvmNativeMethodContext(
