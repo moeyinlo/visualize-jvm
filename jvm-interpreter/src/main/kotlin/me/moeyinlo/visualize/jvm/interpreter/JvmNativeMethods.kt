@@ -236,6 +236,18 @@ class JvmUnsafeSyntheticMemory(
         return true
     }
 
+    fun compareAndExchangeStaticFloat(
+        offset: Long,
+        expected: Float,
+        replacement: Float,
+    ): Float {
+        val current = getStaticFloat(offset)
+        if (current.toRawBits() == expected.toRawBits()) {
+            staticFloatSlots[offset] = replacement
+        }
+        return current
+    }
+
     fun getStaticDouble(offset: Long): Double = staticDoubleSlots[offset] ?: 0.0
 
     fun putStaticDouble(offset: Long, value: Double) {

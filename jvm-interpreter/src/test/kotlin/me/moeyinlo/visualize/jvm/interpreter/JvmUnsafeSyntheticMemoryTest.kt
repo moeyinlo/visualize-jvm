@@ -135,6 +135,29 @@ class JvmUnsafeSyntheticMemoryTest {
     }
 
     @Test
+    fun `synthetic static float slots compare and exchange returns witness by raw bits`() {
+        val storedNaN = java.lang.Float.intBitsToFloat(0x7fc00001)
+        val otherNaN = java.lang.Float.intBitsToFloat(0x7fc00002)
+        val memory = JvmUnsafeSyntheticMemory(staticFloatSlots = mapOf(7L to storedNaN, 9L to 0.0f))
+
+        assertEquals(
+            storedNaN.toRawBits(),
+            memory.compareAndExchangeStaticFloat(offset = 7L, expected = otherNaN, replacement = 1.0f).toRawBits(),
+        )
+        assertEquals(storedNaN.toRawBits(), memory.getStaticFloat(offset = 7L).toRawBits())
+        assertEquals(
+            storedNaN.toRawBits(),
+            memory.compareAndExchangeStaticFloat(offset = 7L, expected = storedNaN, replacement = 1.0f).toRawBits(),
+        )
+        assertEquals(1.0f, memory.getStaticFloat(offset = 7L))
+        assertEquals(
+            0.0f.toRawBits(),
+            memory.compareAndExchangeStaticFloat(offset = 9L, expected = -0.0f, replacement = 2.0f).toRawBits(),
+        )
+        assertEquals(0.0f.toRawBits(), memory.getStaticFloat(offset = 9L).toRawBits())
+    }
+
+    @Test
     fun `synthetic static double slots default to zero can be written and compare and set atomically`() {
         val memory = JvmUnsafeSyntheticMemory(staticDoubleSlots = mapOf(7L to 1.25))
 
