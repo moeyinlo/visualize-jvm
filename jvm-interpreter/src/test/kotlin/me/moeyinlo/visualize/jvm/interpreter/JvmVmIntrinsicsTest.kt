@@ -1755,6 +1755,38 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread holdsLock intrinsic reports current guest monitor ownership`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("java/lang/Object")
+        val monitors = JvmMonitorState()
+        monitors.enter(receiver, threadId = "owner")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadHoldsLockMethod())
+            ?: error("Thread.holdsLock intrinsic was not registered")
+        val ownerContext = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+            monitors = monitors,
+            currentThreadId = "owner",
+        )
+        val otherContext = ownerContext.copy(currentThreadId = "other")
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(ownerContext, JvmNativeMethodInvocation(null, listOf(receiver))),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(otherContext, JvmNativeMethodInvocation(null, listOf(receiver))),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(ownerContext, JvmNativeMethodInvocation(null, listOf(JvmNullValue))),
+        )
+    }
+
+    @Test
     fun `Thread sleep intrinsics delegate validated guest sleep requests to the context`() {
         val heap = JvmHeap()
         val sleeps = mutableListOf<Pair<Long, Int>>()
@@ -1846,6 +1878,7 @@ class JvmVmIntrinsicsTest {
             threadRegisterNativesMethod(),
             threadCurrentThreadMethod(),
             threadYield0Method(),
+            threadHoldsLockMethod(),
             threadSleepMillisMethod(),
             threadSleepMillisNanosMethod(),
             threadSleepNanos0Method(),
@@ -2167,6 +2200,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "yield0",
         descriptor = "()V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadHoldsLockMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "holdsLock",
+        descriptor = "(Ljava/lang/Object;)Z",
         isStatic = true,
         isNative = true,
     )

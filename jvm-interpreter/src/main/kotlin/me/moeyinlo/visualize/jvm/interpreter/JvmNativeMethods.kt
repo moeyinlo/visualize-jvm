@@ -521,6 +521,12 @@ object JvmVmIntrinsics {
         descriptor = "()V",
         isStatic = true,
     )
+    private val ThreadHoldsLockKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "holdsLock",
+        descriptor = "(Ljava/lang/Object;)Z",
+        isStatic = true,
+    )
     private val ThreadSleepMillisNanosKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -881,6 +887,19 @@ object JvmVmIntrinsics {
         context.threadYieldHandler()
         null
     }
+    private val ThreadHoldsLock = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null || invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Thread.holdsLock expects one reference argument")
+        }
+        when (val value = invocation.arguments.single()) {
+            JvmNullValue -> JvmIntValue(0)
+            is JvmObjectReferenceValue -> {
+                context.heap.get(value)
+                jvmBoolean(context.monitors.holdCount(value, context.currentThreadId) > 0)
+            }
+            else -> throw JvmUnsupportedInstructionException("Thread.holdsLock expects one reference argument")
+        }
+    }
     private val ThreadSleepMillis = JvmNativeMethodIntrinsic { context, invocation ->
         val millis = requireSleepMillisArgument("Thread.sleep(J)", invocation)
         context.threadSleepHandler(millis, 0)
@@ -947,6 +966,7 @@ object JvmVmIntrinsics {
         ThreadRegisterNativesKey to ThreadRegisterNatives,
         ThreadCurrentThreadKey to ThreadCurrentThread,
         ThreadYield0Key to ThreadYield0,
+        ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadSleepMillisKey to ThreadSleepMillis,
         ThreadSleepMillisNanosKey to ThreadSleepMillisNanos,
         ThreadSleepNanos0Key to ThreadSleepNanos0,
