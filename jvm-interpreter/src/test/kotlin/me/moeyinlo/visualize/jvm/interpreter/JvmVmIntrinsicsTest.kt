@@ -5331,6 +5331,45 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getLongVolatile intrinsic reads guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("VolatileLongFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("VolatileLongFieldOffsetOwner")
+        val fieldName = heap.internString("state")
+        val memory = JvmUnsafeSyntheticMemory()
+        heap.putInstanceField(
+            target,
+            JvmFieldReference("VolatileLongFieldOffsetOwner", "state", "J"),
+            JvmLongValue(99L),
+        )
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "VolatileLongFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "state", descriptor = "J", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val getLongVolatile = JvmVmIntrinsics.Registry.resolve(unsafeGetLongVolatileMethod())
+            ?: error("Unsafe.getLongVolatile intrinsic was not registered")
+
+        val result = getLongVolatile.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset)))
+
+        assertEquals(JvmLongValue(99L), result)
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
