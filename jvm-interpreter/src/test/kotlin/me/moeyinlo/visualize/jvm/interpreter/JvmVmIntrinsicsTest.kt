@@ -6521,6 +6521,51 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe compareAndExchangeFloat intrinsic returns witness for guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("AtomicFloatFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("AtomicFloatFieldOffsetOwner")
+        val fieldName = heap.internString("ratio")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("AtomicFloatFieldOffsetOwner", "ratio", "F")
+        heap.putInstanceField(target, field, JvmFloatValue(1.25f))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "AtomicFloatFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "ratio", descriptor = "F", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val compareAndExchangeFloat = JvmVmIntrinsics.Registry.resolve(unsafeCompareAndExchangeFloatMethod())
+            ?: error("Unsafe.compareAndExchangeFloat intrinsic was not registered")
+
+        val mismatch = compareAndExchangeFloat.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmFloatValue(2.5f), JvmFloatValue(3.5f))),
+        )
+        val match = compareAndExchangeFloat.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmFloatValue(1.25f), JvmFloatValue(2.5f))),
+        )
+
+        assertEquals(JvmFloatValue(1.25f), mismatch)
+        assertEquals(JvmFloatValue(1.25f), match)
+        assertEquals(JvmFloatValue(2.5f), heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe getAndAddLong intrinsic returns witness and adds guest object fields through synthetic offsets`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")

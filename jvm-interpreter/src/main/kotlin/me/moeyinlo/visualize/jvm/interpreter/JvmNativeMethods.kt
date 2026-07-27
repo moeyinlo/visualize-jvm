@@ -4596,6 +4596,22 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeFloat expects Object, long offset, expected, and replacement arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "F") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeFloat object field offset must map to a float field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmFloatValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeFloat object field did not contain a float value",
+                )
+            if (current.value.toRawBits() == expected.value.toRawBits()) {
+                context.heap.putInstanceField(base, field, replacement)
+            }
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeFloat currently supports only synthetic static float slots",
