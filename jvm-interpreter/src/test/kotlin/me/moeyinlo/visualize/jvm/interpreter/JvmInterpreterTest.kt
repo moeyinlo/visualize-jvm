@@ -181,6 +181,57 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop uses supplied class initialization states`() {
+        val initializationStates = JvmClassInitializationStates()
+        val staticFields = JvmStaticFields()
+        staticFields.put(
+            JvmFieldReference(
+                ownerClassName = "Example",
+                name = "counter",
+                descriptor = "I",
+            ),
+            JvmIntValue(7),
+        )
+
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "worker",
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                    ),
+                    maxStack = 1,
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                            ConstantClassEntry(ConstantPoolIndex(3)),
+                            ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                            ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                            ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                            ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    ),
+                ),
+            ),
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(listOf("worker"), result.executedThreadIds)
+        assertEquals(listOf(JvmIntValue(7)), result.completedThreads.getValue("worker").operandStack.toList())
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Example"))
+    }
+    @Test
     fun `iconst instructions push int values onto the operand stack`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
