@@ -12501,6 +12501,25 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `PushLocalFrame enforces local reference capacity for the current frame`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        environment.pushLocalFrame(1)
+        handles.newObjectHandle(heap.allocateObject("First"))
+
+        val exception = assertFailsWith<JvmJniLocalFrameException> {
+            handles.newObjectHandle(heap.allocateObject("Second"))
+        }
+
+        assertEquals("JNI local frame capacity 1 exceeded", exception.message)
+    }
+
+    @Test
     fun `PushLocalFrame rejects non positive capacities`() {
         val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
 

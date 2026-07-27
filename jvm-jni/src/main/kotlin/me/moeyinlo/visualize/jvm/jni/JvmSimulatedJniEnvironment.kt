@@ -187,7 +187,7 @@ class JvmSimulatedJniEnvironment(
     fun pushLocalFrame(capacity: Int): Int {
         require(capacity > 0) { "JNI local frame capacity must be positive: $capacity" }
         localFrameCapacities += capacity
-        handles.pushLocalFrame()
+        handles.pushLocalFrame(capacity)
         maxLocalFrameCapacity = maxOf(maxLocalFrameCapacity, capacity)
         return 0
     }

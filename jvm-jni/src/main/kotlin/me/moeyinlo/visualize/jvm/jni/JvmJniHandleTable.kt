@@ -14,6 +14,7 @@ value class JvmJniHandleId(val value: Int) {
 class JvmJniHandleTable {
     private val entries = linkedMapOf<JvmJniHandleId, JvmJniHandleRecord>()
     private val localFrameStarts = mutableListOf<Int>()
+    private val localFrameCapacities = mutableListOf<Int>()
     private var nextHandleId = 1
 
     val liveHandleCount: Int
@@ -91,13 +92,15 @@ class JvmJniHandleTable {
             ?.toReferenceType()
             ?: JvmJniReferenceType.Invalid
 
-    fun pushLocalFrame() {
+    fun pushLocalFrame(capacity: Int = Int.MAX_VALUE) {
         localFrameStarts += nextHandleId
+        localFrameCapacities += capacity
     }
 
     fun deleteCurrentLocalFrameHandles() {
         val frameStart = localFrameStarts.removeLastOrNull()
             ?: throw JvmJniLocalFrameException("JNI local frame stack is empty")
+        localFrameCapacities.removeLast()
         val scopedHandles = entries.filter { (handle, record) ->
             record.scope == JvmJniHandleScope.Local && handle.value >= frameStart
         }.keys
@@ -136,10 +139,24 @@ class JvmJniHandleTable {
         }
 
     private fun allocate(entry: JvmJniHandleEntry, scope: JvmJniHandleScope): JvmJniHandleId {
+        if (scope == JvmJniHandleScope.Local) {
+            requireLocalFrameCapacity()
+        }
         val handle = JvmJniHandleId(nextHandleId)
         nextHandleId += 1
         entries[handle] = JvmJniHandleRecord(entry = entry, scope = scope)
         return handle
+    }
+
+    private fun requireLocalFrameCapacity() {
+        val frameStart = localFrameStarts.lastOrNull() ?: return
+        val capacity = localFrameCapacities.last()
+        val currentFrameLocalHandles = entries.count { (handle, record) ->
+            record.scope == JvmJniHandleScope.Local && handle.value >= frameStart
+        }
+        if (currentFrameLocalHandles >= capacity) {
+            throw JvmJniLocalFrameException("JNI local frame capacity $capacity exceeded")
+        }
     }
 
     private fun deleteScoped(handle: JvmJniHandleId, expectedScope: JvmJniHandleScope) {
