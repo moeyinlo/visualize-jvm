@@ -6671,6 +6671,52 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmIntValue(1), success)
         assertEquals(JvmIntValue('\u03BB'.code), heap.getInstanceField(target, field))
     }
+
+    @Test
+    fun `Unsafe compareAndSetFloat intrinsic updates guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("AtomicFloatFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("AtomicFloatFieldOffsetOwner")
+        val fieldName = heap.internString("ratio")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("AtomicFloatFieldOffsetOwner", "ratio", "F")
+        heap.putInstanceField(target, field, JvmFloatValue(1.25f))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "AtomicFloatFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "ratio", descriptor = "F", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val compareAndSetFloat = JvmVmIntrinsics.Registry.resolve(unsafeCompareAndSetFloatMethod())
+            ?: error("Unsafe.compareAndSetFloat intrinsic was not registered")
+
+        val failure = compareAndSetFloat.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmFloatValue(2.5f), JvmFloatValue(3.5f))),
+        )
+        val success = compareAndSetFloat.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmFloatValue(1.25f), JvmFloatValue(2.5f))),
+        )
+
+        assertEquals(JvmIntValue(0), failure)
+        assertEquals(JvmIntValue(1), success)
+        assertEquals(JvmFloatValue(2.5f), heap.getInstanceField(target, field))
+    }
+
     @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
