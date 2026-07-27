@@ -2768,6 +2768,18 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getFloatVolatile expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "F") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getFloatVolatile object field offset must map to a float field",
+                )
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmFloatValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getFloatVolatile object field did not contain a float value",
+                )
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getFloatVolatile currently supports only synthetic static float slots",
