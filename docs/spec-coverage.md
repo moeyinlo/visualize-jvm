@@ -707,6 +707,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.7 | VM thread liveness tracks active daemon and non-daemon VM threads and terminates normally with exit code 0 when the last non-daemon thread finishes while rejecting duplicate or unknown lifecycle transitions | `jvm-runtime` | `JvmVmThreadSetTest` | IMPLEMENTED |
 | 5.7 | Scheduled interpreter thread-loop results carry VM termination outcome and report normal exit code 0 when all non-daemon scheduled frames complete | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest.scheduled thread loop reports normal VM termination when non daemon frames complete` | IMPLEMENTED |
 | 5.7 | Scheduled interpreter thread-loop converts uncaught guest `athrow` failures into VM `UncaughtGuestException` termination results instead of leaking the interpreter exception out of the scheduler loop | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest.scheduled thread loop reports uncaught guest exception termination` | IMPLEMENTED |
+| 5.7 | Scheduled interpreter thread-loop stops executing remaining daemon frames once the last non-daemon scheduled frame has produced normal VM termination | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest.scheduled thread loop stops daemon frames after non daemon termination` | IMPLEMENTED |
 
 ## Chapters 6 and 7 - Instruction Set and Opcode Mnemonics
 

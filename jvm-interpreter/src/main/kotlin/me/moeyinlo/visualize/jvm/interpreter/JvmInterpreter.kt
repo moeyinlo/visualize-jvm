@@ -1098,7 +1098,9 @@ object JvmInterpreter {
                     remainingFrames.remove(threadId)
                     suspendedThreads.remove(threadId)
                     completedThreads[threadId] = result.result
-                    vmThreads.finishThread(threadId, terminationState)
+                    if (vmThreads.finishThread(threadId, terminationState) != null) {
+                        break
+                    }
                 }
                 is JvmScheduledThreadExecutionResult.Suspended -> {
                     suspendedThreads[threadId] = result.suspension
