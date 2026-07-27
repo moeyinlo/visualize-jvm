@@ -47,7 +47,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, while duplicate superinterface ordering edge cases, waiting, and remaining error transitions remain pending",
+            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, while duplicate superinterface ordering edge cases and waiting remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
@@ -68,7 +68,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "initialization error handling",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "Active use of a class already marked erroneous throws guest NoClassDefFoundError; interpreted <clinit> abrupt completion marks the class erroneous, preserves modeled and athrow-propagated Error subclasses as-is, and wraps non-Error guest VM exceptions as guest ExceptionInInitializerError objects whose throwable payload cause points at the original guest failure; Throwable constructor message and stack-trace initialization remain pending",
+            currentComponent = "Active use of a class already marked erroneous throws guest NoClassDefFoundError; interpreted <clinit> abrupt completion marks the class erroneous, dependency initialization failure marks the current class erroneous too, preserves modeled and athrow-propagated Error subclasses as-is, and wraps non-Error guest VM exceptions as guest ExceptionInInitializerError objects whose throwable payload cause points at the original guest failure; Throwable constructor message and stack-trace initialization remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
