@@ -159,6 +159,12 @@ class JvmUnsafeSyntheticMemory(
         return current
     }
 
+    fun getAndSetStaticInt(offset: Long, replacement: Int): Int {
+        val current = getStaticInt(offset)
+        staticIntSlots[offset] = replacement
+        return current
+    }
+
     fun getStaticBoolean(offset: Long): Boolean = staticBooleanSlots[offset] ?: false
 
     fun putStaticBoolean(offset: Long, value: Boolean) {
