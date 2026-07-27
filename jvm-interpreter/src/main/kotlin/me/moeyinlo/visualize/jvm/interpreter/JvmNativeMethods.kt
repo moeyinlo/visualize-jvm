@@ -886,6 +886,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JB)V",
         isStatic = false,
     )
+    private val UnsafePutShortVolatileKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putShortVolatile",
+        descriptor = "(Ljava/lang/Object;JS)V",
+        isStatic = false,
+    )
     private val UnsafeGetIntKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getInt",
@@ -1867,6 +1873,35 @@ object JvmVmIntrinsics {
         context.unsafeMemory.putStaticByte(offset = offset.value, value = value.value.toByte())
         null
     }
+    private val UnsafePutShortVolatile = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.putShortVolatile intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putShortVolatile expects Object, long offset, and short value arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putShortVolatile expects Object, long offset, and short value arguments",
+            )
+        val value = invocation.arguments[2] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putShortVolatile expects Object, long offset, and short value arguments",
+            )
+        if (value.value !in Short.MIN_VALUE.toInt()..Short.MAX_VALUE.toInt()) {
+            throw JvmUnsupportedInstructionException("Unsafe.putShortVolatile short value is out of range")
+        }
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putShortVolatile currently supports only synthetic static short slots",
+            )
+        }
+        context.unsafeMemory.putStaticShort(offset = offset.value, value = value.value.toShort())
+        null
+    }
     private val UnsafeGetInt = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.getInt intrinsic requires a receiver")
@@ -2426,6 +2461,7 @@ object JvmVmIntrinsics {
         UnsafeGetByteVolatileKey to UnsafeGetByteVolatile,
         UnsafeGetShortVolatileKey to UnsafeGetShortVolatile,
         UnsafePutByteVolatileKey to UnsafePutByteVolatile,
+        UnsafePutShortVolatileKey to UnsafePutShortVolatile,
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafeGetBooleanKey to UnsafeGetBoolean,
         UnsafeGetByteKey to UnsafeGetByte,

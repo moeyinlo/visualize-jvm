@@ -2550,6 +2550,36 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putShortVolatile intrinsic writes synthetic static short slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutShortVolatileMethod())
+            ?: error("Unsafe.putShortVolatile intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val firstResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue(-2))),
+        )
+        val secondResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmIntValue(32767))),
+        )
+
+        assertEquals(null, firstResult)
+        assertEquals(null, secondResult)
+        assertEquals((-2).toShort(), unsafeMemory.getStaticShort(offset = 7L))
+        assertEquals(32767.toShort(), unsafeMemory.getStaticShort(offset = 9L))
+    }
+
+    @Test
     fun `Unsafe getBooleanVolatile intrinsic reads synthetic static boolean slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -3831,6 +3861,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putByteVolatile",
         descriptor = "(Ljava/lang/Object;JB)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutShortVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putShortVolatile",
+        descriptor = "(Ljava/lang/Object;JS)V",
         isStatic = false,
         isNative = true,
     )
