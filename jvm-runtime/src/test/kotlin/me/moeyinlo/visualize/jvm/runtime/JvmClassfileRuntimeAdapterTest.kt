@@ -20,9 +20,69 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.ConstantValueAttribute
 import me.moeyinlo.visualize.jvm.classfile.FieldInfo
+import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
+import me.moeyinlo.visualize.jvm.classfile.LineNumberTableEntry
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
+import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
 
 class JvmClassfileRuntimeAdapterTest {
+    @Test
+    fun `classfile adapter maps SourceFile and LineNumberTable metadata to runtime methods`() {
+        val classFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = constantPool(),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = listOf(
+                MethodInfo(
+                    accessFlags = 0x0001,
+                    nameIndex = ConstantPoolIndex(11),
+                    descriptorIndex = ConstantPoolIndex(12),
+                    attributes = listOf(
+                        CodeAttribute(
+                            nameIndex = ConstantPoolIndex(13),
+                            maxStack = 1,
+                            maxLocals = 1,
+                            code = byteArrayOf(0x04, 0xAC.toByte()),
+                            attributes = listOf(
+                                LineNumberTableAttribute(
+                                    nameIndex = ConstantPoolIndex(24),
+                                    entries = listOf(
+                                        LineNumberTableEntry(startPc = 0, lineNumber = 41),
+                                        LineNumberTableEntry(startPc = 1, lineNumber = 42),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            attributes = listOf(
+                SourceFileAttribute(
+                    nameIndex = ConstantPoolIndex(23),
+                    sourceFileIndex = ConstantPoolIndex(25),
+                ),
+            ),
+        )
+
+        val method = classFile.toJvmClassDefinition().methods.single()
+
+        assertEquals("Example.java", method.sourceFile)
+        assertEquals(
+            listOf(
+                JvmLineNumberTableEntry(startPc = 0, lineNumber = 41),
+                JvmLineNumberTableEntry(startPc = 1, lineNumber = 42),
+            ),
+            method.lineNumberTable,
+        )
+    }
+
     @Test
     fun `classfile adapter maps class identity hierarchy fields and methods to runtime definition`() {
         val classFile = ClassFile(
@@ -281,6 +341,9 @@ class JvmClassfileRuntimeAdapterTest {
                 ConstantIntegerEntry(42),
                 ConstantUtf8Entry("literal", "literal".encodeToByteArray()),
                 ConstantStringEntry(ConstantPoolIndex(21)),
+                ConstantUtf8Entry("SourceFile", "SourceFile".encodeToByteArray()),
+                ConstantUtf8Entry("LineNumberTable", "LineNumberTable".encodeToByteArray()),
+                ConstantUtf8Entry("Example.java", "Example.java".encodeToByteArray()),
             ),
         )
 }

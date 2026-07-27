@@ -16,17 +16,22 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.ConstantValueAttribute
 import me.moeyinlo.visualize.jvm.classfile.FieldInfo
+import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
+import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
 
-fun ClassFile.toJvmClassDefinition(): JvmClassDefinition =
-    JvmClassDefinition(
+fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
+    val sourceFile = attributes.filterIsInstance<SourceFileAttribute>().singleOrNull()
+        ?.let { attribute -> constantPool.utf8(attribute.sourceFileIndex) }
+    return JvmClassDefinition(
         internalName = constantPool.className(identity.thisClassIndex),
         superclassName = identity.superClassIndex?.let(constantPool::className),
         interfaceNames = identity.interfaceIndexes.map(constantPool::className),
         fields = fields.map { field -> field.toJvmFieldDefinition(constantPool) },
-        methods = methods.map { method -> method.toJvmMethodDefinition(constantPool) },
+        methods = methods.map { method -> method.toJvmMethodDefinition(constantPool, sourceFile) },
         isInterface = accessFlags.has(ClassAccessFlag.Interface),
     )
+}
 
 fun ClassFile.toJvmMethodAreaEntry(): JvmMethodAreaEntry =
     JvmMethodAreaEntry(definition = toJvmClassDefinition())
@@ -57,7 +62,10 @@ private fun FieldInfo.constantValue(constantPool: ConstantPool): JvmFieldConstan
     }
 }
 
-private fun MethodInfo.toJvmMethodDefinition(constantPool: ConstantPool): JvmMethodDefinition {
+private fun MethodInfo.toJvmMethodDefinition(
+    constantPool: ConstantPool,
+    sourceFile: String?,
+): JvmMethodDefinition {
     val codeAttribute = attributes.filterIsInstance<CodeAttribute>().singleOrNull()
     return JvmMethodDefinition(
         name = constantPool.utf8(nameIndex),
@@ -75,6 +83,17 @@ private fun MethodInfo.toJvmMethodDefinition(constantPool: ConstantPool): JvmMet
         exceptionHandlers = codeAttribute?.exceptionTable?.map { handler ->
             handler.toJvmExceptionHandler(constantPool)
         } ?: emptyList(),
+        sourceFile = sourceFile,
+        lineNumberTable = codeAttribute?.attributes
+            ?.filterIsInstance<LineNumberTableAttribute>()
+            ?.singleOrNull()
+            ?.entries
+            ?.map { entry ->
+                JvmLineNumberTableEntry(
+                    startPc = entry.startPc,
+                    lineNumber = entry.lineNumber,
+                )
+            } ?: emptyList(),
     )
 }
 
