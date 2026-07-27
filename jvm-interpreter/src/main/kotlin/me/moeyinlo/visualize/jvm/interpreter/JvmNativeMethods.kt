@@ -2799,6 +2799,18 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.getDoubleVolatile expects Object and long offset arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "D") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getDoubleVolatile object field offset must map to a double field",
+                )
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmDoubleValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getDoubleVolatile object field did not contain a double value",
+                )
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getDoubleVolatile currently supports only synthetic static double slots",
