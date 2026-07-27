@@ -557,6 +557,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/String;)V",
         isStatic = false,
     )
+    private val ThreadSetPriority0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "setPriority0",
+        descriptor = "(I)V",
+        isStatic = false,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -1001,6 +1007,15 @@ object JvmVmIntrinsics {
         requireStringArgument("Thread.setNativeName", context, invocation)
         null
     }
+    private val ThreadSetPriority0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Thread.setPriority0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1 || invocation.arguments.single() !is JvmIntValue) {
+            throw JvmUnsupportedInstructionException("Thread.setPriority0 expects one int priority argument")
+        }
+        null
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1110,6 +1125,7 @@ object JvmVmIntrinsics {
         ThreadGetThreadsKey to ThreadGetThreads,
         ThreadClearInterruptEventKey to ThreadClearInterruptEvent,
         ThreadSetNativeNameKey to ThreadSetNativeName,
+        ThreadSetPriority0Key to ThreadSetPriority0,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,

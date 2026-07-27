@@ -1901,6 +1901,25 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread setPriority0 intrinsic validates receiver and int priority as a simulated no op`() {
+        val heap = JvmHeap()
+        val thread = heap.internThread("priority-worker")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadSetPriority0Method())
+            ?: error("Thread.setPriority0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(thread, listOf(JvmIntValue(7))))
+
+        assertEquals(null, result)
+        assertEquals(JvmThreadPayload("priority-worker"), heap.get(thread).payload)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2073,6 +2092,7 @@ class JvmVmIntrinsicsTest {
             threadGetThreadsMethod(),
             threadClearInterruptEventMethod(),
             threadSetNativeNameMethod(),
+            threadSetPriority0Method(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2453,6 +2473,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "setNativeName",
         descriptor = "(Ljava/lang/String;)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun threadSetPriority0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "setPriority0",
+        descriptor = "(I)V",
         isStatic = false,
         isNative = true,
     )
