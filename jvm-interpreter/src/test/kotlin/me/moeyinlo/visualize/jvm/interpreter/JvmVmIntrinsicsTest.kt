@@ -2155,6 +2155,31 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putReference intrinsic writes synthetic static reference slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val reference = heap.allocateObject("java/lang/Object")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutReferenceMethod())
+            ?: error("Unsafe.putReference intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), reference)),
+        )
+
+        assertEquals(null, result)
+        assertEquals(reference, unsafeMemory.getStaticReference(offset = 7L))
+    }
+
+    @Test
     fun `Unsafe putReferenceVolatile intrinsic writes synthetic static reference slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2668,6 +2693,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetReferenceVolatileMethod(),
             unsafeGetReferenceMethod(),
             unsafePutReferenceVolatileMethod(),
+            unsafePutReferenceMethod(),
             unsafeGetIntVolatileMethod(),
             unsafeGetIntMethod(),
             unsafePutIntVolatileMethod(),
@@ -3213,6 +3239,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getReference",
         descriptor = "(Ljava/lang/Object;J)Ljava/lang/Object;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutReferenceMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putReference",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;)V",
         isStatic = false,
         isNative = true,
     )
