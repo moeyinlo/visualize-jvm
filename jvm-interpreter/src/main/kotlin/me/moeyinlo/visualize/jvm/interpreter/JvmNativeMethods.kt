@@ -328,6 +328,12 @@ object JvmVmIntrinsics {
         descriptor = "(I)V",
         isStatic = false,
     )
+    private val ShutdownHalt0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Shutdown",
+        name = "halt0",
+        descriptor = "(I)V",
+        isStatic = true,
+    )
     private val NativeLibrariesLoadKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/loader/NativeLibraries",
         name = "load",
@@ -538,6 +544,15 @@ object JvmVmIntrinsics {
         context.terminationState.terminateNormally(status.value)
         null
     }
+    private val ShutdownHalt0 = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null || invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Shutdown.halt0 expects one int status argument")
+        }
+        val status = invocation.arguments.single() as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("Shutdown.halt0 expects one int status argument")
+        context.terminationState.terminateNormally(status.value)
+        null
+    }
     private val NativeLibrariesLoad = JvmNativeMethodIntrinsic { context, invocation ->
         context.loadNativeLibraryHandler(requireNativeLibrariesLoadName(context, invocation))
         JvmIntValue(1)
@@ -638,6 +653,7 @@ object JvmVmIntrinsics {
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
         RuntimeExitKey to RuntimeExit,
+        ShutdownHalt0Key to ShutdownHalt0,
         NativeLibrariesLoadKey to NativeLibrariesLoad,
         NativeLibrariesFindBuiltinLibKey to NativeLibrariesFindBuiltinLib,
         NativeLibrariesUnloadKey to NativeLibrariesUnload,

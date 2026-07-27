@@ -1169,6 +1169,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Shutdown halt0 intrinsic terminates the VM with the supplied status`() {
+        val terminationState = JvmVmTerminationState()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(shutdownHalt0Method())
+            ?: error("Shutdown.halt0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Shutdown",
+            terminationState = terminationState,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = listOf(JvmIntValue(64))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(JvmVmTerminationResult.Normal(64), terminationState.result)
+    }
+
+    @Test
     fun `Class initClassName intrinsic returns the guest binary name string`() {
         val heap = JvmHeap()
         val classMirror = heap.internClassMirror("pkg/Example")
@@ -1515,6 +1537,14 @@ class JvmVmIntrinsicsTest {
         name = "exit",
         descriptor = "(I)V",
         isStatic = false,
+        isNative = true,
+    )
+
+    private fun shutdownHalt0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Shutdown",
+        name = "halt0",
+        descriptor = "(I)V",
+        isStatic = true,
         isNative = true,
     )
 
