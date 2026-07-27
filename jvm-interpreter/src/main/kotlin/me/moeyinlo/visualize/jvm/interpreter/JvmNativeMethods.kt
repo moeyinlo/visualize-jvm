@@ -5173,8 +5173,16 @@ object JvmVmIntrinsics {
                         value = value.value.toByte(),
                     )
                 }
+                is JvmFloatArrayPayload -> {
+                    payload.setRawBytes(
+                        operation = "Unsafe.setMemory0 float array",
+                        start = start,
+                        endExclusive = endExclusive,
+                        value = value.value.toByte(),
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.setMemory0 currently supports only guest boolean, byte, char, int, or short arrays for non-null base",
+                    "Unsafe.setMemory0 currently supports only guest boolean, byte, char, float, int, or short arrays for non-null base",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -6026,6 +6034,30 @@ object JvmVmIntrinsics {
                     elementBytes = Int.SIZE_BYTES,
                     value = value,
                 )
+        }
+    }
+
+    private fun JvmFloatArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+        value: Byte,
+    ) {
+        val byteSize = elements.size.toLong() * Float.SIZE_BYTES.toLong()
+        if (start < 0L || endExclusive < start || endExclusive > byteSize) {
+            throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
+        }
+        for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Float.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Float.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex]
+                .toRawBits()
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Float.SIZE_BYTES,
+                    value = value,
+                )
+                .let(Float.Companion::fromBits)
         }
     }
 
