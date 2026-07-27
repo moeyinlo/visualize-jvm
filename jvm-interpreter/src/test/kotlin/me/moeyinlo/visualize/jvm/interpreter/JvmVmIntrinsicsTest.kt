@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
@@ -4366,6 +4367,35 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val preparedClass = heap.internClassMirror("PreparedExample")
+        val initializedClass = heap.internClassMirror("InitializedExample")
+        val initializationStates = JvmClassInitializationStates()
+        initializationStates.startInitialization("InitializedExample", "main")
+        initializationStates.completeInitialization("InitializedExample", "main")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeShouldBeInitialized0Method())
+            ?: error("Unsafe.shouldBeInitialized0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(preparedClass))),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(initializedClass))),
+        )
+    }
+
+    @Test
     fun `VM intrinsic registry resolves the Phase 15 native intrinsic surface`() {
         val phase15Methods = listOf(
             objectGetClassMethod(),
@@ -4491,6 +4521,7 @@ class JvmVmIntrinsicsTest {
             unsafeWriteback0Method(),
             unsafeWritebackPreSync0Method(),
             unsafeWritebackPostSync0Method(),
+            unsafeShouldBeInitialized0Method(),
             unsafeFullFenceMethod(),
             unsafeLoadFenceMethod(),
             unsafeStoreFenceMethod(),
@@ -5578,6 +5609,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "writebackPostSync0",
         descriptor = "()V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeShouldBeInitialized0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "shouldBeInitialized0",
+        descriptor = "(Ljava/lang/Class;)Z",
         isStatic = false,
         isNative = true,
     )
