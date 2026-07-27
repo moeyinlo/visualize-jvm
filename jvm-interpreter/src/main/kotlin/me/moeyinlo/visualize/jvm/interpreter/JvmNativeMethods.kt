@@ -853,6 +853,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JJJ)J",
         isStatic = false,
     )
+    private val UnsafeArrayBaseOffset0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "arrayBaseOffset0",
+        descriptor = "(Ljava/lang/Class;)I",
+        isStatic = false,
+    )
     private val UnsafeFullFenceKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "fullFence",
@@ -1901,6 +1907,21 @@ object JvmVmIntrinsics {
             ),
         )
     }
+    private val UnsafeArrayBaseOffset0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.arrayBaseOffset0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Unsafe.arrayBaseOffset0 expects one Class argument")
+        }
+        val arrayClass = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.arrayBaseOffset0 expects a non-null Class argument")
+        val arrayClassName = requireClassMirrorReference("Unsafe.arrayBaseOffset0", context, arrayClass)
+        if (!arrayClassName.startsWith("[")) {
+            throw JvmUnsupportedInstructionException("Unsafe.arrayBaseOffset0 expects an array Class mirror")
+        }
+        JvmIntValue(UnsafeSyntheticArrayBaseOffset)
+    }
     private val UnsafeFullFence = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.fullFence intrinsic requires a receiver")
@@ -2010,6 +2031,7 @@ object JvmVmIntrinsics {
         UnsafePutLongKey to UnsafePutLong,
         UnsafeCompareAndSetLongKey to UnsafeCompareAndSetLong,
         UnsafeCompareAndExchangeLongKey to UnsafeCompareAndExchangeLong,
+        UnsafeArrayBaseOffset0Key to UnsafeArrayBaseOffset0,
         UnsafeFullFenceKey to UnsafeFullFence,
         UnsafeLoadFenceKey to UnsafeLoadFence,
         UnsafeStoreFenceKey to UnsafeStoreFence,
@@ -2018,6 +2040,7 @@ object JvmVmIntrinsics {
     private const val NativeLibrariesNativeLibraryImplClassName =
         "jdk/internal/loader/NativeLibraries\$NativeLibraryImpl"
     private const val ThreadNextThreadIdSyntheticOffset = 1L
+    private const val UnsafeSyntheticArrayBaseOffset = 0
     private val PrimitiveClassNames = setOf(
         "boolean",
         "byte",

@@ -2560,6 +2560,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe arrayBaseOffset0 intrinsic returns synthetic array base offset`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intArrayClass = heap.internClassMirror("[I")
+        val referenceArrayClass = heap.internClassMirror("[Ljava/lang/Object;")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeArrayBaseOffset0Method())
+            ?: error("Unsafe.arrayBaseOffset0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        val intArrayBase = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(intArrayClass)))
+        val referenceArrayBase = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(referenceArrayClass)))
+
+        assertEquals(JvmIntValue(0), intArrayBase)
+        assertEquals(JvmIntValue(0), referenceArrayBase)
+    }
+
+    @Test
     fun `Unsafe fullFence intrinsic is a simulated no op`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2818,6 +2840,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndExchangeLongMethod(),
             unsafePutLongVolatileMethod(),
             unsafePutLongMethod(),
+            unsafeArrayBaseOffset0Method(),
             unsafeFullFenceMethod(),
             unsafeLoadFenceMethod(),
             unsafeStoreFenceMethod(),
@@ -3449,6 +3472,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putLongVolatile",
         descriptor = "(Ljava/lang/Object;JJ)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeArrayBaseOffset0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "arrayBaseOffset0",
+        descriptor = "(Ljava/lang/Class;)I",
         isStatic = false,
         isNative = true,
     )
