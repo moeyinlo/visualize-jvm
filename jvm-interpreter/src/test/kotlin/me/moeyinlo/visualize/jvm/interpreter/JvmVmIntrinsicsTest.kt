@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.interpreter
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
@@ -4319,6 +4320,30 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getLoadAverage0 intrinsic reports no simulated host load samples`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val samples = heap.allocateDoubleArray(3)
+        val payload = heap.get(samples).payload as JvmDoubleArrayPayload
+        payload.elements[0] = 1.0
+        payload.elements[1] = 5.0
+        payload.elements[2] = 15.0
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetLoadAverage0Method())
+            ?: error("Unsafe.getLoadAverage0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(samples, JvmIntValue(3))))
+
+        assertEquals(JvmIntValue(0), result)
+        assertEquals(mutableListOf(1.0, 5.0, 15.0), payload.elements)
+    }
+
+    @Test
     fun `VM intrinsic registry resolves the Phase 15 native intrinsic surface`() {
         val phase15Methods = listOf(
             objectGetClassMethod(),
@@ -4440,6 +4465,7 @@ class JvmVmIntrinsicsTest {
             unsafePutLongMethod(),
             unsafeArrayIndexScale0Method(),
             unsafeArrayBaseOffset0Method(),
+            unsafeGetLoadAverage0Method(),
             unsafeFullFenceMethod(),
             unsafeLoadFenceMethod(),
             unsafeStoreFenceMethod(),
@@ -5495,6 +5521,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "arrayBaseOffset0",
         descriptor = "(Ljava/lang/Class;)I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetLoadAverage0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getLoadAverage0",
+        descriptor = "([DI)I",
         isStatic = false,
         isNative = true,
     )

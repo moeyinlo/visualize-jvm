@@ -1438,6 +1438,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Class;)I",
         isStatic = false,
     )
+    private val UnsafeGetLoadAverage0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getLoadAverage0",
+        descriptor = "([DI)I",
+        isStatic = false,
+    )
     private val UnsafeFullFenceKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "fullFence",
@@ -3852,6 +3858,24 @@ object JvmVmIntrinsics {
         val arrayClassName = requireClassMirrorReference("Unsafe.arrayIndexScale0", context, arrayClass)
         JvmIntValue(arrayClassName.unsafeSyntheticArrayIndexScale())
     }
+    private val UnsafeGetLoadAverage0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getLoadAverage0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getLoadAverage0 expects double[] and int nelems arguments")
+        }
+        val samples = invocation.arguments[0] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getLoadAverage0 expects a non-null double[] argument")
+        val nelems = invocation.arguments[1] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getLoadAverage0 expects double[] and int nelems arguments")
+        val payload = context.heap.get(samples).payload as? JvmDoubleArrayPayload
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getLoadAverage0 expects a guest double[] argument")
+        if (nelems.value !in 0..payload.elements.size) {
+            throw JvmUnsupportedInstructionException("Unsafe.getLoadAverage0 nelems is outside the double[] bounds")
+        }
+        JvmIntValue(0)
+    }
     private val UnsafeFullFence = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.fullFence intrinsic requires a receiver")
@@ -4014,6 +4038,7 @@ object JvmVmIntrinsics {
         UnsafeCompareAndExchangeCharKey to UnsafeCompareAndExchangeChar,
         UnsafeArrayBaseOffset0Key to UnsafeArrayBaseOffset0,
         UnsafeArrayIndexScale0Key to UnsafeArrayIndexScale0,
+        UnsafeGetLoadAverage0Key to UnsafeGetLoadAverage0,
         UnsafeFullFenceKey to UnsafeFullFence,
         UnsafeLoadFenceKey to UnsafeLoadFence,
         UnsafeStoreFenceKey to UnsafeStoreFence,
