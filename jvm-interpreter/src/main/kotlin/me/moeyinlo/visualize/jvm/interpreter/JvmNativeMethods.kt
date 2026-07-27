@@ -587,6 +587,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Object;",
         isStatic = false,
     )
+    private val ThreadDumpThreadsKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "dumpThreads",
+        descriptor = "([Ljava/lang/Thread;)[[Ljava/lang/StackTraceElement;",
+        isStatic = true,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -1084,6 +1090,34 @@ object JvmVmIntrinsics {
         context.heap.get(receiver)
         context.heap.allocateReferenceArray("java/lang/StackTraceElement", 0)
     }
+    private val ThreadDumpThreads = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null || invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Thread.dumpThreads expects one Thread[] argument")
+        }
+        val threads = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Thread.dumpThreads expects one Thread[] argument")
+        val threadArrayPayload = context.heap.get(threads).payload as? JvmReferenceArrayPayload
+            ?: throw JvmUnsupportedInstructionException("Thread.dumpThreads expects one Thread[] argument")
+        val snapshots = context.heap.allocateReferenceArray(
+            componentClassName = "[Ljava/lang/StackTraceElement;",
+            length = threadArrayPayload.elements.size,
+        )
+        val snapshotsPayload = context.heap.get(snapshots).payload as JvmReferenceArrayPayload
+        threadArrayPayload.elements.forEachIndexed { index, value ->
+            when (value) {
+                JvmNullValue -> Unit
+                is JvmObjectReferenceValue -> {
+                    val className = context.heap.get(value).className
+                    if (className != "java/lang/Thread" && !context.classHierarchy.isAssignable(className, "java/lang/Thread")) {
+                        throw JvmUnsupportedInstructionException("Thread.dumpThreads expects one Thread[] argument")
+                    }
+                    snapshotsPayload.elements[index] =
+                        context.heap.allocateReferenceArray("java/lang/StackTraceElement", 0)
+                }
+            }
+        }
+        snapshots
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1198,6 +1232,7 @@ object JvmVmIntrinsics {
         ThreadStart0Key to ThreadStart0,
         ThreadSetCurrentThreadKey to ThreadSetCurrentThread,
         ThreadGetStackTrace0Key to ThreadGetStackTrace0,
+        ThreadDumpThreadsKey to ThreadDumpThreads,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,

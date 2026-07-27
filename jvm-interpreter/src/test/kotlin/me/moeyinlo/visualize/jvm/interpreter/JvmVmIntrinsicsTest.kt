@@ -2005,6 +2005,33 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread dumpThreads intrinsic returns empty stack snapshots for each guest thread`() {
+        val heap = JvmHeap()
+        val thread = heap.internThread("dump-worker")
+        val threads = heap.allocateReferenceArray("java/lang/Thread", 1)
+        (heap.get(threads).payload as JvmReferenceArrayPayload).elements[0] = thread
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadDumpThreadsMethod())
+            ?: error("Thread.dumpThreads intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(threads)))
+            as JvmObjectReferenceValue
+
+        val outerObject = heap.get(result)
+        val outerPayload = outerObject.payload as JvmReferenceArrayPayload
+        assertEquals("[[Ljava/lang/StackTraceElement;", outerObject.className)
+        assertEquals(1, outerPayload.elements.size)
+        val inner = outerPayload.elements.single() as JvmObjectReferenceValue
+        assertEquals("[Ljava/lang/StackTraceElement;", heap.get(inner).className)
+        assertEquals(JvmReferenceArrayPayload(mutableListOf()), heap.get(inner).payload)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2182,6 +2209,7 @@ class JvmVmIntrinsicsTest {
             threadStart0Method(),
             threadSetCurrentThreadMethod(),
             threadGetStackTrace0Method(),
+            threadDumpThreadsMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2603,6 +2631,14 @@ class JvmVmIntrinsicsTest {
         name = "getStackTrace0",
         descriptor = "()Ljava/lang/Object;",
         isStatic = false,
+        isNative = true,
+    )
+
+    private fun threadDumpThreadsMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "dumpThreads",
+        descriptor = "([Ljava/lang/Thread;)[[Ljava/lang/StackTraceElement;",
+        isStatic = true,
         isNative = true,
     )
 
