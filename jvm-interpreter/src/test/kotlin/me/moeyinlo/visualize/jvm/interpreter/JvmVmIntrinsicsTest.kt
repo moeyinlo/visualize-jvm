@@ -2108,6 +2108,29 @@ class JvmVmIntrinsicsTest {
 
         assertEquals(JvmLongValue(42L), result)
     }
+
+    @Test
+    fun `Unsafe getIntVolatile intrinsic reads synthetic static int slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetIntVolatileMethod())
+            ?: error("Unsafe.getIntVolatile intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticIntSlots = mapOf(7L to 42)),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+
+        assertEquals(JvmIntValue(42), result)
+    }
+
     @Test
     fun `Unsafe compareAndSetLong intrinsic updates synthetic static long slots`() {
         val heap = JvmHeap()
@@ -2432,6 +2455,7 @@ class JvmVmIntrinsicsTest {
             unsafeRegisterNativesMethod(),
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
+            unsafeGetIntVolatileMethod(),
             unsafeCompareAndSetLongMethod(),
             unsafeCompareAndExchangeLongMethod(),
             unsafePutLongVolatileMethod(),
@@ -2950,6 +2974,15 @@ class JvmVmIntrinsicsTest {
         isStatic = false,
         isNative = true,
     )
+
+    private fun unsafeGetIntVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getIntVolatile",
+        descriptor = "(Ljava/lang/Object;J)I",
+        isStatic = false,
+        isNative = true,
+    )
+
     private fun unsafeCompareAndExchangeLongMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndExchangeLong",

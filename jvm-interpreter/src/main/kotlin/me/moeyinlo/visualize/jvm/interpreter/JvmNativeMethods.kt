@@ -712,6 +712,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)J",
         isStatic = false,
     )
+    private val UnsafeGetIntVolatileKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getIntVolatile",
+        descriptor = "(Ljava/lang/Object;J)I",
+        isStatic = false,
+    )
     private val UnsafePutLongVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putLongVolatile",
@@ -1332,6 +1338,23 @@ object JvmVmIntrinsics {
         }
         JvmLongValue(context.unsafeMemory.getStaticLong(offset.value))
     }
+    private val UnsafeGetIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getIntVolatile intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getIntVolatile expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getIntVolatile expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getIntVolatile currently supports only synthetic static int slots",
+            )
+        }
+        JvmIntValue(context.unsafeMemory.getStaticInt(offset.value))
+    }
     private val UnsafePutLongVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putLongVolatile intrinsic requires a receiver")
@@ -1533,6 +1556,7 @@ object JvmVmIntrinsics {
         UnsafeRegisterNativesKey to UnsafeRegisterNatives,
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
         UnsafeGetLongKey to UnsafeGetLong,
+        UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
         UnsafePutLongVolatileKey to UnsafePutLongVolatile,
         UnsafePutLongKey to UnsafePutLong,
         UnsafeCompareAndSetLongKey to UnsafeCompareAndSetLong,
