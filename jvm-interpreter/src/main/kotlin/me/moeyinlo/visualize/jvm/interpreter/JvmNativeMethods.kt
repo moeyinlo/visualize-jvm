@@ -3035,6 +3035,18 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getDouble expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "D") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getDouble object field offset must map to a double field",
+                )
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmDoubleValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getDouble object field did not contain a double value",
+                )
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getDouble currently supports only synthetic static double slots",

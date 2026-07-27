@@ -5181,6 +5181,45 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getDouble intrinsic reads guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("DoubleFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("DoubleFieldOffsetOwner")
+        val fieldName = heap.internString("ratio")
+        val memory = JvmUnsafeSyntheticMemory()
+        heap.putInstanceField(
+            target,
+            JvmFieldReference("DoubleFieldOffsetOwner", "ratio", "D"),
+            JvmDoubleValue(1.25),
+        )
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "DoubleFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "ratio", descriptor = "D", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val getDouble = JvmVmIntrinsics.Registry.resolve(unsafeGetDoubleMethod())
+            ?: error("Unsafe.getDouble intrinsic was not registered")
+
+        val result = getDouble.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset)))
+
+        assertEquals(JvmDoubleValue(1.25), result)
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
