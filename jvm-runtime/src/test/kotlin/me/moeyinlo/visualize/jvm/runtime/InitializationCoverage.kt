@@ -54,7 +54,7 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "class initialization state machine",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; getstatic drives Prepared -> Initializing -> Initialized around successful <clinit> execution, the scheduled thread loop can run frames against a shared caller-supplied ledger, records cross-thread active-use waiters, suspends them on the class mirror monitor, JvmClassInitializationStates releases waiter ids on terminal outcomes, and successful and failed initialization resume scheduler-tracked waiters; retry semantics after resumed waiters remain pending",
+            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; getstatic drives Prepared -> Initializing -> Initialized around successful <clinit> execution, the scheduled thread loop can run frames against a shared caller-supplied ledger, records cross-thread active-use waiters, suspends them on the class mirror monitor, parks scheduled waiter frames as non-runnable while the owner is still initializing, JvmClassInitializationStates releases waiter ids on terminal outcomes, and successful and failed initialization resume scheduler-tracked waiters; retry semantics after resumed waiters remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmClassInitializationStateTest",
         ),
