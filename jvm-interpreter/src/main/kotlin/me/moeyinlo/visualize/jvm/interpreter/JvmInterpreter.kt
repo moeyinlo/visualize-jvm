@@ -1090,8 +1090,10 @@ object JvmInterpreter {
             } catch (exception: JvmThrownException) {
                 remainingFrames.remove(threadId)
                 suspendedThreads.remove(threadId)
-                terminationState.terminateAbruptly(exception.throwable)
-                break
+                if (vmThreads.finishThreadAbruptly(threadId, exception.throwable, terminationState) != null) {
+                    break
+                }
+                continue
             }
             when (result) {
                 is JvmScheduledThreadExecutionResult.Completed -> {

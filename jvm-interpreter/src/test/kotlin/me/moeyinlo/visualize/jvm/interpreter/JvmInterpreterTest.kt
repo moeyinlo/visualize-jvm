@@ -232,6 +232,34 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop continues after uncaught guest exception while another non daemon remains`() {
+        val heap = JvmHeap()
+        val throwable = heap.allocateObject("java/lang/RuntimeException")
+
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "main",
+                    code = byteArrayOf(0xBF.toByte()),
+                    maxStack = 1,
+                    operandStackValues = listOf(throwable),
+                ),
+                JvmScheduledThreadFrame(
+                    threadId = "worker",
+                    code = byteArrayOf(0x03.toByte()),
+                    maxStack = 1,
+                ),
+            ),
+            heap = heap,
+        )
+
+        assertEquals(JvmVmTerminationResult.Normal(exitCode = 0), result.terminationResult)
+        assertEquals(listOf("worker"), result.completedThreads.keys.toList())
+        assertEquals(listOf("main", "worker"), result.executedThreadIds)
+        assertEquals(emptyMap(), result.suspendedThreads)
+    }
+
+    @Test
     fun `scheduled thread loop starts frames with preloaded operand stack values`() {
         val result = JvmInterpreter.executeScheduledThreads(
             frames = listOf(
