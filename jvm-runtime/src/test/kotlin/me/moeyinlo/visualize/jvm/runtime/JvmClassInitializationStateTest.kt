@@ -46,4 +46,30 @@ class JvmClassInitializationStateTest {
             exception.message,
         )
     }
+    @Test
+    fun `class initialization states release waiters on terminal outcomes`() {
+        val states = JvmClassInitializationStates()
+
+        states.startInitialization("pkg/Example", threadId = "main")
+        states.recordInitializationWaiter("pkg/Example", threadId = "worker-1")
+        states.recordInitializationWaiter("pkg/Example", threadId = "worker-2")
+        states.recordInitializationWaiter("pkg/Example", threadId = "worker-1")
+
+        assertEquals(listOf("worker-1", "worker-2"), states.waitingThreads("pkg/Example"))
+        assertEquals(
+            listOf("worker-1", "worker-2"),
+            states.completeInitialization("pkg/Example", threadId = "main"),
+        )
+        assertEquals(emptyList(), states.waitingThreads("pkg/Example"))
+
+        states.startInitialization("pkg/Failing", threadId = "main")
+        states.recordInitializationWaiter("pkg/Failing", threadId = "worker")
+
+        assertEquals(
+            listOf("worker"),
+            states.failInitialization("pkg/Failing", threadId = "main", errorClassName = "java/lang/Error"),
+        )
+        assertEquals(emptyList(), states.waitingThreads("pkg/Failing"))
+    }
+
 }

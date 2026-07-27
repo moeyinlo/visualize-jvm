@@ -20,6 +20,7 @@ sealed interface JvmClassInitializationState {
 
 class JvmClassInitializationStates {
     private val statesByClassName = linkedMapOf<String, JvmClassInitializationState>()
+    private val waitingThreadIdsByClassName = linkedMapOf<String, LinkedHashSet<String>>()
 
     fun get(className: String): JvmClassInitializationState {
         require(className.isNotBlank()) { "class name must not be blank" }
@@ -32,15 +33,34 @@ class JvmClassInitializationStates {
         statesByClassName[className] = JvmClassInitializationState.Initializing(threadId)
     }
 
-    fun completeInitialization(className: String, threadId: String) {
+    fun completeInitialization(className: String, threadId: String): List<String> {
         requireInitializationOwner(className, threadId)
         statesByClassName[className] = JvmClassInitializationState.Initialized
+        return releaseWaitingThreads(className)
     }
 
-    fun failInitialization(className: String, threadId: String, errorClassName: String) {
+    fun failInitialization(className: String, threadId: String, errorClassName: String): List<String> {
         require(errorClassName.isNotBlank()) { "error class name must not be blank" }
         requireInitializationOwner(className, threadId)
         statesByClassName[className] = JvmClassInitializationState.Erroneous(errorClassName)
+        return releaseWaitingThreads(className)
+    }
+
+    fun recordInitializationWaiter(className: String, threadId: String) {
+        require(className.isNotBlank()) { "class name must not be blank" }
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+        val waitingThreadIds = waitingThreadIdsByClassName.getOrPut(className) { linkedSetOf() }
+        waitingThreadIds.add(threadId)
+    }
+
+    fun waitingThreads(className: String): List<String> {
+        require(className.isNotBlank()) { "class name must not be blank" }
+        return waitingThreadIdsByClassName[className]?.toList().orEmpty()
+    }
+
+    private fun releaseWaitingThreads(className: String): List<String> {
+        val waitingThreadIds = waitingThreadIdsByClassName.remove(className)
+        return waitingThreadIds?.toList().orEmpty()
     }
 
     private fun requireInitializationOwner(className: String, threadId: String) {
