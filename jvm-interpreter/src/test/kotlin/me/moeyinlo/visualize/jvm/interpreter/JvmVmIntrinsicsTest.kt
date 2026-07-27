@@ -2352,6 +2352,33 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getBooleanVolatile intrinsic reads synthetic static boolean slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetBooleanVolatileMethod())
+            ?: error("Unsafe.getBooleanVolatile intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticBooleanSlots = mapOf(7L to true)),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmIntValue(1), setResult)
+        assertEquals(JvmIntValue(0), defaultResult)
+    }
+
+    @Test
     fun `Unsafe putBoolean intrinsic writes synthetic static boolean slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2913,6 +2940,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndSetReferenceMethod(),
             unsafeCompareAndExchangeReferenceMethod(),
             unsafeGetIntVolatileMethod(),
+            unsafeGetBooleanVolatileMethod(),
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
             unsafePutBooleanMethod(),
@@ -3510,6 +3538,14 @@ class JvmVmIntrinsicsTest {
     private fun unsafeGetBooleanMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getBoolean",
+        descriptor = "(Ljava/lang/Object;J)Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetBooleanVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getBooleanVolatile",
         descriptor = "(Ljava/lang/Object;J)Z",
         isStatic = false,
         isNative = true,
