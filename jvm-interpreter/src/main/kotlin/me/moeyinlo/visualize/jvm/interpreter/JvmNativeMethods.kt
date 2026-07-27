@@ -2663,6 +2663,22 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.getByteVolatile expects Object and long offset arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "B") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getByteVolatile object field offset must map to a byte field",
+                )
+            }
+            val value = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getByteVolatile object field did not contain a byte-compatible int value",
+                )
+            if (value.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
+                throw JvmUnsupportedInstructionException("Unsafe.getByteVolatile object field byte value is out of range")
+            }
+            return@JvmNativeMethodIntrinsic value
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getByteVolatile currently supports only synthetic static byte slots",
