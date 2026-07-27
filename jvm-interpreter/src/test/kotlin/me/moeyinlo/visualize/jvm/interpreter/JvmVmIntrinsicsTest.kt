@@ -1333,6 +1333,25 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class registerNatives intrinsic is a simulated no op`() {
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classRegisterNativesMethod())
+            ?: error("Class.registerNatives intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun `Class initClassName intrinsic returns the guest binary name string`() {
         val heap = JvmHeap()
         val classMirror = heap.internClassMirror("pkg/Example")
@@ -1569,6 +1588,7 @@ class JvmVmIntrinsicsTest {
             systemSetErr0Method(),
             systemCurrentTimeMillisMethod(),
             systemNanoTimeMethod(),
+            classRegisterNativesMethod(),
             classInitClassNameMethod(),
             classIsArrayMethod(),
             classIsPrimitiveMethod(),
@@ -1770,6 +1790,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Shutdown",
         name = "halt0",
         descriptor = "(I)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun classRegisterNativesMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "registerNatives",
+        descriptor = "()V",
         isStatic = true,
         isNative = true,
     )

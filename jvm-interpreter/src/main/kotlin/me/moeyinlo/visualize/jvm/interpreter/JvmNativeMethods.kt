@@ -424,6 +424,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/String;",
         isStatic = false,
     )
+    private val ClassRegisterNativesKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "registerNatives",
+        descriptor = "()V",
+        isStatic = true,
+    )
     private val ClassIsArrayKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "isArray",
@@ -697,6 +703,13 @@ object JvmVmIntrinsics {
         val representedClassName = requireClassMirrorReceiver("Class.initClassName", context, invocation)
         context.heap.internString(representedClassName.toBinaryClassName())
     }
+    private val ClassRegisterNatives = JvmNativeMethodIntrinsic { _, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Class.registerNatives expects no receiver")
+        }
+        requireNoArguments("Class.registerNatives", invocation)
+        null
+    }
     private val ClassIsArray = JvmNativeMethodIntrinsic { context, invocation ->
         val representedClassName = requireClassMirrorReceiver("Class.isArray", context, invocation)
         jvmBoolean(representedClassName.startsWith("["))
@@ -796,6 +809,7 @@ object JvmVmIntrinsics {
         NativeLibrariesFindBuiltinLibKey to NativeLibrariesFindBuiltinLib,
         NativeLibrariesUnloadKey to NativeLibrariesUnload,
         ClassInitClassNameKey to ClassInitClassName,
+        ClassRegisterNativesKey to ClassRegisterNatives,
         ClassIsArrayKey to ClassIsArray,
         ClassIsPrimitiveKey to ClassIsPrimitive,
         ClassIsInterfaceKey to ClassIsInterface,
