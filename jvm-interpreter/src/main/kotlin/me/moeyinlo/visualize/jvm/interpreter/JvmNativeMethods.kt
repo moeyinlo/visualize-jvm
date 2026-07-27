@@ -67,6 +67,9 @@ data class JvmNativeMethodContext(
     val currentTimeMillisProvider: () -> Long = System::currentTimeMillis,
     val nanoTimeProvider: () -> Long = System::nanoTime,
     val availableProcessorsProvider: () -> Int = { Runtime.getRuntime().availableProcessors() },
+    val freeMemoryProvider: () -> Long = { Runtime.getRuntime().freeMemory() },
+    val totalMemoryProvider: () -> Long = { Runtime.getRuntime().totalMemory() },
+    val maxMemoryProvider: () -> Long = { Runtime.getRuntime().maxMemory() },
     val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },
     val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
     val loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
@@ -329,6 +332,24 @@ object JvmVmIntrinsics {
         descriptor = "()I",
         isStatic = false,
     )
+    private val RuntimeFreeMemoryKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Runtime",
+        name = "freeMemory",
+        descriptor = "()J",
+        isStatic = false,
+    )
+    private val RuntimeTotalMemoryKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Runtime",
+        name = "totalMemory",
+        descriptor = "()J",
+        isStatic = false,
+    )
+    private val RuntimeMaxMemoryKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Runtime",
+        name = "maxMemory",
+        descriptor = "()J",
+        isStatic = false,
+    )
     private val RuntimeExitKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Runtime",
         name = "exit",
@@ -552,6 +573,27 @@ object JvmVmIntrinsics {
         context.heap.get(receiver)
         JvmIntValue(context.availableProcessorsProvider())
     }
+    private val RuntimeFreeMemory = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Runtime.freeMemory intrinsic requires a receiver")
+        requireNoArguments("Runtime.freeMemory", invocation)
+        context.heap.get(receiver)
+        JvmLongValue(context.freeMemoryProvider())
+    }
+    private val RuntimeTotalMemory = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Runtime.totalMemory intrinsic requires a receiver")
+        requireNoArguments("Runtime.totalMemory", invocation)
+        context.heap.get(receiver)
+        JvmLongValue(context.totalMemoryProvider())
+    }
+    private val RuntimeMaxMemory = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Runtime.maxMemory intrinsic requires a receiver")
+        requireNoArguments("Runtime.maxMemory", invocation)
+        context.heap.get(receiver)
+        JvmLongValue(context.maxMemoryProvider())
+    }
     private val RuntimeExit = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Runtime.exit intrinsic requires a receiver")
@@ -680,6 +722,9 @@ object JvmVmIntrinsics {
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
         RuntimeAvailableProcessorsKey to RuntimeAvailableProcessors,
+        RuntimeFreeMemoryKey to RuntimeFreeMemory,
+        RuntimeTotalMemoryKey to RuntimeTotalMemory,
+        RuntimeMaxMemoryKey to RuntimeMaxMemory,
         RuntimeExitKey to RuntimeExit,
         ShutdownBeforeHaltKey to ShutdownBeforeHalt,
         ShutdownHalt0Key to ShutdownHalt0,

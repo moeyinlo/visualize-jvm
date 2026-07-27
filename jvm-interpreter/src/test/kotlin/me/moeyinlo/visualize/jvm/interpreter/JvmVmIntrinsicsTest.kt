@@ -1145,6 +1145,32 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Runtime memory intrinsics return context supplied byte counts`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("java/lang/Runtime")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Runtime",
+            freeMemoryProvider = { 1_024L },
+            totalMemoryProvider = { 4_096L },
+            maxMemoryProvider = { 16_384L },
+        )
+        val freeMemory = JvmVmIntrinsics.Registry.resolve(runtimeFreeMemoryMethod())
+            ?: error("Runtime.freeMemory intrinsic was not registered")
+        val totalMemory = JvmVmIntrinsics.Registry.resolve(runtimeTotalMemoryMethod())
+            ?: error("Runtime.totalMemory intrinsic was not registered")
+        val maxMemory = JvmVmIntrinsics.Registry.resolve(runtimeMaxMemoryMethod())
+            ?: error("Runtime.maxMemory intrinsic was not registered")
+        val invocation = JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList())
+
+        assertEquals(JvmLongValue(1_024L), freeMemory.invoke(context, invocation))
+        assertEquals(JvmLongValue(4_096L), totalMemory.invoke(context, invocation))
+        assertEquals(JvmLongValue(16_384L), maxMemory.invoke(context, invocation))
+    }
+
+    @Test
     fun `Runtime availableProcessors intrinsic returns the context supplied processor count`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("java/lang/Runtime")
@@ -1573,6 +1599,30 @@ class JvmVmIntrinsicsTest {
         name = "exit",
         descriptor = "(I)V",
         isStatic = true,
+        isNative = true,
+    )
+
+    private fun runtimeFreeMemoryMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Runtime",
+        name = "freeMemory",
+        descriptor = "()J",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun runtimeTotalMemoryMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Runtime",
+        name = "totalMemory",
+        descriptor = "()J",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun runtimeMaxMemoryMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Runtime",
+        name = "maxMemory",
+        descriptor = "()J",
+        isStatic = false,
         isNative = true,
     )
 
