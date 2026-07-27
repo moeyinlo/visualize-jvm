@@ -1191,6 +1191,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JJ)V",
         isStatic = false,
     )
+    private val UnsafeGetAndAddLongKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndAddLong",
+        descriptor = "(Ljava/lang/Object;JJ)J",
+        isStatic = false,
+    )
     private val UnsafeCompareAndSetLongKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetLong",
@@ -3114,6 +3120,25 @@ object JvmVmIntrinsics {
             ),
         )
     }
+    private val UnsafeGetAndAddLong = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndAddLong intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException("Unsafe.getAndAddLong expects Object, long offset, and long delta arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndAddLong expects Object, long offset, and long delta arguments")
+        val delta = invocation.arguments[2] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndAddLong expects Object, long offset, and long delta arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getAndAddLong currently supports only synthetic static long slots",
+            )
+        }
+        JvmLongValue(context.unsafeMemory.getAndAddStaticLong(offset = offset.value, delta = delta.value))
+    }
     private val UnsafeCompareAndExchangeDouble = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeDouble intrinsic requires a receiver")
@@ -3503,6 +3528,7 @@ object JvmVmIntrinsics {
         UnsafeCompareAndExchangeIntKey to UnsafeCompareAndExchangeInt,
         UnsafePutLongVolatileKey to UnsafePutLongVolatile,
         UnsafePutLongKey to UnsafePutLong,
+        UnsafeGetAndAddLongKey to UnsafeGetAndAddLong,
         UnsafeCompareAndSetLongKey to UnsafeCompareAndSetLong,
         UnsafeCompareAndSetBooleanKey to UnsafeCompareAndSetBoolean,
         UnsafeCompareAndSetByteKey to UnsafeCompareAndSetByte,
