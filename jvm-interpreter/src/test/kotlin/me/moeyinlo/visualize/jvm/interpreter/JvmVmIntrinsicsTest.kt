@@ -2409,6 +2409,33 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getByteVolatile intrinsic reads synthetic static byte slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetByteVolatileMethod())
+            ?: error("Unsafe.getByteVolatile intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticByteSlots = mapOf(7L to (-2).toByte())),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmIntValue(-2), setResult)
+        assertEquals(JvmIntValue(0), defaultResult)
+    }
+
+    @Test
     fun `Unsafe getBooleanVolatile intrinsic reads synthetic static boolean slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -3028,6 +3055,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndExchangeReferenceMethod(),
             unsafeGetIntVolatileMethod(),
             unsafeGetBooleanVolatileMethod(),
+            unsafeGetByteVolatileMethod(),
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
             unsafeGetByteMethod(),
@@ -3645,6 +3673,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putByte",
         descriptor = "(Ljava/lang/Object;JB)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetByteVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getByteVolatile",
+        descriptor = "(Ljava/lang/Object;J)B",
         isStatic = false,
         isNative = true,
     )

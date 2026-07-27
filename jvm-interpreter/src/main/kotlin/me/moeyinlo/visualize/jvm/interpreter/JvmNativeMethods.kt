@@ -847,6 +847,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)Z",
         isStatic = false,
     )
+    private val UnsafeGetByteVolatileKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getByteVolatile",
+        descriptor = "(Ljava/lang/Object;J)B",
+        isStatic = false,
+    )
     private val UnsafeGetIntKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getInt",
@@ -1749,6 +1755,25 @@ object JvmVmIntrinsics {
         }
         jvmBoolean(context.unsafeMemory.getStaticBoolean(offset.value))
     }
+    private val UnsafeGetByteVolatile = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getByteVolatile intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getByteVolatile expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.getByteVolatile expects Object and long offset arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getByteVolatile currently supports only synthetic static byte slots",
+            )
+        }
+        JvmIntValue(context.unsafeMemory.getStaticByte(offset.value).toInt())
+    }
     private val UnsafeGetInt = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.getInt intrinsic requires a receiver")
@@ -2259,6 +2284,7 @@ object JvmVmIntrinsics {
         UnsafeCompareAndExchangeReferenceKey to UnsafeCompareAndExchangeReference,
         UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
         UnsafeGetBooleanVolatileKey to UnsafeGetBooleanVolatile,
+        UnsafeGetByteVolatileKey to UnsafeGetByteVolatile,
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafeGetBooleanKey to UnsafeGetBoolean,
         UnsafeGetByteKey to UnsafeGetByte,
