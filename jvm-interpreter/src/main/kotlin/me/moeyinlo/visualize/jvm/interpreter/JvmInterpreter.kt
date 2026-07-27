@@ -5247,11 +5247,12 @@ object JvmInterpreter {
                         throw exception
                     }
                     val initializationFailure = exception.initializationFailureForActiveUse(classHierarchy, heap)
-                    classInitializationStates.failInitialization(
+                    val waitingThreadIds = classInitializationStates.failInitialization(
                         className = className,
                         threadId = currentThreadId,
                         errorClassName = initializationFailure.initializationErrorClassName(heap),
                     )
+                    threadScheduler?.resumeClassInitializationWaiters(waitingThreadIds)
                     throw initializationFailure
                 }
             }
