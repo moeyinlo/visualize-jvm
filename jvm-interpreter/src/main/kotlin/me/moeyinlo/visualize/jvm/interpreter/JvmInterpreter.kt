@@ -5215,18 +5215,16 @@ object JvmInterpreter {
                             executeClassInitializer = executeClassInitializer,
                         )
                     }
-                    classHierarchy.directSuperinterfaceNames(className)
-                        .filter(classHierarchy::declaresDefaultMethod)
-                        .forEach { interfaceName ->
-                            initializeClassForActiveUse(
-                                className = interfaceName,
-                                classHierarchy = classHierarchy,
-                                heap = heap,
-                                classInitializationStates = classInitializationStates,
-                                currentThreadId = currentThreadId,
-                                executeClassInitializer = executeClassInitializer,
-                            )
-                        }
+                    classHierarchy.defaultMethodSuperinterfaceNames(className).forEach { interfaceName ->
+                        initializeClassForActiveUse(
+                            className = interfaceName,
+                            classHierarchy = classHierarchy,
+                            heap = heap,
+                            classInitializationStates = classInitializationStates,
+                            currentThreadId = currentThreadId,
+                            executeClassInitializer = executeClassInitializer,
+                        )
+                    }
                 }
                 val classInitializer = classHierarchy.classInitializationMethod(className)
                 if (classInitializer == null) {

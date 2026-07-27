@@ -121,6 +121,24 @@ class JvmClassHierarchy(
                 }
         } == true
 
+    fun defaultMethodSuperinterfaceNames(internalName: String): List<String> {
+        val visited = linkedSetOf<String>()
+        val ordered = mutableListOf<String>()
+
+        fun visit(interfaceName: String) {
+            if (!visited.add(interfaceName)) {
+                return
+            }
+            directSuperinterfaceNames(interfaceName).forEach(::visit)
+            if (declaresDefaultMethod(interfaceName)) {
+                ordered += interfaceName
+            }
+        }
+
+        directSuperinterfaceNames(internalName).forEach(::visit)
+        return ordered
+    }
+
     fun isInterface(internalName: String): Boolean =
         classesByName[internalName]?.isInterface == true
 
