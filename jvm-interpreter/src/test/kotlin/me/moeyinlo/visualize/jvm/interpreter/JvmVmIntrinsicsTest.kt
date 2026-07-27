@@ -1145,6 +1145,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Runtime availableProcessors intrinsic returns the context supplied processor count`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("java/lang/Runtime")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(runtimeAvailableProcessorsMethod())
+            ?: error("Runtime.availableProcessors intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Runtime",
+            availableProcessorsProvider = { 12 },
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        )
+
+        assertEquals(JvmIntValue(12), result)
+    }
+
+    @Test
     fun `Runtime exit intrinsic terminates the VM with the supplied status`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("java/lang/Runtime")
@@ -1551,6 +1573,14 @@ class JvmVmIntrinsicsTest {
         name = "exit",
         descriptor = "(I)V",
         isStatic = true,
+        isNative = true,
+    )
+
+    private fun runtimeAvailableProcessorsMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Runtime",
+        name = "availableProcessors",
+        descriptor = "()I",
+        isStatic = false,
         isNative = true,
     )
 

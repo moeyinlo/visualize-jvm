@@ -66,6 +66,7 @@ data class JvmNativeMethodContext(
     val terminationState: JvmVmTerminationState = JvmVmTerminationState(),
     val currentTimeMillisProvider: () -> Long = System::currentTimeMillis,
     val nanoTimeProvider: () -> Long = System::nanoTime,
+    val availableProcessorsProvider: () -> Int = { Runtime.getRuntime().availableProcessors() },
     val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },
     val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
     val loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
@@ -322,6 +323,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Class;Ljava/lang/String;)V",
         isStatic = false,
     )
+    private val RuntimeAvailableProcessorsKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Runtime",
+        name = "availableProcessors",
+        descriptor = "()I",
+        isStatic = false,
+    )
     private val RuntimeExitKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Runtime",
         name = "exit",
@@ -538,6 +545,13 @@ object JvmVmIntrinsics {
         context.loadNativeLibraryHandler(requireRuntimeLoadLibrary0Name(context, invocation))
         null
     }
+    private val RuntimeAvailableProcessors = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Runtime.availableProcessors intrinsic requires a receiver")
+        requireNoArguments("Runtime.availableProcessors", invocation)
+        context.heap.get(receiver)
+        JvmIntValue(context.availableProcessorsProvider())
+    }
     private val RuntimeExit = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Runtime.exit intrinsic requires a receiver")
@@ -665,6 +679,7 @@ object JvmVmIntrinsics {
         SystemMapLibraryNameKey to SystemMapLibraryName,
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
+        RuntimeAvailableProcessorsKey to RuntimeAvailableProcessors,
         RuntimeExitKey to RuntimeExit,
         ShutdownBeforeHaltKey to ShutdownBeforeHalt,
         ShutdownHalt0Key to ShutdownHalt0,
