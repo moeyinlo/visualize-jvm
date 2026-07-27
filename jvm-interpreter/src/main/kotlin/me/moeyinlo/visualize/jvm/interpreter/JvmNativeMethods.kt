@@ -5116,16 +5116,31 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.setMemory0 expects Object base, long offset, long byte count, and byte value arguments",
             )
-        if (base != JvmNullValue) {
-            throw JvmUnsupportedInstructionException(
-                "Unsafe.setMemory0 currently supports only synthetic native memory with null base",
-            )
-        }
         if (bytes.value < 0L) {
             throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte count must be non-negative")
         }
         if (value.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
             throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte value is out of range")
+        }
+        if (base is JvmObjectReferenceValue) {
+            val payload = context.heap.get(base).payload as? JvmByteArrayPayload
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.setMemory0 currently supports only guest byte arrays for non-null base",
+                )
+            val start = offset.value - UnsafeSyntheticArrayBaseOffset
+            val endExclusive = start + bytes.value
+            if (start < 0L || endExclusive < start || endExclusive > payload.elements.size) {
+                throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte array range is outside array bounds")
+            }
+            for (index in start.toInt() until endExclusive.toInt()) {
+                payload.elements[index] = value.value.toByte()
+            }
+            return@JvmNativeMethodIntrinsic null
+        }
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.setMemory0 currently supports only synthetic native memory with null base",
+            )
         }
         context.unsafeMemory.setNativeMemory(offset.value, bytes.value, value.value.toByte())
         null
