@@ -3561,6 +3561,36 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getAndSetBoolean intrinsic returns witness for synthetic static boolean slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetAndSetBooleanMethod())
+            ?: error("Unsafe.getAndSetBoolean intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory(staticBooleanSlots = mapOf(7L to true))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val existing = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue(0))),
+        )
+        val defaulted = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmIntValue(1))),
+        )
+
+        assertEquals(JvmIntValue(1), existing)
+        assertEquals(false, unsafeMemory.getStaticBoolean(offset = 7L))
+        assertEquals(JvmIntValue(0), defaulted)
+        assertEquals(true, unsafeMemory.getStaticBoolean(offset = 9L))
+    }
+
+    @Test
     fun `Unsafe compareAndExchangeDouble intrinsic returns witness for synthetic static double slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4157,6 +4187,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetAndSetLongMethod(),
             unsafeGetAndAddIntMethod(),
             unsafeGetAndSetIntMethod(),
+            unsafeGetAndSetBooleanMethod(),
             unsafeCompareAndExchangeFloatMethod(),
             unsafeCompareAndExchangeDoubleMethod(),
             unsafePutLongVolatileMethod(),
@@ -5013,6 +5044,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getAndSetInt",
         descriptor = "(Ljava/lang/Object;JI)I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetAndSetBooleanMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndSetBoolean",
+        descriptor = "(Ljava/lang/Object;JZ)Z",
         isStatic = false,
         isNative = true,
     )

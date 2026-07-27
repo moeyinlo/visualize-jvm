@@ -1215,6 +1215,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JI)I",
         isStatic = false,
     )
+    private val UnsafeGetAndSetBooleanKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndSetBoolean",
+        descriptor = "(Ljava/lang/Object;JZ)Z",
+        isStatic = false,
+    )
     private val UnsafeCompareAndSetIntKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetInt",
@@ -3275,6 +3281,33 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(context.unsafeMemory.getAndSetStaticInt(offset = offset.value, replacement = replacement.value))
     }
+    private val UnsafeGetAndSetBoolean = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetBoolean intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException("Unsafe.getAndSetBoolean expects Object, long offset, and boolean replacement arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetBoolean expects Object, long offset, and boolean replacement arguments")
+        val replacement = invocation.arguments[2] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetBoolean expects Object, long offset, and boolean replacement arguments")
+        if (replacement.value !in 0..1) {
+            throw JvmUnsupportedInstructionException("Unsafe.getAndSetBoolean boolean replacement must be 0 or 1")
+        }
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getAndSetBoolean currently supports only synthetic static boolean slots",
+            )
+        }
+        jvmBoolean(
+            context.unsafeMemory.getAndSetStaticBoolean(
+                offset = offset.value,
+                replacement = replacement.value == 1,
+            ),
+        )
+    }
     private val UnsafeCompareAndExchangeDouble = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeDouble intrinsic requires a receiver")
@@ -3663,6 +3696,7 @@ object JvmVmIntrinsics {
         UnsafePutIntKey to UnsafePutInt,
         UnsafeGetAndAddIntKey to UnsafeGetAndAddInt,
         UnsafeGetAndSetIntKey to UnsafeGetAndSetInt,
+        UnsafeGetAndSetBooleanKey to UnsafeGetAndSetBoolean,
         UnsafeCompareAndSetIntKey to UnsafeCompareAndSetInt,
         UnsafeCompareAndExchangeIntKey to UnsafeCompareAndExchangeInt,
         UnsafePutLongVolatileKey to UnsafePutLongVolatile,
