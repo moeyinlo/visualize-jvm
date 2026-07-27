@@ -253,6 +253,18 @@ class JvmUnsafeSyntheticMemory(
         return true
     }
 
+    fun compareAndExchangeStaticChar(
+        offset: Long,
+        expected: Char,
+        replacement: Char,
+    ): Char {
+        val current = getStaticChar(offset)
+        if (current == expected) {
+            staticCharSlots[offset] = replacement
+        }
+        return current
+    }
+
     fun getStaticFloat(offset: Long): Float = staticFloatSlots[offset] ?: 0.0f
 
     fun putStaticFloat(offset: Long, value: Float) {
