@@ -4072,6 +4072,26 @@ object JvmVmIntrinsics {
         ) {
             throw JvmUnsupportedInstructionException("Unsafe.compareAndSetShort short values are out of range")
         }
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "S") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndSetShort object field offset must map to a short field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndSetShort object field did not contain a short-compatible int value",
+                )
+            if (current.value !in Short.MIN_VALUE.toInt()..Short.MAX_VALUE.toInt()) {
+                throw JvmUnsupportedInstructionException("Unsafe.compareAndSetShort object field short value is out of range")
+            }
+            if (current.value != expected.value) {
+                return@JvmNativeMethodIntrinsic JvmIntValue(0)
+            }
+            context.heap.putInstanceField(base, field, replacement)
+            return@JvmNativeMethodIntrinsic JvmIntValue(1)
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndSetShort currently supports only synthetic static short slots",
