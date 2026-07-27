@@ -73,6 +73,31 @@ class JvmLayeredNativeMethodResolverTest {
 
 
     @Test
+    fun `intrinsic registry rejects duplicate native method signatures`() {
+        val signature = signature(ownerClassName = "example/AllowedNative")
+        val firstBinding = binding(
+            signature = signature,
+            environment = JvmNativeExecutionEnvironment.VmIntrinsic,
+            bindingName = "intrinsic.first",
+        )
+        val duplicateBinding = binding(
+            signature = signature,
+            environment = JvmNativeExecutionEnvironment.VmIntrinsic,
+            bindingName = "intrinsic.duplicate",
+        )
+
+        val exception = kotlin.test.assertFailsWith<IllegalArgumentException> {
+            JvmNativeIntrinsicRegistry.from(firstBinding, duplicateBinding)
+        }
+
+        assertEquals(
+            "duplicate VM intrinsic binding example/AllowedNative.call:()V static=true",
+            exception.message,
+        )
+    }
+
+
+    @Test
     fun `layered resolver throws unresolved native method errors with guest UnsatisfiedLinkError identity`() {
         val signature = signature(ownerClassName = "example/MissingNative")
         val resolver = JvmLayeredNativeMethodResolver(

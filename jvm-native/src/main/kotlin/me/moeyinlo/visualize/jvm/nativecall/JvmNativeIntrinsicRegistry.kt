@@ -15,8 +15,20 @@ class JvmNativeIntrinsicRegistry private constructor(
         val Empty: JvmNativeIntrinsicRegistry = JvmNativeIntrinsicRegistry(emptyMap())
 
         fun from(vararg bindings: JvmNativeMethodBinding): JvmNativeIntrinsicRegistry =
-            JvmNativeIntrinsicRegistry(
-                bindings.associateBy(JvmNativeMethodBinding::signature),
-            )
+            JvmNativeIntrinsicRegistry(bindings.toIntrinsicBindingMap())
     }
 }
+
+private fun Array<out JvmNativeMethodBinding>.toIntrinsicBindingMap(): Map<JvmNativeMethodSignature, JvmNativeMethodBinding> {
+    val duplicate = groupingBy(JvmNativeMethodBinding::signature)
+        .eachCount()
+        .entries
+        .firstOrNull { (_, count) -> count > 1 }
+    require(duplicate == null) {
+        "duplicate VM intrinsic binding ${duplicate!!.key.formatForDiagnostic()}"
+    }
+    return associateBy(JvmNativeMethodBinding::signature)
+}
+
+private fun JvmNativeMethodSignature.formatForDiagnostic(): String =
+    "$ownerClassName.$methodName:$methodDescriptor static=$isStatic"
