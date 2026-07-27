@@ -1081,6 +1081,25 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `System registerNatives intrinsic is a simulated no op`() {
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(systemRegisterNativesMethod())
+            ?: error("System.registerNatives intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/System",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun `System stream setter intrinsics update the guest static stream fields`() {
         val heap = JvmHeap()
         val input = heap.allocateObject("java/io/InputStream")
@@ -1544,6 +1563,7 @@ class JvmVmIntrinsicsTest {
             objectNotifyAllMethod(),
             systemArraycopyMethod(),
             systemIdentityHashCodeMethod(),
+            systemRegisterNativesMethod(),
             systemSetIn0Method(),
             systemSetOut0Method(),
             systemSetErr0Method(),
@@ -1630,6 +1650,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/System",
         name = "identityHashCode",
         descriptor = "(Ljava/lang/Object;)I",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun systemRegisterNativesMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/System",
+        name = "registerNatives",
+        descriptor = "()V",
         isStatic = true,
         isNative = true,
     )

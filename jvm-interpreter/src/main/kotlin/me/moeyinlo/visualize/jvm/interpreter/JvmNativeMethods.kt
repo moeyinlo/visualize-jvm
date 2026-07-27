@@ -292,6 +292,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;)I",
         isStatic = true,
     )
+    private val SystemRegisterNativesKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/System",
+        name = "registerNatives",
+        descriptor = "()V",
+        isStatic = true,
+    )
     private val SystemSetIn0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/System",
         name = "setIn0",
@@ -575,6 +581,13 @@ object JvmVmIntrinsics {
         name = "System.setErr0",
         field = JvmFieldReference("java/lang/System", "err", "Ljava/io/PrintStream;"),
     )
+    private val SystemRegisterNatives = JvmNativeMethodIntrinsic { _, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("System.registerNatives expects no receiver")
+        }
+        requireNoArguments("System.registerNatives", invocation)
+        null
+    }
     private val SystemCurrentTimeMillis = JvmNativeMethodIntrinsic { context, invocation ->
         requireNoArguments("System.currentTimeMillis", invocation)
         JvmLongValue(context.currentTimeMillisProvider())
@@ -761,6 +774,7 @@ object JvmVmIntrinsics {
         ObjectNotifyAllKey to ObjectNotifyAll,
         SystemArraycopyKey to SystemArraycopy,
         SystemIdentityHashCodeKey to SystemIdentityHashCode,
+        SystemRegisterNativesKey to SystemRegisterNatives,
         SystemSetIn0Key to SystemSetIn0,
         SystemSetOut0Key to SystemSetOut0,
         SystemSetErr0Key to SystemSetErr0,
