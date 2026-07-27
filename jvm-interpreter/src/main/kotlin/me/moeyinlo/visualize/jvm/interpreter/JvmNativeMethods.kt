@@ -3006,6 +3006,18 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getFloat expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "F") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getFloat object field offset must map to a float field",
+                )
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmFloatValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getFloat object field did not contain a float value",
+                )
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getFloat currently supports only synthetic static float slots",
