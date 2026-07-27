@@ -73,6 +73,16 @@ class JvmUnsafeSyntheticMemoryTest {
     }
 
     @Test
+    fun `synthetic static boolean slots compare and exchange returns witness value`() {
+        val memory = JvmUnsafeSyntheticMemory(staticBooleanSlots = mapOf(7L to true))
+
+        assertEquals(true, memory.compareAndExchangeStaticBoolean(offset = 7L, expected = false, replacement = false))
+        assertEquals(true, memory.getStaticBoolean(offset = 7L))
+        assertEquals(true, memory.compareAndExchangeStaticBoolean(offset = 7L, expected = true, replacement = false))
+        assertEquals(false, memory.getStaticBoolean(offset = 7L))
+    }
+
+    @Test
     fun `synthetic static byte slots default to zero can be written and compare and set atomically`() {
         val memory = JvmUnsafeSyntheticMemory(staticByteSlots = mapOf(7L to 1.toByte()))
 
