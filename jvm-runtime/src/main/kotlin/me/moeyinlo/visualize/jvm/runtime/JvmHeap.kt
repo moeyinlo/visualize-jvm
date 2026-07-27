@@ -24,6 +24,7 @@ data class JvmStackTraceFrame(
 data class JvmThrowablePayload(
     val stackTrace: List<JvmStackTraceFrame>,
     val cause: JvmReferenceValue = JvmNullValue,
+    val detailMessage: JvmReferenceValue = JvmNullValue,
 ) : JvmHeapPayload
 
 data class JvmThreadPayload(val threadId: String) : JvmHeapPayload
@@ -346,6 +347,22 @@ class JvmHeap {
         }
         val payload = heapObject.throwablePayloadOrDefault()
         objects[reference.referenceId] = heapObject.copy(payload = payload.copy(cause = cause))
+        return reference
+    }
+
+    fun recordThrowableDetailMessage(
+        reference: JvmObjectReferenceValue,
+        detailMessage: JvmReferenceValue,
+    ): JvmObjectReferenceValue {
+        val heapObject = get(reference)
+        if (detailMessage is JvmObjectReferenceValue) {
+            val messageObject = get(detailMessage)
+            require(messageObject.className == "java/lang/String") {
+                "throwable detailMessage must be a java/lang/String object: ${messageObject.className}"
+            }
+        }
+        val payload = heapObject.throwablePayloadOrDefault()
+        objects[reference.referenceId] = heapObject.copy(payload = payload.copy(detailMessage = detailMessage))
         return reference
     }
 

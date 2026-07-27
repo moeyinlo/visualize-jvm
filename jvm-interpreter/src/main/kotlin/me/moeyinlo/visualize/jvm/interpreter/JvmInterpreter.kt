@@ -5312,13 +5312,15 @@ object JvmInterpreter {
         if (classHierarchy.isAssignable(sourceClassName = failureClassName, targetClassName = "java/lang/Error")) {
             return this
         }
+        val detailMessage = "Class initializer failed with $failureClassName"
         val cause = initializationCauseReference(heap)
         val wrapper = heap.allocateObject("java/lang/ExceptionInInitializerError")
+        heap.recordThrowableDetailMessage(wrapper, heap.internString(detailMessage))
         heap.recordThrowableCause(wrapper, cause)
         return JvmThrownException(
             throwable = wrapper,
             guestClassName = "java/lang/ExceptionInInitializerError",
-            message = "Class initializer failed with $failureClassName",
+            message = detailMessage,
         )
     }
 
