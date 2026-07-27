@@ -381,6 +381,12 @@ class JvmUnsafeSyntheticMemory(
         return current
     }
 
+    fun getAndSetStaticDouble(offset: Long, replacement: Double): Double {
+        val current = getStaticDouble(offset)
+        staticDoubleSlots[offset] = replacement
+        return current
+    }
+
     fun getStaticReference(offset: Long): JvmReferenceValue = staticReferenceSlots[offset] ?: JvmNullValue
 
     fun putStaticReference(offset: Long, value: JvmReferenceValue) {
