@@ -6540,9 +6540,7 @@ class JvmInterpreterTest {
         assertEquals("java/lang/ExceptionInInitializerError", exception.guestClassName)
         assertEquals("java/lang/ExceptionInInitializerError", heap.get(exception.throwable).className)
         val payload = heap.get(exception.throwable).payload as JvmThrowablePayload
-        val detailMessage = payload.detailMessage as JvmObjectReferenceValue
-        val detailMessagePayload = heap.get(detailMessage).payload as JvmStringPayload
-        assertEquals("Class initializer failed with java/lang/ArithmeticException", detailMessagePayload.value)
+        assertEquals(JvmNullValue, payload.detailMessage)
         assertEquals(
             listOf(
                 JvmStackTraceFrame(
@@ -6556,6 +6554,17 @@ class JvmInterpreterTest {
         )
         val cause = payload.cause as JvmObjectReferenceValue
         assertEquals("java/lang/ArithmeticException", heap.get(cause).className)
+        assertEquals(
+            cause,
+            heap.getInstanceField(
+                exception.throwable,
+                JvmFieldReference(
+                    ownerClassName = "java/lang/ExceptionInInitializerError",
+                    name = "exception",
+                    descriptor = "Ljava/lang/Throwable;",
+                ),
+            ),
+        )
         assertEquals(
             JvmClassInitializationState.Erroneous("java/lang/ExceptionInInitializerError"),
             initializationStates.get("Example"),
