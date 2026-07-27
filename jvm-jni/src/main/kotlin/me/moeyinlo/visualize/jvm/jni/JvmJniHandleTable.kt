@@ -47,7 +47,7 @@ class JvmJniHandleTable {
         allocate(JvmJniHandleEntry.MethodIdHandle(method), JvmJniHandleScope.Id)
 
     fun newFieldIdHandle(field: JvmResolvedField): JvmJniHandleId =
-        allocate(JvmJniHandleEntry.FieldIdHandle(field), JvmJniHandleScope.Local)
+        allocate(JvmJniHandleEntry.FieldIdHandle(field), JvmJniHandleScope.Id)
 
     fun resolveObject(handle: JvmJniHandleId): JvmObjectReferenceValue =
         entry(handle).expect<JvmJniHandleEntry.ObjectHandle>(handle).reference

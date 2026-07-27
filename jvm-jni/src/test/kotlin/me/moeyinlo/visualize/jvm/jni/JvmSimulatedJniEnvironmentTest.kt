@@ -5208,6 +5208,46 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetFieldID returns field IDs that survive local frame pop`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        environment.pushLocalFrame(4)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getFieldId(classHandle, "value", "I")
+
+        environment.popLocalFrame(null)
+
+        assertEquals(
+            JvmResolvedField(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "I",
+                isStatic = false,
+            ),
+            handles.resolveFieldId(fieldHandle),
+        )
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveClass(classHandle)
+        }
+    }
+
+    @Test
     fun `GetStaticFieldID returns a field handle for loaded static guest fields`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
@@ -5240,6 +5280,46 @@ class JvmSimulatedJniEnvironmentTest {
             ),
             handles.resolveFieldId(fieldHandle),
         )
+    }
+
+    @Test
+    fun `GetStaticFieldID returns field IDs that survive local frame pop`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+        )
+        environment.pushLocalFrame(4)
+        val classHandle = environment.findClass("Example")
+        val fieldHandle = environment.getStaticFieldId(classHandle, "value", "I")
+
+        environment.popLocalFrame(null)
+
+        assertEquals(
+            JvmResolvedField(
+                ownerClassName = "Example",
+                name = "value",
+                descriptor = "I",
+                isStatic = true,
+            ),
+            handles.resolveFieldId(fieldHandle),
+        )
+        assertFailsWith<JvmJniInvalidHandleException> {
+            handles.resolveClass(classHandle)
+        }
     }
 
     @Test

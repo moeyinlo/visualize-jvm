@@ -50,6 +50,18 @@ class JvmJniHandleTableTest {
     @Test
     fun `deleted local handles cannot be resolved again`() {
         val table = JvmJniHandleTable()
+        val objectHandle = table.newObjectHandle(JvmObjectReferenceValue(JvmReferenceId(10)))
+
+        table.deleteLocal(objectHandle)
+
+        assertFailsWith<JvmJniInvalidHandleException> {
+            table.resolveObject(objectHandle)
+        }
+    }
+
+    @Test
+    fun `delete local rejects jfieldID handles because they are not local references`() {
+        val table = JvmJniHandleTable()
         val fieldHandle = table.newFieldIdHandle(
             JvmResolvedField(
                 ownerClassName = "Example",
@@ -59,10 +71,8 @@ class JvmJniHandleTableTest {
             ),
         )
 
-        table.deleteLocal(fieldHandle)
-
-        assertFailsWith<JvmJniInvalidHandleException> {
-            table.resolveFieldId(fieldHandle)
+        assertFailsWith<JvmJniHandleScopeException> {
+            table.deleteLocal(fieldHandle)
         }
     }
 
