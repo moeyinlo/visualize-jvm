@@ -56,6 +56,27 @@ data class JvmNativeMethodInvocation(
     val arguments: List<JvmValue>,
 )
 
+class JvmUnsafeSyntheticMemory(
+    staticLongSlots: Map<Long, Long> = emptyMap(),
+) {
+    private val staticLongSlots = staticLongSlots.toMutableMap()
+
+    fun getStaticLong(offset: Long): Long = staticLongSlots[offset] ?: 0L
+
+    fun compareAndSetStaticLong(
+        offset: Long,
+        expected: Long,
+        replacement: Long,
+    ): Boolean {
+        val current = getStaticLong(offset)
+        if (current != expected) {
+            return false
+        }
+        staticLongSlots[offset] = replacement
+        return true
+    }
+}
+
 data class JvmNativeMethodContext(
     val heap: JvmHeap,
     val classHierarchy: JvmClassHierarchy,
@@ -106,6 +127,7 @@ data class JvmNativeMethodContext(
             "Native method context cannot upcall instance method $ownerClassName.$name:$descriptor",
         )
     },
+    val unsafeMemory: JvmUnsafeSyntheticMemory = JvmUnsafeSyntheticMemory(),
 ) {
     fun callStaticMethod(
         ownerClassName: String,
