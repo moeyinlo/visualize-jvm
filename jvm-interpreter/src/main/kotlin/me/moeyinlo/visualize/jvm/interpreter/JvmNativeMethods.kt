@@ -233,6 +233,12 @@ class JvmUnsafeSyntheticMemory(
         return current
     }
 
+    fun getAndSetStaticByte(offset: Long, replacement: Byte): Byte {
+        val current = getStaticByte(offset)
+        staticByteSlots[offset] = replacement
+        return current
+    }
+
     fun getStaticShort(offset: Long): Short = staticShortSlots[offset] ?: 0.toShort()
 
     fun putStaticShort(offset: Long, value: Short) {
