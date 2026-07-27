@@ -6848,6 +6848,46 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getAndSetShort intrinsic returns witness and replaces guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("AtomicShortFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("AtomicShortFieldOffsetOwner")
+        val fieldName = heap.internString("code")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("AtomicShortFieldOffsetOwner", "code", "S")
+        heap.putInstanceField(target, field, JvmIntValue(1234))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "AtomicShortFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "code", descriptor = "S", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val getAndSetShort = JvmVmIntrinsics.Registry.resolve(unsafeGetAndSetShortMethod())
+            ?: error("Unsafe.getAndSetShort intrinsic was not registered")
+
+        val witness = getAndSetShort.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(-1235))),
+        )
+
+        assertEquals(JvmIntValue(1234), witness)
+        assertEquals(JvmIntValue(-1235), heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe compareAndSetBoolean intrinsic updates guest object fields through synthetic offsets`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
