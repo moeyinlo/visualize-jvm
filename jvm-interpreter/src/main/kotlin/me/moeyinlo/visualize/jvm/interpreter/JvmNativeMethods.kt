@@ -485,6 +485,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Class;)Z",
         isStatic = true,
     )
+    private val ClassIsHiddenKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "isHidden",
+        descriptor = "()Z",
+        isStatic = false,
+    )
     private val ThrowableFillInStackTraceKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Throwable",
         name = "fillInStackTrace",
@@ -848,6 +854,10 @@ object JvmVmIntrinsics {
         requireClassMirrorReference("Class.desiredAssertionStatus0 argument", context, mirror)
         JvmIntValue(0)
     }
+    private val ClassIsHidden = JvmNativeMethodIntrinsic { context, invocation ->
+        requireClassMirrorReceiver("Class.isHidden", context, invocation)
+        JvmIntValue(0)
+    }
     private val ThrowableFillInStackTrace = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Throwable.fillInStackTrace intrinsic requires a receiver")
@@ -961,6 +971,7 @@ object JvmVmIntrinsics {
         ClassGetSuperclassKey to ClassGetSuperclass,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
+        ClassIsHiddenKey to ClassIsHidden,
         ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
         StringInternKey to StringIntern,
         ThreadRegisterNativesKey to ThreadRegisterNatives,

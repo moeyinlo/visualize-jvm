@@ -1632,6 +1632,24 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isHidden intrinsic defaults guest class mirrors to visible`() {
+        val heap = JvmHeap()
+        val classMirror = heap.internClassMirror("pkg/Example")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsHiddenMethod())
+            ?: error("Class.isHidden intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(classMirror, emptyList()))
+
+        assertEquals(JvmIntValue(0), result)
+    }
+
+    @Test
     fun `Throwable fillInStackTrace intrinsic records context stack trace and returns receiver`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("java/lang/Throwable")
@@ -1873,6 +1891,7 @@ class JvmVmIntrinsicsTest {
             classGetSuperclassMethod(),
             classGetInterfaces0Method(),
             classDesiredAssertionStatus0Method(),
+            classIsHiddenMethod(),
             throwableFillInStackTraceMethod(),
             stringInternMethod(),
             threadRegisterNativesMethod(),
@@ -2161,6 +2180,14 @@ class JvmVmIntrinsicsTest {
         name = "desiredAssertionStatus0",
         descriptor = "(Ljava/lang/Class;)Z",
         isStatic = true,
+        isNative = true,
+    )
+
+    private fun classIsHiddenMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "isHidden",
+        descriptor = "()Z",
+        isStatic = false,
         isNative = true,
     )
 
