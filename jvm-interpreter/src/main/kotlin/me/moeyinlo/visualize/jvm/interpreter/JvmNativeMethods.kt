@@ -575,6 +575,12 @@ object JvmVmIntrinsics {
         descriptor = "()V",
         isStatic = false,
     )
+    private val ThreadSetCurrentThreadKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "setCurrentThread",
+        descriptor = "(Ljava/lang/Thread;)V",
+        isStatic = false,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -1042,6 +1048,29 @@ object JvmVmIntrinsics {
         context.heap.get(receiver)
         null
     }
+    private val ThreadSetCurrentThread = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Thread.setCurrentThread intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Thread.setCurrentThread expects one nullable Thread argument")
+        }
+        when (val value = invocation.arguments.single()) {
+            JvmNullValue -> Unit
+            is JvmObjectReferenceValue -> {
+                val className = context.heap.get(value).className
+                if (className != "java/lang/Thread" && !context.classHierarchy.isAssignable(className, "java/lang/Thread")) {
+                    throw JvmUnsupportedInstructionException(
+                        "Thread.setCurrentThread expects one nullable Thread argument",
+                    )
+                }
+            }
+            else -> throw JvmUnsupportedInstructionException(
+                "Thread.setCurrentThread expects one nullable Thread argument",
+            )
+        }
+        null
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1154,6 +1183,7 @@ object JvmVmIntrinsics {
         ThreadSetPriority0Key to ThreadSetPriority0,
         ThreadInterrupt0Key to ThreadInterrupt0,
         ThreadStart0Key to ThreadStart0,
+        ThreadSetCurrentThreadKey to ThreadSetCurrentThread,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,

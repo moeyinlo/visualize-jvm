@@ -1958,6 +1958,32 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread setCurrentThread intrinsic validates receiver and nullable guest thread as a simulated no op`() {
+        val heap = JvmHeap()
+        val receiver = heap.internThread("virtual-thread")
+        val carrier = heap.internThread("carrier-thread")
+        val notThread = heap.allocateObject("java/lang/Object")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadSetCurrentThreadMethod())
+            ?: error("Thread.setCurrentThread intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val threadResult = intrinsic.invoke(context, JvmNativeMethodInvocation(receiver, listOf(carrier)))
+        val nullResult = intrinsic.invoke(context, JvmNativeMethodInvocation(receiver, listOf(JvmNullValue)))
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(context, JvmNativeMethodInvocation(receiver, listOf(notThread)))
+        }
+
+        assertEquals(null, threadResult)
+        assertEquals(null, nullResult)
+        assertEquals("Thread.setCurrentThread expects one nullable Thread argument", exception.message)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2133,6 +2159,7 @@ class JvmVmIntrinsicsTest {
             threadSetPriority0Method(),
             threadInterrupt0Method(),
             threadStart0Method(),
+            threadSetCurrentThreadMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2537,6 +2564,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "start0",
         descriptor = "()V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun threadSetCurrentThreadMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "setCurrentThread",
+        descriptor = "(Ljava/lang/Thread;)V",
         isStatic = false,
         isNative = true,
     )
