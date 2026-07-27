@@ -63,6 +63,10 @@ class JvmUnsafeSyntheticMemory(
 
     fun getStaticLong(offset: Long): Long = staticLongSlots[offset] ?: 0L
 
+    fun putStaticLong(offset: Long, value: Long) {
+        staticLongSlots[offset] = value
+    }
+
     fun compareAndSetStaticLong(
         offset: Long,
         expected: Long,

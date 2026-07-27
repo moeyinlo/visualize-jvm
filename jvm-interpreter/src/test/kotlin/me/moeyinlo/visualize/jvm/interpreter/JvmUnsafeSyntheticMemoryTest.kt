@@ -13,4 +13,15 @@ class JvmUnsafeSyntheticMemoryTest {
         assertEquals(true, memory.compareAndSetStaticLong(offset = 7L, expected = 0L, replacement = 2L))
         assertEquals(2L, memory.getStaticLong(offset = 7L))
     }
+
+    @Test
+    fun `synthetic static long slots can be written directly`() {
+        val memory = JvmUnsafeSyntheticMemory(staticLongSlots = mapOf(7L to 1L))
+
+        memory.putStaticLong(offset = 7L, value = 2L)
+        memory.putStaticLong(offset = 9L, value = 3L)
+
+        assertEquals(2L, memory.getStaticLong(offset = 7L))
+        assertEquals(3L, memory.getStaticLong(offset = 9L))
+    }
 }
