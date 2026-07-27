@@ -73,6 +73,18 @@ class JvmUnsafeSyntheticMemoryTest {
     }
 
     @Test
+    fun `synthetic static byte slots default to zero can be written and compare and set atomically`() {
+        val memory = JvmUnsafeSyntheticMemory(staticByteSlots = mapOf(7L to 1.toByte()))
+
+        assertEquals(0.toByte(), memory.getStaticByte(offset = 9L))
+        assertEquals(1.toByte(), memory.getStaticByte(offset = 7L))
+        memory.putStaticByte(offset = 7L, value = 2.toByte())
+        assertEquals(false, memory.compareAndSetStaticByte(offset = 7L, expected = 1.toByte(), replacement = 3.toByte()))
+        assertEquals(true, memory.compareAndSetStaticByte(offset = 7L, expected = 2.toByte(), replacement = 3.toByte()))
+        assertEquals(3.toByte(), memory.getStaticByte(offset = 7L))
+    }
+
+    @Test
     fun `synthetic static reference slots default to null can be written and compare and set atomically`() {
         val first = JvmObjectReferenceValue(JvmReferenceId(1))
         val second = JvmObjectReferenceValue(JvmReferenceId(2))
