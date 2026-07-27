@@ -5304,6 +5304,35 @@ object JvmVmIntrinsics {
             }
             return@JvmNativeMethodIntrinsic null
         }
+        if (sourceBase is JvmObjectReferenceValue && targetBase == JvmNullValue) {
+            val sourcePayload = context.heap.get(sourceBase).payload as? JvmByteArrayPayload
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.copySwapMemory0 currently supports only guest byte arrays for non-null bases",
+                )
+            val sourceStart = sourceOffset.value - UnsafeSyntheticArrayBaseOffset
+            val sourceEndExclusive = sourceStart + bytes.value
+            if (sourceStart < 0L || sourceEndExclusive < sourceStart || sourceEndExclusive > sourcePayload.elements.size) {
+                throw JvmUnsupportedInstructionException("Unsafe.copySwapMemory0 byte array range is outside array bounds")
+            }
+            for (offset in 0L until bytes.value) {
+                context.unsafeMemory.nativeMemoryByte(targetOffset.value + offset)
+            }
+            val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
+                .map { index -> sourcePayload.elements[index] }
+            var chunkStart = 0L
+            while (chunkStart < bytes.value) {
+                for (elementOffset in 0L until elementSize.value) {
+                    val sourceIndex = (chunkStart + elementSize.value - 1L - elementOffset).toInt()
+                    context.unsafeMemory.setNativeMemory(
+                        targetOffset.value + chunkStart + elementOffset,
+                        1L,
+                        snapshot[sourceIndex],
+                    )
+                }
+                chunkStart += elementSize.value
+            }
+            return@JvmNativeMethodIntrinsic null
+        }
         if (sourceBase is JvmObjectReferenceValue || targetBase is JvmObjectReferenceValue) {
             if (sourceBase !is JvmObjectReferenceValue || targetBase !is JvmObjectReferenceValue) {
                 throw JvmUnsupportedInstructionException(
