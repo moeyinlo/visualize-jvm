@@ -2588,6 +2588,22 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeReference expects Object, long offset, expected, and replacement arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (!field.descriptor.isReferenceDescriptor()) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeReference object field offset must map to a reference field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmReferenceValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeReference object field did not contain a reference value",
+                )
+            if (current == expected) {
+                context.heap.putInstanceField(base, field, replacement)
+            }
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeReference currently supports only synthetic static reference slots",

@@ -6025,6 +6025,67 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmIntValue(1), success)
         assertEquals(replacement, heap.getInstanceField(target, field))
     }
+
+    @Test
+    fun `Unsafe compareAndExchangeReference intrinsic returns witness for guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("AtomicReferenceFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("AtomicReferenceFieldOffsetOwner")
+        val fieldName = heap.internString("value")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("AtomicReferenceFieldOffsetOwner", "value", "Ljava/lang/Object;")
+        val initial = heap.allocateObject("InitialReference")
+        val expectedMismatch = heap.allocateObject("UnexpectedReference")
+        val replacement = heap.allocateObject("ReplacementReference")
+        val mismatchReplacement = heap.allocateObject("MismatchReplacementReference")
+        heap.putInstanceField(target, field, initial)
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "AtomicReferenceFieldOffsetOwner",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "value",
+                                descriptor = "Ljava/lang/Object;",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val compareAndExchangeReference = JvmVmIntrinsics.Registry.resolve(unsafeCompareAndExchangeReferenceMethod())
+            ?: error("Unsafe.compareAndExchangeReference intrinsic was not registered")
+
+        val mismatch = compareAndExchangeReference.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(target, offset, expectedMismatch, mismatchReplacement),
+            ),
+        )
+        val match = compareAndExchangeReference.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(target, offset, initial, replacement),
+            ),
+        )
+
+        assertEquals(initial, mismatch)
+        assertEquals(initial, match)
+        assertEquals(replacement, heap.getInstanceField(target, field))
+    }
     @Test
     fun `Unsafe compareAndSetInt intrinsic updates guest object fields through synthetic offsets`() {
         val heap = JvmHeap()
