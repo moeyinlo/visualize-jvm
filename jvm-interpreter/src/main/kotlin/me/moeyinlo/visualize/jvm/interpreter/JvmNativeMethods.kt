@@ -72,6 +72,7 @@ class JvmUnsafeSyntheticMemory(
     staticFloatSlots: Map<Long, Float> = emptyMap(),
     staticDoubleSlots: Map<Long, Double> = emptyMap(),
     nativeMemoryBlocks: Map<Long, Long> = emptyMap(),
+    nativeMemoryBytes: Map<Long, Byte> = emptyMap(),
 ) {
     private val staticLongSlots = staticLongSlots.toMutableMap()
     private val staticIntSlots = staticIntSlots.toMutableMap()
@@ -83,6 +84,7 @@ class JvmUnsafeSyntheticMemory(
     private val staticFloatSlots = staticFloatSlots.toMutableMap()
     private val staticDoubleSlots = staticDoubleSlots.toMutableMap()
     private val nativeMemoryBlocks = nativeMemoryBlocks.toMutableMap()
+    private val nativeMemoryBytes = nativeMemoryBytes.toMutableMap()
     private var nextNativeAddress: Long = NativeMemoryBaseAddress
 
     fun allocateNativeMemory(bytes: Long): Long {
@@ -100,7 +102,8 @@ class JvmUnsafeSyntheticMemory(
         if (address == 0L) {
             return
         }
-        nativeMemoryBlocks.remove(address)
+        val bytes = nativeMemoryBlocks.remove(address) ?: return
+        clearNativeMemoryBytes(address, bytes)
     }
 
     fun reallocateNativeMemory(address: Long, bytes: Long): Long {
@@ -112,17 +115,58 @@ class JvmUnsafeSyntheticMemory(
             freeNativeMemory(address)
             return 0L
         }
-        if (!nativeMemoryBlocks.containsKey(address)) {
+        val oldBytes = nativeMemoryBlocks[address]
+        if (oldBytes == null) {
             throw JvmUnsupportedInstructionException("native memory address $address is not allocated")
         }
         nativeMemoryBlocks[address] = bytes
+        if (bytes < oldBytes) {
+            clearNativeMemoryBytes(address + bytes, oldBytes - bytes)
+        }
         return address
     }
 
     fun nativeMemoryBlockSize(address: Long): Long? = nativeMemoryBlocks[address]
 
+    fun setNativeMemory(address: Long, bytes: Long, value: Byte) {
+        require(bytes >= 0L) { "native memory size must be non-negative" }
+        if (bytes == 0L) {
+            return
+        }
+        requireNativeMemoryRange(address, bytes)
+        for (offset in 0L until bytes) {
+            nativeMemoryBytes[address + offset] = value
+        }
+    }
+
+    fun nativeMemoryByte(address: Long): Byte {
+        requireNativeMemoryRange(address, 1L)
+        return nativeMemoryBytes[address] ?: 0
+    }
+
     private fun Long.alignNativeMemoryAllocation(): Long =
         ((this + NativeMemoryAlignment - 1L) / NativeMemoryAlignment) * NativeMemoryAlignment
+
+    private fun requireNativeMemoryRange(address: Long, bytes: Long) {
+        if (bytes < 0L || address < 0L || bytes > Long.MAX_VALUE - address) {
+            throw JvmUnsupportedInstructionException("native memory range address=$address bytes=$bytes is invalid")
+        }
+        val endExclusive = address + bytes
+        val containsRange = nativeMemoryBlocks.any { (blockAddress, blockBytes) ->
+            address >= blockAddress && endExclusive <= blockAddress + blockBytes
+        }
+        if (!containsRange) {
+            throw JvmUnsupportedInstructionException(
+                "native memory range address=$address bytes=$bytes is outside allocated synthetic memory",
+            )
+        }
+    }
+
+    private fun clearNativeMemoryBytes(address: Long, bytes: Long) {
+        for (offset in 0L until bytes) {
+            nativeMemoryBytes.remove(address + offset)
+        }
+    }
 
     fun getStaticLong(offset: Long): Long = staticLongSlots[offset] ?: 0L
 
@@ -1523,6 +1567,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "reallocateMemory0",
         descriptor = "(JJ)J",
+        isStatic = false,
+    )
+    private val UnsafeSetMemory0Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "setMemory0",
+        descriptor = "(Ljava/lang/Object;JJB)V",
         isStatic = false,
     )
     private val UnsafeFreeMemory0Key = JvmNativeMethodKey(
@@ -4034,6 +4084,42 @@ object JvmVmIntrinsics {
         }
         JvmLongValue(context.unsafeMemory.reallocateNativeMemory(address.value, bytes.value))
     }
+    private val UnsafeSetMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.setMemory0 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 4) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.setMemory0 expects Object base, long offset, long byte count, and byte value arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.setMemory0 expects Object base, long offset, long byte count, and byte value arguments",
+            )
+        val bytes = invocation.arguments[2] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.setMemory0 expects Object base, long offset, long byte count, and byte value arguments",
+            )
+        val value = invocation.arguments[3] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.setMemory0 expects Object base, long offset, long byte count, and byte value arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.setMemory0 currently supports only synthetic native memory with null base",
+            )
+        }
+        if (bytes.value < 0L) {
+            throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte count must be non-negative")
+        }
+        if (value.value !in Byte.MIN_VALUE.toInt()..Byte.MAX_VALUE.toInt()) {
+            throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte value is out of range")
+        }
+        context.unsafeMemory.setNativeMemory(offset.value, bytes.value, value.value.toByte())
+        null
+    }
     private val UnsafeFreeMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.freeMemory0 intrinsic requires a receiver")
@@ -4242,6 +4328,7 @@ object JvmVmIntrinsics {
         UnsafeWritebackPostSync0Key to UnsafeWritebackPostSync0,
         UnsafeAllocateMemory0Key to UnsafeAllocateMemory0,
         UnsafeReallocateMemory0Key to UnsafeReallocateMemory0,
+        UnsafeSetMemory0Key to UnsafeSetMemory0,
         UnsafeFreeMemory0Key to UnsafeFreeMemory0,
         UnsafeShouldBeInitialized0Key to UnsafeShouldBeInitialized0,
         UnsafeEnsureClassInitialized0Key to UnsafeEnsureClassInitialized0,
