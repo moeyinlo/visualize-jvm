@@ -1001,6 +1001,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JC)V",
         isStatic = false,
     )
+    private val UnsafePutFloatKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putFloat",
+        descriptor = "(Ljava/lang/Object;JF)V",
+        isStatic = false,
+    )
     private val UnsafePutBooleanKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putBoolean",
@@ -2210,6 +2216,32 @@ object JvmVmIntrinsics {
         context.unsafeMemory.putStaticChar(offset = offset.value, value = value.value.toChar())
         null
     }
+    private val UnsafePutFloat = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.putFloat intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putFloat expects Object, long offset, and float value arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putFloat expects Object, long offset, and float value arguments",
+            )
+        val value = invocation.arguments[2] as? JvmFloatValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putFloat expects Object, long offset, and float value arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putFloat currently supports only synthetic static float slots",
+            )
+        }
+        context.unsafeMemory.putStaticFloat(offset = offset.value, value = value.value)
+        null
+    }
     private val UnsafePutBoolean = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putBoolean intrinsic requires a receiver")
@@ -2655,6 +2687,7 @@ object JvmVmIntrinsics {
         UnsafePutByteKey to UnsafePutByte,
         UnsafePutShortKey to UnsafePutShort,
         UnsafePutCharKey to UnsafePutChar,
+        UnsafePutFloatKey to UnsafePutFloat,
         UnsafePutBooleanKey to UnsafePutBoolean,
         UnsafePutBooleanVolatileKey to UnsafePutBooleanVolatile,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
