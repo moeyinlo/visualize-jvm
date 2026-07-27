@@ -2168,6 +2168,29 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putLong intrinsic writes synthetic static long slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutLongMethod())
+            ?: error("Unsafe.putLong intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmLongValue(42L))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(42L, unsafeMemory.getStaticLong(offset = 7L))
+    }
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2358,6 +2381,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetLongMethod(),
             unsafeCompareAndSetLongMethod(),
             unsafePutLongVolatileMethod(),
+            unsafePutLongMethod(),
         )
 
         phase15Methods.forEach { method ->
@@ -2868,6 +2892,13 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getLong",
         descriptor = "(Ljava/lang/Object;J)J",
+        isStatic = false,
+        isNative = true,
+    )
+    private fun unsafePutLongMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putLong",
+        descriptor = "(Ljava/lang/Object;JJ)V",
         isStatic = false,
         isNative = true,
     )

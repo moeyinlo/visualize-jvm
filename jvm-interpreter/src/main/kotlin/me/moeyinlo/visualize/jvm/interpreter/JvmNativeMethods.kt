@@ -685,6 +685,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JJ)V",
         isStatic = false,
     )
+    private val UnsafePutLongKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putLong",
+        descriptor = "(Ljava/lang/Object;JJ)V",
+        isStatic = false,
+    )
     private val UnsafeCompareAndSetLongKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetLong",
@@ -1307,6 +1313,32 @@ object JvmVmIntrinsics {
         context.unsafeMemory.putStaticLong(offset = offset.value, value = value.value)
         null
     }
+    private val UnsafePutLong = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.putLong intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putLong expects Object, long offset, and long value arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putLong expects Object, long offset, and long value arguments",
+            )
+        val value = invocation.arguments[2] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putLong expects Object, long offset, and long value arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putLong currently supports only synthetic static long slots",
+            )
+        }
+        context.unsafeMemory.putStaticLong(offset = offset.value, value = value.value)
+        null
+    }
     private val UnsafeCompareAndSetLong = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndSetLong intrinsic requires a receiver")
@@ -1415,6 +1447,7 @@ object JvmVmIntrinsics {
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
         UnsafeGetLongKey to UnsafeGetLong,
         UnsafePutLongVolatileKey to UnsafePutLongVolatile,
+        UnsafePutLongKey to UnsafePutLong,
         UnsafeCompareAndSetLongKey to UnsafeCompareAndSetLong,
     )
 
