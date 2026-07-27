@@ -4059,6 +4059,22 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeLong expects Object, long offset, expected, and replacement arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "J") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeLong object field offset must map to a long field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmLongValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeLong object field did not contain a long value",
+                )
+            if (current.value == expected.value) {
+                context.heap.putInstanceField(base, field, replacement)
+            }
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeLong currently supports only synthetic static long slots",

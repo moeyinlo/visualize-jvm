@@ -6119,6 +6119,56 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe compareAndExchangeLong intrinsic returns witness for guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("AtomicLongFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("AtomicLongFieldOffsetOwner")
+        val fieldName = heap.internString("state")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("AtomicLongFieldOffsetOwner", "state", "J")
+        heap.putInstanceField(target, field, JvmLongValue(42L))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "AtomicLongFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "state", descriptor = "J", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val compareAndExchangeLong = JvmVmIntrinsics.Registry.resolve(unsafeCompareAndExchangeLongMethod())
+            ?: error("Unsafe.compareAndExchangeLong intrinsic was not registered")
+
+        val mismatch = compareAndExchangeLong.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(target, offset, JvmLongValue(1L), JvmLongValue(2L)),
+            ),
+        )
+        val match = compareAndExchangeLong.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(target, offset, JvmLongValue(42L), JvmLongValue(43L)),
+            ),
+        )
+
+        assertEquals(JvmLongValue(42L), mismatch)
+        assertEquals(JvmLongValue(42L), match)
+        assertEquals(JvmLongValue(43L), heap.getInstanceField(target, field))
+    }
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
