@@ -472,6 +472,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ClassGetInterfaces0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getInterfaces0",
+        descriptor = "()[Ljava/lang/Class;",
+        isStatic = false,
+    )
     private val ThrowableFillInStackTraceKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Throwable",
         name = "fillInStackTrace",
@@ -794,6 +800,20 @@ object JvmVmIntrinsics {
                 ?: JvmNullValue
         }
     }
+    private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val representedClassName = requireClassMirrorReceiver("Class.getInterfaces0", context, invocation)
+        val interfaceNames = when {
+            representedClassName in PrimitiveClassNames -> emptyList()
+            representedClassName.startsWith("[") -> listOf("java/lang/Cloneable", "java/io/Serializable")
+            else -> context.classHierarchy.directSuperinterfaceNames(representedClassName)
+        }
+        val interfaces = context.heap.allocateReferenceArray("java/lang/Class", interfaceNames.size)
+        val payload = context.heap.get(interfaces).payload as JvmReferenceArrayPayload
+        interfaceNames.forEachIndexed { index, interfaceName ->
+            payload.elements[index] = context.heap.internClassMirror(interfaceName)
+        }
+        interfaces
+    }
     private val ThrowableFillInStackTrace = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Throwable.fillInStackTrace intrinsic requires a receiver")
@@ -877,6 +897,7 @@ object JvmVmIntrinsics {
         ClassIsInstanceKey to ClassIsInstance,
         ClassIsAssignableFromKey to ClassIsAssignableFrom,
         ClassGetSuperclassKey to ClassGetSuperclass,
+        ClassGetInterfaces0Key to ClassGetInterfaces0,
         ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
         StringInternKey to StringIntern,
         ThreadCurrentThreadKey to ThreadCurrentThread,

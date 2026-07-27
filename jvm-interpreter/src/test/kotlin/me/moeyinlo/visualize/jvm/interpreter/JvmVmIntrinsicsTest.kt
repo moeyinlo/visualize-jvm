@@ -1561,6 +1561,59 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
+        val heap = JvmHeap()
+        val childMirror = heap.internClassMirror("pkg/Child")
+        val arrayMirror = heap.internClassMirror("[Ljava/lang/String;")
+        val primitiveMirror = heap.internClassMirror("int")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetInterfaces0Method())
+            ?: error("Class.getInterfaces0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Child",
+                        superclassName = "java/lang/Object",
+                        interfaceNames = listOf("pkg/Service", "pkg/Marker"),
+                    ),
+                    JvmClassDefinition(internalName = "pkg/Service", isInterface = true),
+                    JvmClassDefinition(internalName = "pkg/Marker", isInterface = true),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val childInterfaces = intrinsic.invoke(context, JvmNativeMethodInvocation(childMirror, emptyList()))
+            as JvmObjectReferenceValue
+        val arrayInterfaces = intrinsic.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList()))
+            as JvmObjectReferenceValue
+        val primitiveInterfaces = intrinsic.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList()))
+            as JvmObjectReferenceValue
+
+        assertEquals(
+            JvmReferenceArrayPayload(
+                mutableListOf(
+                    heap.internClassMirror("pkg/Service"),
+                    heap.internClassMirror("pkg/Marker"),
+                ),
+            ),
+            heap.get(childInterfaces).payload,
+        )
+        assertEquals(
+            JvmReferenceArrayPayload(
+                mutableListOf(
+                    heap.internClassMirror("java/lang/Cloneable"),
+                    heap.internClassMirror("java/io/Serializable"),
+                ),
+            ),
+            heap.get(arrayInterfaces).payload,
+        )
+        assertEquals(JvmReferenceArrayPayload(mutableListOf()), heap.get(primitiveInterfaces).payload)
+    }
+
+    @Test
     fun `Throwable fillInStackTrace intrinsic records context stack trace and returns receiver`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("java/lang/Throwable")
@@ -1727,6 +1780,7 @@ class JvmVmIntrinsicsTest {
             classIsAssignableFromMethod(),
             classIsInstanceMethod(),
             classGetSuperclassMethod(),
+            classGetInterfaces0Method(),
             throwableFillInStackTraceMethod(),
             stringInternMethod(),
             threadCurrentThreadMethod(),
@@ -1995,6 +2049,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "getSuperclass",
         descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetInterfaces0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getInterfaces0",
+        descriptor = "()[Ljava/lang/Class;",
         isStatic = false,
         isNative = true,
     )
