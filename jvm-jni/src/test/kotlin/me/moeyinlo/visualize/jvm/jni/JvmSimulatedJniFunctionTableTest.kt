@@ -156,7 +156,21 @@ class JvmSimulatedJniFunctionTableTest {
     @Test
     fun `function table delegates native registration helpers to one simulated JNI environment`() {
         val environment = JvmSimulatedJniEnvironment(
-            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition(internalName = "pkg/NativeApi"))),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/NativeApi",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "a",
+                                descriptor = "()V",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
         )
         val functions = environment.functions
         val classHandle = functions.findClass("pkg/NativeApi")

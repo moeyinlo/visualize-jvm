@@ -83,6 +83,13 @@ class JvmSimulatedJniEnvironment(
         methods: List<JvmJniNativeMethodDescriptor>,
     ): Int {
         val className = requireLoadedClass(handles.resolveClass(classHandle))
+        methods.forEach { method ->
+            classHierarchy.requireDeclaredNativeMethod(
+                ownerClassName = className,
+                name = method.name,
+                descriptor = method.descriptor,
+            )
+        }
         return registeredNativeMethods.register(className, methods)
     }
 
@@ -236,6 +243,24 @@ class JvmSimulatedJniEnvironment(
             )
         }
         return className
+    }
+
+    private fun JvmClassHierarchy.requireDeclaredNativeMethod(
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+    ) {
+        val method = resolveDeclaredMethod(
+            ownerClassName = ownerClassName,
+            name = name,
+            descriptor = descriptor,
+        )
+        if (!method.isNative) {
+            throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$ownerClassName.$name:$descriptor",
+            )
+        }
     }
 
     private fun requireReceiverAssignableToMethod(

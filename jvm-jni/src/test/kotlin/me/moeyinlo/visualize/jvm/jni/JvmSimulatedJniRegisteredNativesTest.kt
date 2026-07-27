@@ -2,7 +2,9 @@
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
+import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -11,7 +13,21 @@ class JvmSimulatedJniRegisteredNativesTest {
     @Test
     fun `RegisterNatives records methods for the supplied guest class handle`() {
         val environment = JvmSimulatedJniEnvironment(
-            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition(internalName = "pkg/NativeApi"))),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/NativeApi",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "a",
+                                descriptor = "()V",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
         )
         val classHandle = environment.findClass("pkg/NativeApi")
 
@@ -32,7 +48,21 @@ class JvmSimulatedJniRegisteredNativesTest {
     @Test
     fun `UnregisterNatives removes methods for the supplied guest class handle`() {
         val environment = JvmSimulatedJniEnvironment(
-            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition(internalName = "pkg/NativeApi"))),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/NativeApi",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "a",
+                                descriptor = "()V",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
         )
         val classHandle = environment.findClass("pkg/NativeApi")
         environment.registerNatives(
@@ -43,6 +73,39 @@ class JvmSimulatedJniRegisteredNativesTest {
         assertEquals(0, environment.unregisterNatives(classHandle))
 
         assertEquals(null, environment.registeredNativeMethods.resolve("pkg/NativeApi", "a", "()V"))
+    }
+
+    @Test
+    fun `RegisterNatives rejects methods that are not declared native by the supplied class`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/NativeApi",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "ordinary",
+                                descriptor = "()V",
+                                isStatic = true,
+                                isNative = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val classHandle = environment.findClass("pkg/NativeApi")
+
+        val exception = assertFailsWith<JvmNoSuchMethodError> {
+            environment.registerNatives(
+                classHandle = classHandle,
+                methods = listOf(JvmJniNativeMethodDescriptor("ordinary", "()V", 0x1234L)),
+            )
+        }
+
+        assertEquals("java/lang/NoSuchMethodError", exception.guestClassName)
+        assertEquals("pkg/NativeApi.ordinary:()V", exception.message)
+        assertEquals(null, environment.registeredNativeMethods.resolve("pkg/NativeApi", "ordinary", "()V"))
     }
 
     @Test

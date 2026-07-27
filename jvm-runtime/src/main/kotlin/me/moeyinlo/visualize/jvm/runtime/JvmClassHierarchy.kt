@@ -252,6 +252,23 @@ class JvmClassHierarchy(
         )
     }
 
+    fun resolveDeclaredMethod(
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+    ): JvmResolvedMethod {
+        val ownerClass = classesByName[ownerClassName]
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = ownerClassName,
+            )
+        return ownerClass.findDeclaredMethod(name, descriptor)
+            ?: throw JvmNoSuchMethodError(
+                guestClassName = "java/lang/NoSuchMethodError",
+                message = "$ownerClassName.$name:$descriptor",
+            )
+    }
+
     fun resolveInterfaceMethod(
         ownerClassName: String,
         name: String,
