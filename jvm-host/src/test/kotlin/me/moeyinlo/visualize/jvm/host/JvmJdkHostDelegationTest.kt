@@ -2,6 +2,8 @@ package me.moeyinlo.visualize.jvm.host
 
 import me.moeyinlo.visualize.jvm.runtime.JvmClassExecutionMode
 import me.moeyinlo.visualize.jvm.runtime.JvmClassExecutionPolicy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -104,5 +106,34 @@ class JvmJdkHostDelegationTest {
         )
 
         assertEquals(JvmIntValue(Int.MAX_VALUE), result)
+    }
+
+    @Test
+    fun `host delegated class active use is an opaque initialization boundary`() {
+        val recorder = JvmHostBoundaryEventRecorder()
+        val initializationStates = JvmClassInitializationStates()
+
+        val handled = JvmHostInitializationBoundary.recordActiveUse(
+            className = "java/lang/Integer",
+            executionPolicy = JvmClassExecutionPolicy.Default,
+            classInitializationStates = initializationStates,
+            boundaryEvents = recorder,
+        )
+
+        assertEquals(true, handled)
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get("java/lang/Integer"))
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = "java/lang/Integer",
+                    methodName = "<clinit>",
+                    descriptor = "()V",
+                    detail = "host-delegated initialization is opaque to guest state",
+                ),
+            ),
+            recorder.snapshots(),
+        )
     }
 }

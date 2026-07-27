@@ -82,8 +82,9 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "host delegated native initialization boundary",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "Host delegated classes are visualized as an opaque boundary, not a guest initialization state",
-            status = InitializationCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmHostInitializationBoundary records host-delegated active use as an opaque boundary without mutating guest initialization state; interpreter host-delegation wiring remains pending",
+            status = InitializationCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmJdkHostDelegationTest",
         ),
     )
 }

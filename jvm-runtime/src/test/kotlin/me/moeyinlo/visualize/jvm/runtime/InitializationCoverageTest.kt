@@ -44,9 +44,7 @@ class InitializationCoverageTest {
             .map(InitializationCoverageEntry::rule)
 
         assertEquals(
-            listOf(
-                "host delegated native initialization boundary",
-            ),
+            emptyList(),
             unsupportedRules,
         )
     }
@@ -61,7 +59,7 @@ class InitializationCoverageTest {
             }
         }
 
-    private val testSearchRoots: List<Path> = listOf("jvm-runtime", "jvm-interpreter", "jvm-classfile").map { module ->
+    private val testSearchRoots: List<Path> = listOf("jvm-runtime", "jvm-interpreter", "jvm-classfile", "jvm-host").map { module ->
         repositoryRoot()
             .resolve(module)
             .resolve("src/test/kotlin")
