@@ -88,6 +88,7 @@ class JvmUnsafeSyntheticMemory(
     private val nativeMemoryBlocks = nativeMemoryBlocks.toMutableMap()
     private val nativeMemoryBytes = nativeMemoryBytes.toMutableMap()
     private val objectFieldOffsets = objectFieldOffsets.toMutableMap()
+    private val objectFieldsByOffset = objectFieldOffsets.entries.associate { (field, offset) -> offset to field }.toMutableMap()
     private var nextNativeAddress: Long = NativeMemoryBaseAddress
     private var nextObjectFieldOffset: Long = ObjectFieldOffsetBase
 
@@ -196,9 +197,14 @@ class JvmUnsafeSyntheticMemory(
         return objectFieldOffsets.getOrPut(reference) {
             val offset = nextObjectFieldOffset
             nextObjectFieldOffset += ObjectFieldOffsetAlignment
+            objectFieldsByOffset[offset] = reference
             offset
         }
     }
+
+    fun objectFieldReference(offset: Long): JvmFieldReference =
+        objectFieldsByOffset[offset]
+            ?: throw JvmUnsupportedInstructionException("Unsafe object field offset $offset is not mapped")
 
     private fun Long.alignNativeMemoryAllocation(): Long =
         ((this + NativeMemoryAlignment - 1L) / NativeMemoryAlignment) * NativeMemoryAlignment
@@ -2813,6 +2819,14 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getInt expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "I") {
+                throw JvmUnsupportedInstructionException("Unsafe.getInt object field offset must map to an int field")
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException("Unsafe.getInt object field did not contain an int value")
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getInt currently supports only synthetic static int slots",
