@@ -369,6 +369,12 @@ class JvmUnsafeSyntheticMemory(
         }
         return current
     }
+
+    fun getAndSetStaticReference(offset: Long, replacement: JvmReferenceValue): JvmReferenceValue {
+        val current = getStaticReference(offset)
+        staticReferenceSlots[offset] = replacement
+        return current
+    }
 }
 
 data class JvmNativeMethodContext(

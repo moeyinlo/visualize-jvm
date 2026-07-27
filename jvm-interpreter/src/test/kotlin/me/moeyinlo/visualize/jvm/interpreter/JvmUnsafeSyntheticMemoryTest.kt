@@ -293,4 +293,16 @@ class JvmUnsafeSyntheticMemoryTest {
         assertEquals(first, memory.compareAndExchangeStaticReference(offset = 7L, expected = first, replacement = third))
         assertEquals(third, memory.getStaticReference(offset = 7L))
     }
+
+    @Test
+    fun `synthetic static reference slots get and set returns witness value`() {
+        val first = JvmObjectReferenceValue(JvmReferenceId(1))
+        val second = JvmObjectReferenceValue(JvmReferenceId(2))
+        val memory = JvmUnsafeSyntheticMemory(staticReferenceSlots = mapOf(7L to first))
+
+        assertEquals(first, memory.getAndSetStaticReference(offset = 7L, replacement = second))
+        assertEquals(second, memory.getStaticReference(offset = 7L))
+        assertEquals(JvmNullValue, memory.getAndSetStaticReference(offset = 9L, replacement = first))
+        assertEquals(first, memory.getStaticReference(offset = 9L))
+    }
 }
