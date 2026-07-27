@@ -5157,8 +5157,16 @@ object JvmVmIntrinsics {
                         value = value.value.toByte(),
                     )
                 }
+                is JvmCharArrayPayload -> {
+                    payload.setRawBytes(
+                        operation = "Unsafe.setMemory0 char array",
+                        start = start,
+                        endExclusive = endExclusive,
+                        value = value.value.toByte(),
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.setMemory0 currently supports only guest boolean, byte, or short arrays for non-null base",
+                    "Unsafe.setMemory0 currently supports only guest boolean, byte, char, or short arrays for non-null base",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -5965,6 +5973,29 @@ object JvmVmIntrinsics {
                     value = value,
                 )
                 .toShort()
+        }
+    }
+
+    private fun JvmCharArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+        value: Byte,
+    ) {
+        val byteSize = elements.size.toLong() * Char.SIZE_BYTES.toLong()
+        if (start < 0L || endExclusive < start || endExclusive > byteSize) {
+            throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
+        }
+        for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Char.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Char.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex].code
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Char.SIZE_BYTES,
+                    value = value,
+                )
+                .toChar()
         }
     }
 
