@@ -145,6 +145,18 @@ class JvmUnsafeSyntheticMemory(
         staticReferenceSlots[offset] = replacement
         return true
     }
+
+    fun compareAndExchangeStaticReference(
+        offset: Long,
+        expected: JvmReferenceValue,
+        replacement: JvmReferenceValue,
+    ): JvmReferenceValue {
+        val current = getStaticReference(offset)
+        if (current == expected) {
+            staticReferenceSlots[offset] = replacement
+        }
+        return current
+    }
 }
 
 data class JvmNativeMethodContext(
