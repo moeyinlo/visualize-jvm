@@ -31,6 +31,7 @@ class JvmJdkHostDelegationTest {
     fun `invokes delegated JDK static methods through host bridge`() {
         val heap = JvmHeap()
         val recorder = JvmHostBoundaryEventRecorder()
+        val initializationStates = JvmClassInitializationStates()
         val mirror = JvmIsolatedHostClassLoader().loadClassMirror("java/lang/Integer")
         val method = JvmHostMethodResolver.resolveStaticMethod(
             owner = mirror,
@@ -42,14 +43,24 @@ class JvmJdkHostDelegationTest {
             method = method,
             arguments = listOf(heap.allocateString("42")),
             heap = heap,
+            classInitializationStates = initializationStates,
             boundaryEvents = recorder,
         )
 
         assertEquals(JvmIntValue(42), result)
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get("java/lang/Integer"))
         assertEquals(
             listOf(
                 JvmHostBoundaryEventSnapshot(
                     sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = "java/lang/Integer",
+                    methodName = "<clinit>",
+                    descriptor = "()V",
+                    detail = "host-delegated initialization is opaque to guest state",
+                ),
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 2,
                     action = JvmHostBoundaryAction.Delegated,
                     className = "java/lang/Integer",
                     methodName = "parseInt",
@@ -57,7 +68,7 @@ class JvmJdkHostDelegationTest {
                     detail = "static args=1",
                 ),
                 JvmHostBoundaryEventSnapshot(
-                    sequence = 2,
+                    sequence = 3,
                     action = JvmHostBoundaryAction.Returned,
                     className = "java/lang/Integer",
                     methodName = "parseInt",

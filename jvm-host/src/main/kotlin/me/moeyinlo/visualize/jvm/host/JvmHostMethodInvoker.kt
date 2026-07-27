@@ -2,6 +2,8 @@ package me.moeyinlo.visualize.jvm.host
 
 import java.lang.reflect.InvocationTargetException
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmClassExecutionPolicy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmPrimitiveValue
@@ -15,6 +17,8 @@ object JvmHostMethodInvoker {
         heap: JvmHeap,
         identityMap: JvmHostIdentityMap = JvmHostIdentityMap(),
         classLoader: ClassLoader? = method.owner.hostClass.classLoader,
+        executionPolicy: JvmClassExecutionPolicy = JvmClassExecutionPolicy.Default,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
         boundaryEvents: JvmHostBoundaryEventSink = JvmHostBoundaryEventSink.None,
     ): JvmValue? {
         if (!method.isStatic) {
@@ -25,6 +29,12 @@ object JvmHostMethodInvoker {
                 "Host method ${method.name} expects ${method.parameterTypes.size} arguments but received ${arguments.size}",
             )
         }
+        JvmHostInitializationBoundary.recordActiveUse(
+            className = method.owner.guestInternalName,
+            executionPolicy = executionPolicy,
+            classInitializationStates = classInitializationStates,
+            boundaryEvents = boundaryEvents,
+        )
         boundaryEvents.recordMethod(
             action = JvmHostBoundaryAction.Delegated,
             method = method,
