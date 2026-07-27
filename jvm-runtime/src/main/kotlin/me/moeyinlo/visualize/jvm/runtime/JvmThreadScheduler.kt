@@ -4,6 +4,7 @@ class JvmThreadScheduler {
     private val statesByThreadId = linkedMapOf<String, JvmThreadSchedulingState>()
     private val pendingReentryHoldCountsByThreadId = linkedMapOf<String, Int>()
     private val pendingReentryReferencesByThreadId = linkedMapOf<String, JvmObjectReferenceValue>()
+    private val parkingPermitsByThreadId = linkedSetOf<String>()
 
     fun state(threadId: String): JvmThreadSchedulingState {
         require(threadId.isNotBlank()) { "thread id must not be blank" }
@@ -50,6 +51,31 @@ class JvmThreadScheduler {
             }
         }
         return null
+    }
+
+    fun parkThread(threadId: String, isAbsolute: Boolean, time: Long): JvmThreadSchedulingState {
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+        if (parkingPermitsByThreadId.remove(threadId)) {
+            statesByThreadId[threadId] = JvmThreadSchedulingState.Runnable
+            return JvmThreadSchedulingState.Runnable
+        }
+        val parked = JvmThreadSchedulingState.Parked(isAbsolute = isAbsolute, time = time)
+        statesByThreadId[threadId] = parked
+        return parked
+    }
+
+    fun unparkThread(threadId: String): JvmThreadSchedulingState {
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+        return when (state(threadId)) {
+            is JvmThreadSchedulingState.Parked -> {
+                statesByThreadId[threadId] = JvmThreadSchedulingState.Runnable
+                JvmThreadSchedulingState.Runnable
+            }
+            else -> {
+                parkingPermitsByThreadId.add(threadId)
+                state(threadId)
+            }
+        }
     }
 
     fun tryEnterMonitor(
@@ -220,4 +246,9 @@ sealed interface JvmThreadSchedulingState {
             require(releasedHoldCount > 0) { "released hold count must be positive: $releasedHoldCount" }
         }
     }
+
+    data class Parked(
+        val isAbsolute: Boolean,
+        val time: Long,
+    ) : JvmThreadSchedulingState
 }

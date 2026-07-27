@@ -47,6 +47,44 @@ class JvmThreadSchedulerTest {
         assertEquals(emptyList(), scheduler.runnableThreadIds(listOf("worker")))
         assertEquals(null, scheduler.nextRunnableThreadId(listOf("worker")))
     }
+
+    @Test
+    fun `scheduler parks a thread until it is unparked`() {
+        val scheduler = JvmThreadScheduler()
+
+        assertEquals(
+            JvmThreadSchedulingState.Parked(isAbsolute = false, time = 0L),
+            scheduler.parkThread(threadId = "worker", isAbsolute = false, time = 0L),
+        )
+        assertEquals(
+            JvmThreadSchedulingState.Parked(isAbsolute = false, time = 0L),
+            scheduler.state("worker"),
+        )
+        assertEquals(emptyList(), scheduler.runnableThreadIds(listOf("worker")))
+
+        scheduler.unparkThread("worker")
+
+        assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("worker"))
+        assertEquals(listOf("worker"), scheduler.runnableThreadIds(listOf("worker")))
+    }
+
+    @Test
+    fun `scheduler consumes a permit from unpark before park`() {
+        val scheduler = JvmThreadScheduler()
+
+        scheduler.unparkThread("worker")
+
+        assertEquals(
+            JvmThreadSchedulingState.Runnable,
+            scheduler.parkThread(threadId = "worker", isAbsolute = false, time = 0L),
+        )
+        assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("worker"))
+        assertEquals(
+            JvmThreadSchedulingState.Parked(isAbsolute = true, time = 7L),
+            scheduler.parkThread(threadId = "worker", isAbsolute = true, time = 7L),
+        )
+    }
+
     @Test
     fun `scheduler reports no next runnable thread when every candidate is blocked or waiting`() {
         val monitors = JvmMonitorState()
