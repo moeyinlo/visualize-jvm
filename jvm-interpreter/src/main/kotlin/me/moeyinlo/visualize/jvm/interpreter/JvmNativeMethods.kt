@@ -4561,6 +4561,22 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeDouble expects Object, long offset, expected, and replacement arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "D") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeDouble object field offset must map to a double field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmDoubleValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.compareAndExchangeDouble object field did not contain a double value",
+                )
+            if (current.value.toRawBits() == expected.value.toRawBits()) {
+                context.heap.putInstanceField(base, field, replacement)
+            }
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.compareAndExchangeDouble currently supports only synthetic static double slots",
