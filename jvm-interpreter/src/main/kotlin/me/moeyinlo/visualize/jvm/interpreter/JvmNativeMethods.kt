@@ -715,6 +715,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JJJ)J",
         isStatic = false,
     )
+    private val UnsafeFullFenceKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "fullFence",
+        descriptor = "()V",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -1427,6 +1433,13 @@ object JvmVmIntrinsics {
             ),
         )
     }
+    private val UnsafeFullFence = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.fullFence intrinsic requires a receiver")
+        context.heap.get(receiver)
+        requireNoArguments("Unsafe.fullFence", invocation)
+        null
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -1503,6 +1516,7 @@ object JvmVmIntrinsics {
         UnsafePutLongKey to UnsafePutLong,
         UnsafeCompareAndSetLongKey to UnsafeCompareAndSetLong,
         UnsafeCompareAndExchangeLongKey to UnsafeCompareAndExchangeLong,
+        UnsafeFullFenceKey to UnsafeFullFence,
     )
 
     private const val NativeLibrariesNativeLibraryImplClassName =
