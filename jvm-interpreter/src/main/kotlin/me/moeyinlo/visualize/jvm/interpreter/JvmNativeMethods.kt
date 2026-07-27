@@ -663,6 +663,12 @@ object JvmVmIntrinsics {
         descriptor = "()V",
         isStatic = true,
     )
+    private val UnsafeGetLongVolatileKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getLongVolatile",
+        descriptor = "(Ljava/lang/Object;J)J",
+        isStatic = false,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -1219,6 +1225,23 @@ object JvmVmIntrinsics {
         requireNoArguments("Unsafe.registerNatives", invocation)
         null
     }
+    private val UnsafeGetLongVolatile = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getLongVolatile intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getLongVolatile expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getLongVolatile expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getLongVolatile currently supports only synthetic static long slots",
+            )
+        }
+        JvmLongValue(context.unsafeMemory.getStaticLong(offset.value))
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -1289,6 +1312,7 @@ object JvmVmIntrinsics {
         ThreadSleepMillisNanosKey to ThreadSleepMillisNanos,
         ThreadSleepNanos0Key to ThreadSleepNanos0,
         UnsafeRegisterNativesKey to UnsafeRegisterNatives,
+        UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
     )
 
     private const val NativeLibrariesNativeLibraryImplClassName =
