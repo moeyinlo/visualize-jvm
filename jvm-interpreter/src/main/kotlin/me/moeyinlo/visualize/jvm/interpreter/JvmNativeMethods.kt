@@ -581,6 +581,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Thread;)V",
         isStatic = false,
     )
+    private val ThreadGetStackTrace0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "getStackTrace0",
+        descriptor = "()Ljava/lang/Object;",
+        isStatic = false,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -1071,6 +1077,13 @@ object JvmVmIntrinsics {
         }
         null
     }
+    private val ThreadGetStackTrace0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Thread.getStackTrace0 intrinsic requires a receiver")
+        requireNoArguments("Thread.getStackTrace0", invocation)
+        context.heap.get(receiver)
+        context.heap.allocateReferenceArray("java/lang/StackTraceElement", 0)
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1184,6 +1197,7 @@ object JvmVmIntrinsics {
         ThreadInterrupt0Key to ThreadInterrupt0,
         ThreadStart0Key to ThreadStart0,
         ThreadSetCurrentThreadKey to ThreadSetCurrentThread,
+        ThreadGetStackTrace0Key to ThreadGetStackTrace0,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,
