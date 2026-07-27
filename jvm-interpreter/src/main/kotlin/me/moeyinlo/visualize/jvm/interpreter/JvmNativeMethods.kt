@@ -270,6 +270,12 @@ class JvmUnsafeSyntheticMemory(
         return current
     }
 
+    fun getAndSetStaticShort(offset: Long, replacement: Short): Short {
+        val current = getStaticShort(offset)
+        staticShortSlots[offset] = replacement
+        return current
+    }
+
     fun getStaticChar(offset: Long): Char = staticCharSlots[offset] ?: '\u0000'
 
     fun putStaticChar(offset: Long, value: Char) {
