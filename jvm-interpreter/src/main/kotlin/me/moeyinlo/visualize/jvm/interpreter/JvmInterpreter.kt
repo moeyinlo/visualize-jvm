@@ -1026,11 +1026,12 @@ object JvmInterpreter {
         val vmThreads = JvmVmThreadSet()
         val terminationState = JvmVmTerminationState()
         frames.forEach { frame -> vmThreads.startThread(frame.threadId, frame.isDaemon) }
+        vmThreads.terminateIfNoActiveNonDaemonThreads(terminationState)
         var stalledThreadIds = emptyList<String>()
         var previousThreadId: String? = null
         var switchCount = 0
 
-        while (remainingFrames.isNotEmpty()) {
+        while (remainingFrames.isNotEmpty() && !terminationState.isTerminated) {
             val remainingThreadIds = threadOrder.filter { threadId -> threadId in remainingFrames }
             if (switchCount >= maxThreadSwitches) {
                 throw JvmScheduledThreadSwitchLimitException(

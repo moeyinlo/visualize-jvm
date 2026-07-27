@@ -210,6 +210,24 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop does not execute all daemon frames when no non daemon is active`() {
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "daemon-worker",
+                    code = byteArrayOf(0x03.toByte()),
+                    maxStack = 1,
+                    isDaemon = true,
+                ),
+            ),
+        )
+
+        assertEquals(JvmVmTerminationResult.Normal(exitCode = 0), result.terminationResult)
+        assertEquals(emptyMap(), result.completedThreads)
+        assertEquals(emptyList(), result.executedThreadIds)
+    }
+
+    @Test
     fun `scheduled thread loop reports uncaught guest exception termination`() {
         val heap = JvmHeap()
         val throwable = heap.allocateObject("java/lang/RuntimeException")
