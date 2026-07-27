@@ -79,6 +79,18 @@ class JvmUnsafeSyntheticMemory(
         staticLongSlots[offset] = replacement
         return true
     }
+
+    fun compareAndExchangeStaticLong(
+        offset: Long,
+        expected: Long,
+        replacement: Long,
+    ): Long {
+        val current = getStaticLong(offset)
+        if (current == expected) {
+            staticLongSlots[offset] = replacement
+        }
+        return current
+    }
 }
 
 data class JvmNativeMethodContext(

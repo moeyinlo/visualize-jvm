@@ -24,4 +24,14 @@ class JvmUnsafeSyntheticMemoryTest {
         assertEquals(2L, memory.getStaticLong(offset = 7L))
         assertEquals(3L, memory.getStaticLong(offset = 9L))
     }
+
+    @Test
+    fun `synthetic static long slots compare and exchange returns witness value`() {
+        val memory = JvmUnsafeSyntheticMemory(staticLongSlots = mapOf(7L to 42L))
+
+        assertEquals(42L, memory.compareAndExchangeStaticLong(offset = 7L, expected = 1L, replacement = 2L))
+        assertEquals(42L, memory.getStaticLong(offset = 7L))
+        assertEquals(42L, memory.compareAndExchangeStaticLong(offset = 7L, expected = 42L, replacement = 43L))
+        assertEquals(43L, memory.getStaticLong(offset = 7L))
+    }
 }
