@@ -1614,6 +1614,24 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class desiredAssertionStatus0 intrinsic defaults guest assertions to disabled`() {
+        val heap = JvmHeap()
+        val classMirror = heap.internClassMirror("pkg/Example")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classDesiredAssertionStatus0Method())
+            ?: error("Class.desiredAssertionStatus0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(classMirror)))
+
+        assertEquals(JvmIntValue(0), result)
+    }
+
+    @Test
     fun `Throwable fillInStackTrace intrinsic records context stack trace and returns receiver`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("java/lang/Throwable")
@@ -1781,6 +1799,7 @@ class JvmVmIntrinsicsTest {
             classIsInstanceMethod(),
             classGetSuperclassMethod(),
             classGetInterfaces0Method(),
+            classDesiredAssertionStatus0Method(),
             throwableFillInStackTraceMethod(),
             stringInternMethod(),
             threadCurrentThreadMethod(),
@@ -2058,6 +2077,14 @@ class JvmVmIntrinsicsTest {
         name = "getInterfaces0",
         descriptor = "()[Ljava/lang/Class;",
         isStatic = false,
+        isNative = true,
+    )
+
+    private fun classDesiredAssertionStatus0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "desiredAssertionStatus0",
+        descriptor = "(Ljava/lang/Class;)Z",
+        isStatic = true,
         isNative = true,
     )
 

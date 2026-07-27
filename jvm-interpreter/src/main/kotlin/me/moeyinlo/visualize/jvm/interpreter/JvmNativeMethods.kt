@@ -478,6 +478,12 @@ object JvmVmIntrinsics {
         descriptor = "()[Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ClassDesiredAssertionStatus0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "desiredAssertionStatus0",
+        descriptor = "(Ljava/lang/Class;)Z",
+        isStatic = true,
+    )
     private val ThrowableFillInStackTraceKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Throwable",
         name = "fillInStackTrace",
@@ -814,6 +820,15 @@ object JvmVmIntrinsics {
         }
         interfaces
     }
+    private val ClassDesiredAssertionStatus0 = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null || invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Class.desiredAssertionStatus0 expects one Class mirror argument")
+        }
+        val mirror = invocation.arguments.single() as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Class.desiredAssertionStatus0 expects one Class mirror argument")
+        requireClassMirrorReference("Class.desiredAssertionStatus0 argument", context, mirror)
+        JvmIntValue(0)
+    }
     private val ThrowableFillInStackTrace = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Throwable.fillInStackTrace intrinsic requires a receiver")
@@ -898,6 +913,7 @@ object JvmVmIntrinsics {
         ClassIsAssignableFromKey to ClassIsAssignableFrom,
         ClassGetSuperclassKey to ClassGetSuperclass,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
+        ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ThrowableFillInStackTraceKey to ThrowableFillInStackTrace,
         StringInternKey to StringIntern,
         ThreadCurrentThreadKey to ThreadCurrentThread,
