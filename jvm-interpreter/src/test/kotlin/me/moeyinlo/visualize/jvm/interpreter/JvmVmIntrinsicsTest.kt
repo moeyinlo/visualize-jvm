@@ -4584,6 +4584,34 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe setMemory0 intrinsic fills guest int arrays from synthetic byte offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val array = heap.allocateIntArray(4)
+        val payload = heap.get(array).payload as JvmIntArrayPayload
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeSetMemory0Method())
+            ?: error("Unsafe.setMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(array, JvmLongValue(4L), JvmLongValue(8L), JvmIntValue(0x12)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(listOf(0, 0x12121212, 0x12121212, 0), payload.elements)
+    }
+
+    @Test
     fun `Unsafe copyMemory0 intrinsic copies synthetic native memory bytes`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
