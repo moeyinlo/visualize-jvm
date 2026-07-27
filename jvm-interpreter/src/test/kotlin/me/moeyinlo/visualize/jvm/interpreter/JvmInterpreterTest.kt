@@ -52,6 +52,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
+import me.moeyinlo.visualize.jvm.runtime.JvmHostActiveUseHandler
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmBootstrapMethodTable
@@ -6066,6 +6067,67 @@ class JvmInterpreterTest {
         assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Example"))
     }
 
+    @Test
+    fun `getstatic host active use handler skips guest class initializer`() {
+        val initializationStates = JvmClassInitializationStates()
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "Example",
+                    fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "<clinit>",
+                            descriptor = "()V",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x09.toByte(),
+                                0xB3.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            constantPool = constantPool,
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val hostActiveUseHandler = JvmHostActiveUseHandler { className, states ->
+            assertEquals("Example", className)
+            assertEquals(JvmClassInitializationState.Prepared, states.get(className))
+            true
+        }
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = constantPool,
+            classHierarchy = classHierarchy,
+            classInitializationStates = initializationStates,
+            hostActiveUseHandler = hostActiveUseHandler,
+        )
+
+        assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get("Example"))
+    }
     @Test
     fun `getstatic initializes direct superclass before target class initializer`() {
         val initializationStates = JvmClassInitializationStates()
