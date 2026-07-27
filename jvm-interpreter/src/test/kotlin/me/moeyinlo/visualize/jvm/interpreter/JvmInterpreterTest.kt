@@ -6464,6 +6464,7 @@ class JvmInterpreterTest {
                 classInitializationStates = initializationStates,
                 heap = heap,
                 currentClassName = "ActiveUser",
+                currentMethodName = "trigger",
             )
         }
 
@@ -6477,7 +6478,7 @@ class JvmInterpreterTest {
             listOf(
                 JvmStackTraceFrame(
                     declaringClass = "ActiveUser",
-                    methodName = "<active-use>",
+                    methodName = "trigger",
                     fileName = null,
                     lineNumber = null,
                 ),

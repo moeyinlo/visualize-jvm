@@ -827,6 +827,7 @@ object JvmInterpreter {
         currentThreadId: String = "main",
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String? = null,
+        currentMethodName: String = "<main>",
         exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
         bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
@@ -876,6 +877,7 @@ object JvmInterpreter {
             currentThreadId = currentThreadId,
             monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = currentClassName,
+            currentMethodName = currentMethodName,
             allowReturn = false,
             exceptionHandlers = exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
@@ -1102,6 +1104,7 @@ object JvmInterpreter {
         currentThreadId: String,
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentMethodName: String = "<active-use>",
         allowReturn: Boolean,
         exceptionHandlers: List<JvmExceptionHandler>,
         bootstrapMethods: JvmBootstrapMethodTable,
@@ -1175,6 +1178,7 @@ object JvmInterpreter {
                             currentThreadId,
                             monitorUnblockedHandler,
                             currentClassName,
+                            currentMethodName,
                             bootstrapMethods,
                             invokeDynamicCallSites,
                             dynamicConstants,
@@ -1481,6 +1485,7 @@ object JvmInterpreter {
         currentThreadId: String,
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentMethodName: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -1666,6 +1671,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentMethodName = currentMethodName,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -1686,6 +1692,7 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentMethodName = currentMethodName,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -1760,6 +1767,7 @@ object JvmInterpreter {
                 currentThreadId,
                 monitorUnblockedHandler,
                 currentClassName,
+                currentMethodName,
                 bootstrapMethods,
                 invokeDynamicCallSites,
                 dynamicConstants,
@@ -5341,12 +5349,15 @@ object JvmInterpreter {
             else -> heap.allocateObject(initializationErrorClassName(heap))
         }
 
-    private fun activeUseStackTrace(currentClassName: String?): List<JvmStackTraceFrame> =
+    private fun activeUseStackTrace(
+        currentClassName: String?,
+        currentMethodName: String = "<active-use>",
+    ): List<JvmStackTraceFrame> =
         currentClassName?.let { className ->
             listOf(
                 JvmStackTraceFrame(
                     declaringClass = className,
-                    methodName = "<active-use>",
+                    methodName = currentMethodName,
                     fileName = null,
                     lineNumber = null,
                 ),
@@ -5367,6 +5378,7 @@ object JvmInterpreter {
         currentThreadId: String,
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentMethodName: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -5387,7 +5399,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
-            activeUseStackTrace(currentClassName),
+            activeUseStackTrace(currentClassName, currentMethodName),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -5433,6 +5445,7 @@ object JvmInterpreter {
         currentThreadId: String,
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentMethodName: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -5453,7 +5466,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
-            activeUseStackTrace(currentClassName),
+            activeUseStackTrace(currentClassName, currentMethodName),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
@@ -5565,6 +5578,7 @@ object JvmInterpreter {
         currentThreadId: String,
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentMethodName: String,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -5585,7 +5599,7 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
-            activeUseStackTrace(currentClassName),
+            activeUseStackTrace(currentClassName, currentMethodName),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(
