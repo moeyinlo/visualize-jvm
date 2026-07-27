@@ -1827,6 +1827,26 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread ensureMaterializedForStackWalk intrinsic is a simulated no op`() {
+        val heap = JvmHeap()
+        val continuation = heap.allocateObject("java/lang/Object")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadEnsureMaterializedForStackWalkMethod())
+            ?: error("Thread.ensureMaterializedForStackWalk intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+        )
+
+        val objectResult = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(continuation)))
+        val nullResult = intrinsic.invoke(context, JvmNativeMethodInvocation(null, listOf(JvmNullValue)))
+
+        assertEquals(null, objectResult)
+        assertEquals(null, nullResult)
+    }
+
+    @Test
     fun `Thread sleep intrinsics delegate validated guest sleep requests to the context`() {
         val heap = JvmHeap()
         val sleeps = mutableListOf<Pair<Long, Int>>()
@@ -1921,6 +1941,7 @@ class JvmVmIntrinsicsTest {
             threadCurrentCarrierThreadMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
+            threadEnsureMaterializedForStackWalkMethod(),
             threadSleepMillisMethod(),
             threadSleepMillisNanosMethod(),
             threadSleepNanos0Method(),
@@ -2266,6 +2287,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "holdsLock",
         descriptor = "(Ljava/lang/Object;)Z",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadEnsureMaterializedForStackWalkMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "ensureMaterializedForStackWalk",
+        descriptor = "(Ljava/lang/Object;)V",
         isStatic = true,
         isNative = true,
     )

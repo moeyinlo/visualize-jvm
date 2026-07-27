@@ -539,6 +539,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;)Z",
         isStatic = true,
     )
+    private val ThreadEnsureMaterializedForStackWalkKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "ensureMaterializedForStackWalk",
+        descriptor = "(Ljava/lang/Object;)V",
+        isStatic = true,
+    )
     private val ThreadSleepMillisNanosKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -920,6 +926,21 @@ object JvmVmIntrinsics {
             else -> throw JvmUnsupportedInstructionException("Thread.holdsLock expects one reference argument")
         }
     }
+    private val ThreadEnsureMaterializedForStackWalk = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null || invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException(
+                "Thread.ensureMaterializedForStackWalk expects one reference argument",
+            )
+        }
+        when (val value = invocation.arguments.single()) {
+            JvmNullValue -> Unit
+            is JvmObjectReferenceValue -> context.heap.get(value)
+            else -> throw JvmUnsupportedInstructionException(
+                "Thread.ensureMaterializedForStackWalk expects one reference argument",
+            )
+        }
+        null
+    }
     private val ThreadSleepMillis = JvmNativeMethodIntrinsic { context, invocation ->
         val millis = requireSleepMillisArgument("Thread.sleep(J)", invocation)
         context.threadSleepHandler(millis, 0)
@@ -989,6 +1010,7 @@ object JvmVmIntrinsics {
         ThreadCurrentCarrierThreadKey to ThreadCurrentCarrierThread,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
+        ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,
         ThreadSleepMillisKey to ThreadSleepMillis,
         ThreadSleepMillisNanosKey to ThreadSleepMillisNanos,
         ThreadSleepNanos0Key to ThreadSleepNanos0,
