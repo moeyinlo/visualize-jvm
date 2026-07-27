@@ -1200,7 +1200,7 @@ object JvmInterpreter {
                     "Invalid start bytecode offset $startBytecodeOffset: target is not an instruction offset",
                 )
         }
-        while (instructionIndex < instructions.size) {
+        while (instructionIndex < instructions.size && !terminationState.isTerminated) {
             val instruction = instructions[instructionIndex]
             try {
                 if (allowReturn && instruction.metadata.opcode in 0xAC..0xB1) {

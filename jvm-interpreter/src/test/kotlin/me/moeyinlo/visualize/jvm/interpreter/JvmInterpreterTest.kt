@@ -15014,6 +15014,56 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `System exit VM intrinsic stops the current interpreter frame`() {
+        val terminationState = JvmVmTerminationState()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x10.toByte(),
+                0x07.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x10.toByte(),
+                0x63.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("java/lang/System", "java/lang/System".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("exit", "exit".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)V", "(I)V".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "java/lang/System",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "exit",
+                                descriptor = "(I)V",
+                                isStatic = true,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            nativeMethods = JvmVmIntrinsics.Registry,
+            terminationState = terminationState,
+            currentClassName = "Caller",
+        )
+
+        assertEquals(JvmVmTerminationResult.Normal(7), terminationState.result)
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(0, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `native intrinsic context exposes shared VM termination state`() {
         val terminationState = JvmVmTerminationState()
         val observedTerminationStates = mutableListOf<JvmVmTerminationState>()
