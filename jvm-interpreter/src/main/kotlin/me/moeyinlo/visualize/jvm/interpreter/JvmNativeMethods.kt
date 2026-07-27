@@ -322,6 +322,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Class;Ljava/lang/String;)V",
         isStatic = false,
     )
+    private val RuntimeExitKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Runtime",
+        name = "exit",
+        descriptor = "(I)V",
+        isStatic = false,
+    )
     private val NativeLibrariesLoadKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/loader/NativeLibraries",
         name = "load",
@@ -520,6 +526,18 @@ object JvmVmIntrinsics {
         context.loadNativeLibraryHandler(requireRuntimeLoadLibrary0Name(context, invocation))
         null
     }
+    private val RuntimeExit = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Runtime.exit intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Runtime.exit expects one int status argument")
+        }
+        val status = invocation.arguments.single() as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException("Runtime.exit expects one int status argument")
+        context.terminationState.terminateNormally(status.value)
+        null
+    }
     private val NativeLibrariesLoad = JvmNativeMethodIntrinsic { context, invocation ->
         context.loadNativeLibraryHandler(requireNativeLibrariesLoadName(context, invocation))
         JvmIntValue(1)
@@ -619,6 +637,7 @@ object JvmVmIntrinsics {
         SystemMapLibraryNameKey to SystemMapLibraryName,
         SystemLoadLibraryKey to SystemLoadLibrary,
         RuntimeLoadLibrary0Key to RuntimeLoadLibrary0,
+        RuntimeExitKey to RuntimeExit,
         NativeLibrariesLoadKey to NativeLibrariesLoad,
         NativeLibrariesFindBuiltinLibKey to NativeLibrariesFindBuiltinLib,
         NativeLibrariesUnloadKey to NativeLibrariesUnload,

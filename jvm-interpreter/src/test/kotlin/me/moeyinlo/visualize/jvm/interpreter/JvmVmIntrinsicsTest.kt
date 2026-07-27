@@ -1145,6 +1145,30 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Runtime exit intrinsic terminates the VM with the supplied status`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("java/lang/Runtime")
+        val terminationState = JvmVmTerminationState()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(runtimeExitMethod())
+            ?: error("Runtime.exit intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Runtime",
+            terminationState = terminationState,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = listOf(JvmIntValue(42))),
+        )
+
+        assertEquals(null, result)
+        assertEquals(JvmVmTerminationResult.Normal(42), terminationState.result)
+    }
+
+    @Test
     fun `Class initClassName intrinsic returns the guest binary name string`() {
         val heap = JvmHeap()
         val classMirror = heap.internClassMirror("pkg/Example")
@@ -1483,6 +1507,14 @@ class JvmVmIntrinsicsTest {
         name = "exit",
         descriptor = "(I)V",
         isStatic = true,
+        isNative = true,
+    )
+
+    private fun runtimeExitMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Runtime",
+        name = "exit",
+        descriptor = "(I)V",
+        isStatic = false,
         isNative = true,
     )
 
