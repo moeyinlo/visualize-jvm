@@ -17170,6 +17170,106 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `Unsafe ensureClassInitialized0 native intrinsic initializes interpreted class mirrors through active use`() {
+        val heap = JvmHeap()
+        val staticFields = JvmStaticFields()
+        val initializationStates = JvmClassInitializationStates()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val targetClassMirror = heap.internClassMirror("EnsureTarget")
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, unsafe)
+        locals.store(1, targetClassMirror)
+        val initializedField = JvmFieldReference(
+            ownerClassName = "EnsureTarget",
+            name = "initialized",
+            descriptor = "I",
+        )
+        val targetConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("EnsureTarget", "EnsureTarget".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("initialized", "initialized".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x2B.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("jdk/internal/misc/Unsafe", "jdk/internal/misc/Unsafe".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry(
+                        "ensureClassInitialized0",
+                        "ensureClassInitialized0".encodeToByteArray(),
+                    ),
+                    ConstantUtf8Entry("(Ljava/lang/Class;)V", "(Ljava/lang/Class;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "jdk/internal/misc/Unsafe",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "ensureClassInitialized0",
+                                descriptor = "(Ljava/lang/Class;)V",
+                                isStatic = false,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "EnsureTarget",
+                        fields = listOf(
+                            JvmFieldDefinition(name = "initialized", descriptor = "I", isStatic = true),
+                        ),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<clinit>",
+                                descriptor = "()V",
+                                isStatic = true,
+                                code = byteArrayOf(
+                                    0x10.toByte(),
+                                    0x4D.toByte(),
+                                    0xB3.toByte(),
+                                    0x00.toByte(),
+                                    0x01.toByte(),
+                                    0xB1.toByte(),
+                                ),
+                                constantPool = targetConstantPool,
+                                maxStack = 1,
+                                maxLocals = 0,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = staticFields,
+            classInitializationStates = initializationStates,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            currentClassName = "Caller",
+        )
+
+        assertEquals(emptyList(), result.operandStack.toList())
+        assertEquals(JvmIntValue(77), staticFields.get(initializedField))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("EnsureTarget"))
+    }
+
+    @Test
     fun `simulated JNI bindings can upcall interpreted instance guest methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeOwner")
