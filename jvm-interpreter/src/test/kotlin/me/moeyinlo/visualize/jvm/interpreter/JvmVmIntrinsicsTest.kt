@@ -6428,6 +6428,51 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe compareAndExchangeShort intrinsic returns witness for guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("AtomicShortFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("AtomicShortFieldOffsetOwner")
+        val fieldName = heap.internString("code")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("AtomicShortFieldOffsetOwner", "code", "S")
+        heap.putInstanceField(target, field, JvmIntValue(1234))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "AtomicShortFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "code", descriptor = "S", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val compareAndExchangeShort = JvmVmIntrinsics.Registry.resolve(unsafeCompareAndExchangeShortMethod())
+            ?: error("Unsafe.compareAndExchangeShort intrinsic was not registered")
+
+        val mismatch = compareAndExchangeShort.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(7), JvmIntValue(8))),
+        )
+        val match = compareAndExchangeShort.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmIntValue(1234), JvmIntValue(-1235))),
+        )
+
+        assertEquals(JvmIntValue(1234), mismatch)
+        assertEquals(JvmIntValue(1234), match)
+        assertEquals(JvmIntValue(-1235), heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe getAndAddLong intrinsic returns witness and adds guest object fields through synthetic offsets`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
