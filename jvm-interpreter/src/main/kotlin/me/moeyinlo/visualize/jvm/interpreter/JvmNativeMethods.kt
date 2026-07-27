@@ -191,6 +191,18 @@ class JvmUnsafeSyntheticMemory(
         return true
     }
 
+    fun compareAndExchangeStaticByte(
+        offset: Long,
+        expected: Byte,
+        replacement: Byte,
+    ): Byte {
+        val current = getStaticByte(offset)
+        if (current == expected) {
+            staticByteSlots[offset] = replacement
+        }
+        return current
+    }
+
     fun getStaticShort(offset: Long): Short = staticShortSlots[offset] ?: 0.toShort()
 
     fun putStaticShort(offset: Long, value: Short) {
