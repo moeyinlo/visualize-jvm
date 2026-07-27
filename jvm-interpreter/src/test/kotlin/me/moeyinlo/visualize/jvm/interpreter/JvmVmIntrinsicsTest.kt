@@ -5370,6 +5370,42 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putLongVolatile intrinsic writes guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("VolatileLongFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("VolatileLongFieldOffsetOwner")
+        val fieldName = heap.internString("state")
+        val memory = JvmUnsafeSyntheticMemory()
+        val field = JvmFieldReference("VolatileLongFieldOffsetOwner", "state", "J")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "VolatileLongFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "state", descriptor = "J", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val putLongVolatile = JvmVmIntrinsics.Registry.resolve(unsafePutLongVolatileMethod())
+            ?: error("Unsafe.putLongVolatile intrinsic was not registered")
+
+        val result = putLongVolatile.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset, JvmLongValue(100L))))
+
+        assertEquals(null, result)
+        assertEquals(JvmLongValue(100L), heap.getInstanceField(target, field))
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
