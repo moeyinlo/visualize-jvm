@@ -29,6 +29,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
 import me.moeyinlo.visualize.jvm.runtime.JvmShortArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmStackTraceFrame
@@ -73,6 +74,7 @@ class JvmUnsafeSyntheticMemory(
     staticDoubleSlots: Map<Long, Double> = emptyMap(),
     nativeMemoryBlocks: Map<Long, Long> = emptyMap(),
     nativeMemoryBytes: Map<Long, Byte> = emptyMap(),
+    objectFieldOffsets: Map<JvmFieldReference, Long> = emptyMap(),
 ) {
     private val staticLongSlots = staticLongSlots.toMutableMap()
     private val staticIntSlots = staticIntSlots.toMutableMap()
@@ -85,7 +87,9 @@ class JvmUnsafeSyntheticMemory(
     private val staticDoubleSlots = staticDoubleSlots.toMutableMap()
     private val nativeMemoryBlocks = nativeMemoryBlocks.toMutableMap()
     private val nativeMemoryBytes = nativeMemoryBytes.toMutableMap()
+    private val objectFieldOffsets = objectFieldOffsets.toMutableMap()
     private var nextNativeAddress: Long = NativeMemoryBaseAddress
+    private var nextObjectFieldOffset: Long = ObjectFieldOffsetBase
 
     fun allocateNativeMemory(bytes: Long): Long {
         require(bytes >= 0L) { "native memory size must be non-negative" }
@@ -180,6 +184,20 @@ class JvmUnsafeSyntheticMemory(
     fun nativeMemoryByte(address: Long): Byte {
         requireNativeMemoryRange(address, 1L)
         return nativeMemoryBytes[address] ?: 0
+    }
+
+    fun objectFieldOffset(field: JvmResolvedField): Long {
+        if (field.isStatic) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.objectFieldOffset1 requires an instance field, got ${field.ownerClassName}.${field.name}",
+            )
+        }
+        val reference = JvmFieldReference(field.ownerClassName, field.name, field.descriptor)
+        return objectFieldOffsets.getOrPut(reference) {
+            val offset = nextObjectFieldOffset
+            nextObjectFieldOffset += ObjectFieldOffsetAlignment
+            offset
+        }
     }
 
     private fun Long.alignNativeMemoryAllocation(): Long =
@@ -554,6 +572,8 @@ class JvmUnsafeSyntheticMemory(
     companion object {
         private const val NativeMemoryBaseAddress: Long = 0x1_0000L
         private const val NativeMemoryAlignment: Long = 8L
+        private const val ObjectFieldOffsetBase: Long = 0x10_0000L
+        private const val ObjectFieldOffsetAlignment: Long = 8L
         private val NativeMemorySwapElementSizes = setOf(2L, 4L, 8L)
     }
 }
@@ -1624,6 +1644,12 @@ object JvmVmIntrinsics {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "copySwapMemory0",
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;JJJ)V",
+        isStatic = false,
+    )
+    private val UnsafeObjectFieldOffset1Key = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "objectFieldOffset1",
+        descriptor = "(Ljava/lang/Class;Ljava/lang/String;)J",
         isStatic = false,
     )
     private val UnsafeFreeMemory0Key = JvmNativeMethodKey(
@@ -4253,6 +4279,26 @@ object JvmVmIntrinsics {
         )
         null
     }
+    private val UnsafeObjectFieldOffset1 = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.objectFieldOffset1 intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.objectFieldOffset1 expects Class and String arguments")
+        }
+        val ownerClassMirror = invocation.arguments[0] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.objectFieldOffset1 expects a non-null Class argument",
+            )
+        val fieldNameReference = invocation.arguments[1] as? JvmObjectReferenceValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.objectFieldOffset1 expects a non-null String argument",
+            )
+        val ownerClassName = requireClassMirrorReference("Unsafe.objectFieldOffset1", context, ownerClassMirror)
+        val fieldName = stringPayload("Unsafe.objectFieldOffset1", context, fieldNameReference, "argument")
+        val field = context.classHierarchy.resolveInstanceFieldByName(ownerClassName, fieldName)
+        JvmLongValue(context.unsafeMemory.objectFieldOffset(field))
+    }
     private val UnsafeFreeMemory0 = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.freeMemory0 intrinsic requires a receiver")
@@ -4464,6 +4510,7 @@ object JvmVmIntrinsics {
         UnsafeSetMemory0Key to UnsafeSetMemory0,
         UnsafeCopyMemory0Key to UnsafeCopyMemory0,
         UnsafeCopySwapMemory0Key to UnsafeCopySwapMemory0,
+        UnsafeObjectFieldOffset1Key to UnsafeObjectFieldOffset1,
         UnsafeFreeMemory0Key to UnsafeFreeMemory0,
         UnsafeShouldBeInitialized0Key to UnsafeShouldBeInitialized0,
         UnsafeEnsureClassInitialized0Key to UnsafeEnsureClassInitialized0,

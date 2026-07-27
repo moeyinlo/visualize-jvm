@@ -217,6 +217,30 @@ class JvmClassHierarchy(
             )
     }
 
+    fun resolveInstanceFieldByName(
+        ownerClassName: String,
+        name: String,
+    ): JvmResolvedField {
+        val ownerClass = classesByName[ownerClassName]
+            ?: throw JvmNoClassDefFoundError(
+                guestClassName = "java/lang/NoClassDefFoundError",
+                message = ownerClassName,
+            )
+        val field = ownerClass.findDeclaredFieldByName(name)
+            ?: findSuperclassFieldByName(ownerClass.superclassName, name)
+            ?: throw JvmNoSuchFieldError(
+                guestClassName = "java/lang/NoSuchFieldError",
+                message = "$ownerClassName.$name",
+            )
+        if (field.isStatic) {
+            throw JvmIncompatibleClassChangeError(
+                guestClassName = "java/lang/IncompatibleClassChangeError",
+                message = "$ownerClassName.$name:${field.descriptor}",
+            )
+        }
+        return field
+    }
+
     fun resolveMethod(
         ownerClassName: String,
         name: String,
@@ -359,6 +383,20 @@ class JvmClassHierarchy(
 
     private fun JvmClassDefinition.findDeclaredField(name: String, descriptor: String): JvmResolvedField? =
         fields.firstOrNull { field -> field.name == name && field.descriptor == descriptor }
+            ?.let { field ->
+                JvmResolvedField(
+                    ownerClassName = internalName,
+                    name = field.name,
+                    descriptor = field.descriptor,
+                    isStatic = field.isStatic,
+                    isPrivate = field.isPrivate,
+                    isPackagePrivate = field.isPackagePrivate,
+                    isProtected = field.isProtected,
+                )
+            }
+
+    private fun JvmClassDefinition.findDeclaredFieldByName(name: String): JvmResolvedField? =
+        fields.firstOrNull { field -> field.name == name }
             ?.let { field ->
                 JvmResolvedField(
                     ownerClassName = internalName,
@@ -540,6 +578,18 @@ class JvmClassHierarchy(
         return superclass.findDeclaredField(name, descriptor)
             ?: findInterfaceField(superclass.interfaceNames, name, descriptor)
             ?: findSuperclassField(superclass.superclassName, name, descriptor)
+    }
+
+    private fun findSuperclassFieldByName(
+        superclassName: String?,
+        name: String,
+    ): JvmResolvedField? {
+        if (superclassName == null) {
+            return null
+        }
+        val superclass = classesByName[superclassName] ?: return null
+        return superclass.findDeclaredFieldByName(name)
+            ?: findSuperclassFieldByName(superclass.superclassName, name)
     }
 
     private fun findSuperclassMethod(

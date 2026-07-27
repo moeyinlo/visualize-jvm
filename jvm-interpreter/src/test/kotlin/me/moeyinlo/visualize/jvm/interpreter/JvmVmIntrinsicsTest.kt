@@ -7,6 +7,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
+import me.moeyinlo.visualize.jvm.runtime.JvmFieldDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
@@ -4543,6 +4544,40 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe objectFieldOffset1 intrinsic assigns stable guest instance field offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val ownerClass = heap.internClassMirror("FieldOffsetOwner")
+        val fieldName = heap.internString("value")
+        val memory = JvmUnsafeSyntheticMemory()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())
+            ?: error("Unsafe.objectFieldOffset1 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "FieldOffsetOwner",
+                        fields = listOf(
+                            JvmFieldDefinition(name = "value", descriptor = "I", isStatic = false),
+                            JvmFieldDefinition(name = "shared", descriptor = "J", isStatic = true),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val first = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)))
+        val second = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)))
+
+        assertTrue(first is JvmLongValue && first.value != 0L)
+        assertEquals(first, second)
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4737,6 +4772,7 @@ class JvmVmIntrinsicsTest {
             unsafeSetMemory0Method(),
             unsafeCopyMemory0Method(),
             unsafeCopySwapMemory0Method(),
+            unsafeObjectFieldOffset1Method(),
             unsafeFreeMemory0Method(),
             unsafeShouldBeInitialized0Method(),
             unsafeEnsureClassInitialized0Method(),
@@ -5867,6 +5903,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "copySwapMemory0",
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;JJJ)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeObjectFieldOffset1Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "objectFieldOffset1",
+        descriptor = "(Ljava/lang/Class;Ljava/lang/String;)J",
         isStatic = false,
         isNative = true,
     )
