@@ -2940,6 +2940,22 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getShort expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "S") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getShort object field offset must map to a short field",
+                )
+            }
+            val value = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getShort object field did not contain a short-compatible int value",
+                )
+            if (value.value !in Short.MIN_VALUE.toInt()..Short.MAX_VALUE.toInt()) {
+                throw JvmUnsupportedInstructionException("Unsafe.getShort object field short value is out of range")
+            }
+            return@JvmNativeMethodIntrinsic value
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getShort currently supports only synthetic static short slots",

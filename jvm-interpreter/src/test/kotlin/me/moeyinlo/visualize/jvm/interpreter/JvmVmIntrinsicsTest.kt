@@ -4956,6 +4956,44 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getShort intrinsic reads guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("ShortFieldOffsetOwner")
+        val ownerClass = heap.internClassMirror("ShortFieldOffsetOwner")
+        val fieldName = heap.internString("code")
+        val memory = JvmUnsafeSyntheticMemory()
+        heap.putInstanceField(
+            target,
+            JvmFieldReference("ShortFieldOffsetOwner", "code", "S"),
+            JvmIntValue(-1234),
+        )
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "ShortFieldOffsetOwner",
+                        fields = listOf(JvmFieldDefinition(name = "code", descriptor = "S", isStatic = false)),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val getShort = JvmVmIntrinsics.Registry.resolve(unsafeGetShortMethod())
+            ?: error("Unsafe.getShort intrinsic was not registered")
+
+        val result = getShort.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset)))
+
+        assertEquals(JvmIntValue(-1234), result)
+    }
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
