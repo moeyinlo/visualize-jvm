@@ -3681,6 +3681,36 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getAndSetFloat intrinsic returns witness for synthetic static float slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetAndSetFloatMethod())
+            ?: error("Unsafe.getAndSetFloat intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory(staticFloatSlots = mapOf(7L to 42.0f))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val existing = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmFloatValue(43.0f))),
+        )
+        val defaulted = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmFloatValue(-3.0f))),
+        )
+
+        assertEquals(JvmFloatValue(42.0f), existing)
+        assertEquals(43.0f, unsafeMemory.getStaticFloat(offset = 7L))
+        assertEquals(JvmFloatValue(0.0f), defaulted)
+        assertEquals(-3.0f, unsafeMemory.getStaticFloat(offset = 9L))
+    }
+
+    @Test
     fun `Unsafe compareAndExchangeDouble intrinsic returns witness for synthetic static double slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4281,6 +4311,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetAndSetByteMethod(),
             unsafeGetAndSetShortMethod(),
             unsafeGetAndSetCharMethod(),
+            unsafeGetAndSetFloatMethod(),
             unsafeCompareAndExchangeFloatMethod(),
             unsafeCompareAndExchangeDoubleMethod(),
             unsafePutLongVolatileMethod(),
@@ -5169,6 +5200,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getAndSetChar",
         descriptor = "(Ljava/lang/Object;JC)C",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetAndSetFloatMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndSetFloat",
+        descriptor = "(Ljava/lang/Object;JF)F",
         isStatic = false,
         isNative = true,
     )
