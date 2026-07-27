@@ -4617,6 +4617,20 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetDouble expects Object, long offset, and double replacement arguments")
         val replacement = invocation.arguments[2] as? JvmDoubleValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetDouble expects Object, long offset, and double replacement arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "D") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetDouble object field offset must map to a double field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmDoubleValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndSetDouble object field did not contain a double value",
+                )
+            context.heap.putInstanceField(base, field, replacement)
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndSetDouble currently supports only synthetic static double slots",
