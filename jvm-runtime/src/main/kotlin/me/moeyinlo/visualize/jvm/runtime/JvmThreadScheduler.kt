@@ -10,6 +10,12 @@ class JvmThreadScheduler {
         return statesByThreadId[threadId] ?: JvmThreadSchedulingState.Runnable
     }
 
+    fun suspendThread(threadId: String, state: JvmThreadSchedulingState) {
+        require(threadId.isNotBlank()) { "thread id must not be blank" }
+        require(state != JvmThreadSchedulingState.Runnable) { "suspension state must not be runnable" }
+        statesByThreadId[threadId] = state
+    }
+
     fun runnableThreadIds(threadIds: Iterable<String>): List<String> =
         threadIds
             .map { threadId ->

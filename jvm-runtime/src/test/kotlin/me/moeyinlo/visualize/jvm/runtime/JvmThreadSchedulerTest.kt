@@ -25,6 +25,29 @@ class JvmThreadSchedulerTest {
     }
 
     @Test
+    fun `scheduler records explicit thread suspension state`() {
+        val scheduler = JvmThreadScheduler()
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+
+        scheduler.suspendThread(
+            threadId = "worker",
+            state = JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = reference,
+                ownerThreadId = "initializer",
+            ),
+        )
+
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = reference,
+                ownerThreadId = "initializer",
+            ),
+            scheduler.state("worker"),
+        )
+        assertEquals(emptyList(), scheduler.runnableThreadIds(listOf("worker")))
+        assertEquals(null, scheduler.nextRunnableThreadId(listOf("worker")))
+    }
+    @Test
     fun `scheduler reports no next runnable thread when every candidate is blocked or waiting`() {
         val monitors = JvmMonitorState()
         val scheduler = JvmThreadScheduler()
