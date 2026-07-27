@@ -635,6 +635,12 @@ object JvmVmIntrinsics {
         descriptor = "(J)V",
         isStatic = true,
     )
+    private val UnsafeRegisterNativesKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "registerNatives",
+        descriptor = "()V",
+        isStatic = true,
+    )
 
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -1184,6 +1190,13 @@ object JvmVmIntrinsics {
         context.threadSleepHandler(millis, nanos)
         null
     }
+    private val UnsafeRegisterNatives = JvmNativeMethodIntrinsic { _, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Unsafe.registerNatives expects no receiver")
+        }
+        requireNoArguments("Unsafe.registerNatives", invocation)
+        null
+    }
 
     val Registry: JvmNativeMethodRegistry = JvmNativeMethodRegistry.from(
         ObjectGetClassKey to ObjectGetClass,
@@ -1253,6 +1266,7 @@ object JvmVmIntrinsics {
         ThreadSleepMillisKey to ThreadSleepMillis,
         ThreadSleepMillisNanosKey to ThreadSleepMillisNanos,
         ThreadSleepNanos0Key to ThreadSleepNanos0,
+        UnsafeRegisterNativesKey to UnsafeRegisterNatives,
     )
 
     private const val NativeLibrariesNativeLibraryImplClassName =

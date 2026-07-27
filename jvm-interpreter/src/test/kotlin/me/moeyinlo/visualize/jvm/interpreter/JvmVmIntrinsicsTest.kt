@@ -2050,6 +2050,22 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe registerNatives intrinsic is a simulated no op`() {
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeRegisterNativesMethod())
+            ?: error("Unsafe.registerNatives intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = JvmHeap(),
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(receiver = null, arguments = emptyList()))
+
+        assertEquals(null, result)
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2235,6 +2251,7 @@ class JvmVmIntrinsicsTest {
             threadSleepMillisMethod(),
             threadSleepMillisNanosMethod(),
             threadSleepNanos0Method(),
+            unsafeRegisterNativesMethod(),
         )
 
         phase15Methods.forEach { method ->
@@ -2713,6 +2730,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "sleepNanos0",
         descriptor = "(J)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun unsafeRegisterNativesMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "registerNatives",
+        descriptor = "()V",
         isStatic = true,
         isNative = true,
     )
