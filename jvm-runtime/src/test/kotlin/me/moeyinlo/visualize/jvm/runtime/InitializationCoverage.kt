@@ -47,14 +47,14 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "active use triggers initialization",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, while duplicate superinterface ordering edge cases and waiter notification/retry integration remain pending",
+            currentComponent = "new, getstatic, putstatic, invokestatic, and cached invokedynamic GetStatic/PutStatic/InvokeStatic targets execute target <clinit>:()V before object allocation, static field access, or static method access; direct superclass recursion and recursive default-method superinterface initialization are covered for modeled classes, while duplicate superinterface ordering edge cases and scheduler notification/retry integration remain pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmInterpreterTest",
         ),
         InitializationCoverageEntry(
             rule = "class initialization state machine",
             specSection = "JVMS 5.5 Initialization",
-            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; getstatic drives Prepared -> Initializing -> Initialized around successful <clinit> execution and suspends cross-thread active-use waiters on the class mirror monitor; waiter notification/retry integration remains pending",
+            currentComponent = "JvmClassInitializationStates models prepared, initializing, initialized, and erroneous states; getstatic drives Prepared -> Initializing -> Initialized around successful <clinit> execution, records cross-thread active-use waiters, suspends them on the class mirror monitor, and JvmClassInitializationStates releases waiter ids on terminal outcomes; scheduler notification/retry integration remains pending",
             status = InitializationCoverageStatus.PartiallyImplemented,
             coveringTestClass = "JvmClassInitializationStateTest",
         ),
