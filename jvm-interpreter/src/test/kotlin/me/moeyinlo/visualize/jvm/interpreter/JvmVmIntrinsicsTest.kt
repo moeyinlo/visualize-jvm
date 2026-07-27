@@ -4411,6 +4411,31 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe reallocateMemory0 intrinsic resizes synthetic native addresses`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val address = memory.allocateNativeMemory(24L)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeReallocateMemory0Method())
+            ?: error("Unsafe.reallocateMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(address), JvmLongValue(40L))))
+
+        assertTrue(result is JvmLongValue && result.value != 0L)
+        assertEquals(40L, memory.nativeMemoryBlockSize(result.value))
+        if (result.value != address) {
+            assertEquals(null, memory.nativeMemoryBlockSize(address))
+        }
+    }
+
+    @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -4601,6 +4626,7 @@ class JvmVmIntrinsicsTest {
             unsafeWritebackPreSync0Method(),
             unsafeWritebackPostSync0Method(),
             unsafeAllocateMemory0Method(),
+            unsafeReallocateMemory0Method(),
             unsafeFreeMemory0Method(),
             unsafeShouldBeInitialized0Method(),
             unsafeEnsureClassInitialized0Method(),
@@ -5699,6 +5725,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "allocateMemory0",
         descriptor = "(J)J",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeReallocateMemory0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "reallocateMemory0",
+        descriptor = "(JJ)J",
         isStatic = false,
         isNative = true,
     )
