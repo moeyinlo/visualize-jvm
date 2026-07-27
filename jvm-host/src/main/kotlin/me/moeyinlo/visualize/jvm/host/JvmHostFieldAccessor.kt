@@ -42,8 +42,17 @@ object JvmHostFieldAccessor {
         heap: JvmHeap,
         identityMap: JvmHostIdentityMap = JvmHostIdentityMap(),
         classLoader: ClassLoader? = field.owner.hostClass.classLoader,
+        executionPolicy: JvmClassExecutionPolicy = JvmClassExecutionPolicy.Default,
+        classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+        boundaryEvents: JvmHostBoundaryEventSink = JvmHostBoundaryEventSink.None,
     ) {
         requireStatic(field, expectedStatic = true)
+        JvmHostInitializationBoundary.recordActiveUse(
+            className = field.owner.guestInternalName,
+            executionPolicy = executionPolicy,
+            classInitializationStates = classInitializationStates,
+            boundaryEvents = boundaryEvents,
+        )
         val hostValue = value.toHostFieldValue(field.fieldType, heap, identityMap, classLoader)
         try {
             field.hostField.set(null, hostValue)
