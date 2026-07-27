@@ -2583,6 +2583,18 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getIntVolatile expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "I") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getIntVolatile object field offset must map to an int field",
+                )
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getIntVolatile object field did not contain an int value",
+                )
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getIntVolatile currently supports only synthetic static int slots",
