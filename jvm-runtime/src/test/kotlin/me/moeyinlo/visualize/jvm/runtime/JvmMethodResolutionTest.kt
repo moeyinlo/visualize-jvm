@@ -7,6 +7,26 @@ import kotlin.test.assertNull
 
 class JvmMethodResolutionTest {
     @Test
+    fun `method definitions resolve source lines by bytecode offset`() {
+        val method = JvmMethodDefinition(
+            name = "trigger",
+            descriptor = "()V",
+            isStatic = true,
+            sourceFile = "ActiveUser.java",
+            lineNumberTable = listOf(
+                JvmLineNumberTableEntry(startPc = 0, lineNumber = 10),
+                JvmLineNumberTableEntry(startPc = 3, lineNumber = 12),
+                JvmLineNumberTableEntry(startPc = 8, lineNumber = 20),
+            ),
+        )
+
+        assertEquals(10, method.sourceLineForBytecodeOffset(0))
+        assertEquals(12, method.sourceLineForBytecodeOffset(7))
+        assertEquals(20, method.sourceLineForBytecodeOffset(8))
+        assertNull(method.sourceLineForBytecodeOffset(-1))
+    }
+
+    @Test
     fun `method resolution finds a static method declared directly by the referenced class`() {
         val method = JvmMethodDefinition(name = "answer", descriptor = "()I", isStatic = true)
         val hierarchy = JvmClassHierarchy(

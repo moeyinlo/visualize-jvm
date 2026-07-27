@@ -52,6 +52,16 @@ data class JvmExceptionHandler(
     }
 }
 
+data class JvmLineNumberTableEntry(
+    val startPc: Int,
+    val lineNumber: Int,
+) {
+    init {
+        require(startPc >= 0) { "line number start_pc must be non-negative: $startPc" }
+        require(lineNumber > 0) { "line number must be positive: $lineNumber" }
+    }
+}
+
 data class JvmMethodDefinition(
     val name: String,
     val descriptor: String,
@@ -67,7 +77,15 @@ data class JvmMethodDefinition(
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
     val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
-)
+    val sourceFile: String? = null,
+    val lineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
+) {
+    fun sourceLineForBytecodeOffset(bytecodeOffset: Int): Int? =
+        lineNumberTable
+            .filter { entry -> entry.startPc <= bytecodeOffset }
+            .maxByOrNull { entry -> entry.startPc }
+            ?.lineNumber
+}
 
 data class JvmResolvedMethod(
     val ownerClassName: String,
@@ -86,6 +104,8 @@ data class JvmResolvedMethod(
     val maxStack: Int = 0,
     val maxLocals: Int = 0,
     val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
+    val sourceFile: String? = null,
+    val lineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
 ) {
     val isSignaturePolymorphic: Boolean
         get() = ownerClassName == "java/lang/invoke/MethodHandle" &&
@@ -93,6 +113,12 @@ data class JvmResolvedMethod(
             (signaturePolymorphicDeclarationDescriptor ?: descriptor) == "([Ljava/lang/Object;)Ljava/lang/Object;" &&
             isNative &&
             isVarargs
+
+    fun sourceLineForBytecodeOffset(bytecodeOffset: Int): Int? =
+        lineNumberTable
+            .filter { entry -> entry.startPc <= bytecodeOffset }
+            .maxByOrNull { entry -> entry.startPc }
+            ?.lineNumber
 }
 
 class JvmClassHierarchy(
@@ -347,6 +373,8 @@ class JvmClassHierarchy(
                     maxStack = method.maxStack,
                     maxLocals = method.maxLocals,
                     exceptionHandlers = method.exceptionHandlers,
+                    sourceFile = method.sourceFile,
+                    lineNumberTable = method.lineNumberTable,
                 )
             }
 
