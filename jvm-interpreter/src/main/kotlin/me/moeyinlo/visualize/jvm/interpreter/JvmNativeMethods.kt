@@ -222,6 +222,18 @@ class JvmUnsafeSyntheticMemory(
         return true
     }
 
+    fun compareAndExchangeStaticShort(
+        offset: Long,
+        expected: Short,
+        replacement: Short,
+    ): Short {
+        val current = getStaticShort(offset)
+        if (current == expected) {
+            staticShortSlots[offset] = replacement
+        }
+        return current
+    }
+
     fun getStaticChar(offset: Long): Char = staticCharSlots[offset] ?: '\u0000'
 
     fun putStaticChar(offset: Long, value: Char) {

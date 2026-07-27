@@ -117,6 +117,16 @@ class JvmUnsafeSyntheticMemoryTest {
     }
 
     @Test
+    fun `synthetic static short slots compare and exchange returns witness value`() {
+        val memory = JvmUnsafeSyntheticMemory(staticShortSlots = mapOf(7L to 42.toShort()))
+
+        assertEquals(42.toShort(), memory.compareAndExchangeStaticShort(offset = 7L, expected = 1.toShort(), replacement = 2.toShort()))
+        assertEquals(42.toShort(), memory.getStaticShort(offset = 7L))
+        assertEquals(42.toShort(), memory.compareAndExchangeStaticShort(offset = 7L, expected = 42.toShort(), replacement = 43.toShort()))
+        assertEquals(43.toShort(), memory.getStaticShort(offset = 7L))
+    }
+
+    @Test
     fun `synthetic static char slots default to nul can be written and compare and set atomically`() {
         val memory = JvmUnsafeSyntheticMemory(staticCharSlots = mapOf(7L to 'A'))
 
