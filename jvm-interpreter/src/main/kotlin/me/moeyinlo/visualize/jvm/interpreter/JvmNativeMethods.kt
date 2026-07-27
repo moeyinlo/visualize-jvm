@@ -110,6 +110,12 @@ class JvmUnsafeSyntheticMemory(
         return current
     }
 
+    fun getAndAddStaticLong(offset: Long, delta: Long): Long {
+        val current = getStaticLong(offset)
+        staticLongSlots[offset] = current + delta
+        return current
+    }
+
     fun getStaticInt(offset: Long): Int = staticIntSlots[offset] ?: 0
 
     fun putStaticInt(offset: Long, value: Int) {
