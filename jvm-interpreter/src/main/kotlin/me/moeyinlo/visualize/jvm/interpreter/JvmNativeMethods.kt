@@ -1011,6 +1011,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
         isStatic = false,
     )
+    private val UnsafeGetAndSetReferenceKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getAndSetReference",
+        descriptor = "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;",
+        isStatic = false,
+    )
     private val UnsafeGetIntVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getIntVolatile",
@@ -2080,6 +2086,31 @@ object JvmVmIntrinsics {
             expected = expected,
             replacement = replacement,
         )
+    }
+    private val UnsafeGetAndSetReference = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getAndSetReference intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getAndSetReference expects Object, long offset, and replacement arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.getAndSetReference expects Object, long offset, and replacement arguments",
+            )
+        val replacement = invocation.arguments[2] as? JvmReferenceValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.getAndSetReference expects Object, long offset, and replacement arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getAndSetReference currently supports only synthetic static reference slots",
+            )
+        }
+        context.unsafeMemory.getAndSetStaticReference(offset = offset.value, replacement = replacement)
     }
     private val UnsafeGetIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
@@ -3533,6 +3564,7 @@ object JvmVmIntrinsics {
         UnsafePutReferenceKey to UnsafePutReference,
         UnsafeCompareAndSetReferenceKey to UnsafeCompareAndSetReference,
         UnsafeCompareAndExchangeReferenceKey to UnsafeCompareAndExchangeReference,
+        UnsafeGetAndSetReferenceKey to UnsafeGetAndSetReference,
         UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
         UnsafeGetBooleanVolatileKey to UnsafeGetBooleanVolatile,
         UnsafeGetByteVolatileKey to UnsafeGetByteVolatile,
