@@ -125,6 +125,20 @@ class JvmThreadScheduler {
         return resumeMonitorReentry(monitors, reference, threadId)
     }
 
+    fun resumeClassInitializationWaiters(threadIds: Iterable<String>): List<String> {
+        val resumedThreadIds = linkedSetOf<String>()
+        threadIds.forEach { threadId ->
+            require(threadId.isNotBlank()) { "thread id must not be blank" }
+            resumedThreadIds.add(threadId)
+        }
+        resumedThreadIds.forEach { threadId ->
+            pendingReentryHoldCountsByThreadId.remove(threadId)
+            pendingReentryReferencesByThreadId.remove(threadId)
+            statesByThreadId[threadId] = JvmThreadSchedulingState.Runnable
+        }
+        return resumedThreadIds.toList()
+    }
+
     fun resumeMonitorReentry(
         monitors: JvmMonitorState,
         reference: JvmObjectReferenceValue,

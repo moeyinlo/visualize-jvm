@@ -270,4 +270,24 @@ class JvmThreadSchedulerTest {
         )
         assertEquals(listOf("first", "second"), monitors.blockedThreads(reference))
     }
+    @Test
+    fun `scheduler resumes class initialization waiters`() {
+        val monitors = JvmMonitorState()
+        val scheduler = JvmThreadScheduler()
+        val classMirror = JvmObjectReferenceValue(JvmReferenceId(1))
+
+        scheduler.tryEnterMonitor(monitors, classMirror, threadId = "initializer")
+        scheduler.tryEnterMonitor(monitors, classMirror, threadId = "worker")
+        assertEquals(
+            JvmThreadSchedulingState.BlockedOnMonitor(
+                reference = classMirror,
+                ownerThreadId = "initializer",
+            ),
+            scheduler.state("worker"),
+        )
+
+        assertEquals(listOf("worker"), scheduler.resumeClassInitializationWaiters(listOf("worker")))
+        assertEquals(JvmThreadSchedulingState.Runnable, scheduler.state("worker"))
+    }
+
 }
