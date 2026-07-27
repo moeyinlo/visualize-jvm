@@ -2874,6 +2874,22 @@ object JvmVmIntrinsics {
         val base = invocation.arguments[0]
         val offset = invocation.arguments[1] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getBoolean expects Object and long offset arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "Z") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getBoolean object field offset must map to a boolean field",
+                )
+            }
+            val value = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getBoolean object field did not contain a boolean-compatible int value",
+                )
+            if (value.value !in 0..1) {
+                throw JvmUnsupportedInstructionException("Unsafe.getBoolean object field boolean value must be 0 or 1")
+            }
+            return@JvmNativeMethodIntrinsic jvmBoolean(value.value == 1)
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getBoolean currently supports only synthetic static boolean slots",
