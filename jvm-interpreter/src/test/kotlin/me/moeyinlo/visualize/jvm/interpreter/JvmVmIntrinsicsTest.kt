@@ -1836,6 +1836,32 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Thread getThreads intrinsic returns the current guest thread array`() {
+        val heap = JvmHeap()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(threadGetThreadsMethod())
+            ?: error("Thread.getThreads intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Thread",
+            currentThreadId = "worker-2",
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+
+        val arrayObject = heap.get(result)
+        assertEquals("[Ljava/lang/Thread;", arrayObject.className)
+        assertEquals(
+            JvmReferenceArrayPayload(mutableListOf(heap.internThread("worker-2"))),
+            arrayObject.payload,
+        )
+    }
+
+    @Test
     fun `Thread yield0 intrinsic delegates to the context yield handler`() {
         var yields = 0
         val intrinsic = JvmVmIntrinsics.Registry.resolve(threadYield0Method())
@@ -2005,6 +2031,7 @@ class JvmVmIntrinsicsTest {
             threadFindScopedValueBindingsMethod(),
             threadScopedValueCacheMethod(),
             threadSetScopedValueCacheMethod(),
+            threadGetThreadsMethod(),
             threadYield0Method(),
             threadHoldsLockMethod(),
             threadEnsureMaterializedForStackWalkMethod(),
@@ -2361,6 +2388,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Thread",
         name = "setScopedValueCache",
         descriptor = "([Ljava/lang/Object;)V",
+        isStatic = true,
+        isNative = true,
+    )
+
+    private fun threadGetThreadsMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Thread",
+        name = "getThreads",
+        descriptor = "()[Ljava/lang/Thread;",
         isStatic = true,
         isNative = true,
     )

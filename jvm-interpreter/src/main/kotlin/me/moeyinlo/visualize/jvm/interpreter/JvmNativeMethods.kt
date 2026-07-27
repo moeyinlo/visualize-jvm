@@ -539,6 +539,12 @@ object JvmVmIntrinsics {
         descriptor = "([Ljava/lang/Object;)V",
         isStatic = true,
     )
+    private val ThreadGetThreadsKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Thread",
+        name = "getThreads",
+        descriptor = "()[Ljava/lang/Thread;",
+        isStatic = true,
+    )
     private val ThreadSleepMillisKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Thread",
         name = "sleep",
@@ -959,6 +965,16 @@ object JvmVmIntrinsics {
         }
         null
     }
+    private val ThreadGetThreads = JvmNativeMethodIntrinsic { context, invocation ->
+        if (invocation.receiver != null) {
+            throw JvmUnsupportedInstructionException("Thread.getThreads expects no receiver")
+        }
+        requireNoArguments("Thread.getThreads", invocation)
+        val threads = context.heap.allocateReferenceArray("java/lang/Thread", 1)
+        val payload = context.heap.get(threads).payload as JvmReferenceArrayPayload
+        payload.elements[0] = context.heap.internThread(context.currentThreadId)
+        threads
+    }
     private val ThreadYield0 = JvmNativeMethodIntrinsic { context, invocation ->
         if (invocation.receiver != null) {
             throw JvmUnsupportedInstructionException("Thread.yield0 expects no receiver")
@@ -1065,6 +1081,7 @@ object JvmVmIntrinsics {
         ThreadFindScopedValueBindingsKey to ThreadFindScopedValueBindings,
         ThreadScopedValueCacheKey to ThreadScopedValueCache,
         ThreadSetScopedValueCacheKey to ThreadSetScopedValueCache,
+        ThreadGetThreadsKey to ThreadGetThreads,
         ThreadYield0Key to ThreadYield0,
         ThreadHoldsLockKey to ThreadHoldsLock,
         ThreadEnsureMaterializedForStackWalkKey to ThreadEnsureMaterializedForStackWalk,
