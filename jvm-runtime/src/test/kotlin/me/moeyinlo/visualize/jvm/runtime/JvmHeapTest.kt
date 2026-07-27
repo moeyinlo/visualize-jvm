@@ -210,6 +210,23 @@ class JvmHeapTest {
     }
 
     @Test
+    fun `heap records throwable causes in throwable payloads`() {
+        val heap = JvmHeap()
+        val throwable = heap.allocateObject("java/lang/ExceptionInInitializerError")
+        val cause = heap.allocateObject("java/lang/ArithmeticException")
+
+        heap.recordThrowableCause(throwable, cause)
+
+        assertEquals(
+            JvmThrowablePayload(
+                stackTrace = emptyList(),
+                cause = cause,
+            ),
+            heap.get(throwable).payload,
+        )
+    }
+
+    @Test
     fun `heap rejects call site targets that are not method handles`() {
         val heap = JvmHeap()
         val notMethodHandle = heap.allocateObject("java/lang/String")

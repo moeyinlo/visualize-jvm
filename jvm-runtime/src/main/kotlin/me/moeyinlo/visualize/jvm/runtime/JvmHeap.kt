@@ -21,7 +21,10 @@ data class JvmStackTraceFrame(
     val lineNumber: Int?,
 )
 
-data class JvmThrowablePayload(val stackTrace: List<JvmStackTraceFrame>) : JvmHeapPayload
+data class JvmThrowablePayload(
+    val stackTrace: List<JvmStackTraceFrame>,
+    val cause: JvmReferenceValue = JvmNullValue,
+) : JvmHeapPayload
 
 data class JvmThreadPayload(val threadId: String) : JvmHeapPayload
 
@@ -328,7 +331,21 @@ class JvmHeap {
         stackTrace: List<JvmStackTraceFrame>,
     ): JvmObjectReferenceValue {
         val heapObject = get(reference)
-        objects[reference.referenceId] = heapObject.copy(payload = JvmThrowablePayload(stackTrace.toList()))
+        val payload = heapObject.throwablePayloadOrDefault()
+        objects[reference.referenceId] = heapObject.copy(payload = payload.copy(stackTrace = stackTrace.toList()))
+        return reference
+    }
+
+    fun recordThrowableCause(
+        reference: JvmObjectReferenceValue,
+        cause: JvmReferenceValue,
+    ): JvmObjectReferenceValue {
+        val heapObject = get(reference)
+        if (cause is JvmObjectReferenceValue) {
+            get(cause)
+        }
+        val payload = heapObject.throwablePayloadOrDefault()
+        objects[reference.referenceId] = heapObject.copy(payload = payload.copy(cause = cause))
         return reference
     }
 
@@ -364,6 +381,9 @@ class JvmHeap {
 }
 
 class JvmHeapAccessException(message: String) : IllegalStateException(message)
+
+private fun JvmHeapObject.throwablePayloadOrDefault(): JvmThrowablePayload =
+    payload as? JvmThrowablePayload ?: JvmThrowablePayload(stackTrace = emptyList())
 
 private fun JvmHeapPayload.shallowClonePayload(): JvmHeapPayload =
     when (this) {
