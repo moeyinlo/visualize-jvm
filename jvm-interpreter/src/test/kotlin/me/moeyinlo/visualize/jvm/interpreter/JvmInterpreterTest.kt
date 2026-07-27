@@ -16752,6 +16752,83 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher static upcalls share initialization states`() {
+        val heap = JvmHeap()
+        val staticFields = JvmStaticFields()
+        val initializationStates = JvmClassInitializationStates()
+        val initializedField = JvmFieldReference(
+            ownerClassName = "StaticOwner",
+            name = "initialized",
+            descriptor = "I",
+        )
+        val ownerConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("StaticOwner", "StaticOwner".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("initialized", "initialized".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "StaticOwner",
+                    fields = listOf(JvmFieldDefinition(name = "initialized", descriptor = "I", isStatic = true)),
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "<clinit>",
+                            descriptor = "()V",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x28.toByte(),
+                                0xB3.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xB1.toByte(),
+                            ),
+                            constantPool = ownerConstantPool,
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                        JvmMethodDefinition(
+                            name = "value",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0xB2.toByte(),
+                                0x00.toByte(),
+                                0x01.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            constantPool = ownerConstantPool,
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "StaticOwner",
+            name = "value",
+            descriptor = "()I",
+        )
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            classInitializationStates = initializationStates,
+        )
+
+        assertEquals(JvmIntValue(40), dispatcher.callStaticIntMethod(method, emptyList()))
+        assertEquals(JvmIntValue(40), staticFields.get(initializedField))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("StaticOwner"))
+    }
+
+    @Test
     fun `interpreter backed JNI dispatcher routes static int upcalls into guest methods`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(

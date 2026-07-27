@@ -45,7 +45,7 @@ class InitializationCoverageTest {
 
         assertEquals(
             listOf(
-                "native class initialization boundary",
+                "host delegated native initialization boundary",
             ),
             unsupportedRules,
         )

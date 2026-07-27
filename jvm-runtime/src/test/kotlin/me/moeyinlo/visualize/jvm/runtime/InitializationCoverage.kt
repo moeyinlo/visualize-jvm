@@ -75,6 +75,13 @@ object InitializationCoverage {
         InitializationCoverageEntry(
             rule = "native class initialization boundary",
             specSection = "JVMS 5.5 Initialization",
+            currentComponent = "Simulated JNI static upcalls initialize interpreted static target classes before invoking the upcall target and share the native caller or interpreter-backed JNI dispatcher initialization-state ledger",
+            status = InitializationCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmInterpreterTest",
+        ),
+        InitializationCoverageEntry(
+            rule = "host delegated native initialization boundary",
+            specSection = "JVMS 5.5 Initialization",
             currentComponent = "Host delegated classes are visualized as an opaque boundary, not a guest initialization state",
             status = InitializationCoverageStatus.NotYetImplemented,
         ),
