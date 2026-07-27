@@ -255,6 +255,18 @@ class JvmUnsafeSyntheticMemory(
         return true
     }
 
+    fun compareAndExchangeStaticDouble(
+        offset: Long,
+        expected: Double,
+        replacement: Double,
+    ): Double {
+        val current = getStaticDouble(offset)
+        if (current.toRawBits() == expected.toRawBits()) {
+            staticDoubleSlots[offset] = replacement
+        }
+        return current
+    }
+
     fun getStaticReference(offset: Long): JvmReferenceValue = staticReferenceSlots[offset] ?: JvmNullValue
 
     fun putStaticReference(offset: Long, value: JvmReferenceValue) {
