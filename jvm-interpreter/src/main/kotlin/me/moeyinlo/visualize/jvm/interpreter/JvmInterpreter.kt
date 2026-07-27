@@ -947,6 +947,7 @@ object JvmInterpreter {
                 ),
             )
         } catch (exception: JvmThreadSuspendedException) {
+            threadScheduler?.suspendThread(exception.threadId, exception.state)
             JvmScheduledThreadExecutionResult.Suspended(exception)
         } catch (exception: JvmMonitorBlockedException) {
             val schedulerState = threadScheduler?.state(currentThreadId)

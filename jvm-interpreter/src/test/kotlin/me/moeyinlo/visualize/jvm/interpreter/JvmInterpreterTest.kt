@@ -21329,6 +21329,58 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop stalls class initialization waiter when owner is not runnable`() {
+        val initializationStates = JvmClassInitializationStates()
+        initializationStates.startInitialization("Example", threadId = "initializer")
+        val heap = JvmHeap()
+        val scheduler = JvmThreadScheduler()
+
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "worker",
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                    ),
+                    maxStack = 1,
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                            ConstantClassEntry(ConstantPoolIndex(3)),
+                            ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                            ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                            ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                            ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+                    ),
+                ),
+            ),
+            classInitializationStates = initializationStates,
+            threadScheduler = scheduler,
+            maxThreadSwitches = 4,
+        )
+
+        assertEquals(listOf("worker"), result.executedThreadIds)
+        assertEquals(listOf("worker"), result.stalledThreadIds)
+        assertEquals(listOf("worker"), initializationStates.waitingThreads("Example"))
+        val suspension = result.suspendedThreads.getValue("worker")
+        assertEquals(suspension.state, scheduler.state("worker"))
+        val blocked = suspension.state as JvmThreadSchedulingState.BlockedOnMonitor
+        assertEquals("initializer", blocked.ownerThreadId)
+        assertEquals(JvmClassPayload("Example"), heap.get(blocked.reference).payload)
+    }
+    @Test
     fun `scheduled thread loop switch limit exception reports progress state`() {
         val exception = assertFailsWith<JvmScheduledThreadSwitchLimitException> {
             JvmInterpreter.executeScheduledThreads(
