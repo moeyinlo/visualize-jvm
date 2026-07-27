@@ -2425,6 +2425,18 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException(
                 "Unsafe.getReference expects Object and long offset arguments",
             )
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (!field.descriptor.isReferenceDescriptor()) {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getReference object field offset must map to a reference field",
+                )
+            }
+            return@JvmNativeMethodIntrinsic context.heap.getInstanceField(base, field) as? JvmReferenceValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getReference object field did not contain a reference value",
+                )
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getReference currently supports only synthetic static reference slots",
@@ -4990,6 +5002,9 @@ object JvmVmIntrinsics {
             )
         }
     }
+
+    private fun String.isReferenceDescriptor(): Boolean =
+        startsWith("L") || startsWith("[")
 
     private fun String.referenceArrayComponentClassName(): String =
         when {

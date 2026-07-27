@@ -4729,6 +4729,47 @@ class JvmVmIntrinsicsTest {
         assertEquals(null, result)
         assertEquals(JvmLongValue(12_345_678_901L), heap.getInstanceField(target, field))
     }
+    @Test
+    fun `Unsafe getReference intrinsic reads guest object fields through synthetic offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val target = heap.allocateObject("ReferenceFieldOffsetOwner")
+        val referent = heap.allocateObject("java/lang/Object")
+        val ownerClass = heap.internClassMirror("ReferenceFieldOffsetOwner")
+        val fieldName = heap.internString("next")
+        val memory = JvmUnsafeSyntheticMemory()
+        heap.putInstanceField(
+            target,
+            JvmFieldReference("ReferenceFieldOffsetOwner", "next", "Ljava/lang/Object;"),
+            referent,
+        )
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "ReferenceFieldOffsetOwner",
+                        fields = listOf(
+                            JvmFieldDefinition(name = "next", descriptor = "Ljava/lang/Object;", isStatic = false),
+                        ),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        val offset = JvmVmIntrinsics.Registry.resolve(unsafeObjectFieldOffset1Method())!!.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(ownerClass, fieldName)),
+        ) as JvmLongValue
+        val getReference = JvmVmIntrinsics.Registry.resolve(unsafeGetReferenceMethod())
+            ?: error("Unsafe.getReference intrinsic was not registered")
+
+        val result = getReference.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(target, offset)))
+
+        assertEquals(referent, result)
+    }
 
     @Test
     fun `Unsafe shouldBeInitialized0 intrinsic reflects guest class initialization state`() {
