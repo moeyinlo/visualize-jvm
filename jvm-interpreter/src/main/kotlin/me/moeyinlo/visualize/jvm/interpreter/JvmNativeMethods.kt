@@ -4147,6 +4147,20 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndAddLong expects Object, long offset, and long delta arguments")
         val delta = invocation.arguments[2] as? JvmLongValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndAddLong expects Object, long offset, and long delta arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "J") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndAddLong object field offset must map to a long field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmLongValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndAddLong object field did not contain a long value",
+                )
+            context.heap.putInstanceField(base, field, JvmLongValue(current.value + delta.value))
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndAddLong currently supports only synthetic static long slots",
