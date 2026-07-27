@@ -859,6 +859,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)Z",
         isStatic = false,
     )
+    private val UnsafeGetByteKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getByte",
+        descriptor = "(Ljava/lang/Object;J)B",
+        isStatic = false,
+    )
     private val UnsafePutBooleanKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putBoolean",
@@ -1771,6 +1777,23 @@ object JvmVmIntrinsics {
         }
         jvmBoolean(context.unsafeMemory.getStaticBoolean(offset.value))
     }
+    private val UnsafeGetByte = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getByte intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getByte expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getByte expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getByte currently supports only synthetic static byte slots",
+            )
+        }
+        JvmIntValue(context.unsafeMemory.getStaticByte(offset.value).toInt())
+    }
     private val UnsafePutBoolean = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putBoolean intrinsic requires a receiver")
@@ -2203,6 +2226,7 @@ object JvmVmIntrinsics {
         UnsafeGetBooleanVolatileKey to UnsafeGetBooleanVolatile,
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafeGetBooleanKey to UnsafeGetBoolean,
+        UnsafeGetByteKey to UnsafeGetByte,
         UnsafePutBooleanKey to UnsafePutBoolean,
         UnsafePutBooleanVolatileKey to UnsafePutBooleanVolatile,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,

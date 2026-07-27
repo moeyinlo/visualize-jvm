@@ -2352,6 +2352,33 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getByte intrinsic reads synthetic static byte slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetByteMethod())
+            ?: error("Unsafe.getByte intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticByteSlots = mapOf(7L to (-2).toByte())),
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+        val defaultResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L))),
+        )
+
+        assertEquals(JvmIntValue(-2), setResult)
+        assertEquals(JvmIntValue(0), defaultResult)
+    }
+
+    @Test
     fun `Unsafe getBooleanVolatile intrinsic reads synthetic static boolean slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2973,6 +3000,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetBooleanVolatileMethod(),
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
+            unsafeGetByteMethod(),
             unsafePutBooleanMethod(),
             unsafePutBooleanVolatileMethod(),
             unsafePutIntVolatileMethod(),
@@ -3570,6 +3598,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getBoolean",
         descriptor = "(Ljava/lang/Object;J)Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetByteMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getByte",
+        descriptor = "(Ljava/lang/Object;J)B",
         isStatic = false,
         isNative = true,
     )
