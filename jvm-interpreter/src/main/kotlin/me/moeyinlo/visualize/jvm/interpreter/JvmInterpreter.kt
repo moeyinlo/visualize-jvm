@@ -59,6 +59,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmInvokeDynamicLinkageException
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLineNumberTableEntry
 import me.moeyinlo.visualize.jvm.runtime.JvmLinkedInvokeDynamicCallSite
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleTarget
@@ -828,6 +829,8 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String? = null,
         currentMethodName: String = "<main>",
+        currentSourceFile: String? = null,
+        currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
         exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
         bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
@@ -878,6 +881,8 @@ object JvmInterpreter {
             monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = currentClassName,
             currentMethodName = currentMethodName,
+            currentSourceFile = currentSourceFile,
+            currentLineNumberTable = currentLineNumberTable,
             allowReturn = false,
             exceptionHandlers = exceptionHandlers,
             bootstrapMethods = bootstrapMethods,
@@ -1105,6 +1110,8 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         currentMethodName: String = "<active-use>",
+        currentSourceFile: String? = null,
+        currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
         allowReturn: Boolean,
         exceptionHandlers: List<JvmExceptionHandler>,
         bootstrapMethods: JvmBootstrapMethodTable,
@@ -1179,6 +1186,8 @@ object JvmInterpreter {
                             monitorUnblockedHandler,
                             currentClassName,
                             currentMethodName,
+                            currentSourceFile,
+                            currentLineNumberTable,
                             bootstrapMethods,
                             invokeDynamicCallSites,
                             dynamicConstants,
@@ -1486,6 +1495,8 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         currentMethodName: String,
+        currentSourceFile: String? = null,
+        currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -1672,6 +1683,8 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 currentMethodName = currentMethodName,
+                currentSourceFile = currentSourceFile,
+                currentLineNumberTable = currentLineNumberTable,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -5352,14 +5365,20 @@ object JvmInterpreter {
     private fun activeUseStackTrace(
         currentClassName: String?,
         currentMethodName: String = "<active-use>",
+        activeUseBytecodeOffset: Int = -1,
+        currentSourceFile: String? = null,
+        currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
     ): List<JvmStackTraceFrame> =
         currentClassName?.let { className ->
             listOf(
                 JvmStackTraceFrame(
                     declaringClass = className,
                     methodName = currentMethodName,
-                    fileName = null,
-                    lineNumber = null,
+                    fileName = currentSourceFile,
+                    lineNumber = currentLineNumberTable
+                        .filter { entry -> entry.startPc <= activeUseBytecodeOffset }
+                        .maxByOrNull { entry -> entry.startPc }
+                        ?.lineNumber,
                 ),
             )
         } ?: emptyList()
@@ -5379,6 +5398,8 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         currentMethodName: String,
+        currentSourceFile: String? = null,
+        currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -5399,7 +5420,13 @@ object JvmInterpreter {
             classInitializationStates,
             currentThreadId,
             instruction.offset,
-            activeUseStackTrace(currentClassName, currentMethodName),
+            activeUseStackTrace(
+                currentClassName = currentClassName,
+                currentMethodName = currentMethodName,
+                activeUseBytecodeOffset = instruction.offset,
+                currentSourceFile = currentSourceFile,
+                currentLineNumberTable = currentLineNumberTable,
+            ),
             threadScheduler,
         ) { classInitializer ->
             executeStaticMethodWithArguments(

@@ -72,6 +72,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleTarget
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
+import me.moeyinlo.visualize.jvm.runtime.JvmLineNumberTableEntry
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
@@ -6465,6 +6466,10 @@ class JvmInterpreterTest {
                 heap = heap,
                 currentClassName = "ActiveUser",
                 currentMethodName = "trigger",
+                currentSourceFile = "ActiveUser.java",
+                currentLineNumberTable = listOf(
+                    JvmLineNumberTableEntry(startPc = 0, lineNumber = 41),
+                ),
             )
         }
 
@@ -6479,8 +6484,8 @@ class JvmInterpreterTest {
                 JvmStackTraceFrame(
                     declaringClass = "ActiveUser",
                     methodName = "trigger",
-                    fileName = null,
-                    lineNumber = null,
+                    fileName = "ActiveUser.java",
+                    lineNumber = 41,
                 ),
             ),
             payload.stackTrace,
