@@ -4213,6 +4213,20 @@ object JvmVmIntrinsics {
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndAddInt expects Object, long offset, and int delta arguments")
         val delta = invocation.arguments[2] as? JvmIntValue
             ?: throw JvmUnsupportedInstructionException("Unsafe.getAndAddInt expects Object, long offset, and int delta arguments")
+        if (base is JvmObjectReferenceValue) {
+            val field = context.unsafeMemory.objectFieldReference(offset.value)
+            if (field.descriptor != "I") {
+                throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndAddInt object field offset must map to an int field",
+                )
+            }
+            val current = context.heap.getInstanceField(base, field) as? JvmIntValue
+                ?: throw JvmUnsupportedInstructionException(
+                    "Unsafe.getAndAddInt object field did not contain an int value",
+                )
+            context.heap.putInstanceField(base, field, JvmIntValue(current.value + delta.value))
+            return@JvmNativeMethodIntrinsic current
+        }
         if (base != JvmNullValue) {
             throw JvmUnsupportedInstructionException(
                 "Unsafe.getAndAddInt currently supports only synthetic static int slots",
