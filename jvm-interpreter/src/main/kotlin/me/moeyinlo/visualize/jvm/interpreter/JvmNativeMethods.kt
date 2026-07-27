@@ -1197,6 +1197,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JSS)Z",
         isStatic = false,
     )
+    private val UnsafeCompareAndSetCharKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "compareAndSetChar",
+        descriptor = "(Ljava/lang/Object;JCC)Z",
+        isStatic = false,
+    )
     private val UnsafeCompareAndSetDoubleKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetDouble",
@@ -3008,6 +3014,47 @@ object JvmVmIntrinsics {
             ),
         )
     }
+    private val UnsafeCompareAndSetChar = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndSetChar intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 4) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetChar expects Object, long offset, expected, and replacement arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetChar expects Object, long offset, expected, and replacement arguments",
+            )
+        val expected = invocation.arguments[2] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetChar expects Object, long offset, expected, and replacement arguments",
+            )
+        val replacement = invocation.arguments[3] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetChar expects Object, long offset, expected, and replacement arguments",
+            )
+        if (
+            expected.value !in Char.MIN_VALUE.code..Char.MAX_VALUE.code ||
+            replacement.value !in Char.MIN_VALUE.code..Char.MAX_VALUE.code
+        ) {
+            throw JvmUnsupportedInstructionException("Unsafe.compareAndSetChar char values are out of range")
+        }
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.compareAndSetChar currently supports only synthetic static char slots",
+            )
+        }
+        jvmBoolean(
+            context.unsafeMemory.compareAndSetStaticChar(
+                offset = offset.value,
+                expected = expected.value.toChar(),
+                replacement = replacement.value.toChar(),
+            ),
+        )
+    }
     private val UnsafeCompareAndExchangeLong = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.compareAndExchangeLong intrinsic requires a receiver")
@@ -3395,6 +3442,7 @@ object JvmVmIntrinsics {
         UnsafeCompareAndSetBooleanKey to UnsafeCompareAndSetBoolean,
         UnsafeCompareAndSetByteKey to UnsafeCompareAndSetByte,
         UnsafeCompareAndSetShortKey to UnsafeCompareAndSetShort,
+        UnsafeCompareAndSetCharKey to UnsafeCompareAndSetChar,
         UnsafeCompareAndSetDoubleKey to UnsafeCompareAndSetDouble,
         UnsafeCompareAndSetFloatKey to UnsafeCompareAndSetFloat,
         UnsafeCompareAndExchangeLongKey to UnsafeCompareAndExchangeLong,

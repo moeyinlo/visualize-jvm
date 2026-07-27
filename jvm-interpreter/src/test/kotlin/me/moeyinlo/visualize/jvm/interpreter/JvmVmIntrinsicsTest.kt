@@ -3339,6 +3339,41 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe compareAndSetChar intrinsic updates synthetic static char slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCompareAndSetCharMethod())
+            ?: error("Unsafe.compareAndSetChar intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory(staticCharSlots = mapOf(7L to 'A'))
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val success = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue('A'.code), JvmIntValue('B'.code)),
+            ),
+        )
+        val failure = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue('A'.code), JvmIntValue('C'.code)),
+            ),
+        )
+
+        assertEquals(JvmIntValue(1), success)
+        assertEquals(JvmIntValue(0), failure)
+        assertEquals('B', unsafeMemory.getStaticChar(offset = 7L))
+    }
+
+    @Test
     fun `Unsafe compareAndExchangeLong intrinsic returns witness for synthetic static long slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -3922,6 +3957,7 @@ class JvmVmIntrinsicsTest {
             unsafeCompareAndSetBooleanMethod(),
             unsafeCompareAndSetByteMethod(),
             unsafeCompareAndSetShortMethod(),
+            unsafeCompareAndSetCharMethod(),
             unsafeCompareAndSetFloatMethod(),
             unsafeCompareAndSetDoubleMethod(),
             unsafeCompareAndExchangeLongMethod(),
@@ -4816,6 +4852,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "compareAndSetShort",
         descriptor = "(Ljava/lang/Object;JSS)Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeCompareAndSetCharMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "compareAndSetChar",
+        descriptor = "(Ljava/lang/Object;JCC)Z",
         isStatic = false,
         isNative = true,
     )
