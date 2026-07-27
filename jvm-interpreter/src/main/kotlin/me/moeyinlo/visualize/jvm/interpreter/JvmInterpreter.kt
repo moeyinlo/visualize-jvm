@@ -1060,8 +1060,8 @@ object JvmInterpreter {
 
             val frame = remainingFrames.getValue(threadId)
             executedThreadIds += threadId
-            when (
-                val result = executeScheduledThread(
+            val result = try {
+                executeScheduledThread(
                     code = frame.code,
                     maxStack = frame.maxStack,
                     constantPool = frame.constantPool,
@@ -1087,7 +1087,13 @@ object JvmInterpreter {
                     initialOperandStackValues = frame.operandStackValues,
                     startBytecodeOffset = frame.startBytecodeOffset,
                 )
-            ) {
+            } catch (exception: JvmThrownException) {
+                remainingFrames.remove(threadId)
+                suspendedThreads.remove(threadId)
+                terminationState.terminateAbruptly(exception.throwable)
+                break
+            }
+            when (result) {
                 is JvmScheduledThreadExecutionResult.Completed -> {
                     remainingFrames.remove(threadId)
                     suspendedThreads.remove(threadId)

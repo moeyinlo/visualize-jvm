@@ -187,6 +187,28 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `scheduled thread loop reports uncaught guest exception termination`() {
+        val heap = JvmHeap()
+        val throwable = heap.allocateObject("java/lang/RuntimeException")
+
+        val result = JvmInterpreter.executeScheduledThreads(
+            frames = listOf(
+                JvmScheduledThreadFrame(
+                    threadId = "main",
+                    code = byteArrayOf(0xBF.toByte()),
+                    maxStack = 1,
+                    operandStackValues = listOf(throwable),
+                ),
+            ),
+            heap = heap,
+        )
+
+        assertEquals(JvmVmTerminationResult.UncaughtGuestException(throwable), result.terminationResult)
+        assertEquals(emptyMap(), result.completedThreads)
+        assertEquals(listOf("main"), result.executedThreadIds)
+    }
+
+    @Test
     fun `scheduled thread loop starts frames with preloaded operand stack values`() {
         val result = JvmInterpreter.executeScheduledThreads(
             frames = listOf(
