@@ -2409,6 +2409,36 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe putBooleanVolatile intrinsic writes synthetic static boolean slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutBooleanVolatileMethod())
+            ?: error("Unsafe.putBooleanVolatile intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val setResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue(1))),
+        )
+        val clearResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmIntValue(0))),
+        )
+
+        assertEquals(null, setResult)
+        assertEquals(null, clearResult)
+        assertEquals(true, unsafeMemory.getStaticBoolean(offset = 7L))
+        assertEquals(false, unsafeMemory.getStaticBoolean(offset = 9L))
+    }
+
+    @Test
     fun `Unsafe putIntVolatile intrinsic writes synthetic static int slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2944,6 +2974,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetIntMethod(),
             unsafeGetBooleanMethod(),
             unsafePutBooleanMethod(),
+            unsafePutBooleanVolatileMethod(),
             unsafePutIntVolatileMethod(),
             unsafePutIntMethod(),
             unsafeCompareAndSetIntMethod(),
@@ -3554,6 +3585,14 @@ class JvmVmIntrinsicsTest {
     private fun unsafePutBooleanMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putBoolean",
+        descriptor = "(Ljava/lang/Object;JZ)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutBooleanVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putBooleanVolatile",
         descriptor = "(Ljava/lang/Object;JZ)V",
         isStatic = false,
         isNative = true,

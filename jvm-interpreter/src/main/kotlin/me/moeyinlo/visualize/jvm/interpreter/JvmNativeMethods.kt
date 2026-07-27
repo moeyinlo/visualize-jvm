@@ -844,6 +844,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JZ)V",
         isStatic = false,
     )
+    private val UnsafePutBooleanVolatileKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putBooleanVolatile",
+        descriptor = "(Ljava/lang/Object;JZ)V",
+        isStatic = false,
+    )
     private val UnsafePutIntVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putIntVolatile",
@@ -1773,6 +1779,35 @@ object JvmVmIntrinsics {
         context.unsafeMemory.putStaticBoolean(offset = offset.value, value = value.value == 1)
         null
     }
+    private val UnsafePutBooleanVolatile = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.putBooleanVolatile intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 3) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putBooleanVolatile expects Object, long offset, and boolean value arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putBooleanVolatile expects Object, long offset, and boolean value arguments",
+            )
+        val value = invocation.arguments[2] as? JvmIntValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.putBooleanVolatile expects Object, long offset, and boolean value arguments",
+            )
+        if (value.value !in 0..1) {
+            throw JvmUnsupportedInstructionException("Unsafe.putBooleanVolatile boolean value must be 0 or 1")
+        }
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.putBooleanVolatile currently supports only synthetic static boolean slots",
+            )
+        }
+        context.unsafeMemory.putStaticBoolean(offset = offset.value, value = value.value == 1)
+        null
+    }
     private val UnsafePutIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putIntVolatile intrinsic requires a receiver")
@@ -2148,6 +2183,7 @@ object JvmVmIntrinsics {
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafeGetBooleanKey to UnsafeGetBoolean,
         UnsafePutBooleanKey to UnsafePutBoolean,
+        UnsafePutBooleanVolatileKey to UnsafePutBooleanVolatile,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
         UnsafePutIntKey to UnsafePutInt,
         UnsafeCompareAndSetIntKey to UnsafeCompareAndSetInt,
