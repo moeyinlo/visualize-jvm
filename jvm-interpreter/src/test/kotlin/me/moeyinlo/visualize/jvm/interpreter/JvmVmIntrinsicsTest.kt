@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
+import me.moeyinlo.visualize.jvm.runtime.JvmBooleanArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
@@ -4494,6 +4495,34 @@ class JvmVmIntrinsicsTest {
 
         assertEquals(null, result)
         assertEquals(listOf(0.toByte(), (-2).toByte(), (-2).toByte(), (-2).toByte(), 0.toByte()), payload.elements)
+    }
+
+    @Test
+    fun `Unsafe setMemory0 intrinsic fills guest boolean arrays from synthetic base offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val array = heap.allocateBooleanArray(5)
+        val payload = heap.get(array).payload as JvmBooleanArrayPayload
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeSetMemory0Method())
+            ?: error("Unsafe.setMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(array, JvmLongValue(1L), JvmLongValue(3L), JvmIntValue(1)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(listOf(false, true, true, true, false), payload.elements)
     }
 
     @Test

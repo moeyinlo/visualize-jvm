@@ -5123,17 +5123,32 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte value is out of range")
         }
         if (base is JvmObjectReferenceValue) {
-            val payload = context.heap.get(base).payload as? JvmByteArrayPayload
-                ?: throw JvmUnsupportedInstructionException(
-                    "Unsafe.setMemory0 currently supports only guest byte arrays for non-null base",
-                )
+            val heapObject = context.heap.get(base)
             val start = offset.value - UnsafeSyntheticArrayBaseOffset
             val endExclusive = start + bytes.value
-            if (start < 0L || endExclusive < start || endExclusive > payload.elements.size) {
-                throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte array range is outside array bounds")
-            }
-            for (index in start.toInt() until endExclusive.toInt()) {
-                payload.elements[index] = value.value.toByte()
+            when (val payload = heapObject.payload) {
+                is JvmByteArrayPayload -> {
+                    if (start < 0L || endExclusive < start || endExclusive > payload.elements.size) {
+                        throw JvmUnsupportedInstructionException("Unsafe.setMemory0 byte array range is outside array bounds")
+                    }
+                    for (index in start.toInt() until endExclusive.toInt()) {
+                        payload.elements[index] = value.value.toByte()
+                    }
+                }
+                is JvmBooleanArrayPayload -> {
+                    if (value.value !in 0..1) {
+                        throw JvmUnsupportedInstructionException("Unsafe.setMemory0 boolean array byte value must be 0 or 1")
+                    }
+                    if (start < 0L || endExclusive < start || endExclusive > payload.elements.size) {
+                        throw JvmUnsupportedInstructionException("Unsafe.setMemory0 boolean array range is outside array bounds")
+                    }
+                    for (index in start.toInt() until endExclusive.toInt()) {
+                        payload.elements[index] = value.value == 1
+                    }
+                }
+                else -> throw JvmUnsupportedInstructionException(
+                    "Unsafe.setMemory0 currently supports only guest boolean or byte arrays for non-null base",
+                )
             }
             return@JvmNativeMethodIntrinsic null
         }
