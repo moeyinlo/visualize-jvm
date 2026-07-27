@@ -718,6 +718,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;J)I",
         isStatic = false,
     )
+    private val UnsafeGetIntKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getInt",
+        descriptor = "(Ljava/lang/Object;J)I",
+        isStatic = false,
+    )
     private val UnsafePutIntVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putIntVolatile",
@@ -1361,6 +1367,23 @@ object JvmVmIntrinsics {
         }
         JvmIntValue(context.unsafeMemory.getStaticInt(offset.value))
     }
+    private val UnsafeGetInt = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getInt intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException("Unsafe.getInt expects Object and long offset arguments")
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getInt expects Object and long offset arguments")
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getInt currently supports only synthetic static int slots",
+            )
+        }
+        JvmIntValue(context.unsafeMemory.getStaticInt(offset.value))
+    }
     private val UnsafePutIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.putIntVolatile intrinsic requires a receiver")
@@ -1589,6 +1612,7 @@ object JvmVmIntrinsics {
         UnsafeGetLongVolatileKey to UnsafeGetLongVolatile,
         UnsafeGetLongKey to UnsafeGetLong,
         UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
+        UnsafeGetIntKey to UnsafeGetInt,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
         UnsafePutLongVolatileKey to UnsafePutLongVolatile,
         UnsafePutLongKey to UnsafePutLong,

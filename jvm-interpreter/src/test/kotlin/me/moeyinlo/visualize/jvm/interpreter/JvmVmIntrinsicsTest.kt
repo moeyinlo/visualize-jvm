@@ -2132,6 +2132,28 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe getInt intrinsic reads synthetic static int slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetIntMethod())
+            ?: error("Unsafe.getInt intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticIntSlots = mapOf(7L to 42)),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+
+        assertEquals(JvmIntValue(42), result)
+    }
+
+    @Test
     fun `Unsafe putIntVolatile intrinsic writes synthetic static int slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2480,6 +2502,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
             unsafeGetIntVolatileMethod(),
+            unsafeGetIntMethod(),
             unsafePutIntVolatileMethod(),
             unsafeCompareAndSetLongMethod(),
             unsafeCompareAndExchangeLongMethod(),
@@ -3003,6 +3026,14 @@ class JvmVmIntrinsicsTest {
     private fun unsafeGetIntVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getIntVolatile",
+        descriptor = "(Ljava/lang/Object;J)I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetIntMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getInt",
         descriptor = "(Ljava/lang/Object;J)I",
         isStatic = false,
         isNative = true,
