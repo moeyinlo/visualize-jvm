@@ -2633,6 +2633,36 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmIntValue('\u03A9'.code), setResult)
         assertEquals(JvmIntValue(0), defaultResult)
     }
+
+    @Test
+    fun `Unsafe putCharVolatile intrinsic writes synthetic static char slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutCharVolatileMethod())
+            ?: error("Unsafe.putCharVolatile intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val firstResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue('\u03A9'.code))),
+        )
+        val secondResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmIntValue(Char.MAX_VALUE.code))),
+        )
+
+        assertEquals(null, firstResult)
+        assertEquals(null, secondResult)
+        assertEquals('\u03A9', unsafeMemory.getStaticChar(offset = 7L))
+        assertEquals(Char.MAX_VALUE, unsafeMemory.getStaticChar(offset = 9L))
+    }
     @Test
     fun `Unsafe putShortVolatile intrinsic writes synthetic static short slots`() {
         val heap = JvmHeap()
@@ -3964,6 +3994,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getCharVolatile",
         descriptor = "(Ljava/lang/Object;J)C",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutCharVolatileMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putCharVolatile",
+        descriptor = "(Ljava/lang/Object;JC)V",
         isStatic = false,
         isNative = true,
     )
