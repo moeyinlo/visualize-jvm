@@ -5223,19 +5223,37 @@ object JvmVmIntrinsics {
             return@JvmNativeMethodIntrinsic null
         }
         if (sourceBase is JvmObjectReferenceValue && targetBase == JvmNullValue) {
-            val sourcePayload = context.heap.get(sourceBase).payload as? JvmByteArrayPayload
-                ?: throw JvmUnsupportedInstructionException(
-                    "Unsafe.copyMemory0 currently supports only guest byte arrays for non-null bases",
-                )
+            val sourcePayload = context.heap.get(sourceBase).payload
             val sourceStart = sourceOffset.value - UnsafeSyntheticArrayBaseOffset
             val sourceEndExclusive = sourceStart + bytes.value
-            if (sourceStart < 0L || sourceEndExclusive < sourceStart || sourceEndExclusive > sourcePayload.elements.size) {
-                throw JvmUnsupportedInstructionException("Unsafe.copyMemory0 byte array range is outside array bounds")
-            }
-            val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
-                .map { index -> sourcePayload.elements[index] }
-            snapshot.forEachIndexed { index, byte ->
-                context.unsafeMemory.setNativeMemory(targetOffset.value + index.toLong(), 1L, byte)
+            when (sourcePayload) {
+                is JvmByteArrayPayload -> {
+                    if (sourceStart < 0L || sourceEndExclusive < sourceStart || sourceEndExclusive > sourcePayload.elements.size) {
+                        throw JvmUnsupportedInstructionException("Unsafe.copyMemory0 byte array range is outside array bounds")
+                    }
+                    val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
+                        .map { index -> sourcePayload.elements[index] }
+                    snapshot.forEachIndexed { index, byte ->
+                        context.unsafeMemory.setNativeMemory(targetOffset.value + index.toLong(), 1L, byte)
+                    }
+                }
+                is JvmBooleanArrayPayload -> {
+                    if (sourceStart < 0L || sourceEndExclusive < sourceStart || sourceEndExclusive > sourcePayload.elements.size) {
+                        throw JvmUnsupportedInstructionException("Unsafe.copyMemory0 boolean array range is outside array bounds")
+                    }
+                    val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
+                        .map { index -> sourcePayload.elements[index] }
+                    snapshot.forEachIndexed { index, value ->
+                        context.unsafeMemory.setNativeMemory(
+                            targetOffset.value + index.toLong(),
+                            1L,
+                            if (value) 1.toByte() else 0.toByte(),
+                        )
+                    }
+                }
+                else -> throw JvmUnsupportedInstructionException(
+                    "Unsafe.copyMemory0 currently supports only guest byte or boolean arrays for non-null bases",
+                )
             }
             return@JvmNativeMethodIntrinsic null
         }
