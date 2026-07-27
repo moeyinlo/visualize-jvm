@@ -70,6 +70,7 @@ data class JvmNativeMethodContext(
     val freeMemoryProvider: () -> Long = { Runtime.getRuntime().freeMemory() },
     val totalMemoryProvider: () -> Long = { Runtime.getRuntime().totalMemory() },
     val maxMemoryProvider: () -> Long = { Runtime.getRuntime().maxMemory() },
+    val gcHandler: () -> Unit = { System.gc() },
     val stackTraceProvider: () -> List<JvmStackTraceFrame> = { emptyList() },
     val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
     val loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
@@ -350,6 +351,12 @@ object JvmVmIntrinsics {
         descriptor = "()J",
         isStatic = false,
     )
+    private val RuntimeGcKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Runtime",
+        name = "gc",
+        descriptor = "()V",
+        isStatic = false,
+    )
     private val RuntimeExitKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Runtime",
         name = "exit",
@@ -594,6 +601,14 @@ object JvmVmIntrinsics {
         context.heap.get(receiver)
         JvmLongValue(context.maxMemoryProvider())
     }
+    private val RuntimeGc = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Runtime.gc intrinsic requires a receiver")
+        requireNoArguments("Runtime.gc", invocation)
+        context.heap.get(receiver)
+        context.gcHandler()
+        null
+    }
     private val RuntimeExit = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Runtime.exit intrinsic requires a receiver")
@@ -725,6 +740,7 @@ object JvmVmIntrinsics {
         RuntimeFreeMemoryKey to RuntimeFreeMemory,
         RuntimeTotalMemoryKey to RuntimeTotalMemory,
         RuntimeMaxMemoryKey to RuntimeMaxMemory,
+        RuntimeGcKey to RuntimeGc,
         RuntimeExitKey to RuntimeExit,
         ShutdownBeforeHaltKey to ShutdownBeforeHalt,
         ShutdownHalt0Key to ShutdownHalt0,

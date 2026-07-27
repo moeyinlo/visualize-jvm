@@ -1145,6 +1145,30 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Runtime gc intrinsic delegates to the context GC handler`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("java/lang/Runtime")
+        var gcRequests = 0
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(runtimeGcMethod())
+            ?: error("Runtime.gc intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Runtime",
+            gcHandler = { gcRequests += 1 },
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = receiver, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(1, gcRequests)
+    }
+
+    @Test
     fun `Runtime memory intrinsics return context supplied byte counts`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("java/lang/Runtime")
@@ -1599,6 +1623,14 @@ class JvmVmIntrinsicsTest {
         name = "exit",
         descriptor = "(I)V",
         isStatic = true,
+        isNative = true,
+    )
+
+    private fun runtimeGcMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Runtime",
+        name = "gc",
+        descriptor = "()V",
+        isStatic = false,
         isNative = true,
     )
 
