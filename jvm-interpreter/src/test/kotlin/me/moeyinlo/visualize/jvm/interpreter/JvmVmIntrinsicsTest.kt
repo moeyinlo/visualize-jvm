@@ -2132,6 +2132,29 @@ class JvmVmIntrinsicsTest {
         assertEquals(reference, result)
     }
     @Test
+    fun `Unsafe getReference intrinsic reads synthetic static reference slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val reference = heap.allocateObject("java/lang/Object")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeGetReferenceMethod())
+            ?: error("Unsafe.getReference intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(staticReferenceSlots = mapOf(7L to reference)),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L))),
+        )
+
+        assertEquals(reference, result)
+    }
+
+    @Test
     fun `Unsafe putReferenceVolatile intrinsic writes synthetic static reference slots`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
@@ -2643,6 +2666,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetLongVolatileMethod(),
             unsafeGetLongMethod(),
             unsafeGetReferenceVolatileMethod(),
+            unsafeGetReferenceMethod(),
             unsafePutReferenceVolatileMethod(),
             unsafeGetIntVolatileMethod(),
             unsafeGetIntMethod(),
@@ -3181,6 +3205,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "putReferenceVolatile",
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafeGetReferenceMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getReference",
+        descriptor = "(Ljava/lang/Object;J)Ljava/lang/Object;",
         isStatic = false,
         isNative = true,
     )

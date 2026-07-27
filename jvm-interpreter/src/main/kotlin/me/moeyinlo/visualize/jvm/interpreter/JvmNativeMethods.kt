@@ -757,6 +757,12 @@ object JvmVmIntrinsics {
         descriptor = "(Ljava/lang/Object;JLjava/lang/Object;)V",
         isStatic = false,
     )
+    private val UnsafeGetReferenceKey = JvmNativeMethodKey(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "getReference",
+        descriptor = "(Ljava/lang/Object;J)Ljava/lang/Object;",
+        isStatic = false,
+    )
     private val UnsafeGetIntVolatileKey = JvmNativeMethodKey(
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getIntVolatile",
@@ -1460,6 +1466,27 @@ object JvmVmIntrinsics {
         context.unsafeMemory.putStaticReference(offset = offset.value, value = value)
         null
     }
+    private val UnsafeGetReference = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Unsafe.getReference intrinsic requires a receiver")
+        context.heap.get(receiver)
+        if (invocation.arguments.size != 2) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getReference expects Object and long offset arguments",
+            )
+        }
+        val base = invocation.arguments[0]
+        val offset = invocation.arguments[1] as? JvmLongValue
+            ?: throw JvmUnsupportedInstructionException(
+                "Unsafe.getReference expects Object and long offset arguments",
+            )
+        if (base != JvmNullValue) {
+            throw JvmUnsupportedInstructionException(
+                "Unsafe.getReference currently supports only synthetic static reference slots",
+            )
+        }
+        context.unsafeMemory.getStaticReference(offset.value)
+    }
     private val UnsafeGetIntVolatile = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Unsafe.getIntVolatile intrinsic requires a receiver")
@@ -1819,6 +1846,7 @@ object JvmVmIntrinsics {
         UnsafeGetLongKey to UnsafeGetLong,
         UnsafeGetReferenceVolatileKey to UnsafeGetReferenceVolatile,
         UnsafePutReferenceVolatileKey to UnsafePutReferenceVolatile,
+        UnsafeGetReferenceKey to UnsafeGetReference,
         UnsafeGetIntVolatileKey to UnsafeGetIntVolatile,
         UnsafeGetIntKey to UnsafeGetInt,
         UnsafePutIntVolatileKey to UnsafePutIntVolatile,
