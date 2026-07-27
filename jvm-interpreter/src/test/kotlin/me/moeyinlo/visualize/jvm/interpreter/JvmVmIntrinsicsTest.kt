@@ -2432,6 +2432,36 @@ class JvmVmIntrinsicsTest {
         assertEquals(JvmIntValue(0), defaultResult)
     }
 
+
+    @Test
+    fun `Unsafe putChar intrinsic writes synthetic static char slots`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafePutCharMethod())
+            ?: error("Unsafe.putChar intrinsic was not registered")
+        val unsafeMemory = JvmUnsafeSyntheticMemory()
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = unsafeMemory,
+        )
+
+        val firstResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(7L), JvmIntValue('\u03A9'.code))),
+        )
+        val secondResult = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(unsafe, listOf(JvmNullValue, JvmLongValue(9L), JvmIntValue(Char.MAX_VALUE.code))),
+        )
+
+        assertEquals(null, firstResult)
+        assertEquals(null, secondResult)
+        assertEquals('\u03A9', unsafeMemory.getStaticChar(offset = 7L))
+        assertEquals(Char.MAX_VALUE, unsafeMemory.getStaticChar(offset = 9L))
+    }
     @Test
     fun `Unsafe putByte intrinsic writes synthetic static byte slots`() {
         val heap = JvmHeap()
@@ -3236,6 +3266,7 @@ class JvmVmIntrinsicsTest {
             unsafeGetCharMethod(),
             unsafePutByteMethod(),
             unsafePutShortMethod(),
+            unsafePutCharMethod(),
             unsafePutBooleanMethod(),
             unsafePutBooleanVolatileMethod(),
             unsafePutIntVolatileMethod(),
@@ -3857,6 +3888,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "jdk/internal/misc/Unsafe",
         name = "getChar",
         descriptor = "(Ljava/lang/Object;J)C",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun unsafePutCharMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "jdk/internal/misc/Unsafe",
+        name = "putChar",
+        descriptor = "(Ljava/lang/Object;JC)V",
         isStatic = false,
         isNative = true,
     )
