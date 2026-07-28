@@ -325,6 +325,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.16 | `RuntimeVisibleAnnotations` at-most-one `record_component_info` attribute rule | `jvm-classfile` | `RecordAttributeParserTest.rejects component with duplicate RuntimeVisibleAnnotations attributes` | IMPLEMENTED |
 | 4.7.16 | `RuntimeVisibleAnnotations` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.17 | `RuntimeInvisibleAnnotations` | `jvm-classfile` | `RuntimeInvisibleAnnotationsAttributeParserTest` | IMPLEMENTED |
+| 4.7.17, 4.7-C | `RuntimeInvisibleAnnotations` attributes are permitted only in class file major version 49.0 or later | `jvm-classfile` | `RuntimeInvisibleAnnotationsAttributeParserTest.rejects RuntimeInvisibleAnnotations attributes before Java 5` | IMPLEMENTED |
 | 4.7.17 | `RuntimeInvisibleAnnotations` at-most-one `ClassFile` attribute rule | `jvm-classfile` | `ClassFileParserTest.rejects ClassFile with duplicate RuntimeInvisibleAnnotations attributes` | IMPLEMENTED |
 | 4.7.17 | `RuntimeInvisibleAnnotations` at-most-one `field_info` attribute rule | `jvm-classfile` | `FieldInfoParserTest.rejects duplicate field RuntimeInvisibleAnnotations attributes` | IMPLEMENTED |
 | 4.7.17 | `RuntimeInvisibleAnnotations` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method RuntimeInvisibleAnnotations attributes` | IMPLEMENTED |

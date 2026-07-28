@@ -59,6 +59,34 @@ class RuntimeInvisibleAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects RuntimeInvisibleAnnotations attributes before Java 5`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeInvisibleAnnotations", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java4-runtime-invisible-annotations.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "RuntimeInvisibleAnnotations" to RuntimeInvisibleAnnotationsAttributeParser,
+                ),
+                ownerPath = "ClassFile",
+                majorVersion = 48,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeInvisibleAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=48"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("49"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid RuntimeInvisibleAnnotations element value`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
