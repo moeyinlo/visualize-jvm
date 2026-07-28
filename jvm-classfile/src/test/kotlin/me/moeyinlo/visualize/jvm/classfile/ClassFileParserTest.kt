@@ -88,6 +88,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects zero super class on non Object class`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithZeroSuperNonObjectBytes(),
+                source = "ZeroSuperNonObject.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("super_class"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("zero"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("java/lang/Object"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("Test"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -546,6 +561,23 @@ class ClassFileParserTest {
             0, 4,
             0, 1,
             0, 5,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun classFileWithZeroSuperNonObjectBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 3,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            0, 0x21,
+            0, 2,
+            0, 0,
+            0, 0,
             0, 0,
             0, 0,
             0, 0,

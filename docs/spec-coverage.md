@@ -95,6 +95,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.1 | `this_class`, `super_class`, and interfaces table | `jvm-classfile` | `ClassIdentityParserTest` | IMPLEMENTED |
 | 4.1, 4.8 | `this_class` must be a valid `CONSTANT_Class_info` constant-pool reference | `jvm-classfile` | `ClassFileParserTest.rejects this class index that is not a class constant` | IMPLEMENTED |
 | 4.1, 4.8 | nonzero `super_class` must be a valid `CONSTANT_Class_info` constant-pool reference | `jvm-classfile` | `ClassFileParserTest.rejects super class index that is not a class constant` | IMPLEMENTED |
+| 4.1, 4.8 | zero `super_class` is permitted only when `this_class` names `java/lang/Object` | `jvm-classfile` | `ClassFileParserTest.rejects zero super class on non Object class` | IMPLEMENTED |
 | 4.1, 4.8 | every `interfaces[]` entry must be a valid `CONSTANT_Class_info` constant-pool reference | `jvm-classfile` | `ClassFileParserTest.rejects interface index that is not a class constant` | IMPLEMENTED |
 | 4.2.1 | Binary class and interface names in internal form | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.1 | Array class names in `CONSTANT_Class_info` | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
