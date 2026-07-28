@@ -66,6 +66,7 @@ object RecordAttributeParser : AttributeBodyParser {
         val modulePaths = mutableListOf<String>()
         val modulePackagesPaths = mutableListOf<String>()
         val moduleMainClassPaths = mutableListOf<String>()
+        val nestHostPaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
@@ -91,6 +92,7 @@ object RecordAttributeParser : AttributeBodyParser {
                 "Module" -> modulePaths += "$ownerPath.attributes[$index]"
                 "ModulePackages" -> modulePackagesPaths += "$ownerPath.attributes[$index]"
                 "ModuleMainClass" -> moduleMainClassPaths += "$ownerPath.attributes[$index]"
+                "NestHost" -> nestHostPaths += "$ownerPath.attributes[$index]"
                 "MethodParameters" -> methodParametersPaths += "$ownerPath.attributes[$index]"
             }
         }
@@ -106,6 +108,7 @@ object RecordAttributeParser : AttributeBodyParser {
         requireAbsentAttribute(modulePaths, "Module", "ClassFile", ownerPath)
         requireAbsentAttribute(modulePackagesPaths, "ModulePackages", "ClassFile", ownerPath)
         requireAbsentAttribute(moduleMainClassPaths, "ModuleMainClass", "ClassFile", ownerPath)
+        requireAbsentAttribute(nestHostPaths, "NestHost", "ClassFile", ownerPath)
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", ownerPath)
         requireAbsentAttribute(
             runtimeVisibleParameterAnnotationsPaths,
