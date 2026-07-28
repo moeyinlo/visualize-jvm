@@ -558,6 +558,26 @@ class CodeInstructionValidationTest {
         assertTrue(failure.message.orEmpty().contains("constant class name"), failure.message)
     }
     @Test
+    fun `rejects ldc string constants whose string index does not point to utf8`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantStringEntry(ConstantPoolIndex(3)),
+                        ConstantIntegerEntry(1),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_String"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("string_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Utf8_info"), failure.message)
+    }
+    @Test
     fun `rejects ldc method handle invokevirtual references whose target is not a method reference`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(

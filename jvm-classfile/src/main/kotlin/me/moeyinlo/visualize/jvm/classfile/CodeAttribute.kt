@@ -1737,15 +1737,20 @@ private object CodeInstructionValidator {
         when (entry) {
             is ConstantIntegerEntry,
             is ConstantFloatEntry,
-            is ConstantStringEntry,
             -> LdcCategory.CategoryOne
+
+            is ConstantStringEntry -> {
+                validateStringLoadableConstant(ownerPath, pc, mnemonic, constantPool, index, entry)
+                LdcCategory.CategoryOne
+            }
 
             is ConstantClassEntry -> {
                 validateClassLoadableConstant(ownerPath, pc, mnemonic, constantPool, index, entry)
                 LdcCategory.CategoryOne
             }
 
-            is ConstantMethodTypeEntry -> {                validateMethodTypeLoadableConstant(ownerPath, pc, mnemonic, constantPool, index, entry)
+            is ConstantMethodTypeEntry -> {
+                validateMethodTypeLoadableConstant(ownerPath, pc, mnemonic, constantPool, index, entry)
                 LdcCategory.CategoryOne
             }
 
@@ -1772,6 +1777,31 @@ private object CodeInstructionValidator {
                     "expected loadable constant but found ${entry.javaClass.simpleName}",
             )
         }
+
+    private fun validateStringLoadableConstant(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantStringEntry,
+    ) {
+        val string = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.stringIndex,
+            role = "CONSTANT_String.string_index",
+        )
+        if (string !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_String.string_index=${entry.stringIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${string.javaClass.simpleName}",
+            )
+        }
+    }
 
     private fun validateClassLoadableConstant(
         ownerPath: String,
@@ -1809,6 +1839,8 @@ private object CodeInstructionValidator {
             )
         }
     }
+
+
     private fun validateMethodTypeLoadableConstant(
         ownerPath: String,
         pc: Int,
