@@ -206,6 +206,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.6 | `InnerClasses` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects InnerClasses attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects InnerClasses attributes in method attribute tables` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects InnerClasses attributes in Code` | IMPLEMENTED |
+| 4.7.6 | `InnerClasses` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects InnerClasses attributes in record components` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod.class_index` must name a class or interface, not an array class | `jvm-classfile` | `NestedClassAttributesParserTest.rejects EnclosingMethod class indexes that name array classes` | IMPLEMENTED |
