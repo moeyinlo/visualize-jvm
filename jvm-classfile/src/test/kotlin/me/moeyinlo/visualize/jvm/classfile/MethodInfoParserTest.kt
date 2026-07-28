@@ -576,6 +576,38 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects NestHost attributes in method attribute tables`() {
+        val nestHostAttribute = byteArrayOf(0, 3) + intBytes(2) + byteArrayOf(0, 5)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(nestHostAttribute)),
+                    ),
+                    source = "bad-method-nest-host.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("NestHost", "NestHost".encodeToByteArray()),
+                        ConstantUtf8Entry("pkg/Host", "pkg/Host".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(4)),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("NestHost" to NestHostAttributeParser),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("NestHost"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate method Exceptions attributes`() {
         val exceptionsAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
 

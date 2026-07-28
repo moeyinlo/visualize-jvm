@@ -341,6 +341,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.28 | `NestHost` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.28 | `NestHost` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.28 | `NestHost` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects NestHost attributes in field attribute tables` | IMPLEMENTED |
+| 4.7.28 | `NestHost` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects NestHost attributes in method attribute tables` | IMPLEMENTED |
 | 4.7.28 | `NestHost` run-time package and access-control semantics | `jvm-runtime` | TBD | PENDING |
 | 4.7.29 | `NestMembers` classfile structure | `jvm-classfile` | `NestAttributesParserTest` | IMPLEMENTED |
 | 4.7.29 | `NestMembers` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
