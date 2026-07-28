@@ -573,6 +573,42 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `method handle resolver rejects invoke static targets that resolve to class initializers`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = methodHandleConstantPool(
+                    ownerClassName = "pkg/Bootstrap",
+                    name = "<clinit>",
+                    descriptor = "()V",
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Bootstrap",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle InvokeStatic target pkg/Bootstrap.<clinit>:()V must not target an initialization method",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `method handle resolver resolves invoke virtual targets through the class hierarchy`() {
         val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
             constantPool = bootstrapInvocationConstantPool(),
@@ -1322,6 +1358,28 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                     descriptorIndex = ConstantPoolIndex(6),
                 ),
                 ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
+            ),
+        )
+
+    private fun methodHandleConstantPool(
+        ownerClassName: String,
+        name: String,
+        descriptor: String,
+    ): ConstantPool =
+        ConstantPool.fromEntries(
+            listOf(
+                ConstantMethodRefEntry(
+                    classIndex = ConstantPoolIndex(2),
+                    nameAndTypeIndex = ConstantPoolIndex(4),
+                ),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry(ownerClassName, ownerClassName.encodeToByteArray()),
+                ConstantNameAndTypeEntry(
+                    nameIndex = ConstantPoolIndex(5),
+                    descriptorIndex = ConstantPoolIndex(6),
+                ),
+                ConstantUtf8Entry(name, name.encodeToByteArray()),
                 ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
             ),
         )
