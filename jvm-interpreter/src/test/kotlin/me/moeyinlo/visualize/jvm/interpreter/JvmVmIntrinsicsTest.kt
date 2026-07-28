@@ -5129,6 +5129,40 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe copyMemory0 intrinsic copies synthetic native memory into guest char arrays`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val source = memory.allocateNativeMemory(4L)
+        memory.setNativeMemory(source, 1L, 0x33.toByte())
+        memory.setNativeMemory(source + 1L, 1L, 0x33.toByte())
+        memory.setNativeMemory(source + 2L, 1L, 0x44.toByte())
+        memory.setNativeMemory(source + 3L, 1L, 0x44.toByte())
+        val target = heap.allocateCharArray(4)
+        val targetPayload = heap.get(target).payload as JvmCharArrayPayload
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCopyMemory0Method())
+            ?: error("Unsafe.copyMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(JvmNullValue, JvmLongValue(source), target, JvmLongValue(2L), JvmLongValue(4L)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(listOf('\u0000', '\u3333', '\u4444', '\u0000'), targetPayload.elements)
+    }
+
+    @Test
     fun `Unsafe copyMemory0 intrinsic copies synthetic native memory into guest boolean arrays`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
