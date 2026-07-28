@@ -181,6 +181,31 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `bootstrap argument resolver rejects dynamic constants with method descriptors`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("bad", "bad".encodeToByteArray()),
+                        ConstantUtf8Entry("(I)V", "(I)V".encodeToByteArray()),
+                    ),
+                ),
+                index = JvmRuntimeConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals("invokedynamic bootstrap dynamic argument descriptor (I)V is not a field descriptor", exception.message)
+    }
+
+    @Test
     fun `call site resolver rejects non method handle bootstrap method refs`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveBootstrapInvocation(
