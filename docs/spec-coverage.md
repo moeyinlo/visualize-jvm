@@ -110,6 +110,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.1, 4.8 | `ACC_MODULE` classfiles must use zero `fields_count` | `jvm-classfile` | `ClassFileParserTest.rejects module classfile with fields` | IMPLEMENTED |
 | 4.1, 4.8 | `ACC_MODULE` classfiles must use zero `methods_count` | `jvm-classfile` | `ClassFileParserTest.rejects module classfile with methods` | IMPLEMENTED |
 | 4.1, 4.8 | `ACC_MODULE` classfiles must declare exactly one `Module` attribute | `jvm-classfile` | `ClassFileParserTest.rejects module classfile without Module attribute`; `ClassFileParserTest.rejects ClassFile with duplicate Module attributes` | IMPLEMENTED |
+| 4.1, 4.8 | `ACC_MODULE` classfiles must not declare predefined attributes except `Module`, `ModulePackages`, `ModuleMainClass`, `InnerClasses`, `SourceFile`, `SourceDebugExtension`, `RuntimeVisibleAnnotations`, and `RuntimeInvisibleAnnotations` | `jvm-classfile` | `ClassFileParserTest.rejects module classfile with disallowed predefined attribute` | IMPLEMENTED |
 | 4.2.1 | Binary class and interface names in internal form | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.1 | Array class names in `CONSTANT_Class_info` | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.2 | Generic unqualified name syntax | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |

@@ -12,6 +12,50 @@ data class ClassFile(
 )
 
 object ClassFileParser {
+    private val PredefinedAttributeNames = setOf(
+        "ConstantValue",
+        "Code",
+        "StackMapTable",
+        "Exceptions",
+        "InnerClasses",
+        "EnclosingMethod",
+        "Synthetic",
+        "Signature",
+        "SourceFile",
+        "SourceDebugExtension",
+        "LineNumberTable",
+        "LocalVariableTable",
+        "LocalVariableTypeTable",
+        "Deprecated",
+        "RuntimeVisibleAnnotations",
+        "RuntimeInvisibleAnnotations",
+        "RuntimeVisibleParameterAnnotations",
+        "RuntimeInvisibleParameterAnnotations",
+        "RuntimeVisibleTypeAnnotations",
+        "RuntimeInvisibleTypeAnnotations",
+        "AnnotationDefault",
+        "BootstrapMethods",
+        "MethodParameters",
+        "Module",
+        "ModulePackages",
+        "ModuleMainClass",
+        "NestHost",
+        "NestMembers",
+        "Record",
+        "PermittedSubclasses",
+    )
+
+    private val ModuleInfoAllowedPredefinedAttributes = setOf(
+        "Module",
+        "ModulePackages",
+        "ModuleMainClass",
+        "InnerClasses",
+        "SourceFile",
+        "SourceDebugExtension",
+        "RuntimeVisibleAnnotations",
+        "RuntimeInvisibleAnnotations",
+    )
+
     fun parse(
         bytes: ByteArray,
         source: String = "<memory>",
@@ -259,8 +303,17 @@ object ClassFileParser {
         val codePaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
+        val disallowedModuleAttributePaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
-            when (attributeName(attribute, constantPool, source, index)) {
+            val name = attributeName(attribute, constantPool, source, index)
+            if (
+                accessFlags.kind == ClassFileKind.Module &&
+                name in PredefinedAttributeNames &&
+                name !in ModuleInfoAllowedPredefinedAttributes
+            ) {
+                disallowedModuleAttributePaths += "ClassFile.attributes[$index] ($name)"
+            }
+            when (name) {
                 "NestHost" -> nestHostPaths += "ClassFile.attributes[$index]"
                 "NestMembers" -> nestMembersPaths += "ClassFile.attributes[$index]"
                 "PermittedSubclasses" -> permittedSubclassesPaths += "ClassFile.attributes[$index]"
@@ -282,6 +335,12 @@ object ClassFileParser {
                 "ConstantValue" -> constantValuePaths += "ClassFile.attributes[$index]"
                 "MethodParameters" -> methodParametersPaths += "ClassFile.attributes[$index]"
             }
+        }
+        if (disallowedModuleAttributePaths.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: ACC_MODULE classfiles must not declare " +
+                    "disallowed predefined attributes ${disallowedModuleAttributePaths.joinToString()}",
+            )
         }
         requireAbsentAttribute(codePaths, "Code", "method_info", source)
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", source)
