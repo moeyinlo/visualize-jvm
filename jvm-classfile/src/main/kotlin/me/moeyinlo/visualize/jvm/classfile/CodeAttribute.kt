@@ -2018,6 +2018,20 @@ private object CodeInstructionValidator {
                     "reference_kind $referenceKind must not target ${name.value}",
             )
         }
+        try {
+            ClassNameValidator.validateMethodName(
+                owner = nameAndType.nameIndex,
+                role = "name_index",
+                value = name.value,
+                allowInit = false,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "reference_kind $referenceKind reference_index=$referenceIndex " +
+                    "method name_index=${nameAndType.nameIndex}: ${exception.message}",
+            )
+        }
     }
 
     private fun dynamicConstantDescriptor(

@@ -883,6 +883,39 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc ordinary invocation method handles whose target name is not a method name`() {
+        val cases: List<Pair<MethodHandleReferenceKind, ConstantPoolEntry>> = listOf(
+            MethodHandleReferenceKind.InvokeVirtual to ConstantMethodRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+            MethodHandleReferenceKind.InvokeStatic to ConstantMethodRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+            MethodHandleReferenceKind.InvokeSpecial to ConstantMethodRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+            MethodHandleReferenceKind.InvokeInterface to ConstantInterfaceMethodRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+        )
+        cases.forEach { (referenceKind, memberReference) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Code", byteArrayOf()),
+                            ConstantMethodHandleEntry(referenceKind, ConstantPoolIndex(3)),
+                            memberReference,
+                            ConstantClassEntry(ConstantPoolIndex(5)),
+                            ConstantUtf8Entry("Example", byteArrayOf()),
+                            ConstantNameAndTypeEntry(ConstantPoolIndex(7), ConstantPoolIndex(8)),
+                            ConstantUtf8Entry("bad/name", byteArrayOf()),
+                            ConstantUtf8Entry("()V", byteArrayOf()),
+                        ),
+                    ),
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+            assertTrue(failure.message.orEmpty().contains(referenceKind.toString()), failure.message)
+            assertTrue(failure.message.orEmpty().contains("method name"), failure.message)
+        }
+    }
+
+    @Test
     fun `rejects ldc method handle field references whose fieldref class index does not point to class`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
