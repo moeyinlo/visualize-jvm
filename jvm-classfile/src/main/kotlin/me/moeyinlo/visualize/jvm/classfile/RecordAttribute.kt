@@ -52,6 +52,8 @@ object RecordAttributeParser : AttributeBodyParser {
         val runtimeInvisibleAnnotationsPaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val runtimeVisibleParameterAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleParameterAnnotationsPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
             when (name) {
@@ -60,8 +62,24 @@ object RecordAttributeParser : AttributeBodyParser {
                 "RuntimeInvisibleAnnotations" -> runtimeInvisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
+                "RuntimeVisibleParameterAnnotations" ->
+                    runtimeVisibleParameterAnnotationsPaths += "$ownerPath.attributes[$index]"
+                "RuntimeInvisibleParameterAnnotations" ->
+                    runtimeInvisibleParameterAnnotationsPaths += "$ownerPath.attributes[$index]"
             }
         }
+        requireAbsentAttribute(
+            runtimeVisibleParameterAnnotationsPaths,
+            "RuntimeVisibleParameterAnnotations",
+            "method_info",
+            ownerPath,
+        )
+        requireAbsentAttribute(
+            runtimeInvisibleParameterAnnotationsPaths,
+            "RuntimeInvisibleParameterAnnotations",
+            "method_info",
+            ownerPath,
+        )
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleAnnotationsPaths, "RuntimeInvisibleAnnotations", ownerPath)
@@ -69,6 +87,20 @@ object RecordAttributeParser : AttributeBodyParser {
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", ownerPath)
     }
 
+
+    private fun requireAbsentAttribute(
+        paths: List<String>,
+        attributeName: String,
+        allowedLocation: String,
+        ownerPath: String,
+    ) {
+        if (paths.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: $attributeName is permitted only in " +
+                    "$allowedLocation attributes but found at ${paths.joinToString()}",
+            )
+        }
+    }
 
     private fun requireAtMostOneAttribute(
         paths: List<String>,

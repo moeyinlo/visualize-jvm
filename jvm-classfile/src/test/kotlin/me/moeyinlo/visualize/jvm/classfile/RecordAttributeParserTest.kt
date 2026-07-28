@@ -251,6 +251,48 @@ class RecordAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("at most one"), failure.message)
         assertTrue(failure.message.orEmpty().contains("found 2"), failure.message)
     }
+
+    @Test
+    fun `rejects parameter annotation attributes in record components`() {
+        listOf(
+            "RuntimeVisibleParameterAnnotations",
+            "RuntimeInvisibleParameterAnnotations",
+        ).forEach { attributeName ->
+            val constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Record", byteArrayOf()),
+                    ConstantUtf8Entry("value", byteArrayOf()),
+                    ConstantUtf8Entry("I", byteArrayOf()),
+                    ConstantUtf8Entry(attributeName, byteArrayOf()),
+                ),
+            )
+
+            val failure = assertFailsWith<ClassFileFormatException> {
+                AttributeInfoParser.parseAttributes(
+                    reader = ClassFileByteReader(
+                        byteArrayOf(
+                            0, 1,
+                            0, 1,
+                            0, 0, 0, 14,
+                            0, 1,
+                            0, 2, 0, 3,
+                            0, 1,
+                            0, 4, 0, 0, 0, 0,
+                        ),
+                        source = "bad-record-parameter-annotations.class",
+                    ),
+                    constantPool = constantPool,
+                    registry = AttributeParserRegistry.of("Record" to RecordAttributeParser),
+                    ownerPath = "ClassFile",
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains("components[0]"), failure.message)
+            assertTrue(failure.message.orEmpty().contains(attributeName), failure.message)
+            assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+        }
+    }
+
     @Test
     fun `rejects component name index that is not UTF-8`() {
         val constantPool = ConstantPool.fromEntries(
