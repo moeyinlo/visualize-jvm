@@ -32,7 +32,8 @@ object LocalVariableTypeTableAttributeParser : AttributeBodyParser {
         val startPc = context.reader.readU2()
         val length = context.reader.readU2()
         val nameIndex = RawAttributeInfoParser.readNonZeroConstantPoolIndex(context.reader, "$ownerPath.name_index")
-        expectUtf8(context, "$ownerPath.name_index", nameIndex)
+        val name = expectUtf8(context, "$ownerPath.name_index", nameIndex)
+        ClassNameValidator.validateUnqualifiedName(nameIndex, "$ownerPath.name_index", name.value)
         val signatureIndex = RawAttributeInfoParser.readNonZeroConstantPoolIndex(
             context.reader,
             "$ownerPath.signature_index",

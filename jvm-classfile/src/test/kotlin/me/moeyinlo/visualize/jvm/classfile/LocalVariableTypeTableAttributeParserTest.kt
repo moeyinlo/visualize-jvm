@@ -62,6 +62,32 @@ class LocalVariableTypeTableAttributeParserTest {
     }
 
     @Test
+    fun `rejects LocalVariableTypeTable names that are not unqualified names`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LocalVariableTypeTable", byteArrayOf()),
+                ConstantUtf8Entry("bad/name", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/util/List<Ljava/lang/String;>;", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 12, 0, 1, 0, 0, 0, 7, 0, 2, 0, 3, 0, 2),
+                    source = "bad-local-variable-type-table-name.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("LocalVariableTypeTable" to LocalVariableTypeTableAttributeParser),
+                ownerPath = "methods[0].attributes[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
     fun `rejects LocalVariableTypeTable signatures that are not field signatures`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
