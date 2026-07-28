@@ -193,6 +193,7 @@ object MethodInfoParser {
         val annotationDefaultPaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
         val sourceFilePaths = mutableListOf<String>()
+        val sourceDebugExtensionPaths = mutableListOf<String>()
         method.attributes.forEachIndexed { attributeIndex, attribute ->
             val name = expectUtf8(
                 constantPool = constantPool,
@@ -212,10 +213,12 @@ object MethodInfoParser {
                 "AnnotationDefault" -> annotationDefaultPaths += "$ownerPath.attributes[$attributeIndex]"
                 "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$attributeIndex]"
                 "SourceFile" -> sourceFilePaths += "$ownerPath.attributes[$attributeIndex]"
+                "SourceDebugExtension" -> sourceDebugExtensionPaths += "$ownerPath.attributes[$attributeIndex]"
             }
         }
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", ownerPath)
         requireAbsentAttribute(sourceFilePaths, "SourceFile", "ClassFile", ownerPath)
+        requireAbsentAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", "ClassFile", ownerPath)
         requireAtMostOneAttribute(exceptionsPaths, "Exceptions", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
