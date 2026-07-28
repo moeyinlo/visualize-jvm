@@ -1850,10 +1850,12 @@ private object CodeInstructionValidator {
                 }
                 val nameAndTypeIndex = when (reference) {
                     is ConstantMethodRefEntry -> {
+                        validateMethodReferenceClass(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
                         validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
                         reference.nameAndTypeIndex
                     }
                     is ConstantInterfaceMethodRefEntry -> {
+                        validateMethodReferenceClass(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
                         validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
                         reference.nameAndTypeIndex
                     }
