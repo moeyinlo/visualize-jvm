@@ -107,7 +107,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.4.5 | Long and double constants | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.6 | `CONSTANT_NameAndType_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.7 | `CONSTANT_Utf8_info` modified UTF-8 | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
-| 4.4.8 | `CONSTANT_MethodHandle_info` parses reference kinds, validates reference kind target entry types, and rejects `REF_newInvokeSpecial` targets that do not name `<init>` | `jvm-classfile` | `ConstantPoolEntryParserTest`, `ConstantPoolReferenceValidationTest.rejects new invoke special method handles that do not target instance initialization methods` | IMPLEMENTED |
+| 4.4.8 | `CONSTANT_MethodHandle_info` parses reference kinds, validates reference kind target entry types, rejects `REF_newInvokeSpecial` targets that do not name `<init>`, and rejects ordinary invocation MethodHandle targets that name initialization methods | `jvm-classfile` | `ConstantPoolEntryParserTest`, `ConstantPoolReferenceValidationTest.rejects new invoke special method handles that do not target instance initialization methods`, `ConstantPoolReferenceValidationTest.rejects ordinary invocation method handles that target instance initialization methods` | IMPLEMENTED |
 | 4.4.9 | `CONSTANT_MethodType_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.10 | `CONSTANT_Dynamic_info`, `CONSTANT_InvokeDynamic_info` classfile structures | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.10 | Dynamic constant and invokedynamic runtime resolution | `jvm-runtime` | TBD | PENDING |

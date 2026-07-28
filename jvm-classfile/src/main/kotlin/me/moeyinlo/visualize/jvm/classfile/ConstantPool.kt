@@ -158,45 +158,87 @@ class ConstantPool private constructor(
             MethodHandleReferenceKind.PutStatic,
             -> expect<ConstantFieldRefEntry>(owner, "reference_index", entry.referenceIndex)
 
-            MethodHandleReferenceKind.InvokeVirtual,
-            -> expect<ConstantMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
+            MethodHandleReferenceKind.InvokeVirtual -> validateOrdinaryInvocationMethodHandle(
+                owner = owner,
+                entry = entry,
+                referencedEntry = expect<ConstantMethodRefEntry>(owner, "reference_index", entry.referenceIndex),
+            )
 
             MethodHandleReferenceKind.NewInvokeSpecial -> validateNewInvokeSpecialMethodHandle(owner, entry)
 
             MethodHandleReferenceKind.InvokeStatic,
             MethodHandleReferenceKind.InvokeSpecial,
-            -> expectOneOf(
+            -> validateOrdinaryInvocationMethodHandle(
                 owner = owner,
-                role = "reference_index",
-                index = entry.referenceIndex,
-                expected = "ConstantMethodRefEntry or ConstantInterfaceMethodRefEntry",
-            ) { referenced ->
-                referenced is ConstantMethodRefEntry || referenced is ConstantInterfaceMethodRefEntry
-            }
+                entry = entry,
+                referencedEntry = expectOneOf(
+                    owner = owner,
+                    role = "reference_index",
+                    index = entry.referenceIndex,
+                    expected = "ConstantMethodRefEntry or ConstantInterfaceMethodRefEntry",
+                ) { referenced ->
+                    referenced is ConstantMethodRefEntry || referenced is ConstantInterfaceMethodRefEntry
+                },
+            )
 
-            MethodHandleReferenceKind.InvokeInterface ->
-                expect<ConstantInterfaceMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
+            MethodHandleReferenceKind.InvokeInterface -> validateOrdinaryInvocationMethodHandle(
+                owner = owner,
+                entry = entry,
+                referencedEntry = expect<ConstantInterfaceMethodRefEntry>(owner, "reference_index", entry.referenceIndex),
+            )
         }
     }
 
     private fun validateNewInvokeSpecialMethodHandle(owner: ConstantPoolIndex, entry: ConstantMethodHandleEntry) {
         val methodRef = expect<ConstantMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
-        val nameAndType = expect<ConstantNameAndTypeEntry>(
-            owner = owner,
-            role = "reference_index name_and_type_index",
-            index = methodRef.nameAndTypeIndex,
-        )
-        val name = expect<ConstantUtf8Entry>(
-            owner = methodRef.nameAndTypeIndex,
-            role = "name_index",
-            index = nameAndType.nameIndex,
-        )
+        val name = methodHandleTargetName(owner, entry.referenceKind, entry.referenceIndex, methodRef)
         if (name.value != "<init>") {
             throw ClassFileFormatException(
                 "Invalid constant pool reference from $owner reference_index to ${entry.referenceIndex}: " +
                     "reference_kind NewInvokeSpecial must target <init> but found ${name.value}",
             )
         }
+    }
+
+    private fun validateOrdinaryInvocationMethodHandle(
+        owner: ConstantPoolIndex,
+        entry: ConstantMethodHandleEntry,
+        referencedEntry: ConstantPoolEntry,
+    ) {
+        val name = methodHandleTargetName(owner, entry.referenceKind, entry.referenceIndex, referencedEntry)
+        if (name.value == "<init>" || name.value == "<clinit>") {
+            throw ClassFileFormatException(
+                "Invalid constant pool reference from $owner reference_index to ${entry.referenceIndex}: " +
+                    "reference_kind ${entry.referenceKind} must not target ${name.value}",
+            )
+        }
+    }
+
+    private fun methodHandleTargetName(
+        owner: ConstantPoolIndex,
+        referenceKind: MethodHandleReferenceKind,
+        referenceIndex: ConstantPoolIndex,
+        referencedEntry: ConstantPoolEntry,
+    ): ConstantUtf8Entry {
+        val nameAndTypeIndex = when (referencedEntry) {
+            is ConstantMethodRefEntry -> referencedEntry.nameAndTypeIndex
+            is ConstantInterfaceMethodRefEntry -> referencedEntry.nameAndTypeIndex
+            else -> throw ClassFileFormatException(
+                "Invalid constant pool reference from $owner reference_index to $referenceIndex: " +
+                    "reference_kind $referenceKind expected a method reference but found " +
+                    referencedEntry.javaClass.simpleName,
+            )
+        }
+        val nameAndType = expect<ConstantNameAndTypeEntry>(
+            owner = owner,
+            role = "reference_index name_and_type_index",
+            index = nameAndTypeIndex,
+        )
+        return expect<ConstantUtf8Entry>(
+            owner = nameAndTypeIndex,
+            role = "name_index",
+            index = nameAndType.nameIndex,
+        )
     }
 
     private inline fun <reified T : ConstantPoolEntry> expect(

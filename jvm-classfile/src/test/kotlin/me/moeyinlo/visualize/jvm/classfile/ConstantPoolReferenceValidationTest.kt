@@ -358,6 +358,30 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `rejects ordinary invocation method handles that target instance initialization methods`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("Owner"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("<init>"),
+                utf8("()V"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+                ConstantMethodHandleEntry(MethodHandleReferenceKind.InvokeVirtual, ConstantPoolIndex(6)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#7"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("InvokeVirtual"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("<init>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("must not target"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid method descriptors on method type constants`() {
         val pool = ConstantPool.fromEntries(
             listOf(
