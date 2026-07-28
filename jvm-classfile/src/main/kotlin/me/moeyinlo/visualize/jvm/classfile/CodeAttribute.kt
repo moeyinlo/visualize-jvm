@@ -76,6 +76,8 @@ object CodeAttributeParser : AttributeBodyParser {
         val stackMapTablePaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val runtimeVisibleParameterAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleParameterAnnotationsPaths = mutableListOf<String>()
         val codePaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
         val sourceFilePaths = mutableListOf<String>()
@@ -140,6 +142,8 @@ object CodeAttributeParser : AttributeBodyParser {
                 }
                 "Code" -> codePaths += attributePath
                 "ConstantValue" -> constantValuePaths += attributePath
+                "RuntimeVisibleParameterAnnotations" -> runtimeVisibleParameterAnnotationsPaths += attributePath
+                "RuntimeInvisibleParameterAnnotations" -> runtimeInvisibleParameterAnnotationsPaths += attributePath
                 "SourceFile" -> sourceFilePaths += attributePath
                 "SourceDebugExtension" -> sourceDebugExtensionPaths += attributePath
                 "InnerClasses" -> innerClassesPaths += attributePath
@@ -159,6 +163,8 @@ object CodeAttributeParser : AttributeBodyParser {
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", context.ownerPath)
         requireAbsentAttribute(sourceFilePaths, "SourceFile", "ClassFile", context.ownerPath)
         requireAbsentAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", "ClassFile", context.ownerPath)
+        requireAbsentAttribute(runtimeVisibleParameterAnnotationsPaths, "RuntimeVisibleParameterAnnotations", "method_info", context.ownerPath)
+        requireAbsentAttribute(runtimeInvisibleParameterAnnotationsPaths, "RuntimeInvisibleParameterAnnotations", "method_info", context.ownerPath)
         requireAbsentAttribute(innerClassesPaths, "InnerClasses", "ClassFile", context.ownerPath)
         requireAbsentAttribute(enclosingMethodPaths, "EnclosingMethod", "ClassFile", context.ownerPath)
         requireAbsentAttribute(bootstrapMethodsPaths, "BootstrapMethods", "ClassFile", context.ownerPath)
