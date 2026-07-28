@@ -202,6 +202,7 @@ object MethodInfoParser {
         val moduleMainClassPaths = mutableListOf<String>()
         val nestHostPaths = mutableListOf<String>()
         val nestMembersPaths = mutableListOf<String>()
+        val recordPaths = mutableListOf<String>()
         method.attributes.forEachIndexed { attributeIndex, attribute ->
             val name = expectUtf8(
                 constantPool = constantPool,
@@ -230,6 +231,7 @@ object MethodInfoParser {
                 "ModuleMainClass" -> moduleMainClassPaths += "$ownerPath.attributes[$attributeIndex]"
                 "NestHost" -> nestHostPaths += "$ownerPath.attributes[$attributeIndex]"
                 "NestMembers" -> nestMembersPaths += "$ownerPath.attributes[$attributeIndex]"
+                "Record" -> recordPaths += "$ownerPath.attributes[$attributeIndex]"
             }
         }
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", ownerPath)
@@ -243,6 +245,7 @@ object MethodInfoParser {
         requireAbsentAttribute(moduleMainClassPaths, "ModuleMainClass", "ClassFile", ownerPath)
         requireAbsentAttribute(nestHostPaths, "NestHost", "ClassFile", ownerPath)
         requireAbsentAttribute(nestMembersPaths, "NestMembers", "ClassFile", ownerPath)
+        requireAbsentAttribute(recordPaths, "Record", "ClassFile", ownerPath)
         requireAtMostOneAttribute(exceptionsPaths, "Exceptions", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
