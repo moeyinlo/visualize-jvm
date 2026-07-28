@@ -183,6 +183,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.3 | `Code` writer for header, exception table, and nested attributes | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` classfile structure and all frame variants | `jvm-classfile` | `StackMapTableAttributeParserTest` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` at-most-one `Code` attribute rule | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects duplicate StackMapTable attributes in Code` | IMPLEMENTED |
+| 4.7.4 | `StackMapTable` frame offsets must point to instruction opcodes in the enclosing `Code` array | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects StackMapTable frame offsets that do not point to instruction opcodes` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` `Uninitialized_variable_info.offset` must point to a `new` instruction in the enclosing `Code` array | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects StackMapTable uninitialized variable offsets that do not point to new instructions` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.4 | `StackMapTable` frame expansion into verifier states | `jvm-verifier` | `StackMapFrameExpanderTest` | IMPLEMENTED |

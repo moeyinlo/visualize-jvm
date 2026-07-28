@@ -97,6 +97,7 @@ object CodeAttributeParser : AttributeBodyParser {
             when (name) {
                 "StackMapTable" -> {
                     stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
+                    validateStackMapTableFrameOffsets(attributePath, attribute, instructionLayout)
                     validateStackMapTableUninitializedVariables(attributePath, attribute, instructionLayout, code)
                 }
                 "RuntimeVisibleTypeAnnotations" -> {
@@ -156,6 +157,34 @@ object CodeAttributeParser : AttributeBodyParser {
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
+    }
+
+    private fun validateStackMapTableFrameOffsets(
+        attributePath: String,
+        attribute: AttributeInfo,
+        instructionLayout: CodeInstructionLayout,
+    ) {
+        if (attribute !is StackMapTableAttribute) {
+            return
+        }
+
+        var previousOffset = -1L
+        attribute.entries.forEachIndexed { frameIndex, frame ->
+            val frameOffset = if (previousOffset < 0) {
+                frame.offsetDelta.toLong()
+            } else {
+                previousOffset + frame.offsetDelta.toLong() + 1L
+            }
+            val isInstructionOffset = frameOffset <= Int.MAX_VALUE &&
+                frameOffset.toInt() in instructionLayout.instructionOffsets
+            if (!isInstructionOffset) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.entries[$frameIndex] StackMapTable frame offset=$frameOffset: " +
+                        "must point to the opcode of an instruction",
+                )
+            }
+            previousOffset = frameOffset
+        }
     }
 
     private fun validateStackMapTableUninitializedVariables(

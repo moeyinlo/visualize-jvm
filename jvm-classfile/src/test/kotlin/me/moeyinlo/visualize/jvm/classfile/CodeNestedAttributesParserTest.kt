@@ -266,6 +266,69 @@ class CodeNestedAttributesParserTest {
     }
 
     @Test
+    fun `rejects StackMapTable frame offsets that do not point to instruction opcodes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("StackMapTable", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        24,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        3,
+                        0x10,
+                        0,
+                        0xB1.toByte(),
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        0,
+                        0,
+                        3,
+                        0,
+                        1,
+                        1,
+                    ),
+                    source = "bad-stack-map-frame-offset.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "StackMapTable" to StackMapTableAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        val message = failure.message.orEmpty()
+        assertTrue(message.contains("StackMapTable"), message)
+        assertTrue(message.contains("frame offset=1"), message)
+        assertTrue(message.contains("opcode of an instruction"), message)
+    }
+
+    @Test
     fun `rejects Code type annotation catch target outside exception table`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
