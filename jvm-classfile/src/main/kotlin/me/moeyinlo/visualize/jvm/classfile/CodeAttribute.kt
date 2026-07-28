@@ -1310,12 +1310,18 @@ private object CodeInstructionValidator {
     ) {
         validateMethodReferenceClass(ownerPath, pc, mnemonic, constantPool, index, entry)
         val methodName = methodReferenceName(ownerPath, pc, mnemonic, constantPool, index, entry)
-        validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
+        val descriptor = validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
         if (methodName == "<init>") {
             if (!allowsInstanceInitialization) {
                 throw ClassFileFormatException(
                     "Invalid $ownerPath.code[$pc] $mnemonic method name <init>: " +
                         "instance initialization methods may only be invoked by invokespecial",
+                )
+            }
+            if (descriptor.substringAfterLast(')') != "V") {
+                throw ClassFileFormatException(
+                    "Invalid $ownerPath.code[$pc] $mnemonic method name <init>: " +
+                        "instance initialization descriptors must return void but found $descriptor",
                 )
             }
             return

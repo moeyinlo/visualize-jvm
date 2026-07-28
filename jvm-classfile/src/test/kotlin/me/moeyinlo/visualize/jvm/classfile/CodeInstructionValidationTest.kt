@@ -1513,6 +1513,19 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects invokespecial init method references whose descriptor does not return void`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB7.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = methodReferencePool(memberName = "<init>", descriptor = "()I"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokespecial"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("<init>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("void"), failure.message)
+    }
+    @Test
     fun `accepts invokespecial and invokestatic interface method references in modern classfile versions`() {
         val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
         opcodes.forEach { (opcode, _) ->
