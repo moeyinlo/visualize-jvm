@@ -49,6 +49,31 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `call site resolver rejects non method descriptors`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveSpec(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantInvokeDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                index = ConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals("invokedynamic call site descriptor I is not a method descriptor", exception.message)
+    }
+
+    @Test
     fun `call site resolver links invoke dynamic specs to bootstrap methods by zero based index`() {
         val linkageSpec = JvmInvokeDynamicCallSiteResolver.resolveLinkageSpec(
             constantPool = invokedynamicConstantPool(),

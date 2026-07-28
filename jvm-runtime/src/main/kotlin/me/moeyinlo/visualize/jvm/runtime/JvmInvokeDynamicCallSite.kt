@@ -571,8 +571,59 @@ object JvmInvokeDynamicCallSiteResolver {
             constantPoolIndex = JvmRuntimeConstantPoolIndex(index.value),
             bootstrapMethodIndex = invokeDynamicEntry.bootstrapMethodIndex.value,
             name = nameEntry.value,
-            descriptor = descriptorEntry.value,
+            descriptor = descriptorEntry.value.requireInvokeDynamicMethodDescriptor(),
         )
+    }
+
+    private fun String.requireInvokeDynamicMethodDescriptor(): String {
+        if (isInvokeDynamicMethodDescriptor()) {
+            return this
+        }
+        throw JvmInvokeDynamicLinkageException("invokedynamic call site descriptor $this is not a method descriptor")
+    }
+
+    private fun String.isInvokeDynamicMethodDescriptor(): Boolean {
+        if (!startsWith("(")) {
+            return false
+        }
+        var index = 1
+        while (index < length && this[index] != ')') {
+            index = parseInvokeDynamicFieldDescriptorAt(index) ?: return false
+        }
+        if (index >= length || this[index] != ')') {
+            return false
+        }
+        index += 1
+        if (index >= length) {
+            return false
+        }
+        val returnEnd = if (this[index] == 'V') {
+            index + 1
+        } else {
+            parseInvokeDynamicFieldDescriptorAt(index) ?: return false
+        }
+        return returnEnd == length
+    }
+
+    private fun String.parseInvokeDynamicFieldDescriptorAt(start: Int): Int? {
+        if (start !in indices) {
+            return null
+        }
+        return when (this[start]) {
+            'Z', 'B', 'C', 'S', 'I', 'J', 'F', 'D' -> start + 1
+            'L' -> {
+                val end = indexOf(';', startIndex = start + 1)
+                if (end > start + 1) end + 1 else null
+            }
+            '[' -> {
+                var componentStart = start
+                while (componentStart < length && this[componentStart] == '[') {
+                    componentStart += 1
+                }
+                parseInvokeDynamicFieldDescriptorAt(componentStart)
+            }
+            else -> null
+        }
     }
 
     internal fun resolveBootstrapArgument(
