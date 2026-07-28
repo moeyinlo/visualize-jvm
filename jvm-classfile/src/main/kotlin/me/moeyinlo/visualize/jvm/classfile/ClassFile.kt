@@ -145,6 +145,12 @@ object ClassFileParser {
                         "in ACC_MODULE classfiles",
                 )
             }
+            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantPackageEntry) {
+                throw ClassFileFormatException(
+                    "Invalid constant_pool #$rawIndex source=$source: CONSTANT_Package_info is permitted only " +
+                        "in ACC_MODULE classfiles",
+                )
+            }
         }
     }
     private fun validateClassIdentity(

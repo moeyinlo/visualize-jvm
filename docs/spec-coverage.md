@@ -133,6 +133,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.4.11 | `CONSTANT_Module_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.11 | `CONSTANT_Module_info` entries are rejected from non-`ACC_MODULE` classfiles | `jvm-classfile` | `ClassFileParserTest.rejects module constants in ordinary classfiles` | IMPLEMENTED |
 | 4.4.12 | `CONSTANT_Package_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
+| 4.4.12 | `CONSTANT_Package_info` entries are rejected from non-`ACC_MODULE` classfiles | `jvm-classfile` | `ClassFileParserTest.rejects package constants in ordinary classfiles` | IMPLEMENTED |
 | 4.5 | Fields full validation | `jvm-classfile` | `FieldInfoParserTest` | IMPLEMENTED |
 | 4.5 | `fields_count` and `field_info` raw structure | `jvm-classfile` | `FieldInfoParserTest` | IMPLEMENTED |
 | 4.5 | `fields_count` and empty-attribute `field_info` writer structure | `jvm-classfile` | `MemberInfoWriterTest` | IMPLEMENTED |

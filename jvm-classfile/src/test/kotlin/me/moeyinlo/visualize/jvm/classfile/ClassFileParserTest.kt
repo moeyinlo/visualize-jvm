@@ -317,6 +317,20 @@ class ClassFileParserTest {
         assertTrue(failure.message.orEmpty().contains("#8"), failure.message)
     }
     @Test
+    fun `rejects package constants in ordinary classfiles`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithPackageConstantBytes(),
+                source = "OrdinaryWithPackageConstant.class",
+                attributeParsers = AttributeParserRegistry.of("SourceFile" to SourceFileAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Package"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ACC_MODULE"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("#8"), failure.message)
+    }
+    @Test
     fun `rejects module classfile before Java 9`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -746,6 +760,36 @@ class ClassFileParserTest {
             'T'.code, 'e'.code, 's'.code, 't'.code, '.'.code, 'j'.code, 'a'.code, 'v'.code, 'a'.code,
             1, 0, 6, 'f'.code, 'r'.code, 'i'.code, 'e'.code, 'n'.code, 'd'.code,
             19, 0, 7,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 5,
+            0, 0, 0, 2,
+            0, 6,
+        )
+    private fun classFileWithPackageConstantBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 9,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 10,
+            'S'.code, 'o'.code, 'u'.code, 'r'.code, 'c'.code, 'e'.code, 'F'.code, 'i'.code, 'l'.code, 'e'.code,
+            1, 0, 9,
+            'T'.code, 'e'.code, 's'.code, 't'.code, '.'.code, 'j'.code, 'a'.code, 'v'.code, 'a'.code,
+            1, 0, 3, 'p'.code, 'k'.code, 'g'.code,
+            20, 0, 7,
             0, 0x21,
             0, 2,
             0, 4,
