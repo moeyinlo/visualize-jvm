@@ -11,7 +11,15 @@ data class BootstrapMethodSpecifier(
 )
 
 object BootstrapMethodsAttributeParser : AttributeBodyParser {
+    private const val Java7MajorVersion = 51
+
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java7MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid BootstrapMethods attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java7MajorVersion",
+            )
+        }
         val numBootstrapMethods = context.reader.readU2()
         return BootstrapMethodsAttribute(
             nameIndex = context.nameIndex,

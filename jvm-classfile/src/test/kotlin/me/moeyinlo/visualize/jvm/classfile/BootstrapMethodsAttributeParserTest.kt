@@ -38,6 +38,32 @@ class BootstrapMethodsAttributeParserTest {
     }
 
     @Test
+    fun `rejects BootstrapMethods attributes before Java 7`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("BootstrapMethods", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java6-bootstrap-methods.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("BootstrapMethods" to BootstrapMethodsAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 50,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("BootstrapMethods"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=50"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("51"), failure.message)
+    }
+
+    @Test
     fun `rejects bootstrap method ref that is not a method handle`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
