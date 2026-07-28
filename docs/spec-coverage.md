@@ -429,6 +429,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.29 | `NestMembers` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects NestMembers attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.29 | `NestMembers` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects NestMembers attributes in method attribute tables` | IMPLEMENTED |
 | 4.7.29 | `NestMembers` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects NestMembers attributes in Code` | IMPLEMENTED |
+| 4.7.29 | `NestMembers` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects NestMembers attributes in record components` | IMPLEMENTED |
 | 4.7.29 | `NestMembers` access-control semantics | `jvm-runtime` | TBD | PENDING |
 | 4.7.30 | `Record` classfile structure | `jvm-classfile` | `RecordAttributeParserTest` | IMPLEMENTED |
 | 4.7.30 | `Record` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
