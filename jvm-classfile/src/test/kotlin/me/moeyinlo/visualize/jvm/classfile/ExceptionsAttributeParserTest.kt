@@ -56,4 +56,30 @@ class ExceptionsAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("exception_index_table"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Class"), failure.message)
     }
+
+    @Test
+    fun `rejects Exceptions table entry that names an array type`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Exceptions", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("[Ljava/lang/Exception;", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 4, 0, 1, 0, 2),
+                    source = "bad-exceptions-array.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Exceptions" to ExceptionsAttributeParser),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("exception_index_table"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class type"), failure.message)
+    }
 }

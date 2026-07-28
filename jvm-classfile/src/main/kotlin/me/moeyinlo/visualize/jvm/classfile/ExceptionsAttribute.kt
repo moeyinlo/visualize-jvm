@@ -38,6 +38,30 @@ object ExceptionsAttributeParser : AttributeBodyParser {
                     "expected CONSTANT_Class_info but found ${entry.javaClass.simpleName}",
             )
         }
+        val className = try {
+            context.constantPool[entry.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid ${context.ownerPath}.exception_index_table[$index]=$exceptionIndex " +
+                    "name_index=${entry.nameIndex}: ${exception.message}",
+            )
+        }
+        if (className !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid ${context.ownerPath}.exception_index_table[$index]=$exceptionIndex " +
+                    "name_index=${entry.nameIndex}: expected CONSTANT_Utf8_info but found " +
+                    className.javaClass.simpleName,
+            )
+        }
+        try {
+            ClassNameValidator.validateInternalBinaryName(exceptionIndex, "name_index", className.value)
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid ${context.ownerPath}.exception_index_table[$index]=$exceptionIndex " +
+                    "name_index=${entry.nameIndex}: expected a CONSTANT_Class_info representing a class type; " +
+                    exception.message,
+            )
+        }
         return exceptionIndex
     }
 }
