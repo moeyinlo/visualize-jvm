@@ -682,6 +682,20 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects field access instruction whose field name is not unqualified`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB2.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = fieldReferencePool(memberName = "bad/name"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("getstatic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
     fun `accepts invokevirtual operands that point to method references`() {
         val attribute = parseCodeAttribute(
             code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
@@ -1032,8 +1046,8 @@ class CodeInstructionValidationTest {
             ),
         )
 
-    private fun fieldReferencePool(descriptor: String = "I"): ConstantPool =
-        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry, "value", descriptor))
+    private fun fieldReferencePool(memberName: String = "value", descriptor: String = "I"): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry, memberName, descriptor))
 
     private data class SpecialMethodInvocationCase(
         val mnemonic: String,
