@@ -802,7 +802,13 @@ object JvmInvokeDynamicCallSiteResolver {
                     index = referencedEntry.nameAndTypeIndex,
                     role = "$role name_and_type_index",
                 )
-                if (!nameAndDescriptor.descriptor.isInvokeDynamicFieldDescriptor()) {
+                try {
+                    DescriptorValidator.validateFieldDescriptor(
+                        owner = referencedEntry.nameAndTypeIndex,
+                        role = "$role descriptor",
+                        descriptor = nameAndDescriptor.descriptor,
+                    )
+                } catch (_: ClassFileFormatException) {
                     throw JvmInvokeDynamicLinkageException(
                         "$role descriptor ${nameAndDescriptor.descriptor} is not a field descriptor",
                     )
