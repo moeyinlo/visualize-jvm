@@ -706,7 +706,7 @@ object JvmInvokeDynamicCallSiteResolver {
             is ConstantMethodTypeEntry -> JvmBootstrapArgument.MethodTypeConstant(
                 constantPoolIndex = index,
                 descriptor = utf8Value(constantPool, entry.descriptorIndex, "bootstrap method type descriptor_index")
-                    .requireBootstrapMethodTypeDescriptor(bootstrapKind),
+                    .requireBootstrapMethodTypeDescriptor(bootstrapKind, constantPoolIndex),
             )
             is ConstantStringEntry -> JvmBootstrapArgument.StringConstant(
                 constantPoolIndex = index,
@@ -719,13 +719,22 @@ object JvmInvokeDynamicCallSiteResolver {
         }
     }
 
-    private fun String.requireBootstrapMethodTypeDescriptor(bootstrapKind: String): String {
-        if (isInvokeDynamicMethodDescriptor()) {
+    private fun String.requireBootstrapMethodTypeDescriptor(
+        bootstrapKind: String,
+        owner: ConstantPoolIndex,
+    ): String {
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = owner,
+                role = "$bootstrapKind bootstrap method type descriptor",
+                descriptor = this,
+            )
             return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException(
+                "$bootstrapKind bootstrap method type descriptor $this is not a method descriptor",
+            )
         }
-        throw JvmInvokeDynamicLinkageException(
-            "$bootstrapKind bootstrap method type descriptor $this is not a method descriptor",
-        )
     }
     private fun String.requireBootstrapDynamicArgumentFieldDescriptor(bootstrapKind: String): String {
         if (this in setOf("Z", "B", "C", "S", "I", "J", "F", "D") ||

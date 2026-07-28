@@ -254,6 +254,29 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `bootstrap argument resolver rejects method types with invalid internal class names`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodTypeEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry(
+                            "()Ljava.lang.String;",
+                            "()Ljava.lang.String;".encodeToByteArray(),
+                        ),
+                    ),
+                ),
+                index = JvmRuntimeConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals(
+            "invokedynamic bootstrap method type descriptor ()Ljava.lang.String; is not a method descriptor",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `bootstrap argument resolver rejects method handles with field descriptors`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
