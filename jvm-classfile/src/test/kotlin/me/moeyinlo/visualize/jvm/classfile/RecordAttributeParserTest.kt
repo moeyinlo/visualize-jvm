@@ -361,6 +361,42 @@ class RecordAttributeParserTest {
     }
 
     @Test
+    fun `rejects Synthetic attributes in record components`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Record", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+                ConstantUtf8Entry("Synthetic", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 14,
+                        0, 1,
+                        0, 2, 0, 3,
+                        0, 1,
+                        0, 4, 0, 0, 0, 0,
+                    ),
+                    source = "bad-record-synthetic.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Record" to RecordAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("components[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("Synthetic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile, field_info, or method_info"), failure.message)
+    }
+
+    @Test
     fun `rejects PermittedSubclasses attributes in record components`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

@@ -219,6 +219,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.7 | `EnclosingMethod` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects EnclosingMethod attributes in record components` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.8 | `Synthetic` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
+| 4.7.8 | `Synthetic` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`/`field_info`/`method_info` locations | `jvm-classfile` | `RecordAttributeParserTest.rejects Synthetic attributes in record components` | IMPLEMENTED |
 | 4.7.8 | `Synthetic` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7.9 | `Signature` attribute structure | `jvm-classfile` | `SignatureAttributeParserTest` | IMPLEMENTED |
 | 4.7.9 | `Signature` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
