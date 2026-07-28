@@ -102,6 +102,7 @@ object FieldInfoParser {
         val methodParametersPaths = mutableListOf<String>()
         val modulePaths = mutableListOf<String>()
         val modulePackagesPaths = mutableListOf<String>()
+        val moduleMainClassPaths = mutableListOf<String>()
         field.attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, "$ownerPath.attributes[$index].attribute_name_index")) {
                 "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$index]"
@@ -119,6 +120,7 @@ object FieldInfoParser {
                 "MethodParameters" -> methodParametersPaths += "$ownerPath.attributes[$index]"
                 "Module" -> modulePaths += "$ownerPath.attributes[$index]"
                 "ModulePackages" -> modulePackagesPaths += "$ownerPath.attributes[$index]"
+                "ModuleMainClass" -> moduleMainClassPaths += "$ownerPath.attributes[$index]"
             }
         }
         requireAbsentAttribute(codePaths, "Code", "method_info", ownerPath)
@@ -130,6 +132,7 @@ object FieldInfoParser {
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", ownerPath)
         requireAbsentAttribute(modulePaths, "Module", "ClassFile", ownerPath)
         requireAbsentAttribute(modulePackagesPaths, "ModulePackages", "ClassFile", ownerPath)
+        requireAbsentAttribute(moduleMainClassPaths, "ModuleMainClass", "ClassFile", ownerPath)
         requireAtMostOneAttribute(constantValuePaths, "ConstantValue", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)

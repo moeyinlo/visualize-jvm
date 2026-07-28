@@ -412,6 +412,38 @@ class FieldInfoParserTest {
     }
 
     @Test
+    fun `rejects ModuleMainClass attributes in field attribute tables`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            FieldInfoParser.parseFields(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1, 0, 1, 0, 2, 0, 1,
+                        0, 3, 0, 0, 0, 2,
+                        0, 5,
+                    ),
+                    source = "bad-field-module-main-class.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantUtf8Entry("ModuleMainClass", "ModuleMainClass".encodeToByteArray()),
+                        ConstantUtf8Entry("pkg/Main", "pkg/Main".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(4)),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("ModuleMainClass" to ModuleMainClassAttributeParser),
+                classKind = ClassFileKind.Class,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ModuleMainClass"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("fields[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate field name and descriptor pairs`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             FieldInfoParser.parseFields(
