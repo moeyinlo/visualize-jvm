@@ -739,9 +739,10 @@ object JvmInvokeDynamicCallSiteResolver {
                     referencedEntry.javaClass.simpleName,
             )
         }
-        validateMethodHandleTargetDescriptor(
+        validateMethodHandleTarget(
             constantPool = constantPool,
             referencedEntry = referencedEntry,
+            referenceKind = entry.referenceKind,
             role = "$role index $constantPoolIndex target",
         )
         return JvmMethodHandlePayload(
@@ -750,9 +751,10 @@ object JvmInvokeDynamicCallSiteResolver {
         )
     }
 
-    private fun validateMethodHandleTargetDescriptor(
+    private fun validateMethodHandleTarget(
         constantPool: ConstantPool,
         referencedEntry: ConstantPoolEntry,
+        referenceKind: MethodHandleReferenceKind,
         role: String,
     ) {
         val nameAndTypeIndex = when (referencedEntry) {
@@ -760,13 +762,20 @@ object JvmInvokeDynamicCallSiteResolver {
             is ConstantInterfaceMethodRefEntry -> referencedEntry.nameAndTypeIndex
             else -> return
         }
-        val descriptor = nameAndDescriptor(
+        val nameAndDescriptor = nameAndDescriptor(
             constantPool = constantPool,
             index = nameAndTypeIndex,
             role = "$role name_and_type_index",
-        ).descriptor
-        if (!descriptor.isInvokeDynamicMethodDescriptor()) {
-            throw JvmInvokeDynamicLinkageException("$role descriptor $descriptor is not a method descriptor")
+        )
+        if (!nameAndDescriptor.descriptor.isInvokeDynamicMethodDescriptor()) {
+            throw JvmInvokeDynamicLinkageException(
+                "$role descriptor ${nameAndDescriptor.descriptor} is not a method descriptor",
+            )
+        }
+        if (referenceKind == MethodHandleReferenceKind.NewInvokeSpecial && nameAndDescriptor.name != "<init>") {
+            throw JvmInvokeDynamicLinkageException(
+                "$role reference_kind NewInvokeSpecial must target <init> but found ${nameAndDescriptor.name}",
+            )
         }
     }
 
