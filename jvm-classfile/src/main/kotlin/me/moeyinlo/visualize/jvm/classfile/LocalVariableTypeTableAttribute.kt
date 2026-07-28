@@ -37,7 +37,8 @@ object LocalVariableTypeTableAttributeParser : AttributeBodyParser {
             context.reader,
             "$ownerPath.signature_index",
         )
-        expectUtf8(context, "$ownerPath.signature_index", signatureIndex)
+        val signature = expectUtf8(context, "$ownerPath.signature_index", signatureIndex)
+        SignatureGrammarValidator.validateFieldSignature("$ownerPath.signature_index", signature.value)
         return LocalVariableTypeTableEntry(
             startPc = startPc,
             length = length,
@@ -51,7 +52,7 @@ object LocalVariableTypeTableAttributeParser : AttributeBodyParser {
         context: AttributeParseContext,
         role: String,
         index: ConstantPoolIndex,
-    ) {
+    ): ConstantUtf8Entry {
         val entry = try {
             context.constantPool[index]
         } catch (exception: ConstantPoolFormatException) {
@@ -62,5 +63,6 @@ object LocalVariableTypeTableAttributeParser : AttributeBodyParser {
                 "Invalid $role=$index: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
             )
         }
+        return entry
     }
 }
