@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.runtime
 
 import me.moeyinlo.visualize.jvm.classfile.ClassFileFormatException
+import me.moeyinlo.visualize.jvm.classfile.ClassNameValidator
 import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
@@ -65,7 +66,7 @@ object JvmDynamicConstantResolver {
         return JvmDynamicConstantSpec(
             constantPoolIndex = JvmRuntimeConstantPoolIndex(index.value),
             bootstrapMethodIndex = dynamicEntry.bootstrapMethodIndex.value,
-            name = nameAndDescriptor.name,
+            name = nameAndDescriptor.name.requireDynamicConstantName(index),
             descriptor = nameAndDescriptor.descriptor.requireDynamicConstantFieldDescriptor(index),
         )
     }
@@ -209,6 +210,19 @@ private fun String.dynamicConstantClassMirrorName(): String =
             else -> descriptor
         }
     }
+
+private fun String.requireDynamicConstantName(owner: ConstantPoolIndex): String {
+    try {
+        ClassNameValidator.validateUnqualifiedName(
+            owner = owner,
+            role = "dynamic constant name",
+            value = this,
+        )
+        return this
+    } catch (_: ClassFileFormatException) {
+        throw JvmDynamicConstantLinkageException("dynamic constant name $this is not a valid unqualified name")
+    }
+}
 
 private fun String.requireDynamicConstantFieldDescriptor(owner: ConstantPoolIndex): String {
     try {

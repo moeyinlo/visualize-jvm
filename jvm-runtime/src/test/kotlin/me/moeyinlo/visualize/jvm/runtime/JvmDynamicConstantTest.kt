@@ -364,6 +364,31 @@ class JvmDynamicConstantTest {
     }
 
     @Test
+    fun `dynamic constant resolver rejects invalid unqualified names`() {
+        val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
+            JvmDynamicConstantResolver.resolveSpec(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("bad/name", "bad/name".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                index = ConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals("dynamic constant name bad/name is not a valid unqualified name", exception.message)
+    }
+
+    @Test
     fun `dynamic constant resolver reports malformed name and type references`() {
         val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
             JvmDynamicConstantResolver.resolveSpec(
