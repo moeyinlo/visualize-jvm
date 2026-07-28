@@ -668,6 +668,20 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects field access instruction whose field descriptor is not a field descriptor`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB2.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = fieldReferencePool(descriptor = "()V"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("getstatic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
+
+    @Test
     fun `accepts invokevirtual operands that point to method references`() {
         val attribute = parseCodeAttribute(
             code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
@@ -1018,8 +1032,8 @@ class CodeInstructionValidationTest {
             ),
         )
 
-    private fun fieldReferencePool(): ConstantPool =
-        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry, "value", "I"))
+    private fun fieldReferencePool(descriptor: String = "I"): ConstantPool =
+        ConstantPool.fromEntries(memberReferencePoolEntries(::ConstantFieldRefEntry, "value", descriptor))
 
     private data class SpecialMethodInvocationCase(
         val mnemonic: String,

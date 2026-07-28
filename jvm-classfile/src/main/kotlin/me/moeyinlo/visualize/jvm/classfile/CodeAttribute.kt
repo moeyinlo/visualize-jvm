@@ -1321,6 +1321,59 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_Fieldref but found ${entry.javaClass.simpleName}",
             )
         }
+        validateFieldReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
+    }
+
+    private fun validateFieldReferenceDescriptor(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantFieldRefEntry,
+    ) {
+        val nameAndType = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.nameAndTypeIndex,
+            role = "CONSTANT_Fieldref.name_and_type_index",
+        )
+        if (nameAndType !is ConstantNameAndTypeEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Fieldref.name_and_type_index=${entry.nameAndTypeIndex} " +
+                    "expected CONSTANT_NameAndType but found ${nameAndType.javaClass.simpleName}",
+            )
+        }
+        val descriptor = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.descriptorIndex,
+            role = "CONSTANT_Fieldref.descriptor_index",
+        )
+        if (descriptor !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Fieldref.descriptor_index=${nameAndType.descriptorIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${descriptor.javaClass.simpleName}",
+            )
+        }
+        try {
+            DescriptorValidator.validateFieldDescriptor(
+                owner = nameAndType.descriptorIndex,
+                role = "descriptor_index",
+                descriptor = descriptor.value,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Fieldref.descriptor_index=${nameAndType.descriptorIndex}: ${exception.message}",
+            )
+        }
     }
 
     private fun validateLdcOperand(
