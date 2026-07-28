@@ -1160,6 +1160,14 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_Utf8_info but found ${name.javaClass.simpleName}",
             )
         }
+        try {
+            ClassNameValidator.validateConstantClassName(index, "name_index", name.value)
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic CONSTANT_Class.name_index=${entry.nameIndex}: " +
+                    exception.message,
+            )
+        }
         return name.value
     }
 

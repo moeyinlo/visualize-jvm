@@ -406,6 +406,19 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects class reference instruction operands with invalid class names`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBB.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = constantPoolWithClass("bad.name"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("new"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
     fun `rejects new instructions that reference array classes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
