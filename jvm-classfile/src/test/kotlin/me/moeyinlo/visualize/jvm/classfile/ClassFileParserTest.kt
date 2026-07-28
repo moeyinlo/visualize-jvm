@@ -103,6 +103,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects duplicate interface names through different class indexes`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDuplicateInterfaceNamesBytes(),
+                source = "DuplicateInterfaceNames.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("interfaces[1]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("duplicate"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("interfaces[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("java/lang/Object"), failure.message)
+    }
+
+    @Test
     fun `rejects zero super class on non Object class`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -614,6 +629,35 @@ class ClassFileParserTest {
             0, 2,
             0, 4,
             0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun classFileWithDuplicateInterfaceNamesBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 7,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 5,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 2,
+            0, 4,
+            0, 6,
             0, 0,
             0, 0,
             0, 0,
