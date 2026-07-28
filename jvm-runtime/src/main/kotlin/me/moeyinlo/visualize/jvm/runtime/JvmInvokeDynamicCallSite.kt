@@ -929,14 +929,14 @@ object JvmInvokeDynamicCallSiteResolver {
         role: String,
     ): String {
         try {
-            ClassNameValidator.validateConstantClassName(
+            ClassNameValidator.validateInternalBinaryName(
                 owner = owner,
                 role = "$role owner class name",
                 value = this,
             )
             return this
         } catch (_: ClassFileFormatException) {
-            throw JvmInvokeDynamicLinkageException("$role owner class name $this is not a valid constant class name")
+            throw JvmInvokeDynamicLinkageException("$role owner class name $this is not a valid internal class name")
         }
     }
 

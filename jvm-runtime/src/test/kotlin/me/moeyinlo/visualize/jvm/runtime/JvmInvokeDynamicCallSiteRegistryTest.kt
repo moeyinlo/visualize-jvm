@@ -424,7 +424,7 @@ class JvmInvokeDynamicCallSiteRegistryTest {
         }
 
         assertEquals(
-            "bootstrap method handle argument index #1 target owner class name pkg.Example is not a valid constant class name",
+            "bootstrap method handle argument index #1 target owner class name pkg.Example is not a valid internal class name",
             exception.message,
         )
     }
@@ -1043,7 +1043,41 @@ class JvmInvokeDynamicCallSiteRegistryTest {
         }
 
         assertEquals(
-            "MethodHandle reference index #6 owner class name pkg.Bootstrap is not a valid constant class name",
+            "MethodHandle reference index #6 owner class name pkg.Bootstrap is not a valid internal class name",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `method handle resolver rejects method targets with array owner class names`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("[I", "[I".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                        ConstantUtf8Entry("bootstrap", "bootstrap".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantMethodRefEntry(
+                            classIndex = ConstantPoolIndex(2),
+                            nameAndTypeIndex = ConstantPoolIndex(5),
+                        ),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeVirtual,
+                    referenceIndex = 6,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle reference index #6 owner class name [I is not a valid internal class name",
             exception.message,
         )
     }
@@ -1188,7 +1222,7 @@ class JvmInvokeDynamicCallSiteRegistryTest {
         }
 
         assertEquals(
-            "MethodHandle field reference index #6 owner class name pkg.Arg is not a valid constant class name",
+            "MethodHandle field reference index #6 owner class name pkg.Arg is not a valid internal class name",
             exception.message,
         )
     }
