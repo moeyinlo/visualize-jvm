@@ -302,6 +302,11 @@ object ClassFileParser {
         requireAtMostOneAttribute(enclosingMethodPaths, "EnclosingMethod", source)
         requireAtMostOneAttribute(recordPaths, "Record", source)
         requireAtMostOneAttribute(modulePaths, "Module", source)
+        if (accessFlags.kind == ClassFileKind.Module && modulePaths.isEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: ACC_MODULE classfiles must declare exactly one Module attribute",
+            )
+        }
         requireAtMostOneAttribute(moduleMainClassPaths, "ModuleMainClass", source)
         requireAtMostOneAttribute(signaturePaths, "Signature", source)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", source)
