@@ -692,6 +692,30 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects field access instruction whose fieldref class name is not an internal binary name`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB2.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantFieldRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(5)),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                        ConstantUtf8Entry("bad.name", byteArrayOf()),
+                        ConstantUtf8Entry("value", byteArrayOf()),
+                        ConstantUtf8Entry("I", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("getstatic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("binary name in internal form"), failure.message)
+    }
+
+    @Test
     fun `rejects field access instruction whose field descriptor is not a field descriptor`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
