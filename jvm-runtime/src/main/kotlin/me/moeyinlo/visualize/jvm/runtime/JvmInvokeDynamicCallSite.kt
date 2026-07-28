@@ -533,7 +533,10 @@ object JvmInvokeDynamicCallSiteResolver {
                 owner = entry.nameAndTypeIndex,
                 role = "MethodHandle field reference index $referenceIndex",
             ),
-            descriptor = nameAndDescriptor.descriptor,
+            descriptor = nameAndDescriptor.descriptor.requireMethodHandleFieldDescriptor(
+                owner = entry.nameAndTypeIndex,
+                role = "MethodHandle field reference index $referenceIndex",
+            ),
         )
     }
 
@@ -950,6 +953,22 @@ object JvmInvokeDynamicCallSiteResolver {
             return this
         } catch (_: ClassFileFormatException) {
             throw JvmInvokeDynamicLinkageException("$role field name $this is not a valid unqualified name")
+        }
+    }
+
+    private fun String.requireMethodHandleFieldDescriptor(
+        owner: ConstantPoolIndex,
+        role: String,
+    ): String {
+        try {
+            DescriptorValidator.validateFieldDescriptor(
+                owner = owner,
+                role = "$role descriptor",
+                descriptor = this,
+            )
+            return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException("$role descriptor $this is not a field descriptor")
         }
     }
 

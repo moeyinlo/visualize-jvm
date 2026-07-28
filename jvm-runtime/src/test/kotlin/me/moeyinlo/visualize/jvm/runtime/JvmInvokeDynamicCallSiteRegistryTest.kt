@@ -1160,6 +1160,40 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `method handle resolver rejects field targets with method descriptors`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTarget(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("pkg/Arg", "pkg/Arg".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                        ConstantUtf8Entry("field", "field".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantFieldRefEntry(
+                            classIndex = ConstantPoolIndex(2),
+                            nameAndTypeIndex = ConstantPoolIndex(5),
+                        ),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.GetStatic,
+                    referenceIndex = 6,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle field reference index #6 descriptor ()I is not a field descriptor",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `method handle resolver resolves put static targets through the class hierarchy`() {
         val target = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTarget(
             constantPool = bootstrapInvocationConstantPool(),
