@@ -1357,7 +1357,33 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_Fieldref but found ${entry.javaClass.simpleName}",
             )
         }
+        validateFieldReferenceClass(ownerPath, pc, mnemonic, constantPool, index, entry)
         validateFieldReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
+    }
+
+    private fun validateFieldReferenceClass(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantFieldRefEntry,
+    ) {
+        val ownerClass = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.classIndex,
+            role = "CONSTANT_Fieldref.class_index",
+        )
+        if (ownerClass !is ConstantClassEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Fieldref.class_index=${entry.classIndex} expected CONSTANT_Class_info " +
+                    "but found ${ownerClass.javaClass.simpleName}",
+            )
+        }
     }
 
     private fun validateFieldReferenceDescriptor(

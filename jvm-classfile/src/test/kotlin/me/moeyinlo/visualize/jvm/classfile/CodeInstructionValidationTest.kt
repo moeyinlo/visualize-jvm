@@ -668,6 +668,30 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects field access instruction whose fieldref class index does not point to class`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB2.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantFieldRefEntry(ConstantPoolIndex(5), ConstantPoolIndex(4)),
+                        ConstantUtf8Entry("unused", byteArrayOf()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                        ConstantUtf8Entry("Example", byteArrayOf()),
+                        ConstantUtf8Entry("value", byteArrayOf()),
+                        ConstantUtf8Entry("I", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("getstatic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class_info"), failure.message)
+    }
+
+    @Test
     fun `rejects field access instruction whose field descriptor is not a field descriptor`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
