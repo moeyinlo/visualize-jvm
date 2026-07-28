@@ -195,6 +195,7 @@ object MethodInfoParser {
         val sourceFilePaths = mutableListOf<String>()
         val sourceDebugExtensionPaths = mutableListOf<String>()
         val innerClassesPaths = mutableListOf<String>()
+        val enclosingMethodPaths = mutableListOf<String>()
         method.attributes.forEachIndexed { attributeIndex, attribute ->
             val name = expectUtf8(
                 constantPool = constantPool,
@@ -216,12 +217,14 @@ object MethodInfoParser {
                 "SourceFile" -> sourceFilePaths += "$ownerPath.attributes[$attributeIndex]"
                 "SourceDebugExtension" -> sourceDebugExtensionPaths += "$ownerPath.attributes[$attributeIndex]"
                 "InnerClasses" -> innerClassesPaths += "$ownerPath.attributes[$attributeIndex]"
+                "EnclosingMethod" -> enclosingMethodPaths += "$ownerPath.attributes[$attributeIndex]"
             }
         }
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", ownerPath)
         requireAbsentAttribute(sourceFilePaths, "SourceFile", "ClassFile", ownerPath)
         requireAbsentAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", "ClassFile", ownerPath)
         requireAbsentAttribute(innerClassesPaths, "InnerClasses", "ClassFile", ownerPath)
+        requireAbsentAttribute(enclosingMethodPaths, "EnclosingMethod", "ClassFile", ownerPath)
         requireAtMostOneAttribute(exceptionsPaths, "Exceptions", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)

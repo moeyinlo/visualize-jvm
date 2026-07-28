@@ -413,6 +413,38 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects EnclosingMethod attributes in method attribute tables`() {
+        val enclosingMethodAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 5, 0, 0)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(enclosingMethodAttribute)),
+                    ),
+                    source = "bad-method-enclosing-method.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("EnclosingMethod", "EnclosingMethod".encodeToByteArray()),
+                        ConstantUtf8Entry("pkg/Outer", "pkg/Outer".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(4)),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("EnclosingMethod" to EnclosingMethodAttributeParser),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("EnclosingMethod"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate method Exceptions attributes`() {
         val exceptionsAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
 
