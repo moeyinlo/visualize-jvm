@@ -19,6 +19,8 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.ClassFileFormatException
+import me.moeyinlo.visualize.jvm.classfile.DescriptorValidator
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 
 data class JvmInvokeDynamicCallSiteKey(
@@ -593,15 +595,21 @@ object JvmInvokeDynamicCallSiteResolver {
             constantPoolIndex = JvmRuntimeConstantPoolIndex(index.value),
             bootstrapMethodIndex = invokeDynamicEntry.bootstrapMethodIndex.value,
             name = nameEntry.value,
-            descriptor = descriptorEntry.value.requireInvokeDynamicMethodDescriptor(),
+            descriptor = descriptorEntry.value.requireInvokeDynamicMethodDescriptor(index),
         )
     }
 
-    private fun String.requireInvokeDynamicMethodDescriptor(): String {
-        if (isInvokeDynamicMethodDescriptor()) {
+    private fun String.requireInvokeDynamicMethodDescriptor(owner: ConstantPoolIndex): String {
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = owner,
+                role = "invokedynamic call site descriptor",
+                descriptor = this,
+            )
             return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException("invokedynamic call site descriptor $this is not a method descriptor")
         }
-        throw JvmInvokeDynamicLinkageException("invokedynamic call site descriptor $this is not a method descriptor")
     }
 
     private fun String.isInvokeDynamicMethodDescriptor(): Boolean {
