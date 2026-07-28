@@ -173,6 +173,28 @@ class CodeExceptionTableParserTest {
     }
 
     @Test
+    fun `rejects exception table catch type with invalid class name`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("bad.name", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBF.toByte()),
+                exceptionTable = listOf(ExceptionHandlerBytes(startPc = 0, endPc = 1, handlerPc = 0, catchType = 2)),
+                constantPool = constantPool,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("catch_type"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
     fun `rejects exception table start pc that does not point to an instruction opcode`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
@@ -214,12 +236,12 @@ class CodeExceptionTableParserTest {
     private fun parseCodeAttribute(
         code: ByteArray,
         exceptionTable: List<ExceptionHandlerBytes>,
-    ): AttributeInfo {
-        val constantPool = ConstantPool.fromEntries(
+        constantPool: ConstantPool = ConstantPool.fromEntries(
             listOf(
                 ConstantUtf8Entry("Code", byteArrayOf()),
             ),
-        )
+        ),
+    ): AttributeInfo {
         return AttributeInfoParser.parseAttributes(
             reader = ClassFileByteReader(
                 codeAttributeBytes(code, exceptionTable),

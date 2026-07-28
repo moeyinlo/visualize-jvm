@@ -331,6 +331,26 @@ object CodeAttributeParser : AttributeBodyParser {
                     "but found ${entry.javaClass.simpleName}",
             )
         }
+        val name = try {
+            context.constantPool[entry.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.catch_type=$index name_index=${entry.nameIndex}: ${exception.message}",
+            )
+        }
+        if (name !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.catch_type=$index name_index=${entry.nameIndex}: " +
+                    "expected CONSTANT_Utf8_info but found ${name.javaClass.simpleName}",
+            )
+        }
+        try {
+            ClassNameValidator.validateInternalBinaryName(index, "name_index", name.value)
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.catch_type=$index name_index=${entry.nameIndex}: ${exception.message}",
+            )
+        }
         return index
     }
 }
