@@ -425,6 +425,40 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects RuntimeVisibleParameterAnnotations attributes in ClassFile attribute table`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithClassLevelSingleByteAttributeBytes("RuntimeVisibleParameterAnnotations"),
+                source = "ClassLevelRuntimeVisibleParameterAnnotations.class",
+                attributeParsers = AttributeParserRegistry.of(
+                    "RuntimeVisibleParameterAnnotations" to RuntimeVisibleParameterAnnotationsAttributeParser,
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeVisibleParameterAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+    }
+
+    @Test
+    fun `rejects RuntimeInvisibleParameterAnnotations attributes in ClassFile attribute table`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithClassLevelSingleByteAttributeBytes("RuntimeInvisibleParameterAnnotations"),
+                source = "ClassLevelRuntimeInvisibleParameterAnnotations.class",
+                attributeParsers = AttributeParserRegistry.of(
+                    "RuntimeInvisibleParameterAnnotations" to RuntimeInvisibleParameterAnnotationsAttributeParser,
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeInvisibleParameterAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+    }
+
+    @Test
     fun `rejects ClassFile with duplicate SourceFile attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -1426,6 +1460,52 @@ class ClassFileParserTest {
             0, 0, 0, 1,
             0,
         )
+
+    private fun classFileWithClassLevelSingleByteAttributeBytes(attributeName: String): ByteArray {
+        val values = mutableListOf<Int>()
+        fun u1(value: Int) {
+            values += value
+        }
+        fun u2(value: Int) {
+            values += (value ushr 8) and 0xFF
+            values += value and 0xFF
+        }
+        fun u4(value: Int) {
+            values += (value ushr 24) and 0xFF
+            values += (value ushr 16) and 0xFF
+            values += (value ushr 8) and 0xFF
+            values += value and 0xFF
+        }
+        fun utf8(value: String) {
+            val bytes = value.encodeToByteArray()
+            u1(1)
+            u2(bytes.size)
+            bytes.forEach { byte -> u1(byte.toInt() and 0xFF) }
+        }
+
+        u4(0xCAFEBABE.toInt())
+        u2(0)
+        u2(70)
+        u2(6)
+        utf8("Test")
+        u1(7)
+        u2(1)
+        utf8("java/lang/Object")
+        u1(7)
+        u2(3)
+        utf8(attributeName)
+        u2(0x0021)
+        u2(2)
+        u2(4)
+        u2(0)
+        u2(0)
+        u2(0)
+        u2(1)
+        u2(5)
+        u4(1)
+        u1(0)
+        return values.map { it.toByte() }.toByteArray()
+    }
 
     private fun classFileWithDuplicateSourceDebugExtensionBytes(): ByteArray =
         bytes(

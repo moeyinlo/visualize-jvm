@@ -390,6 +390,8 @@ object ClassFileParser {
         val codePaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
+        val runtimeVisibleParameterAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleParameterAnnotationsPaths = mutableListOf<String>()
         val disallowedModuleAttributePaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(attribute, constantPool, source, index)
@@ -421,6 +423,8 @@ object ClassFileParser {
                 "Code" -> codePaths += "ClassFile.attributes[$index]"
                 "ConstantValue" -> constantValuePaths += "ClassFile.attributes[$index]"
                 "MethodParameters" -> methodParametersPaths += "ClassFile.attributes[$index]"
+                "RuntimeVisibleParameterAnnotations" -> runtimeVisibleParameterAnnotationsPaths += "ClassFile.attributes[$index]"
+                "RuntimeInvisibleParameterAnnotations" -> runtimeInvisibleParameterAnnotationsPaths += "ClassFile.attributes[$index]"
             }
         }
         if (disallowedModuleAttributePaths.isNotEmpty()) {
@@ -432,6 +436,8 @@ object ClassFileParser {
         requireAbsentAttribute(codePaths, "Code", "method_info", source)
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", source)
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", source)
+        requireAbsentAttribute(runtimeVisibleParameterAnnotationsPaths, "RuntimeVisibleParameterAnnotations", "method_info", source)
+        requireAbsentAttribute(runtimeInvisibleParameterAnnotationsPaths, "RuntimeInvisibleParameterAnnotations", "method_info", source)
         requireAtMostOneAttribute(nestHostPaths, "NestHost", source)
         requireAtMostOneAttribute(nestMembersPaths, "NestMembers", source)
         requireAtMostOneAttribute(permittedSubclassesPaths, "PermittedSubclasses", source)
