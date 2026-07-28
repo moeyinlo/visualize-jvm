@@ -739,10 +739,35 @@ object JvmInvokeDynamicCallSiteResolver {
                     referencedEntry.javaClass.simpleName,
             )
         }
+        validateMethodHandleTargetDescriptor(
+            constantPool = constantPool,
+            referencedEntry = referencedEntry,
+            role = "$role index $constantPoolIndex target",
+        )
         return JvmMethodHandlePayload(
             referenceKind = entry.referenceKind.toRuntimeReferenceKind(),
             referenceIndex = entry.referenceIndex.value,
         )
+    }
+
+    private fun validateMethodHandleTargetDescriptor(
+        constantPool: ConstantPool,
+        referencedEntry: ConstantPoolEntry,
+        role: String,
+    ) {
+        val nameAndTypeIndex = when (referencedEntry) {
+            is ConstantMethodRefEntry -> referencedEntry.nameAndTypeIndex
+            is ConstantInterfaceMethodRefEntry -> referencedEntry.nameAndTypeIndex
+            else -> return
+        }
+        val descriptor = nameAndDescriptor(
+            constantPool = constantPool,
+            index = nameAndTypeIndex,
+            role = "$role name_and_type_index",
+        ).descriptor
+        if (!descriptor.isInvokeDynamicMethodDescriptor()) {
+            throw JvmInvokeDynamicLinkageException("$role descriptor $descriptor is not a method descriptor")
+        }
     }
 
     private data class MethodReference(
