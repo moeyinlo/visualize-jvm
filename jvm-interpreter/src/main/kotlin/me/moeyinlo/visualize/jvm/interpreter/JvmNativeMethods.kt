@@ -99,8 +99,19 @@ class JvmUnsafeSyntheticMemory(
             return 0L
         }
         val address = nextNativeAddress
+        if (bytes > Long.MAX_VALUE - address) {
+            throw JvmUnsupportedInstructionException(
+                "native memory allocation size $bytes exceeds synthetic address space",
+            )
+        }
+        val alignedBytes = bytes.alignNativeMemoryAllocation()
+        if (alignedBytes > Long.MAX_VALUE - address) {
+            throw JvmUnsupportedInstructionException(
+                "native memory allocation size $bytes exceeds synthetic address space",
+            )
+        }
         nativeMemoryBlocks[address] = bytes
-        nextNativeAddress += bytes.alignNativeMemoryAllocation()
+        nextNativeAddress += alignedBytes
         return address
     }
 

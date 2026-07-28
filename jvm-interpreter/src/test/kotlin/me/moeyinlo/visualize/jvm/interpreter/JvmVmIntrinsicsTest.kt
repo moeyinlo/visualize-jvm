@@ -4396,6 +4396,31 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe allocateMemory0 intrinsic rejects synthetic native address space overflow`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeAllocateMemory0Method())
+            ?: error("Unsafe.allocateMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(Long.MAX_VALUE))))
+        }
+        val valid = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(8L))))
+            as JvmLongValue
+
+        assertEquals("native memory allocation size 9223372036854775807 exceeds synthetic address space", exception.message)
+        assertEquals(8L, memory.nativeMemoryBlockSize(valid.value))
+    }
+
+    @Test
     fun `Unsafe freeMemory0 intrinsic releases synthetic native addresses`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
