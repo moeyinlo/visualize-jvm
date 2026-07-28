@@ -1236,6 +1236,7 @@ private object CodeInstructionValidator {
         entry: ConstantMemberRefEntry,
         allowsInstanceInitialization: Boolean,
     ) {
+        validateMethodReferenceClass(ownerPath, pc, mnemonic, constantPool, index, entry)
         val methodName = methodReferenceName(ownerPath, pc, mnemonic, constantPool, index, entry)
         validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
         if (methodName == "<init>") {
@@ -1332,6 +1333,36 @@ private object CodeInstructionValidator {
             throw ClassFileFormatException(
                 "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
                     "method name_index=$nameIndex: ${exception.message}",
+            )
+        }
+    }
+
+    private fun validateMethodReferenceClass(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantMemberRefEntry,
+    ) {
+        val constantKind = when (entry) {
+            is ConstantMethodRefEntry -> "CONSTANT_Methodref"
+            is ConstantInterfaceMethodRefEntry -> "CONSTANT_InterfaceMethodref"
+            is ConstantFieldRefEntry -> "CONSTANT_Fieldref"
+        }
+        val ownerClass = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.classIndex,
+            role = "$constantKind.class_index",
+        )
+        if (ownerClass !is ConstantClassEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.class_index=${entry.classIndex} expected CONSTANT_Class_info " +
+                    "but found ${ownerClass.javaClass.simpleName}",
             )
         }
     }

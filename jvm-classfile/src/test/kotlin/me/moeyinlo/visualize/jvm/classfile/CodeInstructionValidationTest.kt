@@ -743,6 +743,30 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects invokevirtual operand whose methodref class index does not point to class`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantMethodRefEntry(ConstantPoolIndex(5), ConstantPoolIndex(4)),
+                        ConstantUtf8Entry("unused", byteArrayOf()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                        ConstantUtf8Entry("Example", byteArrayOf()),
+                        ConstantUtf8Entry("run", byteArrayOf()),
+                        ConstantUtf8Entry("()V", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokevirtual"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class_info"), failure.message)
+    }
+
+    @Test
     fun `rejects invokevirtual operand whose method descriptor is not a method descriptor`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
