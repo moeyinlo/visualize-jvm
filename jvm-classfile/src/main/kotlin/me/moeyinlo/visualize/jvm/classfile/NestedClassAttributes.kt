@@ -40,6 +40,12 @@ object InnerClassesAttributeParser : AttributeBodyParser {
         )
         validateClassOrInterfaceInfo(context, "$ownerPath.inner_class_info_index", innerClassInfoIndex)
         val outerClassInfoIndex = readOptionalClassIndex(context, "$ownerPath.outer_class_info_index")
+        if (outerClassInfoIndex == innerClassInfoIndex) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.outer_class_info_index=$outerClassInfoIndex: " +
+                    "must not equal inner_class_info_index=$innerClassInfoIndex",
+            )
+        }
         val innerNameIndex = readOptionalUtf8Index(context, "$ownerPath.inner_name_index")
         return InnerClassEntry(
             innerClassInfoIndex = innerClassInfoIndex,
