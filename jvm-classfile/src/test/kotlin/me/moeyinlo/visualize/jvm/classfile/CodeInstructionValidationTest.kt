@@ -642,6 +642,30 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc method handle interface references whose interface methodref class index does not point to class`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantMethodHandleEntry(MethodHandleReferenceKind.InvokeInterface, ConstantPoolIndex(3)),
+                        ConstantInterfaceMethodRefEntry(ConstantPoolIndex(5), ConstantPoolIndex(4)),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                        ConstantUtf8Entry("Example", byteArrayOf()),
+                        ConstantUtf8Entry("run", byteArrayOf()),
+                        ConstantUtf8Entry("()V", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class_info"), failure.message)
+    }
+
+    @Test
     fun `rejects ldc method handle new invokespecial references whose descriptor is not a method descriptor`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
