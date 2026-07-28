@@ -361,6 +361,42 @@ class RecordAttributeParserTest {
     }
 
     @Test
+    fun `rejects SourceDebugExtension attributes in record components`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Record", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+                ConstantUtf8Entry("SourceDebugExtension", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 14,
+                        0, 1,
+                        0, 2, 0, 3,
+                        0, 1,
+                        0, 4, 0, 0, 0, 0,
+                    ),
+                    source = "bad-record-source-debug-extension.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Record" to RecordAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("components[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("SourceDebugExtension"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects SourceFile attributes in record components`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
