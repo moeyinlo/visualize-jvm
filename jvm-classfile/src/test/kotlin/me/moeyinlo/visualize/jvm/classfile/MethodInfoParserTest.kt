@@ -670,6 +670,40 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects PermittedSubclasses attributes in method attribute tables`() {
+        val permittedSubclassesAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(permittedSubclassesAttribute)),
+                    ),
+                    source = "bad-method-permitted-subclasses.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("PermittedSubclasses", "PermittedSubclasses".encodeToByteArray()),
+                        ConstantUtf8Entry("pkg/Child", "pkg/Child".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(4)),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "PermittedSubclasses" to PermittedSubclassesAttributeParser,
+                ),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("PermittedSubclasses"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate method Exceptions attributes`() {
         val exceptionsAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
 

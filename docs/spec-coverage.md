@@ -364,6 +364,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.31 | `PermittedSubclasses` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` disallowed on `ACC_FINAL` classes | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects PermittedSubclasses attributes in field attribute tables` | IMPLEMENTED |
+| 4.7.31 | `PermittedSubclasses` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects PermittedSubclasses attributes in method attribute tables` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` loading constraints | `jvm-runtime` | TBD | PENDING |
 | 4.8 | Format checking | `jvm-classfile` | TBD | PENDING |
 | 4.8 | Parser diagnostics carry source path and byte offset for attribute bodies | `jvm-classfile` | `AttributeParserRegistryTest`, `CodeNestedAttributesParserTest`, `ClassFileByteReaderTest` | IMPLEMENTED |
