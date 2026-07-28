@@ -8,6 +8,12 @@ data class SignatureAttribute(
 
 object SignatureAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java5MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid Signature attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java5MajorVersion",
+            )
+        }
         if (context.length != 2) {
             throw ClassFileFormatException(
                 "Invalid Signature attribute_length=${context.length} at ${context.ownerPath}: expected 2",
@@ -38,3 +44,5 @@ object SignatureAttributeParser : AttributeBodyParser {
         )
     }
 }
+
+private const val Java5MajorVersion = 49

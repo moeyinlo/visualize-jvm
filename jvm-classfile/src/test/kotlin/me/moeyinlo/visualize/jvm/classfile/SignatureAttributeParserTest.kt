@@ -32,6 +32,33 @@ class SignatureAttributeParserTest {
     }
 
     @Test
+    fun `rejects Signature attributes before Java 5`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Signature", byteArrayOf()),
+                ConstantUtf8Entry("Ljava/lang/String;", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 2),
+                    source = "java4-signature.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Signature" to SignatureAttributeParser),
+                ownerPath = "fields[0]",
+                majorVersion = 48,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Signature"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=48"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("49"), failure.message)
+    }
+
+    @Test
     fun `rejects Signature index that is not UTF-8`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

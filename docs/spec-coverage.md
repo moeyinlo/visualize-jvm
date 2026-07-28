@@ -266,6 +266,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.8 | `Synthetic` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`/`field_info`/`method_info` locations | `jvm-classfile` | `RecordAttributeParserTest.rejects Synthetic attributes in record components` | IMPLEMENTED |
 | 4.7.8 | `Synthetic` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7.9 | `Signature` attribute structure | `jvm-classfile` | `SignatureAttributeParserTest` | IMPLEMENTED |
+| 4.7.9, 4.7-C | `Signature` attributes are permitted only in class file major version 49.0 or later | `jvm-classfile` | `SignatureAttributeParserTest.rejects Signature attributes before Java 5` | IMPLEMENTED |
 | 4.7.9 | `Signature` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.9 | `Signature` at-most-one `ClassFile` attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.9 | `Signature` at-most-one `field_info` attribute rule | `jvm-classfile` | `FieldInfoParserTest.rejects duplicate field Signature attributes` | IMPLEMENTED |
