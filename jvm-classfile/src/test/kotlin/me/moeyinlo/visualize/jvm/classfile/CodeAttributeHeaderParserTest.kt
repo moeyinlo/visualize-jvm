@@ -508,6 +508,55 @@ class CodeAttributeHeaderParserTest {
     }
 
     @Test
+    fun `rejects Module attributes in Code`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("Module", byteArrayOf()),
+                ConstantUtf8Entry("test.module", byteArrayOf()),
+                ConstantModuleEntry(ConstantPoolIndex(3)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 35,
+                        0, 0,
+                        0, 0,
+                        0, 0, 0, 1,
+                        0xB1.toByte(),
+                        0, 0,
+                        0, 1,
+                        0, 2,
+                        0, 0, 0, 16,
+                        0, 4, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "code-module.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "Module" to ModuleAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Module"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0].attributes[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate RuntimeVisibleTypeAnnotations attributes in Code`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

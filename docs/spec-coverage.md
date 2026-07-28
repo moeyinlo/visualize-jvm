@@ -320,6 +320,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.25 | `Module` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.25 | `Module` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects Module attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.25 | `Module` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects Module attributes in method attribute tables` | IMPLEMENTED |
+| 4.7.25 | `Module` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects Module attributes in Code` | IMPLEMENTED |
 | 4.7.25 | `Module` uniqueness and module relationship constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 4.7.26 | `ModulePackages` classfile structure | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
