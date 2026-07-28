@@ -667,6 +667,31 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc method handle new invokespecial references whose descriptor does not return void`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantMethodHandleEntry(MethodHandleReferenceKind.NewInvokeSpecial, ConstantPoolIndex(3)),
+                        ConstantMethodRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+                        ConstantClassEntry(ConstantPoolIndex(5)),
+                        ConstantUtf8Entry("Example", byteArrayOf()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(7), ConstantPoolIndex(8)),
+                        ConstantUtf8Entry("<init>", byteArrayOf()),
+                        ConstantUtf8Entry("()I", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("NewInvokeSpecial"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("void"), failure.message)
+    }
+
+    @Test
     fun `rejects ldc method handle new invokespecial references whose target is not init`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(

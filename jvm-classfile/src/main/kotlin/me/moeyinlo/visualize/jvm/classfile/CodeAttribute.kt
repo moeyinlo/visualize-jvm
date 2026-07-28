@@ -1631,7 +1631,7 @@ private object CodeInstructionValidator {
         constantPool: ConstantPool,
         index: ConstantPoolIndex,
         entry: ConstantMemberRefEntry,
-    ) {
+    ): String {
         val constantKind = when (entry) {
             is ConstantMethodRefEntry -> "CONSTANT_Methodref"
             is ConstantInterfaceMethodRefEntry -> "CONSTANT_InterfaceMethodref"
@@ -1679,6 +1679,7 @@ private object CodeInstructionValidator {
                     "$constantKind.descriptor_index=${nameAndType.descriptorIndex}: ${exception.message}",
             )
         }
+        return descriptor.value
     }
 
     private fun validateLdcOperand(
@@ -1913,7 +1914,20 @@ private object CodeInstructionValidator {
                             "expected CONSTANT_Methodref but found ${reference.javaClass.simpleName}",
                     )
                 }
-                validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
+                val descriptor = validateMethodReferenceDescriptor(
+                    ownerPath,
+                    pc,
+                    mnemonic,
+                    constantPool,
+                    entry.referenceIndex,
+                    reference,
+                )
+                if (!descriptor.endsWith("V")) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                            "reference_kind NewInvokeSpecial descriptor $descriptor must return void",
+                    )
+                }
                 val nameAndType = loadConstantPoolEntry(
                     ownerPath = ownerPath,
                     pc = pc,
