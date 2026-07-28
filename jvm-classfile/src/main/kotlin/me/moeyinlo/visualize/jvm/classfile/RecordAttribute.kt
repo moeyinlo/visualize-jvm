@@ -63,6 +63,7 @@ object RecordAttributeParser : AttributeBodyParser {
         val sourceDebugExtensionPaths = mutableListOf<String>()
         val innerClassesPaths = mutableListOf<String>()
         val enclosingMethodPaths = mutableListOf<String>()
+        val modulePaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
@@ -85,6 +86,7 @@ object RecordAttributeParser : AttributeBodyParser {
                 "SourceDebugExtension" -> sourceDebugExtensionPaths += "$ownerPath.attributes[$index]"
                 "InnerClasses" -> innerClassesPaths += "$ownerPath.attributes[$index]"
                 "EnclosingMethod" -> enclosingMethodPaths += "$ownerPath.attributes[$index]"
+                "Module" -> modulePaths += "$ownerPath.attributes[$index]"
                 "MethodParameters" -> methodParametersPaths += "$ownerPath.attributes[$index]"
             }
         }
@@ -97,6 +99,7 @@ object RecordAttributeParser : AttributeBodyParser {
         requireAbsentAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", "ClassFile", ownerPath)
         requireAbsentAttribute(innerClassesPaths, "InnerClasses", "ClassFile", ownerPath)
         requireAbsentAttribute(enclosingMethodPaths, "EnclosingMethod", "ClassFile", ownerPath)
+        requireAbsentAttribute(modulePaths, "Module", "ClassFile", ownerPath)
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", ownerPath)
         requireAbsentAttribute(
             runtimeVisibleParameterAnnotationsPaths,
