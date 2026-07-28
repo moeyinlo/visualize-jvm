@@ -134,11 +134,18 @@ object RuntimeInvisibleParameterAnnotationsAttributeParser : AttributeBodyParser
 }
 
 object AnnotationDefaultAttributeParser : AttributeBodyParser {
-    override fun parse(context: AttributeParseContext): AttributeInfo =
-        AnnotationDefaultAttribute(
+    override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java5MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid AnnotationDefault attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java5MajorVersion",
+            )
+        }
+        return AnnotationDefaultAttribute(
             nameIndex = context.nameIndex,
             defaultValue = AnnotationParser.parseElementValue(context, "${context.ownerPath}.default_value"),
         )
+    }
 }
 
 internal object AnnotationParser {

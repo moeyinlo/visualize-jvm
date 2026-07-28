@@ -379,6 +379,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` at-most-one `Code` attribute rule | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects duplicate RuntimeInvisibleTypeAnnotations attributes in Code` | IMPLEMENTED |
 | 4.7.21 | `RuntimeInvisibleTypeAnnotations` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.22 | `AnnotationDefault` | `jvm-classfile` | `AnnotationDefaultAttributeParserTest` | IMPLEMENTED |
+| 4.7.22, 4.7-C | `AnnotationDefault` attributes are permitted only in class file major version 49.0 or later | `jvm-classfile` | `AnnotationDefaultAttributeParserTest.rejects AnnotationDefault attributes before Java 5` | IMPLEMENTED |
 | 4.7.22 | `AnnotationDefault` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method AnnotationDefault attributes` | IMPLEMENTED |
 | 4.7.22 | `AnnotationDefault` is rejected from `record_component_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects AnnotationDefault attributes in record components` | IMPLEMENTED |
 | 4.7.22 | `AnnotationDefault` is limited to methods of annotation interfaces as a necessary classfile-level condition for annotation interface elements | `jvm-classfile` | `MethodInfoParserTest.rejects AnnotationDefault attributes on non annotation interface methods` | IMPLEMENTED |
