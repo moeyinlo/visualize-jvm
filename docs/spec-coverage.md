@@ -135,6 +135,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.4.10 | `CONSTANT_InvokeDynamic_info` entries require class file major version 51.0 or later | `jvm-classfile` | `ClassFileParserTest.rejects invokedynamic constants before Java 7` | IMPLEMENTED |
 | 4.4.10 | Dynamic constant and invokedynamic runtime resolution | `jvm-runtime` | TBD | PENDING |
 | 4.4.11 | `CONSTANT_Module_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
+| 4.4.11 | `CONSTANT_Module_info` entries require class file major version 53.0 or later | `jvm-classfile` | `ClassFileParserTest.rejects module constants before Java 9` | IMPLEMENTED |
 | 4.4.11 | `CONSTANT_Module_info` entries are rejected from non-`ACC_MODULE` classfiles | `jvm-classfile` | `ClassFileParserTest.rejects module constants in ordinary classfiles` | IMPLEMENTED |
 | 4.4.12 | `CONSTANT_Package_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.12 | `CONSTANT_Package_info` entries are rejected from non-`ACC_MODULE` classfiles | `jvm-classfile` | `ClassFileParserTest.rejects package constants in ordinary classfiles` | IMPLEMENTED |

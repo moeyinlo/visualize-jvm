@@ -137,6 +137,12 @@ object ClassFileParser {
     ) {
         for (rawIndex in 1 until constantPool.constantPoolCount) {
             val slot = constantPool.slotAt(ConstantPoolIndex(rawIndex))
+            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantModuleEntry && version.major < 53) {
+                throw ClassFileFormatException(
+                    "Invalid constant_pool #$rawIndex source=$source: CONSTANT_Module_info requires " +
+                        "major_version >= 53 but found ${version.major}.${version.minor}",
+                )
+            }
             if (slot is ConstantPoolSlot.Entry && slot.value is ConstantMethodTypeEntry && version.major < 51) {
                 throw ClassFileFormatException(
                     "Invalid constant_pool #$rawIndex source=$source: CONSTANT_MethodType_info requires " +
