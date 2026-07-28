@@ -1739,8 +1739,12 @@ private object CodeInstructionValidator {
             is ConstantFloatEntry,
             is ConstantStringEntry,
             is ConstantClassEntry,
-            is ConstantMethodTypeEntry,
             -> LdcCategory.CategoryOne
+
+            is ConstantMethodTypeEntry -> {
+                validateMethodTypeLoadableConstant(ownerPath, pc, mnemonic, constantPool, index, entry)
+                LdcCategory.CategoryOne
+            }
 
             is ConstantMethodHandleEntry -> {
                 validateMethodHandleLoadableConstant(ownerPath, pc, mnemonic, constantPool, index, entry)
@@ -1765,6 +1769,43 @@ private object CodeInstructionValidator {
                     "expected loadable constant but found ${entry.javaClass.simpleName}",
             )
         }
+
+    private fun validateMethodTypeLoadableConstant(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantMethodTypeEntry,
+    ) {
+        val descriptor = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.descriptorIndex,
+            role = "CONSTANT_MethodType.descriptor_index",
+        )
+        if (descriptor !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_MethodType.descriptor_index=${entry.descriptorIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${descriptor.javaClass.simpleName}",
+            )
+        }
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = entry.descriptorIndex,
+                role = "descriptor_index",
+                descriptor = descriptor.value,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_MethodType.descriptor_index=${entry.descriptorIndex}: ${exception.message}",
+            )
+        }
+    }
 
     private fun validateMethodHandleLoadableConstant(
         ownerPath: String,
