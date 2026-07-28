@@ -82,6 +82,7 @@ object ClassFileParser {
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
         val modulePackagesPaths = mutableListOf<String>()
         val bootstrapMethodsPaths = mutableListOf<String>()
+        val codePaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, source, index)) {
                 "NestHost" -> nestHostPaths += "ClassFile.attributes[$index]"
@@ -101,8 +102,10 @@ object ClassFileParser {
                 "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "ClassFile.attributes[$index]"
                 "ModulePackages" -> modulePackagesPaths += "ClassFile.attributes[$index]"
                 "BootstrapMethods" -> bootstrapMethodsPaths += "ClassFile.attributes[$index]"
+                "Code" -> codePaths += "ClassFile.attributes[$index]"
             }
         }
+        requireAbsentAttribute(codePaths, "Code", "method_info", source)
         requireAtMostOneAttribute(nestHostPaths, "NestHost", source)
         requireAtMostOneAttribute(nestMembersPaths, "NestMembers", source)
         requireAtMostOneAttribute(permittedSubclassesPaths, "PermittedSubclasses", source)
@@ -149,8 +152,22 @@ object ClassFileParser {
                 is ConstantPoolSlot.Entry ->
                     slot.value is ConstantDynamicEntry || slot.value is ConstantInvokeDynamicEntry
                 ConstantPoolSlot.Unusable -> false
-            }
         }
+    }
+
+    private fun requireAbsentAttribute(
+        paths: List<String>,
+        attributeName: String,
+        allowedLocation: String,
+        source: String,
+    ) {
+        if (paths.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile attributes source=$source: $attributeName is permitted only in " +
+                    "$allowedLocation attributes but found at ${paths.joinToString()}",
+            )
+        }
+    }
 
     private fun requireAtMostOneAttribute(
         paths: List<String>,

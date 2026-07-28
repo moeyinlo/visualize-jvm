@@ -43,6 +43,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects Code attributes in ClassFile attribute table`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithClassLevelCodeBytes(),
+                source = "ClassLevelCode.class",
+                attributeParsers = AttributeParserRegistry.of("Code" to CodeAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Code"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+    }
+
+    @Test
     fun `rejects ClassFile with duplicate SourceFile attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -389,6 +404,37 @@ class ClassFileParserTest {
             0, 5,
             0, 0, 0, 2,
             0, 6,
+        )
+
+    private fun classFileWithClassLevelCodeBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 6,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 4, 'C'.code, 'o'.code, 'd'.code, 'e'.code,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 5,
+            0, 0, 0, 13,
+            0, 0,
+            0, 0,
+            0, 0, 0, 1,
+            0xB1,
+            0, 0,
+            0, 0,
         )
 
     private fun classFileWithDuplicateSourceDebugExtensionBytes(): ByteArray =
