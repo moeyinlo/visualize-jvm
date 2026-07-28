@@ -194,6 +194,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.5 | `Exceptions` | `jvm-classfile` | `ExceptionsAttributeParserTest` | IMPLEMENTED |
 | 4.7.5 | `Exceptions.exception_index_table[]` entries must reference `CONSTANT_Class_info` names representing class types, rejecting array descriptors or invalid internal names | `jvm-classfile` | `ExceptionsAttributeParserTest.rejects Exceptions table entry that names an array type` | IMPLEMENTED |
 | 4.7.5 | `Exceptions` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method Exceptions attributes` | IMPLEMENTED |
+| 4.7.5 | `Exceptions` is rejected from `record_component_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects Exceptions attributes in record components` | IMPLEMENTED |
 | 4.7.5 | `Exceptions` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses.inner_class_info_index` must name a class or interface, not an array class | `jvm-classfile` | `NestedClassAttributesParserTest.rejects InnerClasses inner class info indexes that name array classes` | IMPLEMENTED |
