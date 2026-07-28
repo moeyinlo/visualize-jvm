@@ -207,6 +207,35 @@ class NestedClassAttributesParserTest {
     }
 
     @Test
+    fun `rejects EnclosingMethod method indexes whose descriptor is not a method descriptor`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("EnclosingMethod", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Outer", byteArrayOf()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("run", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 4, 0, 2, 0, 4),
+                    source = "bad-enclosing-method-descriptor.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("EnclosingMethod" to EnclosingMethodAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("method_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method descriptor"), failure.message)
+    }
+
+    @Test
     fun `rejects EnclosingMethod class index that is not a class constant`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

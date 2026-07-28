@@ -124,6 +124,14 @@ private fun readOptionalNameAndTypeIndex(
             "Invalid $role=$index: expected CONSTANT_NameAndType_info but found ${entry.javaClass.simpleName}",
         )
     }
+    val descriptor = constantPoolEntry(context, "$role.descriptor_index", entry.descriptorIndex)
+    if (descriptor !is ConstantUtf8Entry) {
+        throw ClassFileFormatException(
+            "Invalid $role=$index descriptor_index=${entry.descriptorIndex}: " +
+                "expected CONSTANT_Utf8_info but found ${descriptor.javaClass.simpleName}",
+        )
+    }
+    DescriptorValidator.validateMethodDescriptor(index, "$role.descriptor_index", descriptor.value)
     return index
 }
 
