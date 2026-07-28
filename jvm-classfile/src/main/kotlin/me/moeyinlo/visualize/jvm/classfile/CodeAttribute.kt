@@ -107,6 +107,12 @@ object CodeAttributeParser : AttributeBodyParser {
                     instructionLayout,
                     code.size,
                 )
+                "LocalVariableTypeTable" -> validateLocalVariableTypeTable(
+                    attributePath,
+                    attribute,
+                    instructionLayout,
+                    code.size,
+                )
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
                     validateCodeTypeAnnotationTargets(
@@ -180,6 +186,28 @@ object CodeAttributeParser : AttributeBodyParser {
             validateLocalVariableRange(
                 attributeName = "LocalVariableTable",
                 entryPath = "$attributePath.local_variable_table[$entryIndex]",
+                startPc = entry.startPc,
+                length = entry.length,
+                instructionLayout = instructionLayout,
+                codeLength = codeLength,
+            )
+        }
+    }
+
+    private fun validateLocalVariableTypeTable(
+        attributePath: String,
+        attribute: AttributeInfo,
+        instructionLayout: CodeInstructionLayout,
+        codeLength: Int,
+    ) {
+        if (attribute !is LocalVariableTypeTableAttribute) {
+            return
+        }
+
+        attribute.entries.forEachIndexed { entryIndex, entry ->
+            validateLocalVariableRange(
+                attributeName = "LocalVariableTypeTable",
+                entryPath = "$attributePath.local_variable_type_table[$entryIndex]",
                 startPc = entry.startPc,
                 length = entry.length,
                 instructionLayout = instructionLayout,
