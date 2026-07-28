@@ -61,16 +61,22 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "${context.ownerPath}.module_version_index",
             expected = "CONSTANT_Utf8_info",
         )
+        val requires = parseRequires(context, moduleNameIndex)
+        val exports = parseExports(context)
+        val opens = parseOpens(context, moduleFlags)
+        val uses = parseUses(context)
+        val provides = parseProvides(context)
+        requireNonJavaBaseModuleHasRequires(context, moduleNameIndex, requires)
         return ModuleAttribute(
             nameIndex = context.nameIndex,
             moduleNameIndex = moduleNameIndex,
             moduleFlags = moduleFlags,
             moduleVersionIndex = moduleVersionIndex,
-            requires = parseRequires(context, moduleNameIndex),
-            exports = parseExports(context),
-            opens = parseOpens(context, moduleFlags),
-            uses = parseUses(context),
-            provides = parseProvides(context),
+            requires = requires,
+            exports = exports,
+            opens = opens,
+            uses = uses,
+            provides = provides,
         )
     }
 
@@ -124,6 +130,20 @@ object ModuleAttributeParser : AttributeBodyParser {
         if (invalidBits != 0) {
             throw ClassFileFormatException(
                 "Invalid $role=0x${flags.toU2Hex()}: unknown flag bits 0x${invalidBits.toU2Hex()}",
+            )
+        }
+    }
+
+    private fun requireNonJavaBaseModuleHasRequires(
+        context: AttributeParseContext,
+        moduleNameIndex: ConstantPoolIndex,
+        requires: List<ModuleRequires>,
+    ) {
+        val currentModuleName = moduleName(context, moduleNameIndex, "${context.ownerPath}.module_name_index")
+        if (requires.isEmpty() && currentModuleName != JavaBaseModuleName) {
+            throw ClassFileFormatException(
+                "Invalid ${context.ownerPath}.requires_count=0: module $currentModuleName must declare " +
+                    "at least one requires entry for $JavaBaseModuleName",
             )
         }
     }

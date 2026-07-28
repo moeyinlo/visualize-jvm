@@ -367,7 +367,7 @@ class FieldInfoParserTest {
                         ConstantUtf8Entry("value", "value".encodeToByteArray()),
                         ConstantUtf8Entry("I", "I".encodeToByteArray()),
                         ConstantUtf8Entry("Module", "Module".encodeToByteArray()),
-                        ConstantUtf8Entry("test.module", "test.module".encodeToByteArray()),
+                        ConstantUtf8Entry("java.base", "java.base".encodeToByteArray()),
                         ConstantModuleEntry(ConstantPoolIndex(4)),
                     ),
                 ),

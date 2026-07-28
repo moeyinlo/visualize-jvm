@@ -513,7 +513,7 @@ class CodeAttributeHeaderParserTest {
             listOf(
                 ConstantUtf8Entry("Code", byteArrayOf()),
                 ConstantUtf8Entry("Module", byteArrayOf()),
-                ConstantUtf8Entry("test.module", byteArrayOf()),
+                ConstantUtf8Entry("java.base", byteArrayOf()),
                 ConstantModuleEntry(ConstantPoolIndex(3)),
             ),
         )

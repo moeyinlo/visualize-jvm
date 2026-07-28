@@ -498,7 +498,7 @@ class MethodInfoParserTest {
                         ConstantUtf8Entry("run", "run".encodeToByteArray()),
                         ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
                         ConstantUtf8Entry("Module", "Module".encodeToByteArray()),
-                        ConstantUtf8Entry("test.module", "test.module".encodeToByteArray()),
+                        ConstantUtf8Entry("java.base", "java.base".encodeToByteArray()),
                         ConstantModuleEntry(ConstantPoolIndex(4)),
                     ),
                 ),
