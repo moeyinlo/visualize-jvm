@@ -770,6 +770,30 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc method handle invokevirtual references whose methodref class index does not point to class`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantMethodHandleEntry(MethodHandleReferenceKind.InvokeVirtual, ConstantPoolIndex(3)),
+                        ConstantMethodRefEntry(ConstantPoolIndex(5), ConstantPoolIndex(4)),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                        ConstantUtf8Entry("Example", byteArrayOf()),
+                        ConstantUtf8Entry("run", byteArrayOf()),
+                        ConstantUtf8Entry("()V", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class_info"), failure.message)
+    }
+
+    @Test
     fun `rejects ldc method handle static or special references whose descriptor is not a method descriptor`() {
         val cases = listOf(MethodHandleReferenceKind.InvokeStatic, MethodHandleReferenceKind.InvokeSpecial)
         cases.forEach { referenceKind ->
