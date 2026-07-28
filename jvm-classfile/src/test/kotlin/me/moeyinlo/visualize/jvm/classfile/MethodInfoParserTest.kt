@@ -320,6 +320,37 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects SourceFile attributes in method attribute tables`() {
+        val sourceFileAttribute = byteArrayOf(0, 3) + intBytes(2) + byteArrayOf(0, 4)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(sourceFileAttribute)),
+                    ),
+                    source = "bad-method-sourcefile.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("SourceFile", "SourceFile".encodeToByteArray()),
+                        ConstantUtf8Entry("Test.java", "Test.java".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("SourceFile" to SourceFileAttributeParser),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("SourceFile"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate method Exceptions attributes`() {
         val exceptionsAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
 
