@@ -78,6 +78,7 @@ object ClassFileParser {
             role = "this_class.name_index",
             source = source,
         ).value
+        requireIdentityNameIsNotArray("this_class", thisClassName, source)
         if (identity.superClassIndex == null) {
             if (thisClassName != "java/lang/Object") {
                 throw ClassFileFormatException(
@@ -142,6 +143,18 @@ object ClassFileParser {
                         "duplicate interface name $interfaceName already used by interfaces[$duplicateNameOf]",
                 )
             }
+        }
+    }
+
+    private fun requireIdentityNameIsNotArray(
+        role: String,
+        className: String,
+        source: String,
+    ) {
+        if (className.startsWith("[")) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile $role source=$source: array class name $className is not permitted here",
+            )
         }
     }
 
