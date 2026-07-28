@@ -18,6 +18,12 @@ class SourceDebugExtensionAttribute(
 
 object SourceDebugExtensionAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java5MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid SourceDebugExtension attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java5MajorVersion",
+            )
+        }
         val bytes = context.reader.readSlice(context.reader.remaining)
         return SourceDebugExtensionAttribute(
             nameIndex = context.nameIndex,
@@ -43,3 +49,5 @@ object SourceDebugExtensionAttributeParser : AttributeBodyParser {
         }
     }
 }
+
+private const val Java5MajorVersion = 49

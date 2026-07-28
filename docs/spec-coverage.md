@@ -283,6 +283,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.10 | `SourceFile` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects SourceFile attributes in record components` | IMPLEMENTED |
 | 4.7.10 | `SourceFile` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` | `jvm-classfile` | `SourceDebugExtensionAttributeParserTest` | IMPLEMENTED |
+| 4.7.11, 4.7-C | `SourceDebugExtension` attributes are permitted only in class file major version 49.0 or later | `jvm-classfile` | `SourceDebugExtensionAttributeParserTest.rejects SourceDebugExtension attributes before Java 5` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects SourceDebugExtension attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects SourceDebugExtension attributes in method attribute tables` | IMPLEMENTED |

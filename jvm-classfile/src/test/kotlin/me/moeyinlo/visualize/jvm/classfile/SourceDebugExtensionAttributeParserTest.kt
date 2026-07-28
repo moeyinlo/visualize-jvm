@@ -57,4 +57,30 @@ class SourceDebugExtensionAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("SourceDebugExtension"), failure.message)
         assertTrue(failure.message.orEmpty().contains("UTF-8"), failure.message)
     }
+
+    @Test
+    fun `rejects SourceDebugExtension attributes before Java 5`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("SourceDebugExtension", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 1, 'x'.code.toByte()),
+                    source = "java4-source-debug.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("SourceDebugExtension" to SourceDebugExtensionAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 48,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("SourceDebugExtension"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=48"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("49"), failure.message)
+    }
 }
