@@ -246,6 +246,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.11 | `SourceDebugExtension` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` | `jvm-classfile` | `LineNumberTableAttributeParserTest` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable.start_pc` entries must point to instruction opcodes in the enclosing `Code` array | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LineNumberTable entries whose start pc does not point to an instruction opcode` | IMPLEMENTED |
+| 4.7.12 | `LineNumberTable` is rejected from `record_component_info.attributes`, preserving its predefined `Code`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects LineNumberTable attributes in record components` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable` | `jvm-classfile` | `LocalVariableTableAttributeParserTest` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable.descriptor_index` must name a valid field descriptor | `jvm-classfile` | `LocalVariableTableAttributeParserTest.rejects LocalVariableTable descriptors that are not field descriptors` | IMPLEMENTED |
