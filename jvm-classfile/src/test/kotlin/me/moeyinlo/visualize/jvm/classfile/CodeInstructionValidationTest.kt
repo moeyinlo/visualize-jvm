@@ -1102,6 +1102,27 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects invokedynamic operand whose name and type index does not point to name and type`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBA.toByte(), 0, 2, 0, 0, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantInvokeDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(4)),
+                        ConstantUtf8Entry("unused", byteArrayOf()),
+                        ConstantUtf8Entry("run", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokedynamic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("name_and_type_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_NameAndType"), failure.message)
+    }
+
+    @Test
     fun `rejects invokedynamic operands with nonzero trailing bytes`() {
         val thirdByteFailure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(

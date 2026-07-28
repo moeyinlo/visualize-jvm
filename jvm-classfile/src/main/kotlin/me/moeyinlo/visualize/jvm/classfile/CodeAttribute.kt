@@ -1049,6 +1049,21 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_InvokeDynamic but found ${entry.javaClass.simpleName}",
             )
         }
+        val nameAndType = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.nameAndTypeIndex,
+            role = "CONSTANT_InvokeDynamic.name_and_type_index",
+        )
+        if (nameAndType !is ConstantNameAndTypeEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_InvokeDynamic.name_and_type_index=${entry.nameAndTypeIndex} " +
+                    "expected CONSTANT_NameAndType but found ${nameAndType.javaClass.simpleName}",
+            )
+        }
         val thirdByte = code.u1(pc + 3)
         if (thirdByte != 0) {
             throw ClassFileFormatException(
