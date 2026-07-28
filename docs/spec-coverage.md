@@ -128,6 +128,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.2 | `ConstantValue` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7.3 | `Code` full structural validation and bytecode instruction constraints | `jvm-classfile` | TBD | PENDING |
 | 4.7.3 | `Code` method attribute presence and cardinality for concrete, native, abstract, and initialization methods | `jvm-classfile` | `MethodInfoParserTest` | IMPLEMENTED |
+| 4.7.3 | `Code.max_locals` must provide enough local variable slots for method invocation parameters, including the implicit `this` parameter on instance methods | `jvm-classfile` | `MethodInfoParserTest.rejects Code max locals below invocation parameter units` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` bytecode instruction layout, switch shape, reserved opcode, and branch target static constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` class-reference instruction constant-pool operands, referenced class-name grammar, and array-dimension static constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `newarray` primitive array `atype` static constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |

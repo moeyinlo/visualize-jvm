@@ -117,6 +117,31 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects Code max locals below invocation parameter units`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(
+                            accessFlags = 0x0001,
+                            attributes = listOf(codeAttribute(maxLocals = 2)),
+                        ),
+                    ),
+                    source = "bad-code-max-locals.class",
+                ),
+                constantPool = methodValidationPool("run", "(J)V"),
+                attributeParsers = AttributeParserRegistry.of("Code" to CodeAttributeParser),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("max_locals"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("parameter"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("3"), failure.message)
+    }
+
+    @Test
     fun `rejects concrete methods without exactly one Code attribute`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseValidatedMethods(
@@ -1236,12 +1261,12 @@ class MethodInfoParserTest {
             attributes.size.toByte(),
         ) + attributes.fold(byteArrayOf()) { bytes, attribute -> bytes + attribute }
 
-    private fun codeAttribute(nameIndex: Int = 3): ByteArray {
+    private fun codeAttribute(nameIndex: Int = 3, maxLocals: Int = 1): ByteArray {
         val body = byteArrayOf(
             0,
             0,
-            0,
-            1,
+            (maxLocals ushr 8).toByte(),
+            maxLocals.toByte(),
         ) + intBytes(1) +
             byteArrayOf(
                 0xB1.toByte(),

@@ -81,6 +81,7 @@ object MethodInfoParser {
             validateSpecialMethodDescriptor(name.value, descriptor.value, method.descriptorIndex, ownerPath, majorVersion)
             validateAccessFlags(method.accessFlags, name.value, classKind, ownerPath, majorVersion)
             validateCodeAttributeCardinality(method, constantPool, name.value, ownerPath)
+            validateCodeMaxLocals(method, descriptor.value, ownerPath)
             validateMethodAttributeCardinality(method, constantPool, classKind, descriptor.value, ownerPath)
 
             val duplicateOf = seenMethods.putIfAbsent(name.value to descriptor.value, index)
@@ -90,6 +91,25 @@ object MethodInfoParser {
                         "name='${name.value}' descriptor='${descriptor.value}' already used by methods[$duplicateOf]",
                 )
             }
+        }
+    }
+
+    private fun validateCodeMaxLocals(
+        method: MethodInfo,
+        descriptor: String,
+        ownerPath: String,
+    ) {
+        val codeAttribute = method.attributes.filterIsInstance<CodeAttribute>().singleOrNull() ?: return
+        val requiredLocals = DescriptorValidator.methodParameterUnits(
+            method.descriptorIndex,
+            "$ownerPath.descriptor_index",
+            descriptor,
+        ) + if (has(method.accessFlags, MethodAccessFlag.Static)) 0 else 1
+        if (codeAttribute.maxLocals < requiredLocals) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.attributes Code max_locals=${codeAttribute.maxLocals}: " +
+                    "must be at least $requiredLocals to hold invocation parameter local variables",
+            )
         }
     }
 
