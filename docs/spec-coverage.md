@@ -882,7 +882,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.4.2 | Preparation | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.1 | Class and interface resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.1, 5.4.3.2 | Field reference resolution throws guest `NoClassDefFoundError` when the referenced owner class cannot be resolved in strict class-resolution mode | `jvm-runtime`, `jvm-interpreter` | `JvmInterpreterTest.getstatic throws guest NoClassDefFoundError when field owner class is missing` | IMPLEMENTED |
-| 5.4.3.2 | Field resolution | `jvm-runtime` | TBD | PENDING |
+| 5.4.3.2 | Field resolution resolves the referenced owner class in strict mode, searches declared fields, direct and indirect superinterfaces, then the superclass chain, and reports guest `NoClassDefFoundError` or `NoSuchFieldError` for resolution failures; access-control checks remain tracked separately under 5.4.4 | `jvm-runtime`, `jvm-interpreter` | `JvmFieldResolutionTest`, `JvmInterpreterTest.getstatic throws guest NoClassDefFoundError when field owner class is missing` | IMPLEMENTED |
 | 5.4.3.2 | Field resolution finds fields declared directly by the referenced class | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |
 | 5.4.3.2 | Field resolution searches direct superinterfaces before superclass lookup | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |
 | 5.4.3.2 | Field resolution recursively searches indirect superinterfaces | `jvm-runtime` | `JvmFieldResolutionTest` | IMPLEMENTED |
