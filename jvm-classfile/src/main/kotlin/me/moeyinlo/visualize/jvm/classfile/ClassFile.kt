@@ -91,6 +91,11 @@ object ClassFileParser {
                     "Invalid ClassFile super_class source=$source: ACC_MODULE classfiles must use zero super_class",
                 )
             }
+            if (identity.interfaceIndexes.isNotEmpty()) {
+                throw ClassFileFormatException(
+                    "Invalid ClassFile interfaces source=$source: ACC_MODULE classfiles must use zero interfaces_count",
+                )
+            }
             return
         }
         if (identity.superClassIndex == null) {
