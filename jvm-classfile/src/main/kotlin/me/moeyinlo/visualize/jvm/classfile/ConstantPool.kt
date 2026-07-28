@@ -113,7 +113,9 @@ class ConstantPool private constructor(
     }
 
     private fun validateMemberRef(owner: ConstantPoolIndex, entry: ConstantMemberRefEntry) {
-        expect<ConstantClassEntry>(owner, "class_index", entry.classIndex)
+        val ownerClass = expect<ConstantClassEntry>(owner, "class_index", entry.classIndex)
+        val ownerName = expect<ConstantUtf8Entry>(owner, "class_index name_index", ownerClass.nameIndex)
+        ClassNameValidator.validateInternalBinaryName(owner, "class_index", ownerName.value)
         expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
     }
 

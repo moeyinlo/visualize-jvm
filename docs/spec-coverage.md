@@ -101,7 +101,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.3.2 | Field descriptors | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.3.3 | Method descriptors | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.4.1 | `CONSTANT_Class_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
-| 4.4.2 | Field, method, interface method refs | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
+| 4.4.2 | Field, method, interface method refs, including member owner class name and descriptor reference validation | `jvm-classfile` | `ConstantPoolEntryParserTest`, `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.4.3 | `CONSTANT_String_info` | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.4 | Integer and float constants | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |
 | 4.4.5 | Long and double constants | `jvm-classfile` | `ConstantPoolEntryParserTest` | IMPLEMENTED |

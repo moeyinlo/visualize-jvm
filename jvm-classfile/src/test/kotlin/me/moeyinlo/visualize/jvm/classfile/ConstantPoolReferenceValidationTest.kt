@@ -172,6 +172,28 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `rejects array class owners on field references`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("[I"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("field"),
+                utf8("I"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#6"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid field descriptors on field references`() {
         val pool = ConstantPool.fromEntries(
             listOf(
