@@ -5686,7 +5686,7 @@ object JvmVmIntrinsics {
                 is JvmByteArrayPayload -> {
                     val byteTargetPayload = targetPayload as? JvmByteArrayPayload
                         ?: throw JvmUnsupportedInstructionException(
-                            "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, or short arrays",
+                            "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, int, or short arrays",
                         )
                     if (
                         sourceStart < 0L || sourceEndExclusive < sourceStart ||
@@ -5707,7 +5707,7 @@ object JvmVmIntrinsics {
                 is JvmShortArrayPayload -> {
                     val shortTargetPayload = targetPayload as? JvmShortArrayPayload
                         ?: throw JvmUnsupportedInstructionException(
-                            "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, or short arrays",
+                            "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, int, or short arrays",
                         )
                     val snapshot = sourcePayload.rawBytes(
                         operation = "Unsafe.copySwapMemory0 short array source",
@@ -5723,7 +5723,7 @@ object JvmVmIntrinsics {
                 is JvmCharArrayPayload -> {
                     val charTargetPayload = targetPayload as? JvmCharArrayPayload
                         ?: throw JvmUnsupportedInstructionException(
-                            "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, or short arrays",
+                            "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, int, or short arrays",
                         )
                     val snapshot = sourcePayload.rawBytes(
                         operation = "Unsafe.copySwapMemory0 char array source",
@@ -5736,8 +5736,24 @@ object JvmVmIntrinsics {
                         bytes = snapshot.swappedRawBytes(elementSize.value),
                     )
                 }
+                is JvmIntArrayPayload -> {
+                    val intTargetPayload = targetPayload as? JvmIntArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, int, or short arrays",
+                        )
+                    val snapshot = sourcePayload.rawBytes(
+                        operation = "Unsafe.copySwapMemory0 int array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    )
+                    intTargetPayload.setRawBytes(
+                        operation = "Unsafe.copySwapMemory0 int array target",
+                        start = targetStart,
+                        bytes = snapshot.swappedRawBytes(elementSize.value),
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, or short arrays",
+                    "Unsafe.copySwapMemory0 currently supports only matching guest byte, char, int, or short arrays",
                 )
             }
             return@JvmNativeMethodIntrinsic null
