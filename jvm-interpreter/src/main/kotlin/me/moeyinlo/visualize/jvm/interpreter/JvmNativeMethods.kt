@@ -5294,8 +5294,17 @@ object JvmVmIntrinsics {
                         bytes = snapshot,
                     )
                 }
+                is JvmFloatArrayPayload -> {
+                    val snapshot = (0L until bytes.value)
+                        .map { offset -> context.unsafeMemory.nativeMemoryByte(sourceOffset.value + offset) }
+                    targetPayload.setRawBytes(
+                        operation = "Unsafe.copyMemory0 float array target",
+                        start = targetStart,
+                        bytes = snapshot,
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copyMemory0 currently supports only guest byte, boolean, char, int, or short arrays for non-null bases",
+                    "Unsafe.copyMemory0 currently supports only guest byte, boolean, char, float, int, or short arrays for non-null bases",
                 )
             }
             return@JvmNativeMethodIntrinsic null
