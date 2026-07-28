@@ -1008,6 +1008,22 @@ object JvmInvokeDynamicCallSiteResolver {
         }
     }
 
+    private fun String.requireMethodHandleMethodDescriptor(
+        owner: ConstantPoolIndex,
+        role: String,
+    ): String {
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = owner,
+                role = "$role descriptor",
+                descriptor = this,
+            )
+            return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException("$role descriptor $this is not a method descriptor")
+        }
+    }
+
     private data class MethodReference(
         val ownerClassName: String,
         val name: String,
@@ -1051,7 +1067,10 @@ object JvmInvokeDynamicCallSiteResolver {
                 owner = nameAndTypeIndex,
                 role = "MethodHandle reference index $referenceIndex",
             ),
-            descriptor = nameAndDescriptor.descriptor,
+            descriptor = nameAndDescriptor.descriptor.requireMethodHandleMethodDescriptor(
+                owner = nameAndTypeIndex,
+                role = "MethodHandle reference index $referenceIndex",
+            ),
         )
     }
 
