@@ -695,6 +695,39 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc method handle static or special references whose target is a special method name`() {
+        val cases = listOf(
+            MethodHandleReferenceKind.InvokeStatic to "<init>",
+            MethodHandleReferenceKind.InvokeStatic to "<clinit>",
+            MethodHandleReferenceKind.InvokeSpecial to "<init>",
+            MethodHandleReferenceKind.InvokeSpecial to "<clinit>",
+        )
+        cases.forEach { (referenceKind, specialName) ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Code", byteArrayOf()),
+                            ConstantMethodHandleEntry(referenceKind, ConstantPoolIndex(3)),
+                            ConstantMethodRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+                            ConstantClassEntry(ConstantPoolIndex(5)),
+                            ConstantUtf8Entry("Example", byteArrayOf()),
+                            ConstantNameAndTypeEntry(ConstantPoolIndex(7), ConstantPoolIndex(8)),
+                            ConstantUtf8Entry(specialName, byteArrayOf()),
+                            ConstantUtf8Entry("()V", byteArrayOf()),
+                        ),
+                    ),
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+            assertTrue(failure.message.orEmpty().contains(referenceKind.toString()), failure.message)
+            assertTrue(failure.message.orEmpty().contains(specialName), failure.message)
+        }
+    }
+
+    @Test
     fun `rejects ldc method handle field references whose target is not a field reference`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(

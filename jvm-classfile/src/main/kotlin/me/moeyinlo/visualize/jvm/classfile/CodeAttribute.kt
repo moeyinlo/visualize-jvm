@@ -1843,6 +1843,20 @@ private object CodeInstructionValidator {
                             "but found ${reference.javaClass.simpleName}",
                     )
                 }
+                val nameAndTypeIndex = when (reference) {
+                    is ConstantMethodRefEntry -> reference.nameAndTypeIndex
+                    is ConstantInterfaceMethodRefEntry -> reference.nameAndTypeIndex
+                }
+                validateOrdinaryMethodHandleTargetName(
+                    ownerPath = ownerPath,
+                    pc = pc,
+                    mnemonic = mnemonic,
+                    constantPool = constantPool,
+                    index = index,
+                    referenceKind = entry.referenceKind,
+                    referenceIndex = entry.referenceIndex,
+                    nameAndTypeIndex = nameAndTypeIndex,
+                )
             }
 
             MethodHandleReferenceKind.InvokeInterface -> {
