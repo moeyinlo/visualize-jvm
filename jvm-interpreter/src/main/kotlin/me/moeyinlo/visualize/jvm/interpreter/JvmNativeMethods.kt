@@ -125,6 +125,15 @@ class JvmUnsafeSyntheticMemory(
         if (oldBytes == null) {
             throw JvmUnsupportedInstructionException("native memory address $address is not allocated")
         }
+        if (bytes > oldBytes && !canResizeNativeMemoryBlockInPlace(address, bytes)) {
+            val snapshot = (0L until oldBytes).map { offset -> nativeMemoryBytes[address + offset] ?: 0 }
+            val newAddress = allocateNativeMemory(bytes)
+            snapshot.forEachIndexed { index, value ->
+                nativeMemoryBytes[newAddress + index.toLong()] = value
+            }
+            freeNativeMemory(address)
+            return newAddress
+        }
         nativeMemoryBlocks[address] = bytes
         if (bytes < oldBytes) {
             clearNativeMemoryBytes(address + bytes, oldBytes - bytes)
@@ -222,6 +231,21 @@ class JvmUnsafeSyntheticMemory(
             throw JvmUnsupportedInstructionException(
                 "native memory range address=$address bytes=$bytes is outside allocated synthetic memory",
             )
+        }
+    }
+
+    private fun canResizeNativeMemoryBlockInPlace(address: Long, bytes: Long): Boolean {
+        if (bytes > Long.MAX_VALUE - address) {
+            throw JvmUnsupportedInstructionException("native memory range address=$address bytes=$bytes is invalid")
+        }
+        val endExclusive = address + bytes
+        return nativeMemoryBlocks.none { (blockAddress, blockBytes) ->
+            if (blockAddress == address) {
+                false
+            } else {
+                val blockEndExclusive = blockAddress + blockBytes
+                address < blockEndExclusive && blockAddress < endExclusive
+            }
         }
     }
 
