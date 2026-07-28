@@ -74,6 +74,7 @@ object ClassFileParser {
         val version = ClassFileHeaderParser.validateJava26Version(ClassFileHeaderParser.parseVersion(reader))
         val constantPool = ConstantPoolParser.parse(reader)
         val accessFlags = ClassAccessFlagsParser.parse(reader)
+        validateModuleVersion(version, accessFlags, reader.source)
         val identity = ClassIdentityParser.parse(reader)
         validateClassIdentity(identity, constantPool, accessFlags, reader.source)
         val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
@@ -112,6 +113,19 @@ object ClassFileParser {
             methods = methods,
             attributes = attributes,
         )
+    }
+
+    private fun validateModuleVersion(
+        version: ClassFileVersion,
+        accessFlags: ClassAccessFlags,
+        source: String,
+    ) {
+        if (accessFlags.kind == ClassFileKind.Module && version.major < 53) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile major_version source=$source offset=${version.offset}: " +
+                    "ACC_MODULE classfiles require major_version >= 53 but found ${version.major}.${version.minor}",
+            )
+        }
     }
 
     private fun validateClassIdentity(

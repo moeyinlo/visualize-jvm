@@ -303,6 +303,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects module classfile before Java 9`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = moduleClassFileBeforeJava9Bytes(),
+                source = "Java8ModuleInfo.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ACC_MODULE"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("53"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("52"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -1113,6 +1128,28 @@ class ClassFileParserTest {
             0, 3,
             0, 0, 0, 0,
             0, 4,
+            0, 0, 0, 0,
+        )
+
+    private fun moduleClassFileBeforeJava9Bytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 52,
+            0, 4,
+            1, 0, 11,
+            'm'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code, 'e'.code,
+            '-'.code, 'i'.code, 'n'.code, 'f'.code, 'o'.code,
+            7, 0, 1,
+            1, 0, 6, 'M'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code, 'e'.code,
+            0x80, 0x00,
+            0, 2,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 3,
             0, 0, 0, 0,
         )
 
