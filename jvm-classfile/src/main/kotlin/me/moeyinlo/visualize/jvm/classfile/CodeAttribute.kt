@@ -1064,6 +1064,34 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_NameAndType but found ${nameAndType.javaClass.simpleName}",
             )
         }
+        val descriptor = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.descriptorIndex,
+            role = "CONSTANT_InvokeDynamic.descriptor_index",
+        )
+        if (descriptor !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_InvokeDynamic.descriptor_index=${nameAndType.descriptorIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${descriptor.javaClass.simpleName}",
+            )
+        }
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = nameAndType.descriptorIndex,
+                role = "descriptor_index",
+                descriptor = descriptor.value,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_InvokeDynamic.descriptor_index=${nameAndType.descriptorIndex}: " +
+                    exception.message,
+            )
+        }
         val thirdByte = code.u1(pc + 3)
         if (thirdByte != 0) {
             throw ClassFileFormatException(
