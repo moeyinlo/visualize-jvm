@@ -5676,36 +5676,53 @@ object JvmVmIntrinsics {
                     "Unsafe.copySwapMemory0 currently supports only guest byte array pairs or synthetic native memory",
                 )
             }
-            val sourcePayload = context.heap.get(sourceBase).payload as? JvmByteArrayPayload
-                ?: throw JvmUnsupportedInstructionException(
-                    "Unsafe.copySwapMemory0 currently supports only guest byte arrays for non-null bases",
-                )
-            val targetPayload = context.heap.get(targetBase).payload as? JvmByteArrayPayload
-                ?: throw JvmUnsupportedInstructionException(
-                    "Unsafe.copySwapMemory0 currently supports only guest byte arrays for non-null bases",
-                )
+            val sourcePayload = context.heap.get(sourceBase).payload
+            val targetPayload = context.heap.get(targetBase).payload
             val sourceStart = sourceOffset.value - UnsafeSyntheticArrayBaseOffset
             val sourceEndExclusive = sourceStart + bytes.value
             val targetStart = targetOffset.value - UnsafeSyntheticArrayBaseOffset
             val targetEndExclusive = targetStart + bytes.value
-            if (
-                sourceStart < 0L || sourceEndExclusive < sourceStart ||
-                sourceEndExclusive > sourcePayload.elements.size ||
-                targetStart < 0L || targetEndExclusive < targetStart ||
-                targetEndExclusive > targetPayload.elements.size
-            ) {
-                throw JvmUnsupportedInstructionException("Unsafe.copySwapMemory0 byte array range is outside array bounds")
-            }
-            val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
-                .map { index -> sourcePayload.elements[index] }
-            var chunkStart = 0L
-            while (chunkStart < bytes.value) {
-                for (elementOffset in 0L until elementSize.value) {
-                    val sourceIndex = (chunkStart + elementSize.value - 1L - elementOffset).toInt()
-                    targetPayload.elements[targetStart.toInt() + chunkStart.toInt() + elementOffset.toInt()] =
-                        snapshot[sourceIndex]
+            when (sourcePayload) {
+                is JvmByteArrayPayload -> {
+                    val byteTargetPayload = targetPayload as? JvmByteArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copySwapMemory0 currently supports only matching guest byte or short arrays",
+                        )
+                    if (
+                        sourceStart < 0L || sourceEndExclusive < sourceStart ||
+                        sourceEndExclusive > sourcePayload.elements.size ||
+                        targetStart < 0L || targetEndExclusive < targetStart ||
+                        targetEndExclusive > byteTargetPayload.elements.size
+                    ) {
+                        throw JvmUnsupportedInstructionException(
+                            "Unsafe.copySwapMemory0 byte array range is outside array bounds",
+                        )
+                    }
+                    val snapshot = (sourceStart.toInt() until sourceEndExclusive.toInt())
+                        .map { index -> sourcePayload.elements[index] }
+                    snapshot.swappedRawBytes(elementSize.value).forEachIndexed { index, byte ->
+                        byteTargetPayload.elements[targetStart.toInt() + index] = byte
+                    }
                 }
-                chunkStart += elementSize.value
+                is JvmShortArrayPayload -> {
+                    val shortTargetPayload = targetPayload as? JvmShortArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copySwapMemory0 currently supports only matching guest byte or short arrays",
+                        )
+                    val snapshot = sourcePayload.rawBytes(
+                        operation = "Unsafe.copySwapMemory0 short array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    )
+                    shortTargetPayload.setRawBytes(
+                        operation = "Unsafe.copySwapMemory0 short array target",
+                        start = targetStart,
+                        bytes = snapshot.swappedRawBytes(elementSize.value),
+                    )
+                }
+                else -> throw JvmUnsupportedInstructionException(
+                    "Unsafe.copySwapMemory0 currently supports only matching guest byte or short arrays",
+                )
             }
             return@JvmNativeMethodIntrinsic null
         }
@@ -6203,6 +6220,19 @@ object JvmVmIntrinsics {
         if (start < 0L || endExclusive < start || endExclusive > byteSize) {
             throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
         }
+    }
+
+    private fun List<Byte>.swappedRawBytes(elementSize: Long): List<Byte> {
+        val swapped = MutableList(size) { 0.toByte() }
+        var chunkStart = 0L
+        while (chunkStart < size.toLong()) {
+            for (elementOffset in 0L until elementSize) {
+                val sourceIndex = (chunkStart + elementSize - 1L - elementOffset).toInt()
+                swapped[(chunkStart + elementOffset).toInt()] = this[sourceIndex]
+            }
+            chunkStart += elementSize
+        }
+        return swapped
     }
 
     private fun JvmShortArrayPayload.setRawBytes(
