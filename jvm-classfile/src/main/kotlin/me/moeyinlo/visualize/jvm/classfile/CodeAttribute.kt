@@ -1812,6 +1812,16 @@ private object CodeInstructionValidator {
                             "expected CONSTANT_Methodref but found ${reference.javaClass.simpleName}",
                     )
                 }
+                validateOrdinaryMethodHandleTargetName(
+                    ownerPath = ownerPath,
+                    pc = pc,
+                    mnemonic = mnemonic,
+                    constantPool = constantPool,
+                    index = index,
+                    referenceKind = entry.referenceKind,
+                    referenceIndex = entry.referenceIndex,
+                    nameAndTypeIndex = reference.nameAndTypeIndex,
+                )
             }
 
             MethodHandleReferenceKind.InvokeStatic,
@@ -1908,6 +1918,56 @@ private object CodeInstructionValidator {
                     )
                 }
             }
+        }
+    }
+
+    private fun validateOrdinaryMethodHandleTargetName(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        referenceKind: MethodHandleReferenceKind,
+        referenceIndex: ConstantPoolIndex,
+        nameAndTypeIndex: ConstantPoolIndex,
+    ) {
+        val nameAndType = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndTypeIndex,
+            role = "CONSTANT_MethodHandle.reference_index name_and_type_index",
+        )
+        if (nameAndType !is ConstantNameAndTypeEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_MethodHandle.reference_index=$referenceIndex " +
+                    "name_and_type_index=$nameAndTypeIndex expected CONSTANT_NameAndType " +
+                    "but found ${nameAndType.javaClass.simpleName}",
+            )
+        }
+        val name = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.nameIndex,
+            role = "CONSTANT_MethodHandle.reference_index name_index",
+        )
+        if (name !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_MethodHandle.reference_index=$referenceIndex " +
+                    "name_index=${nameAndType.nameIndex} expected CONSTANT_Utf8_info " +
+                    "but found ${name.javaClass.simpleName}",
+            )
+        }
+        if (name.value == "<init>" || name.value == "<clinit>") {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "reference_kind $referenceKind must not target ${name.value}",
+            )
         }
     }
 
