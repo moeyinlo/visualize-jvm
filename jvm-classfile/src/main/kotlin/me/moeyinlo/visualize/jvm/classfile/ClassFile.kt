@@ -86,6 +86,11 @@ object ClassFileParser {
                         "module-info but found $thisClassName",
                 )
             }
+            if (identity.superClassIndex != null) {
+                throw ClassFileFormatException(
+                    "Invalid ClassFile super_class source=$source: ACC_MODULE classfiles must use zero super_class",
+                )
+            }
             return
         }
         if (identity.superClassIndex == null) {
