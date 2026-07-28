@@ -5053,6 +5053,48 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe copyMemory0 intrinsic copies guest double arrays from synthetic byte offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val source = heap.allocateDoubleArray(4)
+        val target = heap.allocateDoubleArray(4)
+        val sourcePayload = heap.get(source).payload as JvmDoubleArrayPayload
+        val targetPayload = heap.get(target).payload as JvmDoubleArrayPayload
+        sourcePayload.elements[0] = Double.fromBits(0x1122334455667788L)
+        sourcePayload.elements[1] = Double.fromBits(0x0102030405060708L)
+        sourcePayload.elements[2] = Double.fromBits(-0x123456789abcdfL)
+        sourcePayload.elements[3] = Double.fromBits(0x7f6e5d4c3b2a1908L)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCopyMemory0Method())
+            ?: error("Unsafe.copyMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(source, JvmLongValue(8L), target, JvmLongValue(8L), JvmLongValue(16L)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(
+            listOf(
+                0.0,
+                Double.fromBits(0x0102030405060708L),
+                Double.fromBits(-0x123456789abcdfL),
+                0.0,
+            ),
+            targetPayload.elements,
+        )
+    }
+
+    @Test
     fun `Unsafe copyMemory0 intrinsic copies synthetic native memory into guest boolean arrays`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")

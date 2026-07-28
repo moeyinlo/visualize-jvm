@@ -5439,8 +5439,24 @@ object JvmVmIntrinsics {
                         bytes = snapshot,
                     )
                 }
+                is JvmDoubleArrayPayload -> {
+                    val doubleTargetPayload = targetPayload as? JvmDoubleArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, double, float, int, long, or short arrays",
+                        )
+                    val snapshot = sourcePayload.rawBytes(
+                        operation = "Unsafe.copyMemory0 double array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    )
+                    doubleTargetPayload.setRawBytes(
+                        operation = "Unsafe.copyMemory0 double array target",
+                        start = targetStart,
+                        bytes = snapshot,
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, float, int, long, or short arrays",
+                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, double, float, int, long, or short arrays",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -6426,6 +6442,52 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
         }
         for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Double.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Double.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex]
+                .toRawBits()
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Double.SIZE_BYTES,
+                    value = value,
+                )
+                .let(Double.Companion::fromBits)
+        }
+    }
+
+    private fun JvmDoubleArrayPayload.rawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+    ): List<Byte> {
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Double.SIZE_BYTES.toLong(),
+        )
+        return (start until endExclusive).map { rawOffset ->
+            val elementIndex = (rawOffset / Double.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Double.SIZE_BYTES).toInt()
+            val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = Double.SIZE_BYTES)
+            ((elements[elementIndex].toRawBits() ushr shift) and 0xff).toByte()
+        }
+    }
+
+    private fun JvmDoubleArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        bytes: List<Byte>,
+    ) {
+        val endExclusive = start + bytes.size.toLong()
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Double.SIZE_BYTES.toLong(),
+        )
+        bytes.forEachIndexed { index, value ->
+            val rawOffset = start + index.toLong()
             val elementIndex = (rawOffset / Double.SIZE_BYTES).toInt()
             val byteIndex = (rawOffset % Double.SIZE_BYTES).toInt()
             elements[elementIndex] = elements[elementIndex]
