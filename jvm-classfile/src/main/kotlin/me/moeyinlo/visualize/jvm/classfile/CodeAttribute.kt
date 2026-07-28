@@ -101,6 +101,12 @@ object CodeAttributeParser : AttributeBodyParser {
                     validateStackMapTableUninitializedVariables(attributePath, attribute, instructionLayout, code)
                 }
                 "LineNumberTable" -> validateLineNumberTable(attributePath, attribute, instructionLayout)
+                "LocalVariableTable" -> validateLocalVariableTable(
+                    attributePath,
+                    attribute,
+                    instructionLayout,
+                    code.size,
+                )
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
                     validateCodeTypeAnnotationTargets(
@@ -158,6 +164,55 @@ object CodeAttributeParser : AttributeBodyParser {
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
+    }
+
+    private fun validateLocalVariableTable(
+        attributePath: String,
+        attribute: AttributeInfo,
+        instructionLayout: CodeInstructionLayout,
+        codeLength: Int,
+    ) {
+        if (attribute !is LocalVariableTableAttribute) {
+            return
+        }
+
+        attribute.entries.forEachIndexed { entryIndex, entry ->
+            validateLocalVariableRange(
+                attributeName = "LocalVariableTable",
+                entryPath = "$attributePath.local_variable_table[$entryIndex]",
+                startPc = entry.startPc,
+                length = entry.length,
+                instructionLayout = instructionLayout,
+                codeLength = codeLength,
+            )
+        }
+    }
+
+    private fun validateLocalVariableRange(
+        attributeName: String,
+        entryPath: String,
+        startPc: Int,
+        length: Int,
+        instructionLayout: CodeInstructionLayout,
+        codeLength: Int,
+    ) {
+        if (startPc !in instructionLayout.instructionOffsets) {
+            throw ClassFileFormatException(
+                "Invalid $entryPath $attributeName.start_pc=$startPc: must point to the opcode of an instruction",
+            )
+        }
+        val endPc = startPc + length
+        if (endPc > codeLength) {
+            throw ClassFileFormatException(
+                "Invalid $entryPath $attributeName range: start_pc=$startPc length=$length exceeds code_length=$codeLength",
+            )
+        }
+        if (endPc != codeLength && endPc !in instructionLayout.instructionOffsets) {
+            throw ClassFileFormatException(
+                "Invalid $entryPath $attributeName.end_pc=$endPc: " +
+                    "must be code_length=$codeLength or point to the opcode of an instruction",
+            )
+        }
     }
 
     private fun validateLineNumberTable(

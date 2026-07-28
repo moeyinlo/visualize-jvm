@@ -395,6 +395,80 @@ class CodeNestedAttributesParserTest {
     }
 
     @Test
+    fun `rejects LocalVariableTable entries whose start pc does not point to an instruction opcode`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("LocalVariableTable", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        33,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        3,
+                        0x10,
+                        0,
+                        0xB1.toByte(),
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        0,
+                        0,
+                        12,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        3,
+                        0,
+                        4,
+                        0,
+                        0,
+                    ),
+                    source = "bad-local-variable-table-start-pc.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "LocalVariableTable" to LocalVariableTableAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        val message = failure.message.orEmpty()
+        assertTrue(message.contains("LocalVariableTable"), message)
+        assertTrue(message.contains("start_pc=1"), message)
+        assertTrue(message.contains("opcode of an instruction"), message)
+    }
+
+    @Test
     fun `rejects Code type annotation catch target outside exception table`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
