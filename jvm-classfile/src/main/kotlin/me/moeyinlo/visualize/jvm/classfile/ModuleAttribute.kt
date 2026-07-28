@@ -468,7 +468,13 @@ object ModuleAttributeParser : AttributeBodyParser {
             role = "$role.name_index",
             index = packageEntry.nameIndex,
             expected = "CONSTANT_Utf8_info",
-        ).value
+        ).value.also { name ->
+            try {
+                ModulePackageNameValidator.validatePackageName(packageEntry.nameIndex, "name_index", name)
+            } catch (exception: ClassFileFormatException) {
+                throw ClassFileFormatException("Invalid $role=$index name_index=${packageEntry.nameIndex}: ${exception.message}")
+            }
+        }
     }
 
     private fun className(

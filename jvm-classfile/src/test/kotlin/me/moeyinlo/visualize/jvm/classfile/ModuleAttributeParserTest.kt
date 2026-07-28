@@ -420,6 +420,40 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects Module exports indexes with invalid package names`() {
+        val constantPool = ConstantPool.fromEntries(
+            moduleConstantPoolEntries(packageName = "bad.name"),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 28,
+                        0, 3, 0, 0, 0, 0,
+                        0, 1,
+                        0, 6, 0, 0, 0, 0,
+                        0, 1,
+                        0, 8, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].exports[0].exports_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate Module exports package names`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(
@@ -940,7 +974,10 @@ class ModuleAttributeParserTest {
     private fun moduleConstantPool(): ConstantPool =
         ConstantPool.fromEntries(moduleConstantPoolEntries())
 
-    private fun moduleConstantPoolEntries(moduleName: String = "my.module"): List<ConstantPoolEntry> =
+    private fun moduleConstantPoolEntries(
+        moduleName: String = "my.module",
+        packageName: String = "pkg",
+    ): List<ConstantPoolEntry> =
         listOf(
             ConstantUtf8Entry("Module", byteArrayOf()),
             ConstantUtf8Entry(moduleName, byteArrayOf()),
@@ -948,7 +985,7 @@ class ModuleAttributeParserTest {
             ConstantUtf8Entry("1.0", byteArrayOf()),
             ConstantUtf8Entry("java.base", byteArrayOf()),
             ConstantModuleEntry(ConstantPoolIndex(5)),
-            ConstantUtf8Entry("pkg", byteArrayOf()),
+            ConstantUtf8Entry(packageName, byteArrayOf()),
             ConstantPackageEntry(ConstantPoolIndex(7)),
             ConstantUtf8Entry("friend", byteArrayOf()),
             ConstantModuleEntry(ConstantPoolIndex(9)),
