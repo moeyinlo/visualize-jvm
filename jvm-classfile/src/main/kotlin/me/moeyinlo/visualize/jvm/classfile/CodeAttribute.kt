@@ -2224,7 +2224,14 @@ private object CodeInstructionValidator {
                     "but found ${descriptor.javaClass.simpleName}",
             )
         }
-        DescriptorValidator.validateFieldDescriptor(nameAndType.descriptorIndex, "descriptor_index", descriptor.value)
+        try {
+            DescriptorValidator.validateFieldDescriptor(nameAndType.descriptorIndex, "descriptor_index", descriptor.value)
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Dynamic.descriptor_index=${nameAndType.descriptorIndex}: ${exception.message}",
+            )
+        }
         return descriptor.value
     }
 

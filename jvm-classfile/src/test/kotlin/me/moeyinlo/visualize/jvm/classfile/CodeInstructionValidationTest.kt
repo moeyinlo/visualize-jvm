@@ -1200,6 +1200,20 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc dynamic constants whose descriptor is not a field descriptor`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = constantDynamicPool(descriptor = "()V"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Dynamic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
+    @Test
     fun `accepts ldc2_w operands that point to category two constants`() {
         assertIs<CodeAttribute>(
             parseCodeAttribute(
