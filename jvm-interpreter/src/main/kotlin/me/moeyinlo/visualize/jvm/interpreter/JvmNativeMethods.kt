@@ -5407,8 +5407,24 @@ object JvmVmIntrinsics {
                         bytes = snapshot,
                     )
                 }
+                is JvmFloatArrayPayload -> {
+                    val floatTargetPayload = targetPayload as? JvmFloatArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, float, int, or short arrays",
+                        )
+                    val snapshot = sourcePayload.rawBytes(
+                        operation = "Unsafe.copyMemory0 float array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    )
+                    floatTargetPayload.setRawBytes(
+                        operation = "Unsafe.copyMemory0 float array target",
+                        start = targetStart,
+                        bytes = snapshot,
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, int, or short arrays",
+                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, float, int, or short arrays",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -6258,6 +6274,52 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
         }
         for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Float.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Float.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex]
+                .toRawBits()
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Float.SIZE_BYTES,
+                    value = value,
+                )
+                .let(Float.Companion::fromBits)
+        }
+    }
+
+    private fun JvmFloatArrayPayload.rawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+    ): List<Byte> {
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Float.SIZE_BYTES.toLong(),
+        )
+        return (start until endExclusive).map { rawOffset ->
+            val elementIndex = (rawOffset / Float.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Float.SIZE_BYTES).toInt()
+            val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = Float.SIZE_BYTES)
+            ((elements[elementIndex].toRawBits() ushr shift) and 0xff).toByte()
+        }
+    }
+
+    private fun JvmFloatArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        bytes: List<Byte>,
+    ) {
+        val endExclusive = start + bytes.size.toLong()
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Float.SIZE_BYTES.toLong(),
+        )
+        bytes.forEachIndexed { index, value ->
+            val rawOffset = start + index.toLong()
             val elementIndex = (rawOffset / Float.SIZE_BYTES).toInt()
             val byteIndex = (rawOffset % Float.SIZE_BYTES).toInt()
             elements[elementIndex] = elements[elementIndex]
