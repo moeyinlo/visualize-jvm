@@ -4773,6 +4773,11 @@ object JvmInterpreter {
                             referencedEntry.javaClass.simpleName,
                     )
                 }
+                entry.validateLdcMethodHandleTarget(
+                    referencedEntry = referencedEntry,
+                    constantPool = constantPool,
+                    offset = instruction.offset,
+                )
                 operandStack.push(
                     heap.internMethodHandle(
                         referenceKind = entry.referenceKind.toRuntimeReferenceKind(),
@@ -4830,6 +4835,51 @@ object JvmInterpreter {
             }
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported ldc constant ${entry.javaClass.simpleName} at offset ${instruction.offset}",
+            )
+        }
+    }
+
+    private fun ConstantMethodHandleEntry.validateLdcMethodHandleTarget(
+        referencedEntry: ConstantPoolEntry,
+        constantPool: ConstantPool,
+        offset: Int,
+    ) {
+        if (referenceKind != MethodHandleReferenceKind.NewInvokeSpecial) {
+            return
+        }
+        val methodReference = referencedEntry as ConstantMethodRefEntry
+        val nameAndTypeEntry = try {
+            constantPool[methodReference.nameAndTypeIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "invalid name_and_type_index ${methodReference.nameAndTypeIndex}: ${exception.message}",
+            )
+        }
+        if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "expected ConstantNameAndTypeEntry but was ${nameAndTypeEntry.javaClass.simpleName}",
+            )
+        }
+        val nameEntry = try {
+            constantPool[nameAndTypeEntry.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "invalid method name_index ${nameAndTypeEntry.nameIndex}: ${exception.message}",
+            )
+        }
+        if (nameEntry !is ConstantUtf8Entry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "expected ConstantUtf8Entry but was ${nameEntry.javaClass.simpleName}",
+            )
+        }
+        if (nameEntry.value != "<init>") {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "reference_kind NewInvokeSpecial must target <init> but found ${nameEntry.value}",
             )
         }
     }

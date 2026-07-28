@@ -13480,6 +13480,45 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc rejects new invoke special method handles that do not target constructors`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x07.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("pkg/Example", "pkg/Example".encodeToByteArray()),
+                        ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                        ConstantUtf8Entry("factory", "factory".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantMethodRefEntry(
+                            classIndex = ConstantPoolIndex(2),
+                            nameAndTypeIndex = ConstantPoolIndex(5),
+                        ),
+                        ConstantMethodHandleEntry(
+                            referenceKind = MethodHandleReferenceKind.NewInvokeSpecial,
+                            referenceIndex = ConstantPoolIndex(6),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid ldc CONSTANT_MethodHandle reference_index #6 at offset 0: " +
+                "reference_kind NewInvokeSpecial must target <init> but found factory",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `ldc_w pushes wide indexed reference constants from the runtime constant pool`() {
         val heap = JvmHeap()
 
