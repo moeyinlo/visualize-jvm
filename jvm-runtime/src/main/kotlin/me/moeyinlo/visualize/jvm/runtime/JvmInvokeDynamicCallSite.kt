@@ -818,7 +818,13 @@ object JvmInvokeDynamicCallSiteResolver {
             index = nameAndTypeIndex,
             role = "$role name_and_type_index",
         )
-        if (!nameAndDescriptor.descriptor.isInvokeDynamicMethodDescriptor()) {
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = nameAndTypeIndex,
+                role = "$role descriptor",
+                descriptor = nameAndDescriptor.descriptor,
+            )
+        } catch (_: ClassFileFormatException) {
             throw JvmInvokeDynamicLinkageException(
                 "$role descriptor ${nameAndDescriptor.descriptor} is not a method descriptor",
             )
