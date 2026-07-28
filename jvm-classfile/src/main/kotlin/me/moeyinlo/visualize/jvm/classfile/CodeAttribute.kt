@@ -1814,6 +1814,27 @@ private object CodeInstructionValidator {
                 }
             }
 
+            MethodHandleReferenceKind.InvokeStatic,
+            MethodHandleReferenceKind.InvokeSpecial,
+            -> {
+                val reference = loadConstantPoolEntry(
+                    ownerPath = ownerPath,
+                    pc = pc,
+                    mnemonic = mnemonic,
+                    constantPool = constantPool,
+                    index = entry.referenceIndex,
+                    role = "CONSTANT_MethodHandle.reference_index",
+                )
+                if (reference !is ConstantMethodRefEntry && reference !is ConstantInterfaceMethodRefEntry) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                            "CONSTANT_MethodHandle.reference_index=${entry.referenceIndex} " +
+                            "expected CONSTANT_Methodref or CONSTANT_InterfaceMethodref " +
+                            "but found ${reference.javaClass.simpleName}",
+                    )
+                }
+            }
+
             else -> Unit
         }
     }

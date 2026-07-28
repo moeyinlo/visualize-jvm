@@ -564,6 +564,34 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc method handle static or special references whose target is not a method reference`() {
+        listOf(MethodHandleReferenceKind.InvokeStatic, MethodHandleReferenceKind.InvokeSpecial).forEach { referenceKind ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Code", byteArrayOf()),
+                            ConstantMethodHandleEntry(referenceKind, ConstantPoolIndex(3)),
+                            ConstantFieldRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+                            ConstantClassEntry(ConstantPoolIndex(5)),
+                            ConstantUtf8Entry("Example", byteArrayOf()),
+                            ConstantNameAndTypeEntry(ConstantPoolIndex(7), ConstantPoolIndex(8)),
+                            ConstantUtf8Entry("run", byteArrayOf()),
+                            ConstantUtf8Entry("()V", byteArrayOf()),
+                        ),
+                    ),
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("reference_index"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("CONSTANT_Methodref"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("CONSTANT_InterfaceMethodref"), failure.message)
+        }
+    }
+
+    @Test
     fun `rejects ldc method handle field references whose target is not a field reference`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
