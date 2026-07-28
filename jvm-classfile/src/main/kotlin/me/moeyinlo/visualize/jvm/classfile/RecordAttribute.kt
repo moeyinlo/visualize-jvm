@@ -69,6 +69,7 @@ object RecordAttributeParser : AttributeBodyParser {
         val nestHostPaths = mutableListOf<String>()
         val nestMembersPaths = mutableListOf<String>()
         val recordPaths = mutableListOf<String>()
+        val permittedSubclassesPaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
@@ -97,6 +98,7 @@ object RecordAttributeParser : AttributeBodyParser {
                 "NestHost" -> nestHostPaths += "$ownerPath.attributes[$index]"
                 "NestMembers" -> nestMembersPaths += "$ownerPath.attributes[$index]"
                 "Record" -> recordPaths += "$ownerPath.attributes[$index]"
+                "PermittedSubclasses" -> permittedSubclassesPaths += "$ownerPath.attributes[$index]"
                 "MethodParameters" -> methodParametersPaths += "$ownerPath.attributes[$index]"
             }
         }
@@ -115,6 +117,7 @@ object RecordAttributeParser : AttributeBodyParser {
         requireAbsentAttribute(nestHostPaths, "NestHost", "ClassFile", ownerPath)
         requireAbsentAttribute(nestMembersPaths, "NestMembers", "ClassFile", ownerPath)
         requireAbsentAttribute(recordPaths, "Record", "ClassFile", ownerPath)
+        requireAbsentAttribute(permittedSubclassesPaths, "PermittedSubclasses", "ClassFile", ownerPath)
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", ownerPath)
         requireAbsentAttribute(
             runtimeVisibleParameterAnnotationsPaths,
