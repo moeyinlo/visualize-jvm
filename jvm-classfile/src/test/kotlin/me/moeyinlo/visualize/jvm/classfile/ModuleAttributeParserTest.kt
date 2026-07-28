@@ -68,6 +68,39 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects module name indexes with invalid module names`() {
+        val constantPool = ConstantPool.fromEntries(
+            moduleConstantPoolEntries(moduleName = "bad@module"),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 22,
+                        0, 3, 0, 0, 0, 0,
+                        0, 1,
+                        0, 6, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].module_name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("module name"), failure.message)
+    }
+
+    @Test
     fun `rejects unknown Module flags`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(
@@ -907,10 +940,10 @@ class ModuleAttributeParserTest {
     private fun moduleConstantPool(): ConstantPool =
         ConstantPool.fromEntries(moduleConstantPoolEntries())
 
-    private fun moduleConstantPoolEntries(): List<ConstantPoolEntry> =
+    private fun moduleConstantPoolEntries(moduleName: String = "my.module"): List<ConstantPoolEntry> =
         listOf(
             ConstantUtf8Entry("Module", byteArrayOf()),
-            ConstantUtf8Entry("my.module", byteArrayOf()),
+            ConstantUtf8Entry(moduleName, byteArrayOf()),
             ConstantModuleEntry(ConstantPoolIndex(2)),
             ConstantUtf8Entry("1.0", byteArrayOf()),
             ConstantUtf8Entry("java.base", byteArrayOf()),
