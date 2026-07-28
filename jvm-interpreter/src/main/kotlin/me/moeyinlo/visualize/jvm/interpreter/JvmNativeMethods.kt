@@ -5739,8 +5739,14 @@ object JvmVmIntrinsics {
                         start = sourceStart,
                         endExclusive = sourceEndExclusive,
                     ).swappedRawBytes(elementSize.value)
+                is JvmDoubleArrayPayload ->
+                    sourcePayload.rawBytes(
+                        operation = "Unsafe.copySwapMemory0 double array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    ).swappedRawBytes(elementSize.value)
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copySwapMemory0 currently supports only guest byte, char, float, int, long, or short arrays for non-null bases",
+                    "Unsafe.copySwapMemory0 currently supports only guest byte, char, double, float, int, long, or short arrays for non-null bases",
                 )
             }
             swapped.forEachIndexed { index, byte ->
