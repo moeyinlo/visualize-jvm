@@ -2017,7 +2017,7 @@ class ClassFileParserTest {
             's'.code,
             1, 0, 10,
             'p'.code, 'k'.code, 'g'.code, '/'.code, 'M'.code, 'e'.code, 'm'.code, 'b'.code, 'e'.code, 'r'.code,
-            7, 0, 9,
+            7, 0, 7,
             0, 0x21,
             0, 2,
             0, 4,
