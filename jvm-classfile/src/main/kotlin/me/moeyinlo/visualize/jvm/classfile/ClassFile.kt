@@ -97,6 +97,7 @@ object ClassFileParser {
                 source = source,
             )
         }
+        val seenInterfaceIndexes = mutableMapOf<ConstantPoolIndex, Int>()
         identity.interfaceIndexes.forEachIndexed { interfaceIndex, constantPoolIndex ->
             expectClassIdentityReference(
                 constantPool = constantPool,
@@ -104,6 +105,13 @@ object ClassFileParser {
                 role = "interfaces[$interfaceIndex]",
                 source = source,
             )
+            val duplicateOf = seenInterfaceIndexes.putIfAbsent(constantPoolIndex, interfaceIndex)
+            if (duplicateOf != null) {
+                throw ClassFileFormatException(
+                    "Invalid ClassFile interfaces[$interfaceIndex]=$constantPoolIndex source=$source: " +
+                        "duplicate interface index already used by interfaces[$duplicateOf]",
+                )
+            }
         }
     }
 
