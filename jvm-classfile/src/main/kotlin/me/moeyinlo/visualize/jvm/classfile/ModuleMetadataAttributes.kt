@@ -12,6 +12,12 @@ data class ModuleMainClassAttribute(
 
 object ModulePackagesAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java9MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid ModulePackages attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java9MajorVersion",
+            )
+        }
         val packageCount = context.reader.readU2()
         val packageIndexes = List(packageCount) { index ->
             readRequiredIndex<ConstantPackageEntry>(context, "${context.ownerPath}.package_index[$index]")
@@ -49,6 +55,8 @@ object ModuleMainClassAttributeParser : AttributeBodyParser {
         )
     }
 }
+
+private const val Java9MajorVersion = 53
 
 private inline fun <reified T : ConstantPoolEntry> readRequiredIndex(
     context: AttributeParseContext,

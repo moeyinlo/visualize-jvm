@@ -445,6 +445,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.25 | `Module` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects Module attributes in record components` | IMPLEMENTED |
 | 4.7.25 | `Module` uniqueness and module relationship constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 4.7.26 | `ModulePackages` classfile structure | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
+| 4.7.26, 4.7-C | `ModulePackages` attributes are permitted only in class file major version 53.0 or later | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects ModulePackages attributes before Java 9` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` package table rejects duplicate `package_index` entries | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package indexes` | IMPLEMENTED |
