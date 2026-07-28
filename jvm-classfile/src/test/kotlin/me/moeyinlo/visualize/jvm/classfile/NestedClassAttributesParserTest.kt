@@ -64,6 +64,35 @@ class NestedClassAttributesParserTest {
     }
 
     @Test
+    fun `rejects InnerClasses inner names that are not unqualified names`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("InnerClasses", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Outer\$Inner", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("pkg/Outer", byteArrayOf()),
+                ConstantUtf8Entry("bad/name", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 10, 0, 1, 0, 2, 0, 4, 0, 6, 0, 1),
+                    source = "bad-inner-name.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("InnerClasses" to InnerClassesAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("inner_name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
     fun `parses EnclosingMethod attribute with optional method index`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

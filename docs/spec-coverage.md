@@ -193,6 +193,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.5 | `Exceptions` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method Exceptions attributes` | IMPLEMENTED |
 | 4.7.5 | `Exceptions` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
+| 4.7.6 | `InnerClasses.inner_name_index` must name a valid unqualified name when nonzero | `jvm-classfile` | `NestedClassAttributesParserTest.rejects InnerClasses inner names that are not unqualified names` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` class attribute duplicate rejection | `jvm-classfile` | `ClassFileParserTest.rejects ClassFile with duplicate InnerClasses attributes` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects InnerClasses attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects InnerClasses attributes in method attribute tables` | IMPLEMENTED |
