@@ -101,6 +101,12 @@ sealed interface VerificationTypeInfo {
 
 object StackMapTableAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java6MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid StackMapTable attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java6MajorVersion",
+            )
+        }
         val numberOfEntries = context.reader.readU2()
         val entries = List(numberOfEntries) { index ->
             parseFrame(context, "${context.ownerPath}.entries[$index]")
@@ -209,3 +215,5 @@ object StackMapTableAttributeParser : AttributeBodyParser {
         return index
     }
 }
+
+private const val Java6MajorVersion = 50

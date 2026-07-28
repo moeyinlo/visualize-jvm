@@ -97,6 +97,32 @@ class StackMapTableAttributeParserTest {
     }
 
     @Test
+    fun `rejects StackMapTable attributes before Java 6`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("StackMapTable", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java5-stack-map-table.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("StackMapTable" to StackMapTableAttributeParser),
+                ownerPath = "methods[0].attributes[0]",
+                majorVersion = 49,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("StackMapTable"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=49"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("50"), failure.message)
+    }
+
+    @Test
     fun `rejects reserved StackMapTable frame type`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
