@@ -1062,7 +1062,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Branches | `ifnonnull` pops the top reference runtime operand stack value, branches when it is not `null` using a signed 16-bit offset, and falls through otherwise | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `goto` branches unconditionally using a signed 16-bit offset | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Branches | `goto_w` branches unconditionally using a signed 32-bit offset | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
-| Branches | `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Branches | `if_icmp*`, `if_acmp*`, `ifnull`, `ifnonnull`, `goto`, `goto_w` interpreter execution and verifier stack transitions | `jvm-interpreter`, `jvm-verifier` | `JvmInterpreterTest`; `IntZeroBranchInstructionVerifierTest`; `IntCompareBranchInstructionVerifierTest`; `ReferenceCompareBranchInstructionVerifierTest`; `ReferenceNullBranchInstructionVerifierTest`; `GotoInstructionVerifierTest` | IMPLEMENTED |
 | Switches | `tableswitch` pops the top int key, accounts for 4-byte alignment padding, chooses a matching jump offset for `low..high`, and uses default otherwise | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Switches | `lookupswitch` pops the top int key, accounts for 4-byte alignment padding, scans sorted match-offset pairs, and uses default when no key matches | `jvm-interpreter` | `JvmInterpreterTest` | IMPLEMENTED |
 | Switches | `tableswitch`, `lookupswitch` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
