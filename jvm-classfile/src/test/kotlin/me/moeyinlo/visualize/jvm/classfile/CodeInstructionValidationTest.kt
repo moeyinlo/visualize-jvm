@@ -565,6 +565,20 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc dynamic constants whose name is not an unqualified name`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = constantDynamicPool(descriptor = "I", memberName = "bad/name"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
+    }
+
+    @Test
     fun `accepts ldc2_w operands that point to category two constants`() {
         assertIs<CodeAttribute>(
             parseCodeAttribute(
@@ -1221,13 +1235,13 @@ class CodeInstructionValidationTest {
             ),
         )
 
-    private fun constantDynamicPool(descriptor: String): ConstantPool =
+    private fun constantDynamicPool(descriptor: String, memberName: String = "dyn"): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
                 ConstantUtf8Entry("Code", byteArrayOf()),
                 ConstantDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(3)),
                 ConstantNameAndTypeEntry(ConstantPoolIndex(4), ConstantPoolIndex(5)),
-                ConstantUtf8Entry("dyn", byteArrayOf()),
+                ConstantUtf8Entry(memberName, memberName.encodeToByteArray()),
                 ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
             ),
         )

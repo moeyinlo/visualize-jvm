@@ -1784,6 +1784,34 @@ private object CodeInstructionValidator {
                     "but found ${nameAndType.javaClass.simpleName}",
             )
         }
+        val name = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.nameIndex,
+            role = "CONSTANT_Dynamic.name_index",
+        )
+        if (name !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Dynamic.name_index=${nameAndType.nameIndex} expected CONSTANT_Utf8_info " +
+                    "but found ${name.javaClass.simpleName}",
+            )
+        }
+        try {
+            ClassNameValidator.validateUnqualifiedName(
+                owner = nameAndType.nameIndex,
+                role = "name_index",
+                value = name.value,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Dynamic.name_index=${nameAndType.nameIndex}: " +
+                    exception.message,
+            )
+        }
         val descriptor = loadConstantPoolEntry(
             ownerPath = ownerPath,
             pc = pc,
