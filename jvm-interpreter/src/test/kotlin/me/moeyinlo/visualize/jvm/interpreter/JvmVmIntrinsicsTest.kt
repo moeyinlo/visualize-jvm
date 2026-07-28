@@ -4503,6 +4503,39 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe reallocateMemory0 intrinsic advances allocation cursor after in-place growth`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val address = memory.allocateNativeMemory(8L)
+        memory.setNativeMemory(address, 8L, 0x11.toByte())
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeReallocateMemory0Method())
+            ?: error("Unsafe.reallocateMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val result = intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(address), JvmLongValue(16L))))
+            as JvmLongValue
+        val next = memory.allocateNativeMemory(8L)
+        memory.setNativeMemory(next, 8L, 0x22.toByte())
+
+        assertEquals(address, result.value)
+        assertEquals(16L, memory.nativeMemoryBlockSize(address))
+        assertTrue(next >= address + 16L)
+        for (offset in 0L until 8L) {
+            assertEquals(0x11.toByte(), memory.nativeMemoryByte(address + offset))
+        }
+        for (offset in 8L until 16L) {
+            assertEquals(0.toByte(), memory.nativeMemoryByte(address + offset))
+        }
+    }
+
+    @Test
     fun `Unsafe setMemory0 intrinsic fills synthetic native memory bytes`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")

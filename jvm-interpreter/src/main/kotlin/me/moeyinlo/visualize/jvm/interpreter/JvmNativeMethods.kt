@@ -145,6 +145,9 @@ class JvmUnsafeSyntheticMemory(
             freeNativeMemory(address)
             return newAddress
         }
+        if (bytes > oldBytes) {
+            advanceNativeAllocationCursorPast(address, bytes)
+        }
         nativeMemoryBlocks[address] = bytes
         if (bytes < oldBytes) {
             clearNativeMemoryBytes(address + bytes, oldBytes - bytes)
@@ -257,6 +260,17 @@ class JvmUnsafeSyntheticMemory(
                 val blockEndExclusive = blockAddress + blockBytes
                 address < blockEndExclusive && blockAddress < endExclusive
             }
+        }
+    }
+
+    private fun advanceNativeAllocationCursorPast(address: Long, bytes: Long) {
+        val alignedBytes = bytes.alignNativeMemoryAllocation()
+        if (alignedBytes > Long.MAX_VALUE - address) {
+            throw JvmUnsupportedInstructionException("native memory range address=$address bytes=$bytes is invalid")
+        }
+        val endExclusive = address + alignedBytes
+        if (endExclusive > nextNativeAddress) {
+            nextNativeAddress = endExclusive
         }
     }
 
