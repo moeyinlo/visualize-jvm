@@ -70,7 +70,7 @@ object FieldInfoParser {
             val descriptor = expectUtf8(constantPool, field.descriptorIndex, "$ownerPath.descriptor_index")
             ClassNameValidator.validateUnqualifiedName(field.nameIndex, "$ownerPath.name_index", name.value)
             DescriptorValidator.validateFieldDescriptor(field.descriptorIndex, "$ownerPath.descriptor_index", descriptor.value)
-            validateFieldAttributes(field, constantPool, ownerPath)
+            validateFieldAttributes(field, constantPool, ownerPath, descriptor.value)
 
             val duplicateOf = seenFields.putIfAbsent(name.value to descriptor.value, index)
             if (duplicateOf != null) {
@@ -86,6 +86,7 @@ object FieldInfoParser {
         field: FieldInfo,
         constantPool: ConstantPool,
         ownerPath: String,
+        descriptor: String,
     ) {
         val constantValuePaths = mutableListOf<String>()
         val signaturePaths = mutableListOf<String>()
@@ -146,6 +147,7 @@ object FieldInfoParser {
         requireAbsentAttribute(recordPaths, "Record", "ClassFile", ownerPath)
         requireAbsentAttribute(permittedSubclassesPaths, "PermittedSubclasses", "ClassFile", ownerPath)
         requireAtMostOneAttribute(constantValuePaths, "ConstantValue", ownerPath)
+        validateConstantValueAttribute(field, constantPool, ownerPath, descriptor)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleAnnotationsPaths, "RuntimeInvisibleAnnotations", ownerPath)
@@ -179,6 +181,47 @@ object FieldInfoParser {
             )
         }
     }
+
+    private fun validateConstantValueAttribute(
+        field: FieldInfo,
+        constantPool: ConstantPool,
+        ownerPath: String,
+        descriptor: String,
+    ) {
+        val attribute = field.attributes.filterIsInstance<ConstantValueAttribute>().singleOrNull() ?: return
+        val entry = try {
+            constantPool[attribute.constantValueIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath ConstantValue.constantvalue_index=${attribute.constantValueIndex}: " +
+                    exception.message,
+            )
+        }
+        val isValid = when (descriptor) {
+            "Z", "B", "C", "S", "I" -> entry is ConstantIntegerEntry
+            "F" -> entry is ConstantFloatEntry
+            "J" -> entry is ConstantLongEntry
+            "D" -> entry is ConstantDoubleEntry
+            "Ljava/lang/String;" -> entry is ConstantStringEntry
+            else -> false
+        }
+        if (!isValid) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath ConstantValue.constantvalue_index=${attribute.constantValueIndex}: " +
+                    "${entry.constantValueSpecName()} does not match field descriptor '$descriptor'",
+            )
+        }
+    }
+
+    private fun ConstantPoolEntry.constantValueSpecName(): String =
+        when (this) {
+            is ConstantIntegerEntry -> "CONSTANT_Integer"
+            is ConstantFloatEntry -> "CONSTANT_Float"
+            is ConstantLongEntry -> "CONSTANT_Long"
+            is ConstantDoubleEntry -> "CONSTANT_Double"
+            is ConstantStringEntry -> "CONSTANT_String"
+            else -> this.javaClass.simpleName
+        }
 
     private fun attributeName(
         attribute: AttributeInfo,

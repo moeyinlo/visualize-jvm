@@ -626,6 +626,36 @@ class FieldInfoParserTest {
     }
 
     @Test
+    fun `rejects ConstantValue attributes whose constant type does not match field descriptor`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            FieldInfoParser.parseFields(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1, 0, 1, 0, 2, 0, 1,
+                        0, 3, 0, 0, 0, 2, 0, 4,
+                    ),
+                    source = "bad-field-constant-value-type.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantUtf8Entry("ConstantValue", "ConstantValue".encodeToByteArray()),
+                        ConstantFloatEntry(1.0f),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("ConstantValue" to ConstantValueAttributeParser),
+                classKind = ClassFileKind.Class,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ConstantValue"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("descriptor"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Float"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate field ConstantValue attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             FieldInfoParser.parseFields(
