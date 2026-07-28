@@ -126,6 +126,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.2 | `ConstantValue` | `jvm-classfile` | `ConstantValueAttributeParserTest` | IMPLEMENTED |
 | 4.7.2 | `ConstantValue` is a predefined attribute permitted only in `field_info.attributes`, rejecting ClassFile-level `ConstantValue` attributes | `jvm-classfile` | `ClassFileParserTest.rejects ConstantValue attributes in ClassFile attribute table` | IMPLEMENTED |
 | 4.7.2 | `ConstantValue` is rejected from `method_info.attributes`, preserving its predefined `field_info`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects ConstantValue attributes in method attribute tables` | IMPLEMENTED |
+| 4.7.2 | `ConstantValue` is rejected from nested `Code.attributes`, preserving its predefined `field_info`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects ConstantValue attributes in Code` | IMPLEMENTED |
 | 4.7.2 | `ConstantValue` at-most-one `field_info` attribute rule | `jvm-classfile` | `FieldInfoParserTest.rejects duplicate field ConstantValue attributes` | IMPLEMENTED |
 | 4.7.2 | `ConstantValue` writer | `jvm-classfile` | `AttributeInfoWriterTest`, `MemberInfoWriterTest` | IMPLEMENTED |
 | 4.7.3 | `Code` full structural validation and bytecode instruction constraints | `jvm-classfile` | TBD | PENDING |
