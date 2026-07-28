@@ -58,6 +58,7 @@ object RecordAttributeParser : AttributeBodyParser {
         val stackMapTablePaths = mutableListOf<String>()
         val lineNumberTablePaths = mutableListOf<String>()
         val localVariableTablePaths = mutableListOf<String>()
+        val localVariableTypeTablePaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
         val exceptionsPaths = mutableListOf<String>()
         val annotationDefaultPaths = mutableListOf<String>()
@@ -92,6 +93,7 @@ object RecordAttributeParser : AttributeBodyParser {
                 "StackMapTable" -> stackMapTablePaths += "$ownerPath.attributes[$index]"
                 "LineNumberTable" -> lineNumberTablePaths += "$ownerPath.attributes[$index]"
                 "LocalVariableTable" -> localVariableTablePaths += "$ownerPath.attributes[$index]"
+                "LocalVariableTypeTable" -> localVariableTypeTablePaths += "$ownerPath.attributes[$index]"
                 "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$index]"
                 "Exceptions" -> exceptionsPaths += "$ownerPath.attributes[$index]"
                 "AnnotationDefault" -> annotationDefaultPaths += "$ownerPath.attributes[$index]"
@@ -116,6 +118,7 @@ object RecordAttributeParser : AttributeBodyParser {
         requireAbsentAttribute(stackMapTablePaths, "StackMapTable", "Code", ownerPath)
         requireAbsentAttribute(lineNumberTablePaths, "LineNumberTable", "Code", ownerPath)
         requireAbsentAttribute(localVariableTablePaths, "LocalVariableTable", "Code", ownerPath)
+        requireAbsentAttribute(localVariableTypeTablePaths, "LocalVariableTypeTable", "Code", ownerPath)
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", ownerPath)
         requireAbsentAttribute(exceptionsPaths, "Exceptions", "method_info", ownerPath)
         requireAbsentAttribute(annotationDefaultPaths, "AnnotationDefault", "method_info", ownerPath)

@@ -260,6 +260,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.14 | `LocalVariableTypeTable.name_index` must name a valid unqualified name | `jvm-classfile` | `LocalVariableTypeTableAttributeParserTest.rejects LocalVariableTypeTable names that are not unqualified names` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable.index` must be less than enclosing `Code.max_locals` | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LocalVariableTypeTable entries whose index is outside max locals` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable` local variable type ranges must start and end on enclosing `Code` instruction boundaries | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LocalVariableTypeTable entries whose start pc does not point to an instruction opcode` | IMPLEMENTED |
+| 4.7.14 | `LocalVariableTypeTable` is rejected from `record_component_info.attributes`, preserving its predefined `Code`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects LocalVariableTypeTable attributes in record components` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.15 | `Deprecated` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
 | 4.7.15 | `Deprecated` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`/`field_info`/`method_info` locations | `jvm-classfile` | `RecordAttributeParserTest.rejects Deprecated attributes in record components` | IMPLEMENTED |
