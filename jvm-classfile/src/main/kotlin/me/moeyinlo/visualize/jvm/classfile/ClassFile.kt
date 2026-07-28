@@ -71,13 +71,13 @@ object ClassFileParser {
             role = "this_class",
             source = source,
         )
+        val thisClassName = expectClassIdentityUtf8Reference(
+            constantPool = constantPool,
+            index = thisClass.nameIndex,
+            role = "this_class.name_index",
+            source = source,
+        ).value
         if (identity.superClassIndex == null) {
-            val thisClassName = expectClassIdentityUtf8Reference(
-                constantPool = constantPool,
-                index = thisClass.nameIndex,
-                role = "this_class.name_index",
-                source = source,
-            ).value
             if (thisClassName != "java/lang/Object") {
                 throw ClassFileFormatException(
                     "Invalid ClassFile super_class source=$source: zero is permitted only for " +
@@ -85,6 +85,11 @@ object ClassFileParser {
                 )
             }
         } else {
+            if (thisClassName == "java/lang/Object") {
+                throw ClassFileFormatException(
+                    "Invalid ClassFile super_class source=$source: java/lang/Object must use zero super_class",
+                )
+            }
             expectClassIdentityReference(
                 constantPool = constantPool,
                 index = identity.superClassIndex,

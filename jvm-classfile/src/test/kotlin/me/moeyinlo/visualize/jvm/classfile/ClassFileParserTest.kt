@@ -103,6 +103,20 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects nonzero super class on Object class`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = objectClassFileWithNonzeroSuperBytes(),
+                source = "ObjectWithSuper.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("super_class"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("java/lang/Object"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("zero"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -577,6 +591,29 @@ class ClassFileParserTest {
             0, 0x21,
             0, 2,
             0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun objectClassFileWithNonzeroSuperBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 5,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 10, 'O'.code, 't'.code, 'h'.code, 'e'.code, 'r'.code,
+            'S'.code, 'u'.code, 'p'.code, 'e'.code, 'r'.code,
+            7, 0, 3,
+            0, 0x21,
+            0, 2,
+            0, 4,
             0, 0,
             0, 0,
             0, 0,
