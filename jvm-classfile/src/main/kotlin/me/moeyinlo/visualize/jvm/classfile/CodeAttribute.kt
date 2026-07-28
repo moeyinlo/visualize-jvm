@@ -1298,7 +1298,42 @@ private object CodeInstructionValidator {
                     "expected CONSTANT_Utf8_info but found ${name.javaClass.simpleName}",
             )
         }
-        return name.value
+        val methodName = name.value
+        validateMethodReferenceNameGrammar(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            index = index,
+            nameIndex = nameAndType.nameIndex,
+            methodName = methodName,
+        )
+        return methodName
+    }
+
+    private fun validateMethodReferenceNameGrammar(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        index: ConstantPoolIndex,
+        nameIndex: ConstantPoolIndex,
+        methodName: String,
+    ) {
+        if (methodName.startsWith("<")) {
+            return
+        }
+        try {
+            ClassNameValidator.validateMethodName(
+                owner = nameIndex,
+                role = "name_index",
+                value = methodName,
+                allowInit = false,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "method name_index=$nameIndex: ${exception.message}",
+            )
+        }
     }
 
     private fun validateFieldReferenceOperand(

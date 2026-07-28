@@ -733,6 +733,20 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects invokevirtual operand whose method name is not a method name`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = methodReferencePool(memberName = "bad/name"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokevirtual"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method name"), failure.message)
+    }
+
+    @Test
     fun `accepts invokespecial and invokestatic method references in all supported classfile versions`() {
         val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
         opcodes.forEach { (opcode, _) ->
