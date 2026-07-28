@@ -779,6 +779,31 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc method handle field references whose descriptor is not a field descriptor`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantMethodHandleEntry(MethodHandleReferenceKind.GetStatic, ConstantPoolIndex(3)),
+                        ConstantFieldRefEntry(ConstantPoolIndex(4), ConstantPoolIndex(6)),
+                        ConstantClassEntry(ConstantPoolIndex(5)),
+                        ConstantUtf8Entry("Example", byteArrayOf()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(7), ConstantPoolIndex(8)),
+                        ConstantUtf8Entry("value", byteArrayOf()),
+                        ConstantUtf8Entry("()V", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
+
+    @Test
     fun `rejects ldc method handle field references whose target is not a field reference`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(

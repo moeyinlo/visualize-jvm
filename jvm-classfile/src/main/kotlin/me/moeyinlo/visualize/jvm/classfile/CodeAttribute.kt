@@ -1795,6 +1795,7 @@ private object CodeInstructionValidator {
                     )
                 }
                 validateFieldReferenceClass(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
+                validateFieldReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
             }
 
             MethodHandleReferenceKind.InvokeVirtual -> {
