@@ -1365,6 +1365,34 @@ private object CodeInstructionValidator {
                     "but found ${ownerClass.javaClass.simpleName}",
             )
         }
+        val ownerName = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = ownerClass.nameIndex,
+            role = "$constantKind.class_index name_index",
+        )
+        if (ownerName !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.class_index=${entry.classIndex} name_index=${ownerClass.nameIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${ownerName.javaClass.simpleName}",
+            )
+        }
+        try {
+            ClassNameValidator.validateInternalBinaryName(
+                owner = ownerClass.nameIndex,
+                role = "name_index",
+                value = ownerName.value,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.class_index=${entry.classIndex} name_index=${ownerClass.nameIndex}: " +
+                    exception.message,
+            )
+        }
     }
 
     private fun validateFieldReferenceOperand(

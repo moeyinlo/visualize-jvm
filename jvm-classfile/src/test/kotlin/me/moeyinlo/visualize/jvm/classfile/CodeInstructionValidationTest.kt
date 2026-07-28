@@ -791,6 +791,30 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects invokevirtual operand whose methodref class name is not an internal binary name`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantMethodRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(5)),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                        ConstantUtf8Entry("bad.name", byteArrayOf()),
+                        ConstantUtf8Entry("run", byteArrayOf()),
+                        ConstantUtf8Entry("()V", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokevirtual"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("binary name in internal form"), failure.message)
+    }
+
+    @Test
     fun `rejects invokevirtual operand whose method descriptor is not a method descriptor`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
@@ -910,6 +934,30 @@ class CodeInstructionValidationTest {
 
         assertTrue(failure.message.orEmpty().contains("invokeinterface"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_InterfaceMethodref"), failure.message)
+    }
+
+    @Test
+    fun `rejects invokeinterface operand whose interface methodref class name is not an internal binary name`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB9.toByte(), 0, 2, 1, 0, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantInterfaceMethodRefEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(5)),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(6), ConstantPoolIndex(7)),
+                        ConstantUtf8Entry("bad.name", byteArrayOf()),
+                        ConstantUtf8Entry("run", byteArrayOf()),
+                        ConstantUtf8Entry("()V", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokeinterface"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("binary name in internal form"), failure.message)
     }
 
     @Test
