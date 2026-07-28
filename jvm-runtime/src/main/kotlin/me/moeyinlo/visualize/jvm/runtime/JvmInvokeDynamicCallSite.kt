@@ -828,6 +828,11 @@ object JvmInvokeDynamicCallSiteResolver {
                 "$role reference_kind $referenceKind must not target ${nameAndDescriptor.name}",
             )
         }
+        nameAndDescriptor.name.requireMethodHandleMethodName(
+            owner = nameAndTypeIndex,
+            referenceKind = referenceKind,
+            role = role,
+        )
     }
 
     private fun String.requireMethodHandleFieldName(
@@ -843,6 +848,24 @@ object JvmInvokeDynamicCallSiteResolver {
             return this
         } catch (_: ClassFileFormatException) {
             throw JvmInvokeDynamicLinkageException("$role field name $this is not a valid unqualified name")
+        }
+    }
+
+    private fun String.requireMethodHandleMethodName(
+        owner: ConstantPoolIndex,
+        referenceKind: MethodHandleReferenceKind,
+        role: String,
+    ): String {
+        try {
+            ClassNameValidator.validateMethodName(
+                owner = owner,
+                role = "$role method name",
+                value = this,
+                allowInit = referenceKind == MethodHandleReferenceKind.NewInvokeSpecial,
+            )
+            return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException("$role method name $this is not a valid method name")
         }
     }
 
