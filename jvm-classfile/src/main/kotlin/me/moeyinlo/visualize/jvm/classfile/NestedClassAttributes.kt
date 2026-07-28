@@ -86,7 +86,7 @@ private fun readOptionalClassIndex(
         return null
     }
     val index = ConstantPoolIndex(rawIndex)
-    expectConstantClass(context, role, index)
+    validateClassOrInterfaceInfo(context, role, index)
     return index
 }
 

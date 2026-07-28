@@ -150,6 +150,35 @@ class NestedClassAttributesParserTest {
     }
 
     @Test
+    fun `rejects InnerClasses outer class info indexes that name array classes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("InnerClasses", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Outer\$Inner", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("[Ljava/lang/String;", byteArrayOf()),
+                ConstantUtf8Entry("Inner", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 10, 0, 1, 0, 2, 0, 4, 0, 6, 0, 1),
+                    source = "bad-inner-outer-array.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("InnerClasses" to InnerClassesAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("outer_class_info_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class or interface"), failure.message)
+    }
+
+    @Test
     fun `parses EnclosingMethod attribute with optional method index`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
