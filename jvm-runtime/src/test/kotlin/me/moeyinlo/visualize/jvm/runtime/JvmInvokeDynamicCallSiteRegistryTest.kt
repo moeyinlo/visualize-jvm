@@ -957,6 +957,38 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `method handle resolver rejects new invoke special targets with non void descriptors`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = constructorMethodHandleConstantPool(descriptor = "()I"),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Constructed",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<init>",
+                                    descriptor = "()I",
+                                    isStatic = false,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle NewInvokeSpecial target pkg/Constructed.<init>:()I must return void",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `method handle resolver rejects new invoke special targets that are not constructors`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
@@ -1244,7 +1276,7 @@ class JvmInvokeDynamicCallSiteRegistryTest {
             ),
         )
 
-    private fun constructorMethodHandleConstantPool(): ConstantPool =
+    private fun constructorMethodHandleConstantPool(descriptor: String = "()V"): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
                 ConstantMethodRefEntry(
@@ -1258,7 +1290,7 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                     descriptorIndex = ConstantPoolIndex(6),
                 ),
                 ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
-                ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
             ),
         )
 

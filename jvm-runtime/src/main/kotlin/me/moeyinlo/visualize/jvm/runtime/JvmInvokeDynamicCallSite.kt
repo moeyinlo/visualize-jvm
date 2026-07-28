@@ -395,6 +395,12 @@ object JvmInvokeDynamicCallSiteResolver {
                             "${resolvedMethod.descriptor} is not an instance initializer",
                     )
                 }
+                if (resolvedMethod.descriptor.substringAfterLast(')') != "V") {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle NewInvokeSpecial target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                            "${resolvedMethod.descriptor} must return void",
+                    )
+                }
                 if (resolvedMethod.isStatic) {
                     throw JvmInvokeDynamicLinkageException(
                         "MethodHandle NewInvokeSpecial target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
