@@ -496,6 +496,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.30 | `Record` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects Record attributes in Code` | IMPLEMENTED |
 | 4.7.30 | `Record` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects Record attributes in record components` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` classfile structure | `jvm-classfile` | `PermittedSubclassesAttributeParserTest` | IMPLEMENTED |
+| 4.7.31, 4.7-C | `PermittedSubclasses` attributes are permitted only in class file major version 61.0 or later | `jvm-classfile` | `PermittedSubclassesAttributeParserTest.rejects PermittedSubclasses attributes before Java 17` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` disallowed on `ACC_FINAL` classes | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |

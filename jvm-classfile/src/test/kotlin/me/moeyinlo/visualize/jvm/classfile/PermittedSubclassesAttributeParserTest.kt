@@ -34,6 +34,34 @@ class PermittedSubclassesAttributeParserTest {
     }
 
     @Test
+    fun `rejects PermittedSubclasses attributes before Java 17`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("PermittedSubclasses", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java16-permitted-subclasses.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "PermittedSubclasses" to PermittedSubclassesAttributeParser,
+                ),
+                ownerPath = "ClassFile",
+                majorVersion = 60,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("PermittedSubclasses"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=60"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("61"), failure.message)
+    }
+
+    @Test
     fun `rejects permitted subclass entry that is not a class constant`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
