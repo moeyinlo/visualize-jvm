@@ -529,7 +529,10 @@ object JvmInvokeDynamicCallSiteResolver {
             )
         return FieldReference(
             ownerClassName = ownerClassName,
-            name = nameAndDescriptor.name,
+            name = nameAndDescriptor.name.requireMethodHandleFieldName(
+                owner = entry.nameAndTypeIndex,
+                role = "MethodHandle field reference index $referenceIndex",
+            ),
             descriptor = nameAndDescriptor.descriptor,
         )
     }
