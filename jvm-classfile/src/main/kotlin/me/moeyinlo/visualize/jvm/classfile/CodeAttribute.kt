@@ -1739,8 +1739,12 @@ private object CodeInstructionValidator {
             is ConstantStringEntry,
             is ConstantClassEntry,
             is ConstantMethodTypeEntry,
-            is ConstantMethodHandleEntry,
             -> LdcCategory.CategoryOne
+
+            is ConstantMethodHandleEntry -> {
+                validateMethodHandleLoadableConstant(ownerPath, pc, mnemonic, constantPool, index, entry)
+                LdcCategory.CategoryOne
+            }
 
             is ConstantLongEntry,
             is ConstantDoubleEntry,
@@ -1760,6 +1764,41 @@ private object CodeInstructionValidator {
                     "expected loadable constant but found ${entry.javaClass.simpleName}",
             )
         }
+
+    private fun validateMethodHandleLoadableConstant(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantMethodHandleEntry,
+    ) {
+        when (entry.referenceKind) {
+            MethodHandleReferenceKind.GetField,
+            MethodHandleReferenceKind.GetStatic,
+            MethodHandleReferenceKind.PutField,
+            MethodHandleReferenceKind.PutStatic,
+            -> {
+                val reference = loadConstantPoolEntry(
+                    ownerPath = ownerPath,
+                    pc = pc,
+                    mnemonic = mnemonic,
+                    constantPool = constantPool,
+                    index = entry.referenceIndex,
+                    role = "CONSTANT_MethodHandle.reference_index",
+                )
+                if (reference !is ConstantFieldRefEntry) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                            "CONSTANT_MethodHandle.reference_index=${entry.referenceIndex} " +
+                            "expected CONSTANT_Fieldref but found ${reference.javaClass.simpleName}",
+                    )
+                }
+            }
+
+            else -> Unit
+        }
+    }
 
     private fun dynamicConstantDescriptor(
         ownerPath: String,

@@ -539,6 +539,26 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc method handle field references whose target is not a field reference`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantMethodHandleEntry(MethodHandleReferenceKind.GetStatic, ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("notAFieldRef", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("reference_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Fieldref"), failure.message)
+    }
+
+    @Test
     fun `rejects ldc operands that point to category two constants`() {
         val longFailure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
@@ -1240,7 +1260,7 @@ class CodeInstructionValidationTest {
                 ConstantStringEntry(ConstantPoolIndex(13)),
                 ConstantClassEntry(ConstantPoolIndex(14)),
                 ConstantMethodTypeEntry(ConstantPoolIndex(15)),
-                ConstantMethodHandleEntry(MethodHandleReferenceKind.GetStatic, ConstantPoolIndex(2)),
+                ConstantMethodHandleEntry(MethodHandleReferenceKind.GetStatic, ConstantPoolIndex(16)),
                 ConstantDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(10)),
                 ConstantUtf8Entry("unused", byteArrayOf()),
                 ConstantNameAndTypeEntry(ConstantPoolIndex(11), ConstantPoolIndex(12)),
@@ -1249,6 +1269,7 @@ class CodeInstructionValidationTest {
                 ConstantUtf8Entry("hello", byteArrayOf()),
                 ConstantUtf8Entry("java/lang/String", byteArrayOf()),
                 ConstantUtf8Entry("()V", byteArrayOf()),
+                ConstantFieldRefEntry(ConstantPoolIndex(5), ConstantPoolIndex(10)),
             ),
         )
 
