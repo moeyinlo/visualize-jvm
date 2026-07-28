@@ -143,6 +143,12 @@ object ClassFileParser {
                         "major_version >= 53 but found ${version.major}.${version.minor}",
                 )
             }
+            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantPackageEntry && version.major < 53) {
+                throw ClassFileFormatException(
+                    "Invalid constant_pool #$rawIndex source=$source: CONSTANT_Package_info requires " +
+                        "major_version >= 53 but found ${version.major}.${version.minor}",
+                )
+            }
             if (slot is ConstantPoolSlot.Entry && slot.value is ConstantMethodTypeEntry && version.major < 51) {
                 throw ClassFileFormatException(
                     "Invalid constant_pool #$rawIndex source=$source: CONSTANT_MethodType_info requires " +

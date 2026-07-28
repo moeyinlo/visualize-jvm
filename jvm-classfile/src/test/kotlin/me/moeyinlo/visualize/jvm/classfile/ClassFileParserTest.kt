@@ -345,6 +345,23 @@ class ClassFileParserTest {
         assertTrue(failure.message.orEmpty().contains("ACC_MODULE"), failure.message)
         assertTrue(failure.message.orEmpty().contains("#8"), failure.message)
     }
+
+    @Test
+    fun `rejects package constants before Java 9`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithPackageConstantBeforeJava9Bytes(),
+                source = "Java8PackageConstant.class",
+                attributeParsers = AttributeParserRegistry.of("SourceFile" to SourceFileAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Package"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("53"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("52"), failure.message)
+    }
+
     @Test
     fun `rejects module classfile before Java 9`() {
         val failure = assertFailsWith<ClassFileFormatException> {
@@ -846,6 +863,12 @@ class ClassFileParserTest {
             0, 0, 0, 2,
             0, 6,
         )
+
+    private fun classFileWithPackageConstantBeforeJava9Bytes(): ByteArray =
+        classFileWithPackageConstantBytes().also { bytes ->
+            bytes[7] = 52
+        }
+
     private fun classFileWithPackageConstantBytes(): ByteArray =
         bytes(
             0xCA, 0xFE, 0xBA, 0xBE,
