@@ -53,7 +53,7 @@ object CodeAttributeParser : AttributeBodyParser {
             ownerPath = context.ownerPath,
             majorVersion = context.majorVersion,
         )
-        validateCodeAttributes(context, attributes, exceptionTable.size, instructionLayout, code.size, maxLocals)
+        validateCodeAttributes(context, attributes, exceptionTable.size, instructionLayout, code, maxLocals)
 
         return CodeAttribute(
             nameIndex = context.nameIndex,
@@ -70,7 +70,7 @@ object CodeAttributeParser : AttributeBodyParser {
         attributes: List<AttributeInfo>,
         exceptionTableLength: Int,
         instructionLayout: CodeInstructionLayout,
-        codeLength: Int,
+        code: ByteArray,
         maxLocals: Int,
     ) {
         val stackMapTablePaths = mutableListOf<String>()
@@ -95,7 +95,10 @@ object CodeAttributeParser : AttributeBodyParser {
             val attributePath = "${context.ownerPath}.attributes[$index]"
             val name = attributeName(context, attribute, "$attributePath.attribute_name_index")
             when (name) {
-                "StackMapTable" -> stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
+                "StackMapTable" -> {
+                    stackMapTablePaths += "${context.ownerPath}.attributes[$index]"
+                    validateStackMapTableUninitializedVariables(attributePath, attribute, instructionLayout, code)
+                }
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
                     validateCodeTypeAnnotationTargets(
@@ -103,7 +106,7 @@ object CodeAttributeParser : AttributeBodyParser {
                         attribute,
                         exceptionTableLength,
                         instructionLayout,
-                        codeLength,
+                        code.size,
                         maxLocals,
                     )
                 }
@@ -114,7 +117,7 @@ object CodeAttributeParser : AttributeBodyParser {
                         attribute,
                         exceptionTableLength,
                         instructionLayout,
-                        codeLength,
+                        code.size,
                         maxLocals,
                     )
                 }
@@ -153,6 +156,86 @@ object CodeAttributeParser : AttributeBodyParser {
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
+    }
+
+    private fun validateStackMapTableUninitializedVariables(
+        attributePath: String,
+        attribute: AttributeInfo,
+        instructionLayout: CodeInstructionLayout,
+        code: ByteArray,
+    ) {
+        if (attribute !is StackMapTableAttribute) {
+            return
+        }
+
+        attribute.entries.forEachIndexed { frameIndex, frame ->
+            val framePath = "$attributePath.entries[$frameIndex]"
+            when (frame) {
+                is SameLocalsOneStackItemFrame -> validateUninitializedVariable(
+                    path = "$framePath.stack[0]",
+                    verificationType = frame.stack,
+                    instructionLayout = instructionLayout,
+                    code = code,
+                )
+                is SameLocalsOneStackItemFrameExtended -> validateUninitializedVariable(
+                    path = "$framePath.stack[0]",
+                    verificationType = frame.stack,
+                    instructionLayout = instructionLayout,
+                    code = code,
+                )
+                is AppendStackMapFrame -> frame.locals.forEachIndexed { localIndex, local ->
+                    validateUninitializedVariable(
+                        path = "$framePath.locals[$localIndex]",
+                        verificationType = local,
+                        instructionLayout = instructionLayout,
+                        code = code,
+                    )
+                }
+                is FullStackMapFrame -> {
+                    frame.locals.forEachIndexed { localIndex, local ->
+                        validateUninitializedVariable(
+                            path = "$framePath.locals[$localIndex]",
+                            verificationType = local,
+                            instructionLayout = instructionLayout,
+                            code = code,
+                        )
+                    }
+                    frame.stack.forEachIndexed { stackIndex, stack ->
+                        validateUninitializedVariable(
+                            path = "$framePath.stack[$stackIndex]",
+                            verificationType = stack,
+                            instructionLayout = instructionLayout,
+                            code = code,
+                        )
+                    }
+                }
+                is ChopStackMapFrame,
+                is SameStackMapFrame,
+                is SameStackMapFrameExtended,
+                -> Unit
+            }
+        }
+    }
+
+    private fun validateUninitializedVariable(
+        path: String,
+        verificationType: VerificationTypeInfo,
+        instructionLayout: CodeInstructionLayout,
+        code: ByteArray,
+    ) {
+        if (verificationType !is VerificationTypeInfo.UninitializedVariable) {
+            return
+        }
+
+        val offset = verificationType.offset
+        val isNewInstruction = offset in instructionLayout.instructionOffsets &&
+            offset < code.size &&
+            (code[offset].toInt() and 0xFF) == 0xBB
+        if (!isNewInstruction) {
+            throw ClassFileFormatException(
+                "Invalid $path Uninitialized_variable_info offset=$offset: must point to a new instruction opcode",
+            )
+        }
     }
 
     private fun validateCodeTypeAnnotationTargets(

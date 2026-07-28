@@ -133,6 +133,139 @@ class CodeNestedAttributesParserTest {
     }
 
     @Test
+    fun `accepts StackMapTable uninitialized variable offsets that point to new instructions`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("StackMapTable", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(4)),
+                ConstantUtf8Entry("pkg/Foo", byteArrayOf()),
+            ),
+        )
+
+        val attributes = AttributeInfoParser.parseAttributes(
+            reader = ClassFileByteReader(
+                byteArrayOf(
+                    0,
+                    1,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    28,
+                    0,
+                    1,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    4,
+                    0xBB.toByte(),
+                    0,
+                    3,
+                    0xB1.toByte(),
+                    0,
+                    0,
+                    0,
+                    1,
+                    0,
+                    2,
+                    0,
+                    0,
+                    0,
+                    6,
+                    0,
+                    1,
+                    64,
+                    8,
+                    0,
+                    0,
+                ),
+                source = "stack-map-uninitialized-offset.class",
+            ),
+            constantPool = constantPool,
+            registry = AttributeParserRegistry.of(
+                "Code" to CodeAttributeParser,
+                "StackMapTable" to StackMapTableAttributeParser,
+            ),
+            ownerPath = "methods[0]",
+        )
+
+        val code = assertIs<CodeAttribute>(attributes.single())
+        val stackMapTable = assertIs<StackMapTableAttribute>(code.attributes.single())
+        val frame = assertIs<SameLocalsOneStackItemFrame>(stackMapTable.entries.single())
+        assertEquals(0, assertIs<VerificationTypeInfo.UninitializedVariable>(frame.stack).offset)
+    }
+
+    @Test
+    fun `rejects StackMapTable uninitialized variable offsets that do not point to new instructions`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("StackMapTable", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        27,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        3,
+                        0x10,
+                        0,
+                        0xB1.toByte(),
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        0,
+                        0,
+                        6,
+                        0,
+                        1,
+                        64,
+                        8,
+                        0,
+                        1,
+                    ),
+                    source = "bad-stack-map-uninitialized-offset.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "StackMapTable" to StackMapTableAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        val message = failure.message.orEmpty()
+        assertTrue(message.contains("Uninitialized_variable_info"), message)
+        assertTrue(message.contains("offset=1"), message)
+        assertTrue(message.contains("new"), message)
+    }
+
+    @Test
     fun `rejects Code type annotation catch target outside exception table`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
