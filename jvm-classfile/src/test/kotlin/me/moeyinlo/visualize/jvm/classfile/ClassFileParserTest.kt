@@ -73,6 +73,23 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects MethodParameters attributes in ClassFile attribute table`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithClassLevelMethodParametersBytes(),
+                source = "ClassLevelMethodParameters.class",
+                attributeParsers = AttributeParserRegistry.of(
+                    "MethodParameters" to MethodParametersAttributeParser,
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("MethodParameters"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+    }
+
+    @Test
     fun `rejects ClassFile with duplicate SourceFile attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -479,6 +496,34 @@ class ClassFileParserTest {
             0, 5,
             0, 0, 0, 2,
             0, 6,
+        )
+
+    private fun classFileWithClassLevelMethodParametersBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 6,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 16,
+            'M'.code, 'e'.code, 't'.code, 'h'.code, 'o'.code, 'd'.code, 'P'.code, 'a'.code,
+            'r'.code, 'a'.code, 'm'.code, 'e'.code, 't'.code, 'e'.code, 'r'.code, 's'.code,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 5,
+            0, 0, 0, 1,
+            0,
         )
 
     private fun classFileWithDuplicateSourceDebugExtensionBytes(): ByteArray =

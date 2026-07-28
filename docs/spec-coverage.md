@@ -289,6 +289,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.24 | `MethodParameters` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method MethodParameters attributes` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` is rejected from `field_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects MethodParameters attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` is rejected from nested `Code.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects MethodParameters attributes in Code` | IMPLEMENTED |
+| 4.7.24 | `MethodParameters` is rejected from `ClassFile.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `ClassFileParserTest.rejects MethodParameters attributes in ClassFile attribute table` | IMPLEMENTED |
 | 4.7.25 | `Module` classfile structure | `jvm-classfile` | `ModuleAttributeParserTest` | IMPLEMENTED |
 | 4.7.25 | `Module` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.25 | `Module` rejects unknown `module_flags` bits | `jvm-classfile` | `ModuleAttributeParserTest.rejects unknown Module flags` | IMPLEMENTED |

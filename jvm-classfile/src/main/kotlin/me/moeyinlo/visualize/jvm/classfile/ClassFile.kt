@@ -84,6 +84,7 @@ object ClassFileParser {
         val bootstrapMethodsPaths = mutableListOf<String>()
         val codePaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
+        val methodParametersPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, source, index)) {
                 "NestHost" -> nestHostPaths += "ClassFile.attributes[$index]"
@@ -105,10 +106,12 @@ object ClassFileParser {
                 "BootstrapMethods" -> bootstrapMethodsPaths += "ClassFile.attributes[$index]"
                 "Code" -> codePaths += "ClassFile.attributes[$index]"
                 "ConstantValue" -> constantValuePaths += "ClassFile.attributes[$index]"
+                "MethodParameters" -> methodParametersPaths += "ClassFile.attributes[$index]"
             }
         }
         requireAbsentAttribute(codePaths, "Code", "method_info", source)
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", source)
+        requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", source)
         requireAtMostOneAttribute(nestHostPaths, "NestHost", source)
         requireAtMostOneAttribute(nestMembersPaths, "NestMembers", source)
         requireAtMostOneAttribute(permittedSubclassesPaths, "PermittedSubclasses", source)
