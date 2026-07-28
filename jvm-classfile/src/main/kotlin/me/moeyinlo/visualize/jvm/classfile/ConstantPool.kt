@@ -159,8 +159,9 @@ class ConstantPool private constructor(
             -> expect<ConstantFieldRefEntry>(owner, "reference_index", entry.referenceIndex)
 
             MethodHandleReferenceKind.InvokeVirtual,
-            MethodHandleReferenceKind.NewInvokeSpecial,
             -> expect<ConstantMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
+
+            MethodHandleReferenceKind.NewInvokeSpecial -> validateNewInvokeSpecialMethodHandle(owner, entry)
 
             MethodHandleReferenceKind.InvokeStatic,
             MethodHandleReferenceKind.InvokeSpecial,
@@ -175,6 +176,26 @@ class ConstantPool private constructor(
 
             MethodHandleReferenceKind.InvokeInterface ->
                 expect<ConstantInterfaceMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
+        }
+    }
+
+    private fun validateNewInvokeSpecialMethodHandle(owner: ConstantPoolIndex, entry: ConstantMethodHandleEntry) {
+        val methodRef = expect<ConstantMethodRefEntry>(owner, "reference_index", entry.referenceIndex)
+        val nameAndType = expect<ConstantNameAndTypeEntry>(
+            owner = owner,
+            role = "reference_index name_and_type_index",
+            index = methodRef.nameAndTypeIndex,
+        )
+        val name = expect<ConstantUtf8Entry>(
+            owner = methodRef.nameAndTypeIndex,
+            role = "name_index",
+            index = nameAndType.nameIndex,
+        )
+        if (name.value != "<init>") {
+            throw ClassFileFormatException(
+                "Invalid constant pool reference from $owner reference_index to ${entry.referenceIndex}: " +
+                    "reference_kind NewInvokeSpecial must target <init> but found ${name.value}",
+            )
         }
     }
 
