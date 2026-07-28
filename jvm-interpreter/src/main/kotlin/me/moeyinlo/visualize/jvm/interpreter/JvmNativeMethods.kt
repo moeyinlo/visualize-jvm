@@ -5375,8 +5375,24 @@ object JvmVmIntrinsics {
                         bytes = snapshot,
                     )
                 }
+                is JvmCharArrayPayload -> {
+                    val charTargetPayload = targetPayload as? JvmCharArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, or short arrays",
+                        )
+                    val snapshot = sourcePayload.rawBytes(
+                        operation = "Unsafe.copyMemory0 char array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    )
+                    charTargetPayload.setRawBytes(
+                        operation = "Unsafe.copyMemory0 char array target",
+                        start = targetStart,
+                        bytes = snapshot,
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, or short arrays",
+                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, or short arrays",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -6092,6 +6108,51 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
         }
         for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Char.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Char.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex].code
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Char.SIZE_BYTES,
+                    value = value,
+                )
+                .toChar()
+        }
+    }
+
+    private fun JvmCharArrayPayload.rawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+    ): List<Byte> {
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Char.SIZE_BYTES.toLong(),
+        )
+        return (start until endExclusive).map { rawOffset ->
+            val elementIndex = (rawOffset / Char.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Char.SIZE_BYTES).toInt()
+            val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = Char.SIZE_BYTES)
+            ((elements[elementIndex].code ushr shift) and 0xff).toByte()
+        }
+    }
+
+    private fun JvmCharArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        bytes: List<Byte>,
+    ) {
+        val endExclusive = start + bytes.size.toLong()
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Char.SIZE_BYTES.toLong(),
+        )
+        bytes.forEachIndexed { index, value ->
+            val rawOffset = start + index.toLong()
             val elementIndex = (rawOffset / Char.SIZE_BYTES).toInt()
             val byteIndex = (rawOffset % Char.SIZE_BYTES).toInt()
             elements[elementIndex] = elements[elementIndex].code
