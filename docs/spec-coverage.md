@@ -466,6 +466,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.27 | `ModuleMainClass` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects ModuleMainClass attributes in Code` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects ModuleMainClass attributes in record components` | IMPLEMENTED |
 | 4.7.28 | `NestHost` classfile structure | `jvm-classfile` | `NestAttributesParserTest` | IMPLEMENTED |
+| 4.7.28, 4.7-C | `NestHost` attributes are permitted only in class file major version 55.0 or later | `jvm-classfile` | `NestAttributesParserTest.rejects NestHost attributes before Java 11` | IMPLEMENTED |
 | 4.7.28 | `NestHost` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.28 | `NestHost` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.28 | `NestHost.host_class_index` must name a non-array class type | `jvm-classfile` | `NestAttributesParserTest.rejects NestHost indexes that name array classes` | IMPLEMENTED |
