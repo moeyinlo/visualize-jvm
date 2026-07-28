@@ -419,6 +419,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.31 | `PermittedSubclasses` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` disallowed on `ACC_FINAL` classes | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
+| 4.7.31 | `PermittedSubclasses.classes[]` entries must name non-array class types | `jvm-classfile` | `PermittedSubclassesAttributeParserTest.rejects permitted subclass entries that name array classes` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects PermittedSubclasses attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects PermittedSubclasses attributes in method attribute tables` | IMPLEMENTED |
 | 4.7.31 | `PermittedSubclasses` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects PermittedSubclasses attributes in Code` | IMPLEMENTED |

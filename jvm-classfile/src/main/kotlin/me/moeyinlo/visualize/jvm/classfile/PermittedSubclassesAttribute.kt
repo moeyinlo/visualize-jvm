@@ -31,6 +31,21 @@ object PermittedSubclassesAttributeParser : AttributeBodyParser {
                 "Invalid $role=$index: expected CONSTANT_Class_info but found ${entry.javaClass.simpleName}",
             )
         }
+        val nameEntry = try {
+            context.constantPool[entry.nameIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException("Invalid $role=$index name_index=${entry.nameIndex}: ${exception.message}")
+        }
+        if (nameEntry !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $role=$index name_index=${entry.nameIndex}: expected CONSTANT_Utf8_info but found ${nameEntry.javaClass.simpleName}",
+            )
+        }
+        try {
+            ClassNameValidator.validateInternalBinaryName(entry.nameIndex, "name_index", nameEntry.value)
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException("Invalid $role=$index name_index=${entry.nameIndex}: ${exception.message}")
+        }
         return index
     }
 }
