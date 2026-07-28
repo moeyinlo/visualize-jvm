@@ -107,6 +107,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.1, 4.8 | `ACC_MODULE` classfiles must name `module-info` as `this_class` | `jvm-classfile` | `ClassFileParserTest.rejects module classfile whose this class is not module info` | IMPLEMENTED |
 | 4.1, 4.8 | `ACC_MODULE` classfiles must use zero `super_class` | `jvm-classfile` | `ClassFileParserTest.rejects module classfile with nonzero super class` | IMPLEMENTED |
 | 4.1, 4.8 | `ACC_MODULE` classfiles must use zero `interfaces_count` | `jvm-classfile` | `ClassFileParserTest.rejects module classfile with interfaces` | IMPLEMENTED |
+| 4.1, 4.8 | `ACC_MODULE` classfiles must use zero `fields_count` | `jvm-classfile` | `ClassFileParserTest.rejects module classfile with fields` | IMPLEMENTED |
 | 4.2.1 | Binary class and interface names in internal form | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.1 | Array class names in `CONSTANT_Class_info` | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |
 | 4.2.2 | Generic unqualified name syntax | `jvm-classfile` | `ConstantPoolReferenceValidationTest` | IMPLEMENTED |

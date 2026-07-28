@@ -247,6 +247,20 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects module classfile with fields`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = moduleClassFileWithFieldBytes(),
+                source = "ModuleWithField.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ACC_MODULE"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("fields_count"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("zero"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -958,6 +972,31 @@ class ClassFileParserTest {
             0, 2,
             0, 0,
             0, 1,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun moduleClassFileWithFieldBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 5,
+            1, 0, 11,
+            'm'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code, 'e'.code,
+            '-'.code, 'i'.code, 'n'.code, 'f'.code, 'o'.code,
+            7, 0, 1,
+            1, 0, 1, 'x'.code,
+            1, 0, 1, 'I'.code,
+            0x80, 0x00,
+            0, 2,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 0,
+            0, 3,
             0, 4,
             0, 0,
             0, 0,

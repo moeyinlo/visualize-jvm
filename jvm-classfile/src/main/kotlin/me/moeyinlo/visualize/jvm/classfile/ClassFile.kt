@@ -33,6 +33,11 @@ object ClassFileParser {
         val identity = ClassIdentityParser.parse(reader)
         validateClassIdentity(identity, constantPool, accessFlags, reader.source)
         val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
+        if (accessFlags.kind == ClassFileKind.Module && fields.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile fields_count source=${reader.source}: ACC_MODULE classfiles must use zero fields_count",
+            )
+        }
         val methods = MethodInfoParser.parseMethods(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val attributes = AttributeInfoParser.parseAttributes(
             reader = reader,
