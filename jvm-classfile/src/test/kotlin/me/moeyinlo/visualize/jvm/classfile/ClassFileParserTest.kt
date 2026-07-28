@@ -547,6 +547,20 @@ class ClassFileParserTest {
         assertTrue(failure.message.orEmpty().contains("54"), failure.message)
     }
     @Test
+    fun `rejects invokedynamic constants before Java 7`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithInvokeDynamicBeforeJava7Bytes(),
+                source = "Java6InvokeDynamicConstant.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_InvokeDynamic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("51"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("50"), failure.message)
+    }
+    @Test
     fun `rejects ClassFile with dynamic constant but no BootstrapMethods attribute`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -1671,6 +1685,31 @@ class ClassFileParserTest {
             0, 0,
         )
 
+    private fun classFileWithInvokeDynamicBeforeJava7Bytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 50,
+            0, 9,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 3, 'r'.code, 'u'.code, 'n'.code,
+            1, 0, 3, '('.code, ')'.code, 'V'.code,
+            12, 0, 5, 0, 6,
+            18, 0, 0, 0, 7,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
     private fun classFileWithDynamicConstantBeforeJava11Bytes(): ByteArray =
         classFileWithDynamicConstantWithoutBootstrapMethodsBytes().also { bytes ->
             bytes[7] = 54

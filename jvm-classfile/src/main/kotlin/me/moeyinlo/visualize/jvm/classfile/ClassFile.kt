@@ -135,12 +135,15 @@ object ClassFileParser {
         constantPool: ConstantPool,
         source: String,
     ) {
-        if (version.major >= 55) {
-            return
-        }
         for (rawIndex in 1 until constantPool.constantPoolCount) {
             val slot = constantPool.slotAt(ConstantPoolIndex(rawIndex))
-            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantDynamicEntry) {
+            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantInvokeDynamicEntry && version.major < 51) {
+                throw ClassFileFormatException(
+                    "Invalid constant_pool #$rawIndex source=$source: CONSTANT_InvokeDynamic_info requires " +
+                        "major_version >= 51 but found ${version.major}.${version.minor}",
+                )
+            }
+            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantDynamicEntry && version.major < 55) {
                 throw ClassFileFormatException(
                     "Invalid constant_pool #$rawIndex source=$source: CONSTANT_Dynamic_info requires " +
                         "major_version >= 55 but found ${version.major}.${version.minor}",
