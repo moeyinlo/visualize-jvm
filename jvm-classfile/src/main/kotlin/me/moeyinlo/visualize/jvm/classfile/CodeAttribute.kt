@@ -1918,6 +1918,7 @@ private object CodeInstructionValidator {
                             "expected CONSTANT_Methodref but found ${reference.javaClass.simpleName}",
                     )
                 }
+                validateMethodReferenceClass(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
                 val descriptor = validateMethodReferenceDescriptor(
                     ownerPath,
                     pc,
