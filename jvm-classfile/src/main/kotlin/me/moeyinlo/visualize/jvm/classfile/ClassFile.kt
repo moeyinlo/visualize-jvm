@@ -71,6 +71,14 @@ object ClassFileParser {
             role = "this_class",
             source = source,
         )
+        identity.superClassIndex?.let { superClassIndex ->
+            expectClassIdentityReference(
+                constantPool = constantPool,
+                index = superClassIndex,
+                role = "super_class",
+                source = source,
+            )
+        }
     }
 
     private fun expectClassIdentityReference(

@@ -58,6 +58,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects super class index that is not a class constant`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithNonClassSuperClassBytes(),
+                source = "NonClassSuper.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("super_class"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("#4"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class_info"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ConstantUtf8Entry"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -466,6 +481,28 @@ class ClassFileParserTest {
             'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
             'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
             7, 0, 3,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun classFileWithNonClassSuperClassBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 5,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            1, 0, 8, 'N'.code, 'o'.code, 't'.code, 'C'.code, 'l'.code, 'a'.code, 's'.code, 's'.code,
             0, 0x21,
             0, 2,
             0, 4,
