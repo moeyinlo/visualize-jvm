@@ -383,6 +383,36 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects InnerClasses attributes in method attribute tables`() {
+        val innerClassesAttribute = byteArrayOf(0, 3) + intBytes(2) + byteArrayOf(0, 0)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(innerClassesAttribute)),
+                    ),
+                    source = "bad-method-inner-classes.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("InnerClasses", "InnerClasses".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("InnerClasses" to InnerClassesAttributeParser),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("InnerClasses"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate method Exceptions attributes`() {
         val exceptionsAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
 
