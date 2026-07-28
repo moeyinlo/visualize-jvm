@@ -652,7 +652,10 @@ object JvmInvokeDynamicCallSiteResolver {
                 JvmBootstrapArgument.DynamicConstant(
                     constantPoolIndex = index,
                     bootstrapMethodIndex = entry.bootstrapMethodIndex.value,
-                    name = nameAndDescriptor.name,
+                    name = nameAndDescriptor.name.requireBootstrapDynamicArgumentName(
+                        bootstrapKind = bootstrapKind,
+                        owner = constantPoolIndex,
+                    ),
                     descriptor = nameAndDescriptor.descriptor.requireBootstrapDynamicArgumentFieldDescriptor(
                         bootstrapKind = bootstrapKind,
                         owner = constantPoolIndex,
@@ -705,6 +708,24 @@ object JvmInvokeDynamicCallSiteResolver {
         } catch (_: ClassFileFormatException) {
             throw JvmInvokeDynamicLinkageException(
                 "$bootstrapKind bootstrap class argument name $this is not a valid constant class name",
+            )
+        }
+    }
+
+    private fun String.requireBootstrapDynamicArgumentName(
+        bootstrapKind: String,
+        owner: ConstantPoolIndex,
+    ): String {
+        try {
+            ClassNameValidator.validateUnqualifiedName(
+                owner = owner,
+                role = "$bootstrapKind bootstrap dynamic argument name",
+                value = this,
+            )
+            return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException(
+                "$bootstrapKind bootstrap dynamic argument name $this is not a valid unqualified name",
             )
         }
     }

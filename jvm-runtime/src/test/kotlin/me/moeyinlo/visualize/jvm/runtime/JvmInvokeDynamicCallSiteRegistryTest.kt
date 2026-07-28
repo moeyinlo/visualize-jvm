@@ -698,6 +698,34 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `bootstrap argument resolver rejects dynamic constants with invalid names`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("bad/name", "bad/name".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                index = JvmRuntimeConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals(
+            "invokedynamic bootstrap dynamic argument name bad/name is not a valid unqualified name",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `bootstrap argument resolver rejects dynamic constants with invalid internal class names`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
