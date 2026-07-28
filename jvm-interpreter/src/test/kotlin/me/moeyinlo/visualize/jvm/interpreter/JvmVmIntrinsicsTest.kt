@@ -5483,6 +5483,46 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe copyMemory0 intrinsic copies guest double arrays into synthetic native memory`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val source = heap.allocateDoubleArray(4)
+        val sourcePayload = heap.get(source).payload as JvmDoubleArrayPayload
+        sourcePayload.elements[1] = Double.fromBits(0x5656565656565656L)
+        sourcePayload.elements[2] = Double.fromBits(0x7878787878787878L)
+        val memory = JvmUnsafeSyntheticMemory()
+        val target = memory.allocateNativeMemory(16L)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCopyMemory0Method())
+            ?: error("Unsafe.copyMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(source, JvmLongValue(8L), JvmNullValue, JvmLongValue(target), JvmLongValue(16L)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(
+            listOf(
+                0x56.toByte(), 0x56.toByte(), 0x56.toByte(), 0x56.toByte(),
+                0x56.toByte(), 0x56.toByte(), 0x56.toByte(), 0x56.toByte(),
+                0x78.toByte(), 0x78.toByte(), 0x78.toByte(), 0x78.toByte(),
+                0x78.toByte(), 0x78.toByte(), 0x78.toByte(), 0x78.toByte(),
+            ),
+            (0L until 16L).map { offset -> memory.nativeMemoryByte(target + offset) },
+        )
+    }
+
+    @Test
     fun `Unsafe copyMemory0 intrinsic copies synthetic native memory into guest boolean arrays`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
