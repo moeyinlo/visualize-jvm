@@ -119,7 +119,8 @@ class JvmUnsafeSyntheticMemory(
         if (address == 0L) {
             return
         }
-        val bytes = nativeMemoryBlocks.remove(address) ?: return
+        val bytes = nativeMemoryBlocks.remove(address)
+            ?: throw JvmUnsupportedInstructionException("native memory address $address is not allocated")
         clearNativeMemoryBytes(address, bytes)
     }
 

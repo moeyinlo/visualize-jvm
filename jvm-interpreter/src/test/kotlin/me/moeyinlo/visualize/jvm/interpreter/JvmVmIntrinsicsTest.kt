@@ -4443,6 +4443,30 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe freeMemory0 intrinsic rejects already released synthetic native addresses`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val address = memory.allocateNativeMemory(16L)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeFreeMemory0Method())
+            ?: error("Unsafe.freeMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+        intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(address))))
+
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(context, JvmNativeMethodInvocation(unsafe, listOf(JvmLongValue(address))))
+        }
+
+        assertEquals("native memory address $address is not allocated", exception.message)
+    }
+
+    @Test
     fun `Unsafe reallocateMemory0 intrinsic resizes synthetic native addresses`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
