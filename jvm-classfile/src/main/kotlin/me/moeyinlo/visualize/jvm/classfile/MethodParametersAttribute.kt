@@ -11,12 +11,19 @@ data class MethodParameter(
 )
 
 object MethodParametersAttributeParser : AttributeBodyParser {
+    private const val Java8MajorVersion = 52
     private const val AccFinal = 0x0010
     private const val AccSynthetic = 0x1000
     private const val AccMandated = 0x8000
     private const val AllowedAccessFlags = AccFinal or AccSynthetic or AccMandated
 
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java8MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid MethodParameters attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java8MajorVersion",
+            )
+        }
         val parametersCount = context.reader.readU1()
         return MethodParametersAttribute(
             nameIndex = context.nameIndex,

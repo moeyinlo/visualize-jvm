@@ -35,6 +35,32 @@ class MethodParametersAttributeParserTest {
     }
 
     @Test
+    fun `rejects MethodParameters attributes before Java 8`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("MethodParameters", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 1, 0),
+                    source = "java7-method-parameters.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("MethodParameters" to MethodParametersAttributeParser),
+                ownerPath = "methods[0]",
+                majorVersion = 51,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("MethodParameters"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=51"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("52"), failure.message)
+    }
+
+    @Test
     fun `rejects nonzero parameter name index that is not UTF-8`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
