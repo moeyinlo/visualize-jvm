@@ -777,6 +777,14 @@ object JvmInvokeDynamicCallSiteResolver {
                 "$role reference_kind NewInvokeSpecial must target <init> but found ${nameAndDescriptor.name}",
             )
         }
+        if (
+            referenceKind != MethodHandleReferenceKind.NewInvokeSpecial &&
+            (nameAndDescriptor.name == "<init>" || nameAndDescriptor.name == "<clinit>")
+        ) {
+            throw JvmInvokeDynamicLinkageException(
+                "$role reference_kind $referenceKind must not target ${nameAndDescriptor.name}",
+            )
+        }
     }
 
     private data class MethodReference(

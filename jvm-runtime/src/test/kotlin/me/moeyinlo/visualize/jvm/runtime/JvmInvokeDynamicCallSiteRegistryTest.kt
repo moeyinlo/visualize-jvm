@@ -292,6 +292,40 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `bootstrap argument resolver rejects ordinary invocation method handles that target constructors`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodHandleEntry(
+                            referenceKind = MethodHandleReferenceKind.InvokeVirtual,
+                            referenceIndex = ConstantPoolIndex(7),
+                        ),
+                        ConstantUtf8Entry("pkg/Example", "pkg/Example".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("<init>", "<init>".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(4),
+                            descriptorIndex = ConstantPoolIndex(5),
+                        ),
+                        ConstantMethodRefEntry(
+                            classIndex = ConstantPoolIndex(3),
+                            nameAndTypeIndex = ConstantPoolIndex(6),
+                        ),
+                    ),
+                ),
+                index = JvmRuntimeConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals(
+            "bootstrap method handle argument index #1 target reference_kind InvokeVirtual must not target <init>",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `bootstrap argument resolver rejects dynamic constants with method descriptors`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
