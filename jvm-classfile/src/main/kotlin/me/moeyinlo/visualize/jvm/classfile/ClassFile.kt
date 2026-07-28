@@ -39,6 +39,11 @@ object ClassFileParser {
             )
         }
         val methods = MethodInfoParser.parseMethods(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
+        if (accessFlags.kind == ClassFileKind.Module && methods.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile methods_count source=${reader.source}: ACC_MODULE classfiles must use zero methods_count",
+            )
+        }
         val attributes = AttributeInfoParser.parseAttributes(
             reader = reader,
             constantPool = constantPool,
