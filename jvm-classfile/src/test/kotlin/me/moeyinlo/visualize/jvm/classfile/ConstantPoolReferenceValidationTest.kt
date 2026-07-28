@@ -194,6 +194,50 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `rejects array class owners on method references`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("[I"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("method"),
+                utf8("()V"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#6"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
+    fun `rejects array class owners on interface method references`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("[I"),
+                ConstantClassEntry(ConstantPoolIndex(1)),
+                utf8("method"),
+                utf8("()V"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#6"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid field descriptors on field references`() {
         val pool = ConstantPool.fromEntries(
             listOf(
