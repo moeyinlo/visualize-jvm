@@ -230,4 +230,30 @@ class NestedClassAttributesParserTest {
         assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Class"), failure.message)
     }
+
+    @Test
+    fun `rejects EnclosingMethod class indexes that name array classes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("EnclosingMethod", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("[Ljava/lang/String;", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 4, 0, 2, 0, 0),
+                    source = "bad-enclosing-method-array.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("EnclosingMethod" to EnclosingMethodAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("class or interface"), failure.message)
+    }
 }

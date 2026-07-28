@@ -68,7 +68,7 @@ object EnclosingMethodAttributeParser : AttributeBodyParser {
             reader = context.reader,
             role = "${context.ownerPath}.class_index",
         )
-        expectConstantClass(context, "${context.ownerPath}.class_index", classIndex)
+        validateClassOrInterfaceInfo(context, "${context.ownerPath}.class_index", classIndex)
         return EnclosingMethodAttribute(
             nameIndex = context.nameIndex,
             classIndex = classIndex,
