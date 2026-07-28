@@ -15,6 +15,12 @@ data class LocalVariableTypeTableEntry(
 
 object LocalVariableTypeTableAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java5MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid LocalVariableTypeTable attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java5MajorVersion",
+            )
+        }
         val localVariableTypeTableLength = context.reader.readU2()
         val entries = List(localVariableTypeTableLength) { index ->
             parseEntry(context, "${context.ownerPath}.local_variable_type_table[$index]")
@@ -67,3 +73,5 @@ object LocalVariableTypeTableAttributeParser : AttributeBodyParser {
         return entry
     }
 }
+
+private const val Java5MajorVersion = 49

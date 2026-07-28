@@ -36,6 +36,32 @@ class LocalVariableTypeTableAttributeParserTest {
     }
 
     @Test
+    fun `rejects LocalVariableTypeTable attributes before Java 5`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LocalVariableTypeTable", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java4-local-variable-type-table.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("LocalVariableTypeTable" to LocalVariableTypeTableAttributeParser),
+                ownerPath = "methods[0].attributes[0]",
+                majorVersion = 48,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("LocalVariableTypeTable"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=48"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("49"), failure.message)
+    }
+
+    @Test
     fun `rejects LocalVariableTypeTable signature index that is not UTF-8`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

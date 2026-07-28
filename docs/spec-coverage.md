@@ -302,6 +302,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.13 | `LocalVariableTable` is rejected from `record_component_info.attributes`, preserving its predefined `Code`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects LocalVariableTable attributes in record components` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable` | `jvm-classfile` | `LocalVariableTypeTableAttributeParserTest` | IMPLEMENTED |
+| 4.7.14, 4.7-C | `LocalVariableTypeTable` attributes are permitted only in class file major version 49.0 or later | `jvm-classfile` | `LocalVariableTypeTableAttributeParserTest.rejects LocalVariableTypeTable attributes before Java 5` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable.signature_index` must name a valid field signature | `jvm-classfile` | `LocalVariableTypeTableAttributeParserTest.rejects LocalVariableTypeTable signatures that are not field signatures` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable.name_index` must name a valid unqualified name | `jvm-classfile` | `LocalVariableTypeTableAttributeParserTest.rejects LocalVariableTypeTable names that are not unqualified names` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable.index` must be less than enclosing `Code.max_locals` | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LocalVariableTypeTable entries whose index is outside max locals` | IMPLEMENTED |
