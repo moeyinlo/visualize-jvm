@@ -93,6 +93,7 @@ object FieldInfoParser {
         val runtimeInvisibleAnnotationsPaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val codePaths = mutableListOf<String>()
         field.attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, "$ownerPath.attributes[$index].attribute_name_index")) {
                 "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$index]"
@@ -101,14 +102,30 @@ object FieldInfoParser {
                 "RuntimeInvisibleAnnotations" -> runtimeInvisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
+                "Code" -> codePaths += "$ownerPath.attributes[$index]"
             }
         }
+        requireAbsentAttribute(codePaths, "Code", "method_info", ownerPath)
         requireAtMostOneAttribute(constantValuePaths, "ConstantValue", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleAnnotationsPaths, "RuntimeInvisibleAnnotations", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", ownerPath)
+    }
+
+    private fun requireAbsentAttribute(
+        paths: List<String>,
+        attributeName: String,
+        allowedLocation: String,
+        ownerPath: String,
+    ) {
+        if (paths.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: $attributeName is permitted only in " +
+                    "$allowedLocation attributes but found at ${paths.joinToString()}",
+            )
+        }
     }
 
     private fun requireAtMostOneAttribute(
