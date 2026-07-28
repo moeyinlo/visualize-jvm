@@ -1869,6 +1869,44 @@ private object CodeInstructionValidator {
                             "expected CONSTANT_Methodref but found ${reference.javaClass.simpleName}",
                     )
                 }
+                val nameAndType = loadConstantPoolEntry(
+                    ownerPath = ownerPath,
+                    pc = pc,
+                    mnemonic = mnemonic,
+                    constantPool = constantPool,
+                    index = reference.nameAndTypeIndex,
+                    role = "CONSTANT_MethodHandle.reference_index name_and_type_index",
+                )
+                if (nameAndType !is ConstantNameAndTypeEntry) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                            "CONSTANT_MethodHandle.reference_index=${entry.referenceIndex} " +
+                            "name_and_type_index=${reference.nameAndTypeIndex} expected CONSTANT_NameAndType " +
+                            "but found ${nameAndType.javaClass.simpleName}",
+                    )
+                }
+                val name = loadConstantPoolEntry(
+                    ownerPath = ownerPath,
+                    pc = pc,
+                    mnemonic = mnemonic,
+                    constantPool = constantPool,
+                    index = nameAndType.nameIndex,
+                    role = "CONSTANT_MethodHandle.reference_index name_index",
+                )
+                if (name !is ConstantUtf8Entry) {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                            "CONSTANT_MethodHandle.reference_index=${entry.referenceIndex} " +
+                            "name_index=${nameAndType.nameIndex} expected CONSTANT_Utf8_info " +
+                            "but found ${name.javaClass.simpleName}",
+                    )
+                }
+                if (name.value != "<init>") {
+                    throw ClassFileFormatException(
+                        "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                            "reference_kind NewInvokeSpecial must target <init> but found ${name.value}",
+                    )
+                }
             }
         }
     }
