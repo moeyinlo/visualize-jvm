@@ -539,6 +539,25 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc class constants whose name is not a constant class name`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("Code", byteArrayOf()),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("bad.name", byteArrayOf()),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("constant class name"), failure.message)
+    }
+    @Test
     fun `rejects ldc method handle invokevirtual references whose target is not a method reference`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
