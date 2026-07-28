@@ -87,6 +87,36 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects instance methods whose descriptor parameters leave no slot for this`() {
+        val descriptor = "(" + "I".repeat(255) + ")V"
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseValidatedMethods(
+                methodName = "run",
+                descriptor = descriptor,
+                accessFlags = 0x0001,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("methods[0].descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("implicit this"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("254"), failure.message)
+    }
+
+    @Test
+    fun `accepts static methods with maximum descriptor parameter units`() {
+        val descriptor = "(" + "I".repeat(255) + ")V"
+
+        val methods = parseValidatedMethods(
+            methodName = "run",
+            descriptor = descriptor,
+            accessFlags = 0x0009,
+        )
+
+        assertEquals(0x0009, methods.single().accessFlags)
+    }
+
+    @Test
     fun `rejects concrete methods without exactly one Code attribute`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseValidatedMethods(

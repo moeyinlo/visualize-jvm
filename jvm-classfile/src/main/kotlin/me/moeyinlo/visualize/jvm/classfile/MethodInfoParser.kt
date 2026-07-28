@@ -77,6 +77,7 @@ object MethodInfoParser {
                 allowClinit = true,
             )
             DescriptorValidator.validateMethodDescriptor(method.descriptorIndex, "$ownerPath.descriptor_index", descriptor.value)
+            validateMethodParameterUnits(method, descriptor.value, ownerPath)
             validateSpecialMethodDescriptor(name.value, descriptor.value, method.descriptorIndex, ownerPath, majorVersion)
             validateAccessFlags(method.accessFlags, name.value, classKind, ownerPath, majorVersion)
             validateCodeAttributeCardinality(method, constantPool, name.value, ownerPath)
@@ -89,6 +90,28 @@ object MethodInfoParser {
                         "name='${name.value}' descriptor='${descriptor.value}' already used by methods[$duplicateOf]",
                 )
             }
+        }
+    }
+
+    private fun validateMethodParameterUnits(
+        method: MethodInfo,
+        descriptor: String,
+        ownerPath: String,
+    ) {
+        if (has(method.accessFlags, MethodAccessFlag.Static)) {
+            return
+        }
+        val parameterUnits = DescriptorValidator.methodParameterUnits(
+            method.descriptorIndex,
+            "$ownerPath.descriptor_index",
+            descriptor,
+        )
+        if (parameterUnits >= 255) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.descriptor_index=${method.descriptorIndex}: " +
+                    "instance method descriptor uses $parameterUnits parameter units; " +
+                    "maximum is 254 because the implicit this parameter counts toward the JVM limit of 255",
+            )
         }
     }
 
