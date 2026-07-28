@@ -32,6 +32,12 @@ object NestHostAttributeParser : AttributeBodyParser {
 
 object NestMembersAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java11MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid NestMembers attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java11MajorVersion",
+            )
+        }
         val numberOfClasses = context.reader.readU2()
         return NestMembersAttribute(
             nameIndex = context.nameIndex,

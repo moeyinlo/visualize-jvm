@@ -86,6 +86,32 @@ class NestAttributesParserTest {
     }
 
     @Test
+    fun `rejects NestMembers attributes before Java 11`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("NestMembers", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java10-nest-members.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("NestMembers" to NestMembersAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 54,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("NestMembers"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=54"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("55"), failure.message)
+    }
+
+    @Test
     fun `rejects NestHost index that is not a class constant`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
