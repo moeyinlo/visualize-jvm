@@ -5359,8 +5359,24 @@ object JvmVmIntrinsics {
                         booleanTargetPayload.elements[targetStart.toInt() + index] = value
                     }
                 }
+                is JvmShortArrayPayload -> {
+                    val shortTargetPayload = targetPayload as? JvmShortArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, or short arrays",
+                        )
+                    val snapshot = sourcePayload.rawBytes(
+                        operation = "Unsafe.copyMemory0 short array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    )
+                    shortTargetPayload.setRawBytes(
+                        operation = "Unsafe.copyMemory0 short array target",
+                        start = targetStart,
+                        bytes = snapshot,
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copyMemory0 currently supports only matching guest byte or boolean arrays",
+                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, or short arrays",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -5984,6 +6000,17 @@ object JvmVmIntrinsics {
         }
     }
 
+    private fun validateRawByteRange(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+        byteSize: Long,
+    ) {
+        if (start < 0L || endExclusive < start || endExclusive > byteSize) {
+            throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
+        }
+    }
+
     private fun JvmShortArrayPayload.setRawBytes(
         operation: String,
         start: Long,
@@ -5995,6 +6022,52 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
         }
         for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Short.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Short.SIZE_BYTES).toInt()
+            val rawValue = elements[elementIndex].toInt() and 0xffff
+            elements[elementIndex] = rawValue
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Short.SIZE_BYTES,
+                    value = value,
+                )
+                .toShort()
+        }
+    }
+
+    private fun JvmShortArrayPayload.rawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+    ): List<Byte> {
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Short.SIZE_BYTES.toLong(),
+        )
+        return (start until endExclusive).map { rawOffset ->
+            val elementIndex = (rawOffset / Short.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Short.SIZE_BYTES).toInt()
+            val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = Short.SIZE_BYTES)
+            (((elements[elementIndex].toInt() and 0xffff) ushr shift) and 0xff).toByte()
+        }
+    }
+
+    private fun JvmShortArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        bytes: List<Byte>,
+    ) {
+        val endExclusive = start + bytes.size.toLong()
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Short.SIZE_BYTES.toLong(),
+        )
+        bytes.forEachIndexed { index, value ->
+            val rawOffset = start + index.toLong()
             val elementIndex = (rawOffset / Short.SIZE_BYTES).toInt()
             val byteIndex = (rawOffset % Short.SIZE_BYTES).toInt()
             val rawValue = elements[elementIndex].toInt() and 0xffff
