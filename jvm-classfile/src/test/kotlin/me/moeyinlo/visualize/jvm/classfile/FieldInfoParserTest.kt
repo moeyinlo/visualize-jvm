@@ -287,6 +287,35 @@ class FieldInfoParserTest {
     }
 
     @Test
+    fun `rejects BootstrapMethods attributes in field attribute tables`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            FieldInfoParser.parseFields(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1, 0, 1, 0, 2, 0, 1,
+                        0, 3, 0, 0, 0, 2, 0, 0,
+                    ),
+                    source = "bad-field-bootstrap-methods.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantUtf8Entry("BootstrapMethods", "BootstrapMethods".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("BootstrapMethods" to BootstrapMethodsAttributeParser),
+                classKind = ClassFileKind.Class,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("BootstrapMethods"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("fields[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate field name and descriptor pairs`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             FieldInfoParser.parseFields(
