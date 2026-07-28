@@ -76,6 +76,7 @@ object CodeAttributeParser : AttributeBodyParser {
         val stackMapTablePaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val codePaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val attributePath = "${context.ownerPath}.attributes[$index]"
             val name = attributeName(context, attribute, "$attributePath.attribute_name_index")
@@ -103,8 +104,10 @@ object CodeAttributeParser : AttributeBodyParser {
                         maxLocals,
                     )
                 }
+                "Code" -> codePaths += attributePath
             }
         }
+        requireAbsentAttribute(codePaths, "Code", "method_info", context.ownerPath)
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
@@ -199,6 +202,20 @@ object CodeAttributeParser : AttributeBodyParser {
         }
     }
 
+
+    private fun requireAbsentAttribute(
+        paths: List<String>,
+        attributeName: String,
+        allowedLocation: String,
+        ownerPath: String,
+    ) {
+        if (paths.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: $attributeName is permitted only in " +
+                    "$allowedLocation attributes but found at ${paths.joinToString()}",
+            )
+        }
+    }
 
     private fun requireAtMostOneAttribute(
         paths: List<String>,
