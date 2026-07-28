@@ -522,8 +522,13 @@ object JvmInvokeDynamicCallSiteResolver {
             index = entry.nameAndTypeIndex,
             role = "MethodHandle field reference name_and_type_index",
         )
+        val ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "MethodHandle field reference class name_index")
+            .requireMethodHandleOwnerClassName(
+                owner = classEntry.nameIndex,
+                role = "MethodHandle field reference index $referenceIndex",
+            )
         return FieldReference(
-            ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "MethodHandle field reference class name_index"),
+            ownerClassName = ownerClassName,
             name = nameAndDescriptor.name,
             descriptor = nameAndDescriptor.descriptor,
         )
@@ -907,16 +912,25 @@ object JvmInvokeDynamicCallSiteResolver {
             )
         }
         val ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "$role owner class name_index")
+        ownerClassName.requireMethodHandleOwnerClassName(
+            owner = classEntry.nameIndex,
+            role = role,
+        )
+    }
+
+    private fun String.requireMethodHandleOwnerClassName(
+        owner: ConstantPoolIndex,
+        role: String,
+    ): String {
         try {
             ClassNameValidator.validateConstantClassName(
-                owner = classEntry.nameIndex,
+                owner = owner,
                 role = "$role owner class name",
-                value = ownerClassName,
+                value = this,
             )
+            return this
         } catch (_: ClassFileFormatException) {
-            throw JvmInvokeDynamicLinkageException(
-                "$role owner class name $ownerClassName is not a valid constant class name",
-            )
+            throw JvmInvokeDynamicLinkageException("$role owner class name $this is not a valid constant class name")
         }
     }
 
