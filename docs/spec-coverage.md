@@ -318,6 +318,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.25 | `Module` rejects non-empty `requires` tables on the `java.base` module | `jvm-classfile` | `ModuleAttributeParserTest.rejects java base module with requires entries` | IMPLEMENTED |
 | 4.7.25 | `Module` rejects non-empty `opens` tables on open modules | `jvm-classfile` | `ModuleAttributeParserTest.rejects open module with opens entries` | IMPLEMENTED |
 | 4.7.25 | `Module` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
+| 4.7.25 | `Module` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects Module attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.25 | `Module` uniqueness and module relationship constraints | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 | 4.7.26 | `ModulePackages` classfile structure | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
