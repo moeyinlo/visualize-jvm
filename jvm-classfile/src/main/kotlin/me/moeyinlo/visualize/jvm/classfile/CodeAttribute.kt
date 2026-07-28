@@ -1847,8 +1847,14 @@ private object CodeInstructionValidator {
                     )
                 }
                 val nameAndTypeIndex = when (reference) {
-                    is ConstantMethodRefEntry -> reference.nameAndTypeIndex
-                    is ConstantInterfaceMethodRefEntry -> reference.nameAndTypeIndex
+                    is ConstantMethodRefEntry -> {
+                        validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
+                        reference.nameAndTypeIndex
+                    }
+                    is ConstantInterfaceMethodRefEntry -> {
+                        validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
+                        reference.nameAndTypeIndex
+                    }
                 }
                 validateOrdinaryMethodHandleTargetName(
                     ownerPath = ownerPath,
