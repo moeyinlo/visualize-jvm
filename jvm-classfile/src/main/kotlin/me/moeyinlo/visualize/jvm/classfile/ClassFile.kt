@@ -137,6 +137,7 @@ object ClassFileParser {
                 role = "interfaces[$interfaceIndex].name_index",
                 source = source,
             ).value
+            requireIdentityNameIsNotArray("interfaces[$interfaceIndex]", interfaceName, source)
             val duplicateNameOf = seenInterfaceNames.putIfAbsent(interfaceName, interfaceIndex)
             if (duplicateNameOf != null) {
                 throw ClassFileFormatException(
