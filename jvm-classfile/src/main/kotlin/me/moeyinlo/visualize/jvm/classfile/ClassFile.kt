@@ -79,6 +79,14 @@ object ClassFileParser {
                 source = source,
             )
         }
+        identity.interfaceIndexes.forEachIndexed { interfaceIndex, constantPoolIndex ->
+            expectClassIdentityReference(
+                constantPool = constantPool,
+                index = constantPoolIndex,
+                role = "interfaces[$interfaceIndex]",
+                source = source,
+            )
+        }
     }
 
     private fun expectClassIdentityReference(

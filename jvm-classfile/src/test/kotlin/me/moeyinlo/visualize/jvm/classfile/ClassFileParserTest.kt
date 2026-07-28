@@ -73,6 +73,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects interface index that is not a class constant`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithNonClassInterfaceBytes(),
+                source = "NonClassInterface.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("interfaces[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("#5"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Class_info"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ConstantUtf8Entry"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -507,6 +522,30 @@ class ClassFileParserTest {
             0, 2,
             0, 4,
             0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun classFileWithNonClassInterfaceBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 6,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 8, 'N'.code, 'o'.code, 't'.code, 'C'.code, 'l'.code, 'a'.code, 's'.code, 's'.code,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 1,
+            0, 5,
             0, 0,
             0, 0,
             0, 0,
