@@ -4844,16 +4844,17 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         offset: Int,
     ) {
-        if (referenceKind != MethodHandleReferenceKind.NewInvokeSpecial) {
-            return
+        val nameAndTypeIndex = when (referencedEntry) {
+            is ConstantMethodRefEntry -> referencedEntry.nameAndTypeIndex
+            is ConstantInterfaceMethodRefEntry -> referencedEntry.nameAndTypeIndex
+            else -> return
         }
-        val methodReference = referencedEntry as ConstantMethodRefEntry
         val nameAndTypeEntry = try {
-            constantPool[methodReference.nameAndTypeIndex]
+            constantPool[nameAndTypeIndex]
         } catch (exception: ConstantPoolFormatException) {
             throw JvmUnsupportedInstructionException(
                 "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
-                    "invalid name_and_type_index ${methodReference.nameAndTypeIndex}: ${exception.message}",
+                    "invalid name_and_type_index $nameAndTypeIndex: ${exception.message}",
             )
         }
         if (nameAndTypeEntry !is ConstantNameAndTypeEntry) {
@@ -4876,10 +4877,19 @@ object JvmInterpreter {
                     "expected ConstantUtf8Entry but was ${nameEntry.javaClass.simpleName}",
             )
         }
-        if (nameEntry.value != "<init>") {
+        if (referenceKind == MethodHandleReferenceKind.NewInvokeSpecial) {
+            if (nameEntry.value != "<init>") {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                        "reference_kind NewInvokeSpecial must target <init> but found ${nameEntry.value}",
+                )
+            }
+            return
+        }
+        if (nameEntry.value == "<init>" || nameEntry.value == "<clinit>") {
             throw JvmUnsupportedInstructionException(
                 "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
-                    "reference_kind NewInvokeSpecial must target <init> but found ${nameEntry.value}",
+                    "reference_kind $referenceKind must not target ${nameEntry.value}",
             )
         }
     }
