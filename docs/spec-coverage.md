@@ -1070,7 +1070,7 @@ Each opcode requires decoder coverage, verifier coverage when applicable, interp
 | Legacy subroutines | `jsr_w` pushes the next instruction offset as a category-1 `returnAddress` value and branches using a signed 32-bit offset | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Legacy subroutines | `ret` loads a local `returnAddress` value and resumes execution at that instruction offset | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
 | Legacy subroutines | `wide ret` loads a local `returnAddress` value using an unsigned 16-bit local variable index and resumes execution at that instruction offset | `jvm-interpreter`, `jvm-runtime` | `JvmInterpreterTest` | IMPLEMENTED |
-| Legacy subroutines | `jsr`, `jsr_w`, `ret`, `returnAddress` handling | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
+| Legacy subroutines | `jsr`, `jsr_w`, `ret`, `wide ret`, and `returnAddress` interpreter execution plus verifier stack/local transitions | `jvm-interpreter`, `jvm-verifier` | `JvmInterpreterTest`; `JsrInstructionVerifierTest`; `JsrWideInstructionVerifierTest`; `RetInstructionVerifierTest`; `WideRetInstructionVerifierTest` | IMPLEMENTED |
 | Returns | `ireturn`, `lreturn`, `freturn`, `dreturn`, `areturn`, `return` | `jvm-interpreter`, `jvm-verifier` | TBD | PENDING |
 | Field access | `getstatic`, `putstatic`, `getfield`, `putfield` | `jvm-interpreter`, `jvm-runtime`, `jvm-verifier` | TBD | PENDING |
 | Field access | Static fields are addressed by declaring owner, field name, and descriptor in runtime storage | `jvm-runtime` | `JvmStaticFieldsTest` | IMPLEMENTED |
