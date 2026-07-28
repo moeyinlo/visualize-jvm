@@ -147,6 +147,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects interface whose super class is not Object`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = interfaceClassFileWithNonObjectSuperBytes(),
+                source = "InterfaceWithNonObjectSuper.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("super_class"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("interface"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("java/lang/Object"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("other/Super"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -695,6 +710,26 @@ class ClassFileParserTest {
             'S'.code, 'u'.code, 'p'.code, 'e'.code, 'r'.code,
             7, 0, 3,
             0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun interfaceClassFileWithNonObjectSuperBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 5,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 11, 'o'.code, 't'.code, 'h'.code, 'e'.code, 'r'.code,
+            '/'.code, 'S'.code, 'u'.code, 'p'.code, 'e'.code, 'r'.code,
+            7, 0, 3,
+            0x06, 0x01,
             0, 2,
             0, 4,
             0, 0,

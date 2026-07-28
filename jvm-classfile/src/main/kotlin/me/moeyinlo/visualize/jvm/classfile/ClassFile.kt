@@ -31,7 +31,7 @@ object ClassFileParser {
         val constantPool = ConstantPoolParser.parse(reader)
         val accessFlags = ClassAccessFlagsParser.parse(reader)
         val identity = ClassIdentityParser.parse(reader)
-        validateClassIdentity(identity, constantPool, reader.source)
+        validateClassIdentity(identity, constantPool, accessFlags, reader.source)
         val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val methods = MethodInfoParser.parseMethods(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val attributes = AttributeInfoParser.parseAttributes(
@@ -63,6 +63,7 @@ object ClassFileParser {
     private fun validateClassIdentity(
         identity: ClassIdentity,
         constantPool: ConstantPool,
+        accessFlags: ClassAccessFlags,
         source: String,
     ) {
         val thisClass = expectClassIdentityReference(
@@ -90,12 +91,27 @@ object ClassFileParser {
                     "Invalid ClassFile super_class source=$source: java/lang/Object must use zero super_class",
                 )
             }
-            expectClassIdentityReference(
+            val superClass = expectClassIdentityReference(
                 constantPool = constantPool,
                 index = identity.superClassIndex,
                 role = "super_class",
                 source = source,
             )
+            val superClassName = expectClassIdentityUtf8Reference(
+                constantPool = constantPool,
+                index = superClass.nameIndex,
+                role = "super_class.name_index",
+                source = source,
+            ).value
+            if (
+                (accessFlags.kind == ClassFileKind.Interface || accessFlags.kind == ClassFileKind.AnnotationInterface) &&
+                superClassName != "java/lang/Object"
+            ) {
+                throw ClassFileFormatException(
+                    "Invalid ClassFile super_class source=$source: interface classes must name " +
+                        "java/lang/Object but found $superClassName",
+                )
+            }
         }
         val seenInterfaceIndexes = mutableMapOf<ConstantPoolIndex, Int>()
         val seenInterfaceNames = mutableMapOf<String, Int>()
