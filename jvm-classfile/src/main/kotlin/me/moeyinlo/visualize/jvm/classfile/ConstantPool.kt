@@ -164,7 +164,14 @@ class ConstantPool private constructor(
         nameAndTypeIndex: ConstantPoolIndex,
     ) {
         val nameAndType = expect<ConstantNameAndTypeEntry>(owner, role, nameAndTypeIndex)
+        val name = expect<ConstantUtf8Entry>(nameAndTypeIndex, "name_index", nameAndType.nameIndex)
         val descriptor = expect<ConstantUtf8Entry>(nameAndTypeIndex, "descriptor_index", nameAndType.descriptorIndex)
+        if (name.value == "<init>" || name.value == "<clinit>") {
+            throw ClassFileFormatException(
+                "Invalid constant pool reference from $owner name_index: " +
+                    "field name ${name.value} is not permitted",
+            )
+        }
         DescriptorValidator.validateFieldDescriptor(owner, "descriptor_index", descriptor.value)
     }
 

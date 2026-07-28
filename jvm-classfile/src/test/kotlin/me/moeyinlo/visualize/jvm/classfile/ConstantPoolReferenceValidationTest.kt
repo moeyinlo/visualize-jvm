@@ -172,6 +172,31 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `rejects field references whose field name is a special method name`() {
+        listOf("<init>", "<clinit>").forEach { specialName ->
+            val pool = ConstantPool.fromEntries(
+                listOf(
+                    utf8("Owner"),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    utf8(specialName),
+                    utf8("I"),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(3), ConstantPoolIndex(4)),
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(5)),
+                ),
+            )
+
+            val failure = assertFailsWith<ClassFileFormatException> {
+                pool.validateReferences()
+            }
+
+            assertTrue(failure.message.orEmpty().contains("#6"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+            assertTrue(failure.message.orEmpty().contains(specialName), failure.message)
+            assertTrue(failure.message.orEmpty().contains("field name"), failure.message)
+        }
+    }
+
+    @Test
     fun `rejects array class owners on field references`() {
         val pool = ConstantPool.fromEntries(
             listOf(
