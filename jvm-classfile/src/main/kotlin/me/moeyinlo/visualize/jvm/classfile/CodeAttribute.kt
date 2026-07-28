@@ -114,6 +114,7 @@ object CodeAttributeParser : AttributeBodyParser {
                     attribute,
                     instructionLayout,
                     code.size,
+                    maxLocals,
                 )
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
@@ -232,20 +233,28 @@ object CodeAttributeParser : AttributeBodyParser {
         attribute: AttributeInfo,
         instructionLayout: CodeInstructionLayout,
         codeLength: Int,
+        maxLocals: Int,
     ) {
         if (attribute !is LocalVariableTypeTableAttribute) {
             return
         }
 
         attribute.entries.forEachIndexed { entryIndex, entry ->
+            val entryPath = "$attributePath.local_variable_type_table[$entryIndex]"
             validateLocalVariableRange(
                 attributeName = "LocalVariableTypeTable",
-                entryPath = "$attributePath.local_variable_type_table[$entryIndex]",
+                entryPath = entryPath,
                 startPc = entry.startPc,
                 length = entry.length,
                 instructionLayout = instructionLayout,
                 codeLength = codeLength,
             )
+            if (entry.index >= maxLocals) {
+                throw ClassFileFormatException(
+                    "Invalid $entryPath LocalVariableTypeTable.index=${entry.index}: " +
+                        "must be less than max_locals=$maxLocals",
+                )
+            }
         }
     }
 
