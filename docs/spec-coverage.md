@@ -353,6 +353,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.25 | `Module` `uses` table rejects duplicate service interface names through different indexes | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module uses class names` | IMPLEMENTED |
 | 4.7.25 | `Module` `provides` table rejects duplicate `provides_index` entries | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module provides indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `provides` table rejects duplicate service interface names through different indexes | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module provides class names` | IMPLEMENTED |
+| 4.7.25 | `Module` `uses_index[]` entries must name class or interface types, not array classes | `jvm-classfile` | `ModuleAttributeParserTest.rejects Module uses indexes that name array classes` | IMPLEMENTED |
 | 4.7.25 | `Module` `exports_to_index` target lists reject duplicate module targets within one `exports` entry | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports to indexes` | IMPLEMENTED |
 | 4.7.25 | `Module` `exports_to_index` target lists reject duplicate module names through different indexes | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module exports to module names` | IMPLEMENTED |
 | 4.7.25 | `Module` `opens_to_index` target lists reject duplicate module targets within one `opens` entry | `jvm-classfile` | `ModuleAttributeParserTest.rejects duplicate Module opens to indexes` | IMPLEMENTED |

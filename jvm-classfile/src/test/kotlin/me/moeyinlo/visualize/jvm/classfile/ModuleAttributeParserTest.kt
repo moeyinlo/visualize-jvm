@@ -867,29 +867,67 @@ class ModuleAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("duplicate provides_with_index #14"), failure.message)
     }
 
-    private fun moduleConstantPool(): ConstantPool =
-        ConstantPool.fromEntries(
-            listOf(
-                ConstantUtf8Entry("Module", byteArrayOf()),
-                ConstantUtf8Entry("my.module", byteArrayOf()),
-                ConstantModuleEntry(ConstantPoolIndex(2)),
-                ConstantUtf8Entry("1.0", byteArrayOf()),
-                ConstantUtf8Entry("java.base", byteArrayOf()),
-                ConstantModuleEntry(ConstantPoolIndex(5)),
-                ConstantUtf8Entry("pkg", byteArrayOf()),
-                ConstantPackageEntry(ConstantPoolIndex(7)),
-                ConstantUtf8Entry("friend", byteArrayOf()),
-                ConstantModuleEntry(ConstantPoolIndex(9)),
-                ConstantUtf8Entry("service/Api", byteArrayOf()),
-                ConstantClassEntry(ConstantPoolIndex(11)),
-                ConstantUtf8Entry("service/Impl", byteArrayOf()),
-                ConstantClassEntry(ConstantPoolIndex(13)),
-                ConstantPackageEntry(ConstantPoolIndex(7)),
-                ConstantModuleEntry(ConstantPoolIndex(9)),
-                ConstantClassEntry(ConstantPoolIndex(11)),
-                ConstantClassEntry(ConstantPoolIndex(13)),
-                ConstantModuleEntry(ConstantPoolIndex(9)),
+    @Test
+    fun `rejects Module uses indexes that name array classes`() {
+        val constantPool = ConstantPool.fromEntries(
+            moduleConstantPoolEntries() + listOf(
+                ConstantUtf8Entry("[Lservice/Api;", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(20)),
             ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 24,
+                        0, 3, 0, 0, 0, 0,
+                        0, 1,
+                        0, 6, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 1,
+                        0, 21,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].uses_index[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
+
+    private fun moduleConstantPool(): ConstantPool =
+        ConstantPool.fromEntries(moduleConstantPoolEntries())
+
+    private fun moduleConstantPoolEntries(): List<ConstantPoolEntry> =
+        listOf(
+            ConstantUtf8Entry("Module", byteArrayOf()),
+            ConstantUtf8Entry("my.module", byteArrayOf()),
+            ConstantModuleEntry(ConstantPoolIndex(2)),
+            ConstantUtf8Entry("1.0", byteArrayOf()),
+            ConstantUtf8Entry("java.base", byteArrayOf()),
+            ConstantModuleEntry(ConstantPoolIndex(5)),
+            ConstantUtf8Entry("pkg", byteArrayOf()),
+            ConstantPackageEntry(ConstantPoolIndex(7)),
+            ConstantUtf8Entry("friend", byteArrayOf()),
+            ConstantModuleEntry(ConstantPoolIndex(9)),
+            ConstantUtf8Entry("service/Api", byteArrayOf()),
+            ConstantClassEntry(ConstantPoolIndex(11)),
+            ConstantUtf8Entry("service/Impl", byteArrayOf()),
+            ConstantClassEntry(ConstantPoolIndex(13)),
+            ConstantPackageEntry(ConstantPoolIndex(7)),
+            ConstantModuleEntry(ConstantPoolIndex(9)),
+            ConstantClassEntry(ConstantPoolIndex(11)),
+            ConstantClassEntry(ConstantPoolIndex(13)),
+            ConstantModuleEntry(ConstantPoolIndex(9)),
         )
 
     private fun bytes(vararg values: Int): ByteArray = values.map { it.toByte() }.toByteArray()
