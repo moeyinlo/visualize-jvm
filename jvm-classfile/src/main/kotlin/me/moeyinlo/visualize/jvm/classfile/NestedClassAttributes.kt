@@ -38,7 +38,7 @@ object InnerClassesAttributeParser : AttributeBodyParser {
             reader = context.reader,
             role = "$ownerPath.inner_class_info_index",
         )
-        expectConstantClass(context, "$ownerPath.inner_class_info_index", innerClassInfoIndex)
+        validateClassOrInterfaceInfo(context, "$ownerPath.inner_class_info_index", innerClassInfoIndex)
         val outerClassInfoIndex = readOptionalClassIndex(context, "$ownerPath.outer_class_info_index")
         val innerNameIndex = readOptionalUtf8Index(context, "$ownerPath.inner_name_index")
         return InnerClassEntry(
@@ -125,11 +125,35 @@ private fun expectConstantClass(
     context: AttributeParseContext,
     role: String,
     index: ConstantPoolIndex,
-) {
+): ConstantClassEntry {
     val entry = constantPoolEntry(context, role, index)
     if (entry !is ConstantClassEntry) {
         throw ClassFileFormatException(
             "Invalid $role=$index: expected CONSTANT_Class_info but found ${entry.javaClass.simpleName}",
+        )
+    }
+    return entry
+}
+
+private fun validateClassOrInterfaceInfo(
+    context: AttributeParseContext,
+    role: String,
+    index: ConstantPoolIndex,
+) {
+    val entry = expectConstantClass(context, role, index)
+    val name = constantPoolEntry(context, "$role.name_index", entry.nameIndex)
+    if (name !is ConstantUtf8Entry) {
+        throw ClassFileFormatException(
+            "Invalid $role=$index name_index=${entry.nameIndex}: " +
+                "expected CONSTANT_Utf8_info but found ${name.javaClass.simpleName}",
+        )
+    }
+    try {
+        ClassNameValidator.validateInternalBinaryName(index, "name_index", name.value)
+    } catch (exception: ClassFileFormatException) {
+        throw ClassFileFormatException(
+            "Invalid $role=$index name_index=${entry.nameIndex}: " +
+                "expected CONSTANT_Class_info representing a class or interface; ${exception.message}",
         )
     }
 }
