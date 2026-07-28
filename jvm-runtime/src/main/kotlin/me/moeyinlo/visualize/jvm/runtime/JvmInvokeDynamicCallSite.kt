@@ -297,12 +297,7 @@ object JvmInvokeDynamicCallSiteResolver {
                     methodReferenceEntry = methodReferenceEntry,
                     referenceIndex = referenceIndex,
                 )
-                if (resolvedMethod.name == "<init>" || resolvedMethod.name == "<clinit>") {
-                    throw JvmInvokeDynamicLinkageException(
-                        "MethodHandle InvokeStatic target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                            "${resolvedMethod.descriptor} must not target an initialization method",
-                    )
-                }
+                rejectInitializationMethodHandleTarget("InvokeStatic", resolvedMethod)
                 if (!resolvedMethod.isStatic) {
                     throw JvmInvokeDynamicLinkageException(
                         "MethodHandle InvokeStatic target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
@@ -325,12 +320,7 @@ object JvmInvokeDynamicCallSiteResolver {
                     methodReferenceEntry = methodReferenceEntry,
                     referenceIndex = referenceIndex,
                 )
-                if (resolvedMethod.name == "<init>" || resolvedMethod.name == "<clinit>") {
-                    throw JvmInvokeDynamicLinkageException(
-                        "MethodHandle InvokeVirtual target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                            "${resolvedMethod.descriptor} must not target an initialization method",
-                    )
-                }
+                rejectInitializationMethodHandleTarget("InvokeVirtual", resolvedMethod)
                 if (resolvedMethod.isStatic) {
                     throw JvmInvokeDynamicLinkageException(
                         "MethodHandle InvokeVirtual target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
@@ -353,12 +343,7 @@ object JvmInvokeDynamicCallSiteResolver {
                     methodReferenceEntry = methodReferenceEntry,
                     referenceIndex = referenceIndex,
                 )
-                if (resolvedMethod.name == "<init>" || resolvedMethod.name == "<clinit>") {
-                    throw JvmInvokeDynamicLinkageException(
-                        "MethodHandle InvokeSpecial target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                            "${resolvedMethod.descriptor} must not target an initialization method",
-                    )
-                }
+                rejectInitializationMethodHandleTarget("InvokeSpecial", resolvedMethod)
                 if (resolvedMethod.isStatic) {
                     throw JvmInvokeDynamicLinkageException(
                         "MethodHandle InvokeSpecial target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
@@ -385,12 +370,7 @@ object JvmInvokeDynamicCallSiteResolver {
                     name = methodReference.name,
                     descriptor = methodReference.descriptor,
                 )
-                if (resolvedMethod.name == "<init>" || resolvedMethod.name == "<clinit>") {
-                    throw JvmInvokeDynamicLinkageException(
-                        "MethodHandle InvokeInterface target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
-                            "${resolvedMethod.descriptor} must not target an initialization method",
-                    )
-                }
+                rejectInitializationMethodHandleTarget("InvokeInterface", resolvedMethod)
                 if (resolvedMethod.isStatic) {
                     throw JvmInvokeDynamicLinkageException(
                         "MethodHandle InvokeInterface target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
@@ -436,6 +416,18 @@ object JvmInvokeDynamicCallSiteResolver {
 
             else -> throw JvmInvokeDynamicLinkageException(
                 "MethodHandle reference kind ${methodHandle.referenceKind} target resolution is not implemented yet",
+            )
+        }
+    }
+
+    private fun rejectInitializationMethodHandleTarget(
+        operationName: String,
+        resolvedMethod: JvmResolvedMethod,
+    ) {
+        if (resolvedMethod.name == "<init>" || resolvedMethod.name == "<clinit>") {
+            throw JvmInvokeDynamicLinkageException(
+                "MethodHandle $operationName target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                    "${resolvedMethod.descriptor} must not target an initialization method",
             )
         }
     }
