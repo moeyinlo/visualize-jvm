@@ -138,6 +138,32 @@ class RuntimeVisibleAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects RuntimeVisibleAnnotations attributes before Java 5`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeVisibleAnnotations", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java4-runtime-visible-annotations.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("RuntimeVisibleAnnotations" to RuntimeVisibleAnnotationsAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 48,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeVisibleAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=48"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("49"), failure.message)
+    }
+
+    @Test
     fun `rejects annotation type index that is not UTF-8`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

@@ -74,11 +74,18 @@ sealed interface ElementValue {
 }
 
 object RuntimeVisibleAnnotationsAttributeParser : AttributeBodyParser {
-    override fun parse(context: AttributeParseContext): AttributeInfo =
-        RuntimeVisibleAnnotationsAttribute(
+    override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java5MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid RuntimeVisibleAnnotations attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java5MajorVersion",
+            )
+        }
+        return RuntimeVisibleAnnotationsAttribute(
             nameIndex = context.nameIndex,
             annotations = AnnotationParser.parseAnnotations(context, context.ownerPath),
         )
+    }
 }
 
 object RuntimeInvisibleAnnotationsAttributeParser : AttributeBodyParser {
@@ -300,3 +307,5 @@ internal object AnnotationParser {
             throw ClassFileFormatException("Invalid $role=$index: ${exception.message}")
         }
 }
+
+private const val Java5MajorVersion = 49
