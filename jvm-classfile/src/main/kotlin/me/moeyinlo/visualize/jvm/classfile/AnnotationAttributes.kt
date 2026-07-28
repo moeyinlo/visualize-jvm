@@ -104,11 +104,18 @@ object RuntimeInvisibleAnnotationsAttributeParser : AttributeBodyParser {
 }
 
 object RuntimeVisibleParameterAnnotationsAttributeParser : AttributeBodyParser {
-    override fun parse(context: AttributeParseContext): AttributeInfo =
-        RuntimeVisibleParameterAnnotationsAttribute(
+    override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java5MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid RuntimeVisibleParameterAnnotations attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java5MajorVersion",
+            )
+        }
+        return RuntimeVisibleParameterAnnotationsAttribute(
             nameIndex = context.nameIndex,
             parameterAnnotations = AnnotationParser.parseParameterAnnotations(context, context.ownerPath),
         )
+    }
 }
 
 object RuntimeInvisibleParameterAnnotationsAttributeParser : AttributeBodyParser {
