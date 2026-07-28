@@ -95,6 +95,7 @@ object FieldInfoParser {
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
         val codePaths = mutableListOf<String>()
         val sourceFilePaths = mutableListOf<String>()
+        val sourceDebugExtensionPaths = mutableListOf<String>()
         field.attributes.forEachIndexed { index, attribute ->
             when (attributeName(attribute, constantPool, "$ownerPath.attributes[$index].attribute_name_index")) {
                 "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$index]"
@@ -105,10 +106,12 @@ object FieldInfoParser {
                 "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "Code" -> codePaths += "$ownerPath.attributes[$index]"
                 "SourceFile" -> sourceFilePaths += "$ownerPath.attributes[$index]"
+                "SourceDebugExtension" -> sourceDebugExtensionPaths += "$ownerPath.attributes[$index]"
             }
         }
         requireAbsentAttribute(codePaths, "Code", "method_info", ownerPath)
         requireAbsentAttribute(sourceFilePaths, "SourceFile", "ClassFile", ownerPath)
+        requireAbsentAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", "ClassFile", ownerPath)
         requireAtMostOneAttribute(constantValuePaths, "ConstantValue", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
