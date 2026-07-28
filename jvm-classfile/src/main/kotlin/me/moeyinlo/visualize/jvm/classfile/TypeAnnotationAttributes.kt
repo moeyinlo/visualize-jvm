@@ -53,11 +53,18 @@ data class TypePathEntry(
 )
 
 object RuntimeVisibleTypeAnnotationsAttributeParser : AttributeBodyParser {
-    override fun parse(context: AttributeParseContext): AttributeInfo =
-        RuntimeVisibleTypeAnnotationsAttribute(
+    override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java8MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid RuntimeVisibleTypeAnnotations attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java8MajorVersion",
+            )
+        }
+        return RuntimeVisibleTypeAnnotationsAttribute(
             nameIndex = context.nameIndex,
             annotations = TypeAnnotationParser.parseTypeAnnotations(context, context.ownerPath),
         )
+    }
 }
 
 object RuntimeInvisibleTypeAnnotationsAttributeParser : AttributeBodyParser {
@@ -250,3 +257,5 @@ private object TypeAnnotationParser {
         )
     }
 }
+
+private const val Java8MajorVersion = 52
