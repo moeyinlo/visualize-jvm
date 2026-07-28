@@ -238,6 +238,25 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `rejects invalid descriptors on name and type constants`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("member"),
+                utf8("Q"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(1), ConstantPoolIndex(2)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#3"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid field descriptors on field references`() {
         val pool = ConstantPool.fromEntries(
             listOf(

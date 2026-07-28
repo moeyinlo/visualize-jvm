@@ -48,14 +48,30 @@ class ConstantPool private constructor(
     }
 
     fun validateReferences() {
+        val referencedNameAndTypes = referencedNameAndTypeIndices()
         slots.forEachIndexed { slotIndex, slot ->
             if (slot is ConstantPoolSlot.Entry) {
-                validateEntry(ConstantPoolIndex(slotIndex + 1), slot.value)
+                validateEntry(ConstantPoolIndex(slotIndex + 1), slot.value, referencedNameAndTypes)
             }
         }
     }
 
-    private fun validateEntry(owner: ConstantPoolIndex, entry: ConstantPoolEntry) {
+    private fun referencedNameAndTypeIndices(): Set<ConstantPoolIndex> =
+        slots.mapNotNull { slot ->
+            val entry = (slot as? ConstantPoolSlot.Entry)?.value
+            when (entry) {
+                is ConstantMemberRefEntry -> entry.nameAndTypeIndex
+                is ConstantDynamicEntry -> entry.nameAndTypeIndex
+                is ConstantInvokeDynamicEntry -> entry.nameAndTypeIndex
+                else -> null
+            }
+        }.toSet()
+
+    private fun validateEntry(
+        owner: ConstantPoolIndex,
+        entry: ConstantPoolEntry,
+        referencedNameAndTypes: Set<ConstantPoolIndex>,
+    ) {
         when (entry) {
             is ConstantUtf8Entry,
             is ConstantIntegerEntry,
@@ -71,8 +87,11 @@ class ConstantPool private constructor(
             is ConstantStringEntry -> expect<ConstantUtf8Entry>(owner, "string_index", entry.stringIndex)
             is ConstantNameAndTypeEntry -> {
                 val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
+                val descriptor = expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
                 ClassNameValidator.validateUnqualifiedName(owner, "name_index", name.value)
-                expect<ConstantUtf8Entry>(owner, "descriptor_index", entry.descriptorIndex)
+                if (owner !in referencedNameAndTypes) {
+                    validateNameAndTypeDescriptor(owner, descriptor.value)
+                }
             }
 
             is ConstantFieldRefEntry -> {
@@ -109,6 +128,14 @@ class ConstantPool private constructor(
                 val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
                 ModulePackageNameValidator.validatePackageName(owner, "name_index", name.value)
             }
+        }
+    }
+
+    private fun validateNameAndTypeDescriptor(owner: ConstantPoolIndex, descriptor: String) {
+        if (descriptor.startsWith("(")) {
+            DescriptorValidator.validateMethodDescriptor(owner, "descriptor_index", descriptor)
+        } else {
+            DescriptorValidator.validateFieldDescriptor(owner, "descriptor_index", descriptor)
         }
     }
 
