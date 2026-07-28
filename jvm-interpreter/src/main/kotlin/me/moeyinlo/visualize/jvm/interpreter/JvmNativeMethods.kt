@@ -5423,8 +5423,24 @@ object JvmVmIntrinsics {
                         bytes = snapshot,
                     )
                 }
+                is JvmLongArrayPayload -> {
+                    val longTargetPayload = targetPayload as? JvmLongArrayPayload
+                        ?: throw JvmUnsupportedInstructionException(
+                            "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, float, int, long, or short arrays",
+                        )
+                    val snapshot = sourcePayload.rawBytes(
+                        operation = "Unsafe.copyMemory0 long array source",
+                        start = sourceStart,
+                        endExclusive = sourceEndExclusive,
+                    )
+                    longTargetPayload.setRawBytes(
+                        operation = "Unsafe.copyMemory0 long array target",
+                        start = targetStart,
+                        bytes = snapshot,
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, float, int, or short arrays",
+                    "Unsafe.copyMemory0 currently supports only matching guest byte, boolean, char, float, int, long, or short arrays",
                 )
             }
             return@JvmNativeMethodIntrinsic null
@@ -6344,6 +6360,50 @@ object JvmVmIntrinsics {
             throw JvmUnsupportedInstructionException("$operation range is outside array bounds")
         }
         for (rawOffset in start until endExclusive) {
+            val elementIndex = (rawOffset / Long.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Long.SIZE_BYTES).toInt()
+            elements[elementIndex] = elements[elementIndex]
+                .replaceSyntheticNativeByte(
+                    byteIndex = byteIndex,
+                    elementBytes = Long.SIZE_BYTES,
+                    value = value,
+                )
+        }
+    }
+
+    private fun JvmLongArrayPayload.rawBytes(
+        operation: String,
+        start: Long,
+        endExclusive: Long,
+    ): List<Byte> {
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Long.SIZE_BYTES.toLong(),
+        )
+        return (start until endExclusive).map { rawOffset ->
+            val elementIndex = (rawOffset / Long.SIZE_BYTES).toInt()
+            val byteIndex = (rawOffset % Long.SIZE_BYTES).toInt()
+            val shift = syntheticNativeByteShift(byteIndex = byteIndex, elementBytes = Long.SIZE_BYTES)
+            ((elements[elementIndex] ushr shift) and 0xff).toByte()
+        }
+    }
+
+    private fun JvmLongArrayPayload.setRawBytes(
+        operation: String,
+        start: Long,
+        bytes: List<Byte>,
+    ) {
+        val endExclusive = start + bytes.size.toLong()
+        validateRawByteRange(
+            operation = operation,
+            start = start,
+            endExclusive = endExclusive,
+            byteSize = elements.size.toLong() * Long.SIZE_BYTES.toLong(),
+        )
+        bytes.forEachIndexed { index, value ->
+            val rawOffset = start + index.toLong()
             val elementIndex = (rawOffset / Long.SIZE_BYTES).toInt()
             val byteIndex = (rawOffset % Long.SIZE_BYTES).toInt()
             elements[elementIndex] = elements[elementIndex]

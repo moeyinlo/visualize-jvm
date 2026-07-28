@@ -5019,6 +5019,40 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe copyMemory0 intrinsic copies guest long arrays from synthetic byte offsets`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val source = heap.allocateLongArray(4)
+        val target = heap.allocateLongArray(4)
+        val sourcePayload = heap.get(source).payload as JvmLongArrayPayload
+        val targetPayload = heap.get(target).payload as JvmLongArrayPayload
+        sourcePayload.elements[0] = 0x1122334455667788L
+        sourcePayload.elements[1] = 0x0102030405060708L
+        sourcePayload.elements[2] = -0x123456789abcdfL
+        sourcePayload.elements[3] = 0x7f6e5d4c3b2a1908L
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCopyMemory0Method())
+            ?: error("Unsafe.copyMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = JvmUnsafeSyntheticMemory(),
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(source, JvmLongValue(8L), target, JvmLongValue(8L), JvmLongValue(16L)),
+            ),
+        )
+
+        assertEquals(null, result)
+        assertEquals(listOf(0L, 0x0102030405060708L, -0x123456789abcdfL, 0L), targetPayload.elements)
+    }
+
+    @Test
     fun `Unsafe copyMemory0 intrinsic copies synthetic native memory into guest boolean arrays`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
