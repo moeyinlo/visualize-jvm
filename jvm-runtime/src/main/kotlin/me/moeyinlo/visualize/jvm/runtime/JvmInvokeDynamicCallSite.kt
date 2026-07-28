@@ -1000,8 +1000,13 @@ object JvmInvokeDynamicCallSiteResolver {
             index = nameAndTypeIndex,
             role = "MethodHandle reference name_and_type_index",
         )
+        val ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "MethodHandle reference class name_index")
+            .requireMethodHandleOwnerClassName(
+                owner = classEntry.nameIndex,
+                role = "MethodHandle reference index $referenceIndex",
+            )
         return MethodReference(
-            ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "MethodHandle reference class name_index"),
+            ownerClassName = ownerClassName,
             name = nameAndDescriptor.name,
             descriptor = nameAndDescriptor.descriptor,
         )
