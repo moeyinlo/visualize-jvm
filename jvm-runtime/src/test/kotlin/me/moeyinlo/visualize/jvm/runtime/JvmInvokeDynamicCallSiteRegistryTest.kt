@@ -257,6 +257,40 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `bootstrap argument resolver rejects field method handles with method descriptors`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodHandleEntry(
+                            referenceKind = MethodHandleReferenceKind.GetStatic,
+                            referenceIndex = ConstantPoolIndex(7),
+                        ),
+                        ConstantUtf8Entry("pkg/Example", "pkg/Example".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("field", "field".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(4),
+                            descriptorIndex = ConstantPoolIndex(5),
+                        ),
+                        ConstantFieldRefEntry(
+                            classIndex = ConstantPoolIndex(3),
+                            nameAndTypeIndex = ConstantPoolIndex(6),
+                        ),
+                    ),
+                ),
+                index = JvmRuntimeConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals(
+            "bootstrap method handle argument index #1 target descriptor ()I is not a field descriptor",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `bootstrap argument resolver rejects new invoke special method handles that do not target constructors`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(

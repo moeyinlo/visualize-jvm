@@ -627,6 +627,9 @@ object JvmInvokeDynamicCallSiteResolver {
         return returnEnd == length
     }
 
+    private fun String.isInvokeDynamicFieldDescriptor(): Boolean =
+        parseInvokeDynamicFieldDescriptorAt(0) == length
+
     private fun String.parseInvokeDynamicFieldDescriptorAt(start: Int): Int? {
         if (start !in indices) {
             return null
@@ -780,6 +783,19 @@ object JvmInvokeDynamicCallSiteResolver {
         role: String,
     ) {
         val nameAndTypeIndex = when (referencedEntry) {
+            is ConstantFieldRefEntry -> {
+                val nameAndDescriptor = nameAndDescriptor(
+                    constantPool = constantPool,
+                    index = referencedEntry.nameAndTypeIndex,
+                    role = "$role name_and_type_index",
+                )
+                if (!nameAndDescriptor.descriptor.isInvokeDynamicFieldDescriptor()) {
+                    throw JvmInvokeDynamicLinkageException(
+                        "$role descriptor ${nameAndDescriptor.descriptor} is not a field descriptor",
+                    )
+                }
+                return
+            }
             is ConstantMethodRefEntry -> referencedEntry.nameAndTypeIndex
             is ConstantInterfaceMethodRefEntry -> referencedEntry.nameAndTypeIndex
             else -> return
