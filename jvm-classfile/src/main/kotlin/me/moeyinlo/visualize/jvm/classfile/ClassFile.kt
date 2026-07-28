@@ -31,6 +31,7 @@ object ClassFileParser {
         val constantPool = ConstantPoolParser.parse(reader)
         val accessFlags = ClassAccessFlagsParser.parse(reader)
         val identity = ClassIdentityParser.parse(reader)
+        validateClassIdentity(identity, constantPool, reader.source)
         val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val methods = MethodInfoParser.parseMethods(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
         val attributes = AttributeInfoParser.parseAttributes(
@@ -57,6 +58,41 @@ object ClassFileParser {
             methods = methods,
             attributes = attributes,
         )
+    }
+
+    private fun validateClassIdentity(
+        identity: ClassIdentity,
+        constantPool: ConstantPool,
+        source: String,
+    ) {
+        expectClassIdentityReference(
+            constantPool = constantPool,
+            index = identity.thisClassIndex,
+            role = "this_class",
+            source = source,
+        )
+    }
+
+    private fun expectClassIdentityReference(
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        role: String,
+        source: String,
+    ): ConstantClassEntry {
+        val entry = try {
+            constantPool[index]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile $role=$index source=$source: ${exception.message}",
+            )
+        }
+        if (entry !is ConstantClassEntry) {
+            throw ClassFileFormatException(
+                "Invalid ClassFile $role=$index source=$source: expected CONSTANT_Class_info " +
+                    "but found ${entry.javaClass.simpleName}",
+            )
+        }
+        return entry
     }
 
     private fun validateClassAttributes(
