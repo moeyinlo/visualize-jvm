@@ -410,6 +410,40 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `bootstrap argument resolver rejects field method handles with invalid field names`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodHandleEntry(
+                            referenceKind = MethodHandleReferenceKind.GetStatic,
+                            referenceIndex = ConstantPoolIndex(7),
+                        ),
+                        ConstantUtf8Entry("pkg/Example", "pkg/Example".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("bad/name", "bad/name".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(4),
+                            descriptorIndex = ConstantPoolIndex(5),
+                        ),
+                        ConstantFieldRefEntry(
+                            classIndex = ConstantPoolIndex(3),
+                            nameAndTypeIndex = ConstantPoolIndex(6),
+                        ),
+                    ),
+                ),
+                index = JvmRuntimeConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals(
+            "bootstrap method handle argument index #1 target field name bad/name is not a valid unqualified name",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `bootstrap argument resolver rejects field method handles with invalid internal class names`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
