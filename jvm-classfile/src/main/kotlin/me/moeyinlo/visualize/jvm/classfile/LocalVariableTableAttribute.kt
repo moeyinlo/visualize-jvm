@@ -37,7 +37,8 @@ object LocalVariableTableAttributeParser : AttributeBodyParser {
             context.reader,
             "$ownerPath.descriptor_index",
         )
-        expectUtf8(context, "$ownerPath.descriptor_index", descriptorIndex)
+        val descriptor = expectUtf8(context, "$ownerPath.descriptor_index", descriptorIndex)
+        DescriptorValidator.validateFieldDescriptor(descriptorIndex, "$ownerPath.descriptor_index", descriptor.value)
         return LocalVariableTableEntry(
             startPc = startPc,
             length = length,
@@ -51,7 +52,7 @@ object LocalVariableTableAttributeParser : AttributeBodyParser {
         context: AttributeParseContext,
         role: String,
         index: ConstantPoolIndex,
-    ) {
+    ): ConstantUtf8Entry {
         val entry = try {
             context.constantPool[index]
         } catch (exception: ConstantPoolFormatException) {
@@ -62,5 +63,6 @@ object LocalVariableTableAttributeParser : AttributeBodyParser {
                 "Invalid $role=$index: expected CONSTANT_Utf8_info but found ${entry.javaClass.simpleName}",
             )
         }
+        return entry
     }
 }

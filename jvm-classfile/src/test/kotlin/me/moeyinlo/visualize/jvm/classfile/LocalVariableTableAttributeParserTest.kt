@@ -60,4 +60,30 @@ class LocalVariableTableAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("descriptor_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Utf8"), failure.message)
     }
+
+    @Test
+    fun `rejects LocalVariableTable descriptors that are not field descriptors`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("LocalVariableTable", byteArrayOf()),
+                ConstantUtf8Entry("arg", byteArrayOf()),
+                ConstantUtf8Entry("()V", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 12, 0, 1, 0, 0, 0, 5, 0, 2, 0, 3, 0, 1),
+                    source = "bad-local-variable-table-descriptor.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("LocalVariableTable" to LocalVariableTableAttributeParser),
+                ownerPath = "methods[0].attributes[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field descriptor"), failure.message)
+    }
 }

@@ -230,6 +230,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.12 | `LineNumberTable.start_pc` entries must point to instruction opcodes in the enclosing `Code` array | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LineNumberTable entries whose start pc does not point to an instruction opcode` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable` | `jvm-classfile` | `LocalVariableTableAttributeParserTest` | IMPLEMENTED |
+| 4.7.13 | `LocalVariableTable.descriptor_index` must name a valid field descriptor | `jvm-classfile` | `LocalVariableTableAttributeParserTest.rejects LocalVariableTable descriptors that are not field descriptors` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable` local variable ranges must start and end on enclosing `Code` instruction boundaries | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LocalVariableTable entries whose start pc does not point to an instruction opcode` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable` | `jvm-classfile` | `LocalVariableTypeTableAttributeParserTest` | IMPLEMENTED |
