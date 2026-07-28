@@ -636,7 +636,8 @@ object JvmInvokeDynamicCallSiteResolver {
         return when (val entry = constantPoolEntry(constantPool, constantPoolIndex)) {
             is ConstantClassEntry -> JvmBootstrapArgument.ClassConstant(
                 constantPoolIndex = index,
-                internalName = utf8Value(constantPool, entry.nameIndex, "bootstrap class argument name_index"),
+                internalName = utf8Value(constantPool, entry.nameIndex, "bootstrap class argument name_index")
+                    .requireBootstrapClassArgumentName(bootstrapKind, entry.nameIndex),
             )
             is ConstantDoubleEntry -> JvmBootstrapArgument.DoubleConstant(
                 constantPoolIndex = index,
@@ -686,6 +687,24 @@ object JvmInvokeDynamicCallSiteResolver {
             else -> throw JvmInvokeDynamicLinkageException(
                 "$bootstrapKind bootstrap argument index $constantPoolIndex expected a loadable constant but found " +
                     entry.javaClass.simpleName,
+            )
+        }
+    }
+
+    private fun String.requireBootstrapClassArgumentName(
+        bootstrapKind: String,
+        owner: ConstantPoolIndex,
+    ): String {
+        try {
+            ClassNameValidator.validateConstantClassName(
+                owner = owner,
+                role = "$bootstrapKind bootstrap class argument name",
+                value = this,
+            )
+            return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException(
+                "$bootstrapKind bootstrap class argument name $this is not a valid constant class name",
             )
         }
     }

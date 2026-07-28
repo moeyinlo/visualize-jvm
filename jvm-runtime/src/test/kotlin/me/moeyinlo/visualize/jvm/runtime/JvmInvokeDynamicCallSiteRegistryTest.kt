@@ -265,6 +265,26 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `bootstrap argument resolver rejects class constants with invalid constant class names`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("pkg.Arg", "pkg.Arg".encodeToByteArray()),
+                    ),
+                ),
+                index = JvmRuntimeConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals(
+            "invokedynamic bootstrap class argument name pkg.Arg is not a valid constant class name",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `bootstrap argument resolver rejects method types with field descriptors`() {
         val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
             JvmInvokeDynamicCallSiteResolver.resolveBootstrapArgument(
