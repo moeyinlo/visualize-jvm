@@ -71,6 +71,7 @@ object RecordAttributeParser : AttributeBodyParser {
         val recordPaths = mutableListOf<String>()
         val permittedSubclassesPaths = mutableListOf<String>()
         val syntheticPaths = mutableListOf<String>()
+        val deprecatedPaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
@@ -101,6 +102,7 @@ object RecordAttributeParser : AttributeBodyParser {
                 "Record" -> recordPaths += "$ownerPath.attributes[$index]"
                 "PermittedSubclasses" -> permittedSubclassesPaths += "$ownerPath.attributes[$index]"
                 "Synthetic" -> syntheticPaths += "$ownerPath.attributes[$index]"
+                "Deprecated" -> deprecatedPaths += "$ownerPath.attributes[$index]"
                 "MethodParameters" -> methodParametersPaths += "$ownerPath.attributes[$index]"
             }
         }
@@ -121,6 +123,7 @@ object RecordAttributeParser : AttributeBodyParser {
         requireAbsentAttribute(recordPaths, "Record", "ClassFile", ownerPath)
         requireAbsentAttribute(permittedSubclassesPaths, "PermittedSubclasses", "ClassFile", ownerPath)
         requireAbsentAttribute(syntheticPaths, "Synthetic", "ClassFile, field_info, or method_info", ownerPath)
+        requireAbsentAttribute(deprecatedPaths, "Deprecated", "ClassFile, field_info, or method_info", ownerPath)
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", ownerPath)
         requireAbsentAttribute(
             runtimeVisibleParameterAnnotationsPaths,

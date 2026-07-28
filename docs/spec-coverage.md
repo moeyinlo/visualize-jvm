@@ -259,6 +259,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.14 | `LocalVariableTypeTable` local variable type ranges must start and end on enclosing `Code` instruction boundaries | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LocalVariableTypeTable entries whose start pc does not point to an instruction opcode` | IMPLEMENTED |
 | 4.7.14 | `LocalVariableTypeTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.15 | `Deprecated` | `jvm-classfile` | `SimpleAttributesParserTest` | IMPLEMENTED |
+| 4.7.15 | `Deprecated` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`/`field_info`/`method_info` locations | `jvm-classfile` | `RecordAttributeParserTest.rejects Deprecated attributes in record components` | IMPLEMENTED |
 | 4.7.15 | `Deprecated` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.16 | `RuntimeVisibleAnnotations` | `jvm-classfile` | `RuntimeVisibleAnnotationsAttributeParserTest` | IMPLEMENTED |
 | 4.7.16 | annotation `type_index` must reference a `CONSTANT_Utf8_info` field descriptor | `jvm-classfile` | `RuntimeVisibleAnnotationsAttributeParserTest.rejects annotation type index with invalid field descriptor` | IMPLEMENTED |
