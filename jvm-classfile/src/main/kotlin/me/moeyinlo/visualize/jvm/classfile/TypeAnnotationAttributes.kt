@@ -68,11 +68,18 @@ object RuntimeVisibleTypeAnnotationsAttributeParser : AttributeBodyParser {
 }
 
 object RuntimeInvisibleTypeAnnotationsAttributeParser : AttributeBodyParser {
-    override fun parse(context: AttributeParseContext): AttributeInfo =
-        RuntimeInvisibleTypeAnnotationsAttribute(
+    override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java8MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid RuntimeInvisibleTypeAnnotations attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java8MajorVersion",
+            )
+        }
+        return RuntimeInvisibleTypeAnnotationsAttribute(
             nameIndex = context.nameIndex,
             annotations = TypeAnnotationParser.parseTypeAnnotations(context, context.ownerPath),
         )
+    }
 }
 
 private object TypeAnnotationParser {

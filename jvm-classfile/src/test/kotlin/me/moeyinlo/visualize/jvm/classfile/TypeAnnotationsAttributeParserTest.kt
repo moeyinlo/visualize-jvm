@@ -91,6 +91,30 @@ class TypeAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects RuntimeInvisibleTypeAnnotations attributes before Java 8`() {
+        val constantPool = typeAnnotationConstantPool("RuntimeInvisibleTypeAnnotations")
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java7-runtime-invisible-type-annotations.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "RuntimeInvisibleTypeAnnotations" to RuntimeInvisibleTypeAnnotationsAttributeParser,
+                ),
+                ownerPath = "ClassFile",
+                majorVersion = 51,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeInvisibleTypeAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=51"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("52"), failure.message)
+    }
+
+    @Test
     fun `parses type path and annotation element value`() {
         val constantPool = typeAnnotationConstantPool("RuntimeInvisibleTypeAnnotations")
         val info = bytes(
