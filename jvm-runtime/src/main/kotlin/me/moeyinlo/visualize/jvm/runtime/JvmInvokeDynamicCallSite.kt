@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.ClassFileFormatException
+import me.moeyinlo.visualize.jvm.classfile.ClassNameValidator
 import me.moeyinlo.visualize.jvm.classfile.DescriptorValidator
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 
@@ -594,9 +595,23 @@ object JvmInvokeDynamicCallSiteResolver {
         return JvmInvokeDynamicCallSiteSpec(
             constantPoolIndex = JvmRuntimeConstantPoolIndex(index.value),
             bootstrapMethodIndex = invokeDynamicEntry.bootstrapMethodIndex.value,
-            name = nameEntry.value,
+            name = nameEntry.value.requireInvokeDynamicMethodName(index),
             descriptor = descriptorEntry.value.requireInvokeDynamicMethodDescriptor(index),
         )
+    }
+
+    private fun String.requireInvokeDynamicMethodName(owner: ConstantPoolIndex): String {
+        try {
+            ClassNameValidator.validateMethodName(
+                owner = owner,
+                role = "invokedynamic call site name",
+                value = this,
+                allowInit = false,
+            )
+            return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException("invokedynamic call site name $this is not a valid method name")
+        }
     }
 
     private fun String.requireInvokeDynamicMethodDescriptor(owner: ConstantPoolIndex): String {

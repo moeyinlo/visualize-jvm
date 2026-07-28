@@ -105,6 +105,34 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `call site resolver rejects invalid method names`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveSpec(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantInvokeDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("bad/name", "bad/name".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                index = ConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals(
+            "invokedynamic call site name bad/name is not a valid method name",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `call site resolver links invoke dynamic specs to bootstrap methods by zero based index`() {
         val linkageSpec = JvmInvokeDynamicCallSiteResolver.resolveLinkageSpec(
             constantPool = invokedynamicConstantPool(),
