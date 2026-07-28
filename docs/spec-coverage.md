@@ -253,6 +253,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.6 | `InnerClasses` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects InnerClasses attributes in record components` | IMPLEMENTED |
 | 4.7.6 | `InnerClasses` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod` | `jvm-classfile` | `NestedClassAttributesParserTest` | IMPLEMENTED |
+| 4.7.7, 4.7-C | `EnclosingMethod` attributes are permitted only in class file major version 49.0 or later | `jvm-classfile` | `NestedClassAttributesParserTest.rejects EnclosingMethod attributes before Java 5` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod.class_index` must name a class or interface, not an array class | `jvm-classfile` | `NestedClassAttributesParserTest.rejects EnclosingMethod class indexes that name array classes` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod.method_index` must name a valid method name when nonzero | `jvm-classfile` | `NestedClassAttributesParserTest.rejects EnclosingMethod method indexes whose name is not a method name` | IMPLEMENTED |
 | 4.7.7 | `EnclosingMethod.method_index` must name a valid method descriptor when nonzero | `jvm-classfile` | `NestedClassAttributesParserTest.rejects EnclosingMethod method indexes whose descriptor is not a method descriptor` | IMPLEMENTED |

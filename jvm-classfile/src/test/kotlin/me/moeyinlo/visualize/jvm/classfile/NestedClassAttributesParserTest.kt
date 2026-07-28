@@ -237,6 +237,34 @@ class NestedClassAttributesParserTest {
     }
 
     @Test
+    fun `rejects EnclosingMethod attributes before Java 5`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("EnclosingMethod", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Outer", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 4, 0, 2, 0, 0),
+                    source = "java4-enclosing-method.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("EnclosingMethod" to EnclosingMethodAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 48,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("EnclosingMethod"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=48"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("49"), failure.message)
+    }
+
+    @Test
     fun `rejects EnclosingMethod method indexes whose name is not a method name`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

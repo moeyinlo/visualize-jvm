@@ -64,6 +64,12 @@ object InnerClassesAttributeParser : AttributeBodyParser {
 
 object EnclosingMethodAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java5MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid EnclosingMethod attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java5MajorVersion",
+            )
+        }
         if (context.length != 4) {
             throw ClassFileFormatException(
                 "Invalid EnclosingMethod attribute_length=${context.length} " +
@@ -82,6 +88,8 @@ object EnclosingMethodAttributeParser : AttributeBodyParser {
         )
     }
 }
+
+private const val Java5MajorVersion = 49
 
 private fun readOptionalClassIndex(
     context: AttributeParseContext,
