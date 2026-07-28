@@ -514,6 +514,36 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects ModulePackages attributes in method attribute tables`() {
+        val modulePackagesAttribute = byteArrayOf(0, 3) + intBytes(2) + byteArrayOf(0, 0)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(modulePackagesAttribute)),
+                    ),
+                    source = "bad-method-module-packages.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("ModulePackages", "ModulePackages".encodeToByteArray()),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("ModulePackages" to ModulePackagesAttributeParser),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ModulePackages"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate method Exceptions attributes`() {
         val exceptionsAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
 
