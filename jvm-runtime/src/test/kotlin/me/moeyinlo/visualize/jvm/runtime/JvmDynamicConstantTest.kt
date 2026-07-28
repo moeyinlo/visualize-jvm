@@ -336,6 +336,34 @@ class JvmDynamicConstantTest {
     }
 
     @Test
+    fun `dynamic constant resolver rejects descriptors with invalid internal class names`() {
+        val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
+            JvmDynamicConstantResolver.resolveSpec(
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("badDescriptor", "badDescriptor".encodeToByteArray()),
+                        ConstantUtf8Entry(
+                            "Ljava.lang.String;",
+                            "Ljava.lang.String;".encodeToByteArray(),
+                        ),
+                    ),
+                ),
+                index = ConstantPoolIndex(1),
+            )
+        }
+
+        assertEquals("dynamic constant descriptor Ljava.lang.String; is not a field descriptor", exception.message)
+    }
+
+    @Test
     fun `dynamic constant resolver reports malformed name and type references`() {
         val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
             JvmDynamicConstantResolver.resolveSpec(

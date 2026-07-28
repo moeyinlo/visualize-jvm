@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.runtime
 
+import me.moeyinlo.visualize.jvm.classfile.ClassFileFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantNameAndTypeEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
@@ -7,6 +8,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.DescriptorValidator
 
 data class JvmDynamicConstantSpec(
     val constantPoolIndex: JvmRuntimeConstantPoolIndex,
@@ -64,7 +66,7 @@ object JvmDynamicConstantResolver {
             constantPoolIndex = JvmRuntimeConstantPoolIndex(index.value),
             bootstrapMethodIndex = dynamicEntry.bootstrapMethodIndex.value,
             name = nameAndDescriptor.name,
-            descriptor = nameAndDescriptor.descriptor.requireDynamicConstantFieldDescriptor(),
+            descriptor = nameAndDescriptor.descriptor.requireDynamicConstantFieldDescriptor(index),
         )
     }
 
@@ -193,7 +195,7 @@ private fun JvmBootstrapArgument.materializeDynamicBootstrapArgument(heap: JvmHe
     }
 
 private fun String.dynamicConstantClassMirrorName(): String =
-    when (val descriptor = requireDynamicConstantFieldDescriptor()) {
+    when (val descriptor = requireDynamicConstantFieldDescriptor(ConstantPoolIndex(1))) {
         "Z" -> "boolean"
         "B" -> "byte"
         "C" -> "char"
@@ -208,27 +210,17 @@ private fun String.dynamicConstantClassMirrorName(): String =
         }
     }
 
-private fun String.requireDynamicConstantFieldDescriptor(): String {
-    if (this in setOf("Z", "B", "C", "S", "I", "J", "F", "D") ||
-        (startsWith("L") && endsWith(";") && length > 2) ||
-        (startsWith("[") && isArrayFieldDescriptor())
-    ) {
+private fun String.requireDynamicConstantFieldDescriptor(owner: ConstantPoolIndex): String {
+    try {
+        DescriptorValidator.validateFieldDescriptor(
+            owner = owner,
+            role = "dynamic constant descriptor",
+            descriptor = this,
+        )
         return this
+    } catch (_: ClassFileFormatException) {
+        throw JvmDynamicConstantLinkageException("dynamic constant descriptor $this is not a field descriptor")
     }
-    throw JvmDynamicConstantLinkageException("dynamic constant descriptor $this is not a field descriptor")
-}
-
-private fun String.isArrayFieldDescriptor(): Boolean {
-    var componentStart = 0
-    while (componentStart < length && this[componentStart] == '[') {
-        componentStart += 1
-    }
-    if (componentStart == 0 || componentStart >= length) {
-        return false
-    }
-    val component = substring(componentStart)
-    return component in setOf("Z", "B", "C", "S", "I", "J", "F", "D") ||
-        (component.startsWith("L") && component.endsWith(";") && component.length > 2)
 }
 
 class JvmDynamicConstantLinkageException(message: String) : IllegalStateException(message)
