@@ -43,6 +43,12 @@ object ModulePackagesAttributeParser : AttributeBodyParser {
 
 object ModuleMainClassAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java9MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid ModuleMainClass attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java9MajorVersion",
+            )
+        }
         if (context.length != 2) {
             throw ClassFileFormatException(
                 "Invalid ModuleMainClass attribute_length=${context.length} at ${context.ownerPath}: expected 2",

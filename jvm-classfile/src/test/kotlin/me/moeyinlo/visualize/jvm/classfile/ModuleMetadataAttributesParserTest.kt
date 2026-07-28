@@ -84,6 +84,34 @@ class ModuleMetadataAttributesParserTest {
     }
 
     @Test
+    fun `rejects ModuleMainClass attributes before Java 9`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("ModuleMainClass", byteArrayOf()),
+                ConstantUtf8Entry("app/Main", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(2)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 3),
+                    source = "java8-module-main-class.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("ModuleMainClass" to ModuleMainClassAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 52,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ModuleMainClass"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=52"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("53"), failure.message)
+    }
+
+    @Test
     fun `rejects ModulePackages entry that is not a package constant`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
