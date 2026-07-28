@@ -94,6 +94,8 @@ object FieldInfoParser {
         val runtimeInvisibleAnnotationsPaths = mutableListOf<String>()
         val runtimeVisibleTypeAnnotationsPaths = mutableListOf<String>()
         val runtimeInvisibleTypeAnnotationsPaths = mutableListOf<String>()
+        val runtimeVisibleParameterAnnotationsPaths = mutableListOf<String>()
+        val runtimeInvisibleParameterAnnotationsPaths = mutableListOf<String>()
         val codePaths = mutableListOf<String>()
         val sourceFilePaths = mutableListOf<String>()
         val sourceDebugExtensionPaths = mutableListOf<String>()
@@ -116,6 +118,8 @@ object FieldInfoParser {
                 "RuntimeInvisibleAnnotations" -> runtimeInvisibleAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeVisibleTypeAnnotations" -> runtimeVisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "RuntimeInvisibleTypeAnnotations" -> runtimeInvisibleTypeAnnotationsPaths += "$ownerPath.attributes[$index]"
+                "RuntimeVisibleParameterAnnotations" -> runtimeVisibleParameterAnnotationsPaths += "$ownerPath.attributes[$index]"
+                "RuntimeInvisibleParameterAnnotations" -> runtimeInvisibleParameterAnnotationsPaths += "$ownerPath.attributes[$index]"
                 "Code" -> codePaths += "$ownerPath.attributes[$index]"
                 "SourceFile" -> sourceFilePaths += "$ownerPath.attributes[$index]"
                 "SourceDebugExtension" -> sourceDebugExtensionPaths += "$ownerPath.attributes[$index]"
@@ -139,6 +143,8 @@ object FieldInfoParser {
         requireAbsentAttribute(enclosingMethodPaths, "EnclosingMethod", "ClassFile", ownerPath)
         requireAbsentAttribute(bootstrapMethodsPaths, "BootstrapMethods", "ClassFile", ownerPath)
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", ownerPath)
+        requireAbsentAttribute(runtimeVisibleParameterAnnotationsPaths, "RuntimeVisibleParameterAnnotations", "method_info", ownerPath)
+        requireAbsentAttribute(runtimeInvisibleParameterAnnotationsPaths, "RuntimeInvisibleParameterAnnotations", "method_info", ownerPath)
         requireAbsentAttribute(modulePaths, "Module", "ClassFile", ownerPath)
         requireAbsentAttribute(modulePackagesPaths, "ModulePackages", "ClassFile", ownerPath)
         requireAbsentAttribute(moduleMainClassPaths, "ModuleMainClass", "ClassFile", ownerPath)

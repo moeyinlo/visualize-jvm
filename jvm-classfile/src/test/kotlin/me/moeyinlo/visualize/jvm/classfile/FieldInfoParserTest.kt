@@ -345,6 +345,74 @@ class FieldInfoParserTest {
     }
 
     @Test
+    fun `rejects RuntimeVisibleParameterAnnotations attributes in field attribute tables`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            FieldInfoParser.parseFields(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1, 0, 1, 0, 2, 0, 1,
+                        0, 3, 0, 0, 0, 1, 0,
+                    ),
+                    source = "bad-field-runtime-visible-parameter-annotations.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantUtf8Entry(
+                            "RuntimeVisibleParameterAnnotations",
+                            "RuntimeVisibleParameterAnnotations".encodeToByteArray(),
+                        ),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "RuntimeVisibleParameterAnnotations" to RuntimeVisibleParameterAnnotationsAttributeParser,
+                ),
+                classKind = ClassFileKind.Class,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeVisibleParameterAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("fields[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+    }
+
+    @Test
+    fun `rejects RuntimeInvisibleParameterAnnotations attributes in field attribute tables`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            FieldInfoParser.parseFields(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1, 0, 1, 0, 2, 0, 1,
+                        0, 3, 0, 0, 0, 1, 0,
+                    ),
+                    source = "bad-field-runtime-invisible-parameter-annotations.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantUtf8Entry(
+                            "RuntimeInvisibleParameterAnnotations",
+                            "RuntimeInvisibleParameterAnnotations".encodeToByteArray(),
+                        ),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of(
+                    "RuntimeInvisibleParameterAnnotations" to RuntimeInvisibleParameterAnnotationsAttributeParser,
+                ),
+                classKind = ClassFileKind.Class,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeInvisibleParameterAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("fields[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+    }
+
+    @Test
     fun `rejects Module attributes in field attribute tables`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             FieldInfoParser.parseFields(

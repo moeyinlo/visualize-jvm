@@ -271,10 +271,12 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.17 | `RuntimeInvisibleAnnotations` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.18 | `RuntimeVisibleParameterAnnotations` | `jvm-classfile` | `ParameterAnnotationsAttributeParserTest` | IMPLEMENTED |
 | 4.7.18 | `RuntimeVisibleParameterAnnotations` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method RuntimeVisibleParameterAnnotations attributes` | IMPLEMENTED |
+| 4.7.18 | `RuntimeVisibleParameterAnnotations` is rejected from `field_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects RuntimeVisibleParameterAnnotations attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.18 | `RuntimeVisibleParameterAnnotations` is rejected from nested `Code.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects RuntimeVisibleParameterAnnotations attributes in Code` | IMPLEMENTED |
 | 4.7.18 | `RuntimeVisibleParameterAnnotations` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.19 | `RuntimeInvisibleParameterAnnotations` | `jvm-classfile` | `ParameterAnnotationsAttributeParserTest` | IMPLEMENTED |
 | 4.7.19 | `RuntimeInvisibleParameterAnnotations` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method RuntimeInvisibleParameterAnnotations attributes` | IMPLEMENTED |
+| 4.7.19 | `RuntimeInvisibleParameterAnnotations` is rejected from `field_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects RuntimeInvisibleParameterAnnotations attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.19 | `RuntimeInvisibleParameterAnnotations` is rejected from nested `Code.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects RuntimeInvisibleParameterAnnotations attributes in Code` | IMPLEMENTED |
 | 4.7.19 | `RuntimeInvisibleParameterAnnotations` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.20 | `RuntimeVisibleTypeAnnotations` | `jvm-classfile` | `TypeAnnotationsAttributeParserTest` | IMPLEMENTED |
