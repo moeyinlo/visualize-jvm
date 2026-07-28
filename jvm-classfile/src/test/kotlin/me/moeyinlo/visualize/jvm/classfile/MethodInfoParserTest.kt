@@ -289,6 +289,37 @@ class MethodInfoParserTest {
     }
 
     @Test
+    fun `rejects ConstantValue attributes in method attribute tables`() {
+        val constantValueAttribute = byteArrayOf(0, 3) + intBytes(2) + byteArrayOf(0, 4)
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            MethodInfoParser.parseMethods(
+                reader = ClassFileByteReader(
+                    methodTable(
+                        methodEntry(accessFlags = 0x0101, attributes = listOf(constantValueAttribute)),
+                    ),
+                    source = "bad-method-constant-value.class",
+                ),
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("run", "run".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                        ConstantUtf8Entry("ConstantValue", "ConstantValue".encodeToByteArray()),
+                        ConstantIntegerEntry(1),
+                    ),
+                ),
+                attributeParsers = AttributeParserRegistry.of("ConstantValue" to ConstantValueAttributeParser),
+                classKind = ClassFileKind.Class,
+                majorVersion = 70,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ConstantValue"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field_info"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate method Exceptions attributes`() {
         val exceptionsAttribute = byteArrayOf(0, 3) + intBytes(4) + byteArrayOf(0, 1, 0, 5)
 

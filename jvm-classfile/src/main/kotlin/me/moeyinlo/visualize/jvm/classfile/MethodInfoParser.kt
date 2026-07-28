@@ -191,6 +191,7 @@ object MethodInfoParser {
         val runtimeInvisibleParameterAnnotationsPaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
         val annotationDefaultPaths = mutableListOf<String>()
+        val constantValuePaths = mutableListOf<String>()
         method.attributes.forEachIndexed { attributeIndex, attribute ->
             val name = expectUtf8(
                 constantPool = constantPool,
@@ -208,8 +209,10 @@ object MethodInfoParser {
                 "RuntimeInvisibleParameterAnnotations" -> runtimeInvisibleParameterAnnotationsPaths += "$ownerPath.attributes[$attributeIndex]"
                 "MethodParameters" -> methodParametersPaths += "$ownerPath.attributes[$attributeIndex]"
                 "AnnotationDefault" -> annotationDefaultPaths += "$ownerPath.attributes[$attributeIndex]"
+                "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$attributeIndex]"
             }
         }
+        requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", ownerPath)
         requireAtMostOneAttribute(exceptionsPaths, "Exceptions", ownerPath)
         requireAtMostOneAttribute(signaturePaths, "Signature", ownerPath)
         requireAtMostOneAttribute(runtimeVisibleAnnotationsPaths, "RuntimeVisibleAnnotations", ownerPath)
@@ -303,6 +306,20 @@ object MethodInfoParser {
             throw ClassFileFormatException(
                 "Invalid $ownerPath attributes: AnnotationDefault annotation interface elements " +
                     "must not declare Exceptions but found $exceptionsPath",
+            )
+        }
+    }
+
+    private fun requireAbsentAttribute(
+        paths: List<String>,
+        attributeName: String,
+        allowedLocation: String,
+        ownerPath: String,
+    ) {
+        if (paths.isNotEmpty()) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath attributes: $attributeName is permitted only in " +
+                    "$allowedLocation attributes but found at ${paths.joinToString()}",
             )
         }
     }
