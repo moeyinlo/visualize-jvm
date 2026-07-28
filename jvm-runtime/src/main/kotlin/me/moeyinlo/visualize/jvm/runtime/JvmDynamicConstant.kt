@@ -203,10 +203,25 @@ private fun String.dynamicConstantClassMirrorName(): String =
         "F" -> "float"
         "D" -> "double"
         else -> when {
-            startsWith("L") && endsWith(";") -> substring(1, lastIndex)
-            startsWith("[") -> this
-            else -> this
+            startsWith("L") && endsWith(";") && length > 2 -> substring(1, lastIndex)
+            startsWith("[") && isArrayFieldDescriptor() -> this
+            else -> throw JvmDynamicConstantLinkageException(
+                "dynamic constant descriptor $this is not a field descriptor",
+            )
         }
     }
+
+private fun String.isArrayFieldDescriptor(): Boolean {
+    var componentStart = 0
+    while (componentStart < length && this[componentStart] == '[') {
+        componentStart += 1
+    }
+    if (componentStart == 0 || componentStart >= length) {
+        return false
+    }
+    val component = substring(componentStart)
+    return component in setOf("Z", "B", "C", "S", "I", "J", "F", "D") ||
+        (component.startsWith("L") && component.endsWith(";") && component.length > 2)
+}
 
 class JvmDynamicConstantLinkageException(message: String) : IllegalStateException(message)

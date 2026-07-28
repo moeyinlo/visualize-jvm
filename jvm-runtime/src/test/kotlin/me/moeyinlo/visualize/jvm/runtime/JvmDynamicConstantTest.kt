@@ -172,6 +172,32 @@ class JvmDynamicConstantTest {
     }
 
     @Test
+    fun `dynamic constant bootstrap invocation rejects method descriptors for constant type mirrors`() {
+        val invocation = JvmDynamicConstantBootstrapInvocation(
+            constant = JvmDynamicConstantSpec(
+                constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                bootstrapMethodIndex = 0,
+                name = "badDescriptor",
+                descriptor = "(I)V",
+            ),
+            bootstrapMethodHandle = JvmMethodHandlePayload(
+                referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                referenceIndex = 5,
+            ),
+            staticArguments = emptyList(),
+        )
+
+        val exception = assertFailsWith<JvmDynamicConstantLinkageException> {
+            invocation.materializeBootstrapMethodArguments(
+                heap = JvmHeap(),
+                lookupClassName = "Example",
+            )
+        }
+
+        assertEquals("dynamic constant descriptor (I)V is not a field descriptor", exception.message)
+    }
+
+    @Test
     fun `dynamic constant bootstrap invocation leaves nested dynamic static arguments unresolved`() {
         val invocation = JvmDynamicConstantBootstrapInvocation(
             constant = JvmDynamicConstantSpec(
