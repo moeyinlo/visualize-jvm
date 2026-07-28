@@ -778,6 +778,14 @@ object JvmInvokeDynamicCallSiteResolver {
             )
         }
         if (
+            referenceKind == MethodHandleReferenceKind.NewInvokeSpecial &&
+            nameAndDescriptor.descriptor.substringAfterLast(')') != "V"
+        ) {
+            throw JvmInvokeDynamicLinkageException(
+                "$role reference_kind NewInvokeSpecial descriptor ${nameAndDescriptor.descriptor} must return void",
+            )
+        }
+        if (
             referenceKind != MethodHandleReferenceKind.NewInvokeSpecial &&
             (nameAndDescriptor.name == "<init>" || nameAndDescriptor.name == "<clinit>")
         ) {
