@@ -1123,6 +1123,20 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects invokedynamic operand whose method name is not a method name`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xBA.toByte(), 0, 2, 0, 0, 0xB1.toByte()),
+                constantPool = invokeDynamicPool(memberName = "bad/name"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokedynamic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method name"), failure.message)
+    }
+
+    @Test
     fun `rejects invokedynamic operand whose descriptor is not a method descriptor`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             parseCodeAttribute(
@@ -1218,13 +1232,13 @@ class CodeInstructionValidationTest {
             ),
         )
 
-    private fun invokeDynamicPool(descriptor: String = "()V"): ConstantPool =
+    private fun invokeDynamicPool(memberName: String = "run", descriptor: String = "()V"): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
                 ConstantUtf8Entry("Code", byteArrayOf()),
                 ConstantInvokeDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(3)),
                 ConstantNameAndTypeEntry(ConstantPoolIndex(4), ConstantPoolIndex(5)),
-                ConstantUtf8Entry("run", byteArrayOf()),
+                ConstantUtf8Entry(memberName, memberName.encodeToByteArray()),
                 ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
             ),
         )

@@ -185,6 +185,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.3, 4.9.1 | `Code` `invokeinterface` descriptor-derived `count` operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `invokedynamic` dynamic call site and zero-byte operand constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `invokedynamic` `CONSTANT_InvokeDynamic.name_and_type_index` must reference a `CONSTANT_NameAndType_info` entry | `jvm-classfile` | `CodeInstructionValidationTest.rejects invokedynamic operand whose name and type index does not point to name and type` | IMPLEMENTED |
+| 4.7.3, 4.9.1 | `Code` `invokedynamic` `CONSTANT_InvokeDynamic.name_and_type_index.name_index` must reference a valid method name | `jvm-classfile` | `CodeInstructionValidationTest.rejects invokedynamic operand whose method name is not a method name` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `invokedynamic` `CONSTANT_InvokeDynamic.name_and_type_index.descriptor_index` must reference a valid method descriptor | `jvm-classfile` | `CodeInstructionValidationTest.rejects invokedynamic operand whose descriptor is not a method descriptor` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` direct method invocation special method name constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
 | 4.7.3, 4.9.1 | `Code` `jsr`, `jsr_w`, and `ret` class file version 51.0+ exclusion constraints | `jvm-classfile` | `CodeInstructionValidationTest` | IMPLEMENTED |
