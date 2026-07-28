@@ -684,7 +684,10 @@ object JvmInvokeDynamicCallSiteResolver {
                     constantPoolIndex = index,
                     bootstrapMethodIndex = entry.bootstrapMethodIndex.value,
                     name = nameAndDescriptor.name,
-                    descriptor = nameAndDescriptor.descriptor.requireBootstrapDynamicArgumentFieldDescriptor(bootstrapKind),
+                    descriptor = nameAndDescriptor.descriptor.requireBootstrapDynamicArgumentFieldDescriptor(
+                        bootstrapKind = bootstrapKind,
+                        owner = constantPoolIndex,
+                    ),
                 )
             }
             is ConstantFloatEntry -> JvmBootstrapArgument.FloatConstant(
@@ -736,29 +739,22 @@ object JvmInvokeDynamicCallSiteResolver {
             )
         }
     }
-    private fun String.requireBootstrapDynamicArgumentFieldDescriptor(bootstrapKind: String): String {
-        if (this in setOf("Z", "B", "C", "S", "I", "J", "F", "D") ||
-            (startsWith("L") && endsWith(";") && length > 2) ||
-            (startsWith("[") && isBootstrapDynamicArgumentArrayFieldDescriptor())
-        ) {
+    private fun String.requireBootstrapDynamicArgumentFieldDescriptor(
+        bootstrapKind: String,
+        owner: ConstantPoolIndex,
+    ): String {
+        try {
+            DescriptorValidator.validateFieldDescriptor(
+                owner = owner,
+                role = "$bootstrapKind bootstrap dynamic argument descriptor",
+                descriptor = this,
+            )
             return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException(
+                "$bootstrapKind bootstrap dynamic argument descriptor $this is not a field descriptor",
+            )
         }
-        throw JvmInvokeDynamicLinkageException(
-            "$bootstrapKind bootstrap dynamic argument descriptor $this is not a field descriptor",
-        )
-    }
-
-    private fun String.isBootstrapDynamicArgumentArrayFieldDescriptor(): Boolean {
-        var componentStart = 0
-        while (componentStart < length && this[componentStart] == '[') {
-            componentStart += 1
-        }
-        if (componentStart == 0 || componentStart >= length) {
-            return false
-        }
-        val component = substring(componentStart)
-        return component in setOf("Z", "B", "C", "S", "I", "J", "F", "D") ||
-            (component.startsWith("L") && component.endsWith(";") && component.length > 2)
     }
 
     internal fun resolveMethodHandle(
