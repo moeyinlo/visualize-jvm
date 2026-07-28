@@ -1022,6 +1022,40 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `method handle resolver rejects invoke interface targets that resolve to class initializers`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = interfaceMethodHandleConstantPool(name = "<clinit>", descriptor = "()V"),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/TargetInterface",
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<clinit>",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeInterface,
+                    referenceIndex = 1,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle InvokeInterface target pkg/TargetInterface.<clinit>:()V " +
+                "must not target an initialization method",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `method handle resolver resolves new invoke special constructor targets through the class hierarchy`() {
         val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
             constantPool = constructorMethodHandleConstantPool(),
@@ -1416,7 +1450,10 @@ class JvmInvokeDynamicCallSiteRegistryTest {
             ),
         )
 
-    private fun interfaceMethodHandleConstantPool(): ConstantPool =
+    private fun interfaceMethodHandleConstantPool(
+        name: String = "value",
+        descriptor: String = "()I",
+    ): ConstantPool =
         ConstantPool.fromEntries(
             listOf(
                 ConstantInterfaceMethodRefEntry(
@@ -1429,8 +1466,8 @@ class JvmInvokeDynamicCallSiteRegistryTest {
                     nameIndex = ConstantPoolIndex(5),
                     descriptorIndex = ConstantPoolIndex(6),
                 ),
-                ConstantUtf8Entry("value", "value".encodeToByteArray()),
-                ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ConstantUtf8Entry(name, name.encodeToByteArray()),
+                ConstantUtf8Entry(descriptor, descriptor.encodeToByteArray()),
             ),
         )
 
