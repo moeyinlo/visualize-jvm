@@ -13,6 +13,12 @@ data class RecordComponentInfo(
 
 object RecordAttributeParser : AttributeBodyParser {
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java16MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid Record attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java16MajorVersion",
+            )
+        }
         val componentsCount = context.reader.readU2()
         return RecordAttribute(
             nameIndex = context.nameIndex,
@@ -238,3 +244,5 @@ object RecordAttributeParser : AttributeBodyParser {
         return index to entry
     }
 }
+
+private const val Java16MajorVersion = 60

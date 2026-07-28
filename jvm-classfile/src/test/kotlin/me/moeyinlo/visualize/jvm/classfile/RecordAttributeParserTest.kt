@@ -46,6 +46,32 @@ class RecordAttributeParserTest {
     }
 
     @Test
+    fun `rejects Record attributes before Java 16`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Record", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 0),
+                    source = "java15-record.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Record" to RecordAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 59,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Record"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=59"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("60"), failure.message)
+    }
+
+    @Test
     fun `rejects component with duplicate Signature attributes`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

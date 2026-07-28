@@ -487,6 +487,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.29 | `NestMembers` is rejected from `record_component_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects NestMembers attributes in record components` | IMPLEMENTED |
 | 4.7.29 | `NestMembers` access-control semantics | `jvm-runtime` | TBD | PENDING |
 | 4.7.30 | `Record` classfile structure | `jvm-classfile` | `RecordAttributeParserTest` | IMPLEMENTED |
+| 4.7.30, 4.7-C | `Record` attributes are permitted only in class file major version 60.0 or later | `jvm-classfile` | `RecordAttributeParserTest.rejects Record attributes before Java 16` | IMPLEMENTED |
 | 4.7.30 | `Record` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.30 | `Record` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.30 | `Record` component name and descriptor grammar | `jvm-classfile` | `RecordAttributeParserTest` | IMPLEMENTED |
