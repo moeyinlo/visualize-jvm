@@ -297,6 +297,36 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects non java base module without java base requires`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 22,
+                        0, 3, 0, 0, 0, 0,
+                        0, 1,
+                        0, 10, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "bad-module.class",
+                ),
+                constantPool = moduleConstantPool(),
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("requires"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("java.base"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("my.module"), failure.message)
+    }
+
+    @Test
     fun `rejects open module with opens entries`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             AttributeInfoParser.parseAttributes(

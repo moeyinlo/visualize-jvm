@@ -66,7 +66,7 @@ object ModuleAttributeParser : AttributeBodyParser {
         val opens = parseOpens(context, moduleFlags)
         val uses = parseUses(context)
         val provides = parseProvides(context)
-        requireNonJavaBaseModuleHasRequires(context, moduleNameIndex, requires)
+        requireNonJavaBaseModuleHasJavaBaseRequires(context, moduleNameIndex, requires)
         return ModuleAttribute(
             nameIndex = context.nameIndex,
             moduleNameIndex = moduleNameIndex,
@@ -134,16 +134,22 @@ object ModuleAttributeParser : AttributeBodyParser {
         }
     }
 
-    private fun requireNonJavaBaseModuleHasRequires(
+    private fun requireNonJavaBaseModuleHasJavaBaseRequires(
         context: AttributeParseContext,
         moduleNameIndex: ConstantPoolIndex,
         requires: List<ModuleRequires>,
     ) {
         val currentModuleName = moduleName(context, moduleNameIndex, "${context.ownerPath}.module_name_index")
-        if (requires.isEmpty() && currentModuleName != JavaBaseModuleName) {
+        if (currentModuleName == JavaBaseModuleName) {
+            return
+        }
+        val javaBaseRequiresCount = requires.withIndex().count { (index, entry) ->
+            moduleName(context, entry.requiresIndex, "${context.ownerPath}.requires[$index].requires_index") == JavaBaseModuleName
+        }
+        if (javaBaseRequiresCount != 1) {
             throw ClassFileFormatException(
-                "Invalid ${context.ownerPath}.requires_count=0: module $currentModuleName must declare " +
-                    "at least one requires entry for $JavaBaseModuleName",
+                "Invalid ${context.ownerPath}.requires_count=${requires.size}: module $currentModuleName must declare " +
+                    "exactly one requires entry for $JavaBaseModuleName; found $javaBaseRequiresCount",
             )
         }
     }
