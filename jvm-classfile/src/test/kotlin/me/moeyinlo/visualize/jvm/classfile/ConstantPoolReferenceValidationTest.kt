@@ -238,6 +238,46 @@ class ConstantPoolReferenceValidationTest {
     }
 
     @Test
+    fun `rejects dynamic constants named as instance initialization methods`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("<init>"),
+                utf8("I"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(1), ConstantPoolIndex(2)),
+                ConstantDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(3)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#4"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("<init>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("not permitted"), failure.message)
+    }
+
+    @Test
+    fun `rejects dynamic constants named as class initialization methods`() {
+        val pool = ConstantPool.fromEntries(
+            listOf(
+                utf8("<clinit>"),
+                utf8("I"),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(1), ConstantPoolIndex(2)),
+                ConstantDynamicEntry(BootstrapMethodIndex(0), ConstantPoolIndex(3)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            pool.validateReferences()
+        }
+
+        assertTrue(failure.message.orEmpty().contains("#4"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("<clinit>"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("not permitted"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid descriptors on name and type constants`() {
         val pool = ConstantPool.fromEntries(
             listOf(

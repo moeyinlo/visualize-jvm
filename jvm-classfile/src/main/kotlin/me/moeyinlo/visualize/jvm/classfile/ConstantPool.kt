@@ -113,6 +113,7 @@ class ConstantPool private constructor(
             is ConstantMethodHandleEntry -> validateMethodHandle(owner, entry)
             is ConstantDynamicEntry -> {
                 expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", entry.nameAndTypeIndex)
+                validateDynamicConstantName(owner, entry.nameAndTypeIndex)
                 validateFieldDescriptor(owner, "name_and_type_index", entry.nameAndTypeIndex)
             }
             is ConstantInvokeDynamicEntry -> {
@@ -128,6 +129,17 @@ class ConstantPool private constructor(
                 val name = expect<ConstantUtf8Entry>(owner, "name_index", entry.nameIndex)
                 ModulePackageNameValidator.validatePackageName(owner, "name_index", name.value)
             }
+        }
+    }
+
+    private fun validateDynamicConstantName(owner: ConstantPoolIndex, nameAndTypeIndex: ConstantPoolIndex) {
+        val nameAndType = expect<ConstantNameAndTypeEntry>(owner, "name_and_type_index", nameAndTypeIndex)
+        val name = expect<ConstantUtf8Entry>(nameAndTypeIndex, "name_index", nameAndType.nameIndex)
+        if (name.value == "<init>" || name.value == "<clinit>") {
+            throw ClassFileFormatException(
+                "Invalid constant pool reference from $owner name_index: " +
+                    "dynamic constant name ${name.value} is not permitted",
+            )
         }
     }
 
