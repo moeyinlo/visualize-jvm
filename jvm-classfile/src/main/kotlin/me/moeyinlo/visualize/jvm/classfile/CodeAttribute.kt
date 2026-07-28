@@ -1601,8 +1601,14 @@ private object CodeInstructionValidator {
                     "CONSTANT_Fieldref.name_index=${nameAndType.nameIndex}: ${exception.message}",
             )
         }
-        val descriptor = loadConstantPoolEntry(
-            ownerPath = ownerPath,
+        if (name.value == "<init>" || name.value == "<clinit>") {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Fieldref.name_index=${nameAndType.nameIndex}: " +
+                    "field name ${name.value} is not permitted",
+            )
+        }
+        val descriptor = loadConstantPoolEntry(            ownerPath = ownerPath,
             pc = pc,
             mnemonic = mnemonic,
             constantPool = constantPool,

@@ -1492,6 +1492,23 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects field access operands whose field name is a special method name`() {
+        listOf("<init>", "<clinit>").forEach { specialName ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(0xB2.toByte(), 0, 2, 0xB1.toByte()),
+                    constantPool = fieldReferencePool(memberName = specialName),
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains("getstatic"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+            assertTrue(failure.message.orEmpty().contains(specialName), failure.message)
+            assertTrue(failure.message.orEmpty().contains("field name"), failure.message)
+        }
+    }
+
+    @Test
     fun `accepts invokespecial and invokestatic method references in all supported classfile versions`() {
         val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
         opcodes.forEach { (opcode, _) ->
@@ -1525,6 +1542,7 @@ class CodeInstructionValidationTest {
         assertTrue(failure.message.orEmpty().contains("<init>"), failure.message)
         assertTrue(failure.message.orEmpty().contains("void"), failure.message)
     }
+
     @Test
     fun `accepts invokespecial and invokestatic interface method references in modern classfile versions`() {
         val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
