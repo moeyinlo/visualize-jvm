@@ -118,6 +118,34 @@ class ParameterAnnotationsAttributeParserTest {
     }
 
     @Test
+    fun `rejects RuntimeInvisibleParameterAnnotations attributes before Java 5`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("RuntimeInvisibleParameterAnnotations", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 1, 0),
+                    source = "java4-invisible-parameter-annotations.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "RuntimeInvisibleParameterAnnotations" to RuntimeInvisibleParameterAnnotationsAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+                majorVersion = 48,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("RuntimeInvisibleParameterAnnotations"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=48"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("49"), failure.message)
+    }
+
+    @Test
     fun `rejects invalid parameter annotation`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
