@@ -341,6 +341,12 @@ object JvmInvokeDynamicCallSiteResolver {
                     methodReferenceEntry = methodReferenceEntry,
                     referenceIndex = referenceIndex,
                 )
+                if (resolvedMethod.name == "<init>" || resolvedMethod.name == "<clinit>") {
+                    throw JvmInvokeDynamicLinkageException(
+                        "MethodHandle InvokeSpecial target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +
+                            "${resolvedMethod.descriptor} must not target an initialization method",
+                    )
+                }
                 if (resolvedMethod.isStatic) {
                     throw JvmInvokeDynamicLinkageException(
                         "MethodHandle InvokeSpecial target ${resolvedMethod.ownerClassName}.${resolvedMethod.name}:" +

@@ -853,6 +853,38 @@ class JvmInvokeDynamicCallSiteRegistryTest {
     }
 
     @Test
+    fun `method handle resolver rejects invoke special targets that resolve to constructors`() {
+        val exception = assertFailsWith<JvmInvokeDynamicLinkageException> {
+            JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
+                constantPool = constructorMethodHandleConstantPool(),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Constructed",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "<init>",
+                                    descriptor = "()V",
+                                    isStatic = false,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                methodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeSpecial,
+                    referenceIndex = 1,
+                ),
+            )
+        }
+
+        assertEquals(
+            "MethodHandle InvokeSpecial target pkg/Constructed.<init>:()V must not target an initialization method",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `method handle resolver resolves invoke interface targets through the class hierarchy`() {
         val resolvedMethod = JvmInvokeDynamicCallSiteResolver.resolveMethodHandleTargetMethod(
             constantPool = interfaceMethodHandleConstantPool(),
