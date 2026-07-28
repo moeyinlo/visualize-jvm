@@ -1237,6 +1237,7 @@ private object CodeInstructionValidator {
         allowsInstanceInitialization: Boolean,
     ) {
         val methodName = methodReferenceName(ownerPath, pc, mnemonic, constantPool, index, entry)
+        validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, index, entry)
         if (methodName == "<init>") {
             if (!allowsInstanceInitialization) {
                 throw ClassFileFormatException(
@@ -1399,6 +1400,63 @@ private object CodeInstructionValidator {
             throw ClassFileFormatException(
                 "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
                     "CONSTANT_Fieldref.descriptor_index=${nameAndType.descriptorIndex}: ${exception.message}",
+            )
+        }
+    }
+
+    private fun validateMethodReferenceDescriptor(
+        ownerPath: String,
+        pc: Int,
+        mnemonic: String,
+        constantPool: ConstantPool,
+        index: ConstantPoolIndex,
+        entry: ConstantMemberRefEntry,
+    ) {
+        val constantKind = when (entry) {
+            is ConstantMethodRefEntry -> "CONSTANT_Methodref"
+            is ConstantInterfaceMethodRefEntry -> "CONSTANT_InterfaceMethodref"
+            is ConstantFieldRefEntry -> "CONSTANT_Fieldref"
+        }
+        val nameAndType = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = entry.nameAndTypeIndex,
+            role = "$constantKind.name_and_type_index",
+        )
+        if (nameAndType !is ConstantNameAndTypeEntry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.name_and_type_index=${entry.nameAndTypeIndex} " +
+                    "expected CONSTANT_NameAndType but found ${nameAndType.javaClass.simpleName}",
+            )
+        }
+        val descriptor = loadConstantPoolEntry(
+            ownerPath = ownerPath,
+            pc = pc,
+            mnemonic = mnemonic,
+            constantPool = constantPool,
+            index = nameAndType.descriptorIndex,
+            role = "$constantKind.descriptor_index",
+        )
+        if (descriptor !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.descriptor_index=${nameAndType.descriptorIndex} " +
+                    "expected CONSTANT_Utf8_info but found ${descriptor.javaClass.simpleName}",
+            )
+        }
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = nameAndType.descriptorIndex,
+                role = "descriptor_index",
+                descriptor = descriptor.value,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "$constantKind.descriptor_index=${nameAndType.descriptorIndex}: ${exception.message}",
             )
         }
     }

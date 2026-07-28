@@ -719,6 +719,20 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects invokevirtual operand whose method descriptor is not a method descriptor`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            parseCodeAttribute(
+                code = byteArrayOf(0xB6.toByte(), 0, 2, 0xB1.toByte()),
+                constantPool = methodReferencePool(descriptor = "I"),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("invokevirtual"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("descriptor_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method descriptor"), failure.message)
+    }
+
+    @Test
     fun `accepts invokespecial and invokestatic method references in all supported classfile versions`() {
         val opcodes = listOf(0xB7 to "invokespecial", 0xB8 to "invokestatic")
         opcodes.forEach { (opcode, _) ->
