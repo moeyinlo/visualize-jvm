@@ -1812,6 +1812,13 @@ private object CodeInstructionValidator {
                     exception.message,
             )
         }
+        if (name.value == "<init>" || name.value == "<clinit>") {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.code[$pc] $mnemonic constant_pool index $index: " +
+                    "CONSTANT_Dynamic.name_index=${nameAndType.nameIndex}: " +
+                    "dynamic constant name ${name.value} is not permitted",
+            )
+        }
         val descriptor = loadConstantPoolEntry(
             ownerPath = ownerPath,
             pc = pc,

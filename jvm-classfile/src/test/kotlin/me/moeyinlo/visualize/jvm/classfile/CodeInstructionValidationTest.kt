@@ -579,6 +579,23 @@ class CodeInstructionValidationTest {
     }
 
     @Test
+    fun `rejects ldc dynamic constants whose name is a special method name`() {
+        listOf("<init>", "<clinit>").forEach { specialName ->
+            val failure = assertFailsWith<ClassFileFormatException> {
+                parseCodeAttribute(
+                    code = byteArrayOf(0x12, 2, 0xB1.toByte()),
+                    constantPool = constantDynamicPool(descriptor = "I", memberName = specialName),
+                )
+            }
+
+            assertTrue(failure.message.orEmpty().contains("ldc"), failure.message)
+            assertTrue(failure.message.orEmpty().contains("name_index"), failure.message)
+            assertTrue(failure.message.orEmpty().contains(specialName), failure.message)
+            assertTrue(failure.message.orEmpty().contains("not permitted"), failure.message)
+        }
+    }
+
+    @Test
     fun `accepts ldc2_w operands that point to category two constants`() {
         assertIs<CodeAttribute>(
             parseCodeAttribute(
