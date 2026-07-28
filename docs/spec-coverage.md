@@ -336,6 +336,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.27 | `ModuleMainClass` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects ModuleMainClass attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects ModuleMainClass attributes in method attribute tables` | IMPLEMENTED |
+| 4.7.27 | `ModuleMainClass` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects ModuleMainClass attributes in Code` | IMPLEMENTED |
 | 4.7.28 | `NestHost` classfile structure | `jvm-classfile` | `NestAttributesParserTest` | IMPLEMENTED |
 | 4.7.28 | `NestHost` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.28 | `NestHost` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
