@@ -1884,6 +1884,7 @@ private object CodeInstructionValidator {
                             "expected CONSTANT_InterfaceMethodref but found ${reference.javaClass.simpleName}",
                     )
                 }
+                validateMethodReferenceDescriptor(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
                 validateOrdinaryMethodHandleTargetName(
                     ownerPath = ownerPath,
                     pc = pc,
