@@ -398,6 +398,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.24 | `MethodParameters` classfile structure | `jvm-classfile` | `MethodParametersAttributeParserTest` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` formal parameter name grammar | `jvm-classfile` | `MethodParametersAttributeParserTest` | IMPLEMENTED |
+| 4.7.24 | `MethodParameters.parameters[].access_flags` must only contain `ACC_FINAL`, `ACC_SYNTHETIC`, and `ACC_MANDATED` | `jvm-classfile` | `MethodParametersAttributeParserTest.rejects unknown MethodParameters access flag bits` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` at-most-one `method_info` attribute rule | `jvm-classfile` | `MethodInfoParserTest.rejects duplicate method MethodParameters attributes` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` is rejected from `field_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects MethodParameters attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` is rejected from nested `Code.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects MethodParameters attributes in Code` | IMPLEMENTED |

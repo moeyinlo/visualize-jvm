@@ -11,6 +11,11 @@ data class MethodParameter(
 )
 
 object MethodParametersAttributeParser : AttributeBodyParser {
+    private const val AccFinal = 0x0010
+    private const val AccSynthetic = 0x1000
+    private const val AccMandated = 0x8000
+    private const val AllowedAccessFlags = AccFinal or AccSynthetic or AccMandated
+
     override fun parse(context: AttributeParseContext): AttributeInfo {
         val parametersCount = context.reader.readU1()
         return MethodParametersAttribute(
@@ -24,11 +29,21 @@ object MethodParametersAttributeParser : AttributeBodyParser {
     private fun parseParameter(
         context: AttributeParseContext,
         ownerPath: String,
-    ): MethodParameter =
-        MethodParameter(
-            nameIndex = readOptionalUtf8Index(context, "$ownerPath.name_index"),
-            accessFlags = context.reader.readU2(),
+    ): MethodParameter {
+        val nameIndex = readOptionalUtf8Index(context, "$ownerPath.name_index")
+        val accessFlags = context.reader.readU2()
+        val invalidBits = accessFlags and AllowedAccessFlags.inv() and 0xFFFF
+        if (invalidBits != 0) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.access_flags=0x${accessFlags.toU2Hex()}: " +
+                    "unknown flag bits 0x${invalidBits.toU2Hex()}",
+            )
+        }
+        return MethodParameter(
+            nameIndex = nameIndex,
+            accessFlags = accessFlags,
         )
+    }
 
     private fun readOptionalUtf8Index(
         context: AttributeParseContext,
@@ -52,4 +67,6 @@ object MethodParametersAttributeParser : AttributeBodyParser {
         ClassNameValidator.validateUnqualifiedName(index, role, entry.value)
         return index
     }
+
+    private fun Int.toU2Hex(): String = toString(16).uppercase().padStart(4, '0')
 }

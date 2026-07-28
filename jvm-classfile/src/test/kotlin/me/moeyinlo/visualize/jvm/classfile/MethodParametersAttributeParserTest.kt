@@ -83,4 +83,28 @@ class MethodParametersAttributeParserTest {
         assertTrue(failure.message.orEmpty().contains("parameters[0].name_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("unqualified name"), failure.message)
     }
+
+    @Test
+    fun `rejects unknown MethodParameters access flag bits`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("MethodParameters", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 5, 1, 0, 0, 0, 1),
+                    source = "bad-method-parameters.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("MethodParameters" to MethodParametersAttributeParser),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("parameters[0].access_flags=0x0001"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("unknown flag bits 0x0001"), failure.message)
+    }
 }
