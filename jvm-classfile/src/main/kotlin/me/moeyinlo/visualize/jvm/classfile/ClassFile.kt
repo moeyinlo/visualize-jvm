@@ -79,6 +79,15 @@ object ClassFileParser {
             source = source,
         ).value
         requireIdentityNameIsNotArray("this_class", thisClassName, source)
+        if (accessFlags.kind == ClassFileKind.Module) {
+            if (thisClassName != "module-info") {
+                throw ClassFileFormatException(
+                    "Invalid ClassFile this_class source=$source: ACC_MODULE classfiles must name " +
+                        "module-info but found $thisClassName",
+                )
+            }
+            return
+        }
         if (identity.superClassIndex == null) {
             if (thisClassName != "java/lang/Object") {
                 throw ClassFileFormatException(

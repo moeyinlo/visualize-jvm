@@ -204,6 +204,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects module classfile whose this class is not module info`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = moduleClassFileWithNonModuleInfoThisClassBytes(),
+                source = "BadModuleName.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ACC_MODULE"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("this_class"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("module-info"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("Test"), failure.message)
+    }
+
+    @Test
     fun `rejects Code attributes in ClassFile attribute table`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -849,6 +864,23 @@ class ClassFileParserTest {
             0x06, 0x01,
             0, 2,
             0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+        )
+
+    private fun moduleClassFileWithNonModuleInfoThisClassBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 3,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            0x80, 0x00,
+            0, 2,
+            0, 0,
             0, 0,
             0, 0,
             0, 0,
