@@ -303,6 +303,20 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects module constants in ordinary classfiles`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithModuleConstantBytes(),
+                source = "OrdinaryWithModuleConstant.class",
+                attributeParsers = AttributeParserRegistry.of("SourceFile" to SourceFileAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Module"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ACC_MODULE"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("#8"), failure.message)
+    }
+    @Test
     fun `rejects module classfile before Java 9`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -713,6 +727,36 @@ class ClassFileParserTest {
             0, 6,
         )
 
+    private fun classFileWithModuleConstantBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 9,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 10,
+            'S'.code, 'o'.code, 'u'.code, 'r'.code, 'c'.code, 'e'.code, 'F'.code, 'i'.code, 'l'.code, 'e'.code,
+            1, 0, 9,
+            'T'.code, 'e'.code, 's'.code, 't'.code, '.'.code, 'j'.code, 'a'.code, 'v'.code, 'a'.code,
+            1, 0, 6, 'f'.code, 'r'.code, 'i'.code, 'e'.code, 'n'.code, 'd'.code,
+            19, 0, 7,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 5,
+            0, 0, 0, 2,
+            0, 6,
+        )
     private fun classFileWithNonClassThisClassBytes(): ByteArray =
         bytes(
             0xCA, 0xFE, 0xBA, 0xBE,
@@ -1433,26 +1477,30 @@ class ClassFileParserTest {
             0, 0,
             0, 70,
             0, 8,
-            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            1, 0, 11,
+            'm'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code, 'e'.code,
+            '-'.code, 'i'.code, 'n'.code, 'f'.code, 'o'.code,
             7, 0, 1,
-            1, 0, 16,
-            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
-            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
-            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
-            7, 0, 3,
             1, 0, 6, 'M'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code, 'e'.code,
+            1, 0, 9,
+            'm'.code, 'y'.code, '.'.code, 'm'.code, 'o'.code, 'd'.code, 'u'.code, 'l'.code, 'e'.code,
+            19, 0, 4,
             1, 0, 9,
             'j'.code, 'a'.code, 'v'.code, 'a'.code, '.'.code, 'b'.code, 'a'.code, 's'.code, 'e'.code,
             19, 0, 6,
-            0, 0x21,
+            0x80, 0x00,
             0, 2,
-            0, 4,
+            0, 0,
             0, 0,
             0, 0,
             0, 0,
             0, 2,
+            0, 3,
+            0, 0, 0, 22,
             0, 5,
-            0, 0, 0, 16,
+            0, 0,
+            0, 0,
+            0, 1,
             0, 7,
             0, 0,
             0, 0,
@@ -1460,11 +1508,13 @@ class ClassFileParserTest {
             0, 0,
             0, 0,
             0, 0,
-            0, 0,
+            0, 3,
+            0, 0, 0, 22,
             0, 5,
-            0, 0, 0, 16,
-            0, 7,
             0, 0,
+            0, 0,
+            0, 1,
+            0, 7,
             0, 0,
             0, 0,
             0, 0,
@@ -1472,7 +1522,6 @@ class ClassFileParserTest {
             0, 0,
             0, 0,
         )
-
     private fun classFileWithDuplicateSignatureBytes(): ByteArray =
         bytes(
             0xCA, 0xFE, 0xBA, 0xBE,

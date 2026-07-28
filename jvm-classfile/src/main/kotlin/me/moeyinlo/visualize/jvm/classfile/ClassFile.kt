@@ -75,6 +75,7 @@ object ClassFileParser {
         val constantPool = ConstantPoolParser.parse(reader)
         val accessFlags = ClassAccessFlagsParser.parse(reader)
         validateModuleVersion(version, accessFlags, reader.source)
+        validateModuleOnlyConstantPoolEntries(constantPool, accessFlags, reader.source)
         val identity = ClassIdentityParser.parse(reader)
         validateClassIdentity(identity, constantPool, accessFlags, reader.source)
         val fields = FieldInfoParser.parseFields(reader, constantPool, attributeParsers, accessFlags.kind, version.major)
@@ -128,6 +129,24 @@ object ClassFileParser {
         }
     }
 
+    private fun validateModuleOnlyConstantPoolEntries(
+        constantPool: ConstantPool,
+        accessFlags: ClassAccessFlags,
+        source: String,
+    ) {
+        if (accessFlags.kind == ClassFileKind.Module) {
+            return
+        }
+        for (rawIndex in 1 until constantPool.constantPoolCount) {
+            val slot = constantPool.slotAt(ConstantPoolIndex(rawIndex))
+            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantModuleEntry) {
+                throw ClassFileFormatException(
+                    "Invalid constant_pool #$rawIndex source=$source: CONSTANT_Module_info is permitted only " +
+                        "in ACC_MODULE classfiles",
+                )
+            }
+        }
+    }
     private fun validateClassIdentity(
         identity: ClassIdentity,
         constantPool: ConstantPool,
