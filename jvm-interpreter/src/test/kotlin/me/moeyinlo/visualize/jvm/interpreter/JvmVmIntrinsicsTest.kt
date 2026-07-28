@@ -6058,6 +6058,44 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Unsafe copySwapMemory0 intrinsic swaps synthetic native memory into guest long arrays`() {
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val memory = JvmUnsafeSyntheticMemory()
+        val source = memory.allocateNativeMemory(16L)
+        for (offset in 0L until 16L) {
+            memory.setNativeMemory(source + offset, 1L, (offset + 1L).toByte())
+        }
+        val target = heap.allocateLongArray(2)
+        val targetPayload = heap.get(target).payload as JvmLongArrayPayload
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(unsafeCopySwapMemory0Method())
+            ?: error("Unsafe.copySwapMemory0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "jdk/internal/misc/Unsafe",
+            unsafeMemory = memory,
+        )
+
+        val result = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(
+                unsafe,
+                listOf(JvmNullValue, JvmLongValue(source), target, JvmLongValue(0L), JvmLongValue(16L), JvmLongValue(8L)),
+            ),
+        )
+
+        val expected = if (java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN) {
+            listOf(0x0102030405060708L, 0x090a0b0c0d0e0f10L)
+        } else {
+            listOf(0x0807060504030201L, 0x100f0e0d0c0b0a09L)
+        }
+        assertEquals(null, result)
+        assertEquals(expected, targetPayload.elements)
+    }
+
+    @Test
     fun `Unsafe copySwapMemory0 intrinsic swaps guest byte arrays into synthetic native memory`() {
         val heap = JvmHeap()
         val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
