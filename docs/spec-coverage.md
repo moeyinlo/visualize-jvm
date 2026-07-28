@@ -330,6 +330,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.26 | `ModulePackages` package indexes and resolved package names must be unique | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package indexes`, `ModuleMetadataAttributesParserTest.rejects duplicate ModulePackages package names` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects ModulePackages attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.26 | `ModulePackages` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects ModulePackages attributes in method attribute tables` | IMPLEMENTED |
+| 4.7.26 | `ModulePackages` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects ModulePackages attributes in Code` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |

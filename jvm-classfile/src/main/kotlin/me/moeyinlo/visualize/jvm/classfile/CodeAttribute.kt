@@ -85,6 +85,7 @@ object CodeAttributeParser : AttributeBodyParser {
         val bootstrapMethodsPaths = mutableListOf<String>()
         val methodParametersPaths = mutableListOf<String>()
         val modulePaths = mutableListOf<String>()
+        val modulePackagesPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val attributePath = "${context.ownerPath}.attributes[$index]"
             val name = attributeName(context, attribute, "$attributePath.attribute_name_index")
@@ -121,6 +122,7 @@ object CodeAttributeParser : AttributeBodyParser {
                 "BootstrapMethods" -> bootstrapMethodsPaths += attributePath
                 "MethodParameters" -> methodParametersPaths += attributePath
                 "Module" -> modulePaths += attributePath
+                "ModulePackages" -> modulePackagesPaths += attributePath
             }
         }
         requireAbsentAttribute(codePaths, "Code", "method_info", context.ownerPath)
@@ -132,6 +134,7 @@ object CodeAttributeParser : AttributeBodyParser {
         requireAbsentAttribute(bootstrapMethodsPaths, "BootstrapMethods", "ClassFile", context.ownerPath)
         requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", context.ownerPath)
         requireAbsentAttribute(modulePaths, "Module", "ClassFile", context.ownerPath)
+        requireAbsentAttribute(modulePackagesPaths, "ModulePackages", "ClassFile", context.ownerPath)
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
