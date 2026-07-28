@@ -104,6 +104,7 @@ object ClassFileParser {
                 role = "super_class.name_index",
                 source = source,
             ).value
+            requireIdentityNameIsNotArray("super_class", superClassName, source)
             if (
                 (accessFlags.kind == ClassFileKind.Interface || accessFlags.kind == ClassFileKind.AnnotationInterface) &&
                 superClassName != "java/lang/Object"
