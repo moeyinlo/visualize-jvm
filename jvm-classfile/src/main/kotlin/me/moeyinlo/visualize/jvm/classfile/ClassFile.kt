@@ -75,6 +75,7 @@ object ClassFileParser {
         val constantPool = ConstantPoolParser.parse(reader)
         val accessFlags = ClassAccessFlagsParser.parse(reader)
         validateModuleVersion(version, accessFlags, reader.source)
+        validateConstantPoolVersion(version, constantPool, reader.source)
         validateModuleOnlyConstantPoolEntries(constantPool, accessFlags, reader.source)
         val identity = ClassIdentityParser.parse(reader)
         validateClassIdentity(identity, constantPool, accessFlags, reader.source)
@@ -129,6 +130,24 @@ object ClassFileParser {
         }
     }
 
+    private fun validateConstantPoolVersion(
+        version: ClassFileVersion,
+        constantPool: ConstantPool,
+        source: String,
+    ) {
+        if (version.major >= 55) {
+            return
+        }
+        for (rawIndex in 1 until constantPool.constantPoolCount) {
+            val slot = constantPool.slotAt(ConstantPoolIndex(rawIndex))
+            if (slot is ConstantPoolSlot.Entry && slot.value is ConstantDynamicEntry) {
+                throw ClassFileFormatException(
+                    "Invalid constant_pool #$rawIndex source=$source: CONSTANT_Dynamic_info requires " +
+                        "major_version >= 55 but found ${version.major}.${version.minor}",
+                )
+            }
+        }
+    }
     private fun validateModuleOnlyConstantPoolEntries(
         constantPool: ConstantPool,
         accessFlags: ClassAccessFlags,

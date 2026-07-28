@@ -533,6 +533,20 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects dynamic constants before Java 11`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithDynamicConstantBeforeJava11Bytes(),
+                source = "Java10DynamicConstant.class",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("CONSTANT_Dynamic"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("55"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("54"), failure.message)
+    }
+    @Test
     fun `rejects ClassFile with dynamic constant but no BootstrapMethods attribute`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -1657,6 +1671,10 @@ class ClassFileParserTest {
             0, 0,
         )
 
+    private fun classFileWithDynamicConstantBeforeJava11Bytes(): ByteArray =
+        classFileWithDynamicConstantWithoutBootstrapMethodsBytes().also { bytes ->
+            bytes[7] = 54
+        }
     private fun classFileWithDuplicateBootstrapMethodsBytes(): ByteArray =
         bytes(
             0xCA, 0xFE, 0xBA, 0xBE,
