@@ -466,6 +466,48 @@ class CodeAttributeHeaderParserTest {
     }
 
     @Test
+    fun `rejects MethodParameters attributes in Code`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("MethodParameters", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 20,
+                        0, 0,
+                        0, 0,
+                        0, 0, 0, 1,
+                        0xB1.toByte(),
+                        0, 0,
+                        0, 1,
+                        0, 2,
+                        0, 0, 0, 1,
+                        0,
+                    ),
+                    source = "code-method-parameters.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "MethodParameters" to MethodParametersAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("MethodParameters"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0].attributes[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("method_info"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate RuntimeVisibleTypeAnnotations attributes in Code`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(
