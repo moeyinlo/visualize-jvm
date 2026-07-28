@@ -4877,11 +4877,43 @@ object JvmInterpreter {
                     "expected ConstantUtf8Entry but was ${nameEntry.javaClass.simpleName}",
             )
         }
+        val descriptorEntry = try {
+            constantPool[nameAndTypeEntry.descriptorIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "invalid method descriptor_index ${nameAndTypeEntry.descriptorIndex}: ${exception.message}",
+            )
+        }
+        if (descriptorEntry !is ConstantUtf8Entry) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "expected ConstantUtf8Entry descriptor but was ${descriptorEntry.javaClass.simpleName}",
+            )
+        }
+        try {
+            DescriptorValidator.validateMethodDescriptor(
+                owner = referenceIndex,
+                role = "CONSTANT_MethodHandle target descriptor",
+                descriptor = descriptorEntry.value,
+            )
+        } catch (exception: ClassFileFormatException) {
+            throw JvmUnsupportedInstructionException(
+                "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                    "target descriptor ${descriptorEntry.value} is not a method descriptor: ${exception.message}",
+            )
+        }
         if (referenceKind == MethodHandleReferenceKind.NewInvokeSpecial) {
             if (nameEntry.value != "<init>") {
                 throw JvmUnsupportedInstructionException(
                     "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
                         "reference_kind NewInvokeSpecial must target <init> but found ${nameEntry.value}",
+                )
+            }
+            if (descriptorEntry.value.substringAfterLast(')') != "V") {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                        "reference_kind NewInvokeSpecial descriptor ${descriptorEntry.value} must return void",
                 )
             }
             return
