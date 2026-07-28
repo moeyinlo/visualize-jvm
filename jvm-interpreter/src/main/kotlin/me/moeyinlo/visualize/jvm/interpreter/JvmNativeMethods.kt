@@ -5653,8 +5653,15 @@ object JvmVmIntrinsics {
                         bytes = snapshot.swappedRawBytes(elementSize.value),
                     )
                 }
+                is JvmIntArrayPayload -> {
+                    targetPayload.setRawBytes(
+                        operation = "Unsafe.copySwapMemory0 int array target",
+                        start = targetStart,
+                        bytes = snapshot.swappedRawBytes(elementSize.value),
+                    )
+                }
                 else -> throw JvmUnsupportedInstructionException(
-                    "Unsafe.copySwapMemory0 currently supports only guest byte, char, or short arrays for non-null bases",
+                    "Unsafe.copySwapMemory0 currently supports only guest byte, char, int, or short arrays for non-null bases",
                 )
             }
             return@JvmNativeMethodIntrinsic null
