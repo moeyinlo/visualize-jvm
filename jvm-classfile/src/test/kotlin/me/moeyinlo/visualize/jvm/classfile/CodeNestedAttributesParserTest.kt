@@ -329,6 +329,72 @@ class CodeNestedAttributesParserTest {
     }
 
     @Test
+    fun `rejects LineNumberTable entries whose start pc does not point to an instruction opcode`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("LineNumberTable", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        27,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        3,
+                        0x10,
+                        0,
+                        0xB1.toByte(),
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        0,
+                        0,
+                        6,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        123,
+                    ),
+                    source = "bad-line-number-table-start-pc.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "LineNumberTable" to LineNumberTableAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        val message = failure.message.orEmpty()
+        assertTrue(message.contains("LineNumberTable"), message)
+        assertTrue(message.contains("start_pc=1"), message)
+        assertTrue(message.contains("opcode of an instruction"), message)
+    }
+
+    @Test
     fun `rejects Code type annotation catch target outside exception table`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

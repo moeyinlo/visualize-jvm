@@ -100,6 +100,7 @@ object CodeAttributeParser : AttributeBodyParser {
                     validateStackMapTableFrameOffsets(attributePath, attribute, instructionLayout)
                     validateStackMapTableUninitializedVariables(attributePath, attribute, instructionLayout, code)
                 }
+                "LineNumberTable" -> validateLineNumberTable(attributePath, attribute, instructionLayout)
                 "RuntimeVisibleTypeAnnotations" -> {
                     runtimeVisibleTypeAnnotationsPaths += attributePath
                     validateCodeTypeAnnotationTargets(
@@ -157,6 +158,25 @@ object CodeAttributeParser : AttributeBodyParser {
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
+    }
+
+    private fun validateLineNumberTable(
+        attributePath: String,
+        attribute: AttributeInfo,
+        instructionLayout: CodeInstructionLayout,
+    ) {
+        if (attribute !is LineNumberTableAttribute) {
+            return
+        }
+
+        attribute.entries.forEachIndexed { entryIndex, entry ->
+            if (entry.startPc !in instructionLayout.instructionOffsets) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath LineNumberTable.line_number_table[$entryIndex].start_pc=${entry.startPc}: " +
+                        "must point to the opcode of an instruction",
+                )
+            }
+        }
     }
 
     private fun validateStackMapTableFrameOffsets(

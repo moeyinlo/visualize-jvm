@@ -227,6 +227,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.11 | `SourceDebugExtension` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects SourceDebugExtension attributes in Code` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` | `jvm-classfile` | `LineNumberTableAttributeParserTest` | IMPLEMENTED |
+| 4.7.12 | `LineNumberTable.start_pc` entries must point to instruction opcodes in the enclosing `Code` array | `jvm-classfile` | `CodeNestedAttributesParserTest.rejects LineNumberTable entries whose start pc does not point to an instruction opcode` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable` | `jvm-classfile` | `LocalVariableTableAttributeParserTest` | IMPLEMENTED |
 | 4.7.13 | `LocalVariableTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
