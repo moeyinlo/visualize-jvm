@@ -1794,6 +1794,7 @@ private object CodeInstructionValidator {
                             "expected CONSTANT_Fieldref but found ${reference.javaClass.simpleName}",
                     )
                 }
+                validateFieldReferenceClass(ownerPath, pc, mnemonic, constantPool, entry.referenceIndex, reference)
             }
 
             MethodHandleReferenceKind.InvokeVirtual -> {
