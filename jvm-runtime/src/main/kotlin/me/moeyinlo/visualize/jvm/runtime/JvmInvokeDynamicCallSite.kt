@@ -990,6 +990,24 @@ object JvmInvokeDynamicCallSiteResolver {
         }
     }
 
+    private fun String.requireMethodHandleTargetMethodName(
+        owner: ConstantPoolIndex,
+        role: String,
+    ): String {
+        try {
+            ClassNameValidator.validateMethodName(
+                owner = owner,
+                role = "$role method name",
+                value = this,
+                allowInit = true,
+                allowClinit = true,
+            )
+            return this
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException("$role method name $this is not a valid method name")
+        }
+    }
+
     private data class MethodReference(
         val ownerClassName: String,
         val name: String,
@@ -1029,7 +1047,10 @@ object JvmInvokeDynamicCallSiteResolver {
             )
         return MethodReference(
             ownerClassName = ownerClassName,
-            name = nameAndDescriptor.name,
+            name = nameAndDescriptor.name.requireMethodHandleTargetMethodName(
+                owner = nameAndTypeIndex,
+                role = "MethodHandle reference index $referenceIndex",
+            ),
             descriptor = nameAndDescriptor.descriptor,
         )
     }
