@@ -469,6 +469,78 @@ class CodeNestedAttributesParserTest {
     }
 
     @Test
+    fun `rejects LocalVariableTable entries whose index is outside max locals`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("LocalVariableTable", byteArrayOf()),
+                ConstantUtf8Entry("value", byteArrayOf()),
+                ConstantUtf8Entry("I", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        31,
+                        0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0xB1.toByte(),
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        2,
+                        0,
+                        0,
+                        0,
+                        12,
+                        0,
+                        1,
+                        0,
+                        0,
+                        0,
+                        1,
+                        0,
+                        3,
+                        0,
+                        4,
+                        0,
+                        1,
+                    ),
+                    source = "bad-local-variable-table-index.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "LocalVariableTable" to LocalVariableTableAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        val message = failure.message.orEmpty()
+        assertTrue(message.contains("LocalVariableTable"), message)
+        assertTrue(message.contains("index=1"), message)
+        assertTrue(message.contains("max_locals=1"), message)
+    }
+
+    @Test
     fun `rejects LocalVariableTypeTable entries whose start pc does not point to an instruction opcode`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

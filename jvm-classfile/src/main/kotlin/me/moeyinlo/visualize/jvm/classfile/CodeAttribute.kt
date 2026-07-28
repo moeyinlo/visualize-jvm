@@ -106,6 +106,7 @@ object CodeAttributeParser : AttributeBodyParser {
                     attribute,
                     instructionLayout,
                     code.size,
+                    maxLocals,
                 )
                 "LocalVariableTypeTable" -> validateLocalVariableTypeTable(
                     attributePath,
@@ -177,6 +178,7 @@ object CodeAttributeParser : AttributeBodyParser {
         attribute: AttributeInfo,
         instructionLayout: CodeInstructionLayout,
         codeLength: Int,
+        maxLocals: Int,
     ) {
         if (attribute !is LocalVariableTableAttribute) {
             return
@@ -191,6 +193,12 @@ object CodeAttributeParser : AttributeBodyParser {
                 instructionLayout = instructionLayout,
                 codeLength = codeLength,
             )
+            if (entry.index >= maxLocals) {
+                throw ClassFileFormatException(
+                    "Invalid $attributePath.local_variable_table[$entryIndex] LocalVariableTable.index=${entry.index}: " +
+                        "must be less than max_locals=$maxLocals",
+                )
+            }
         }
     }
 
