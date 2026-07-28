@@ -107,6 +107,7 @@ object CodeAttributeParser : AttributeBodyParser {
                     instructionLayout,
                     code.size,
                     maxLocals,
+                    context.constantPool,
                 )
                 "LocalVariableTypeTable" -> validateLocalVariableTypeTable(
                     attributePath,
@@ -179,27 +180,51 @@ object CodeAttributeParser : AttributeBodyParser {
         instructionLayout: CodeInstructionLayout,
         codeLength: Int,
         maxLocals: Int,
+        constantPool: ConstantPool,
     ) {
         if (attribute !is LocalVariableTableAttribute) {
             return
         }
 
         attribute.entries.forEachIndexed { entryIndex, entry ->
+            val entryPath = "$attributePath.local_variable_table[$entryIndex]"
             validateLocalVariableRange(
                 attributeName = "LocalVariableTable",
-                entryPath = "$attributePath.local_variable_table[$entryIndex]",
+                entryPath = entryPath,
                 startPc = entry.startPc,
                 length = entry.length,
                 instructionLayout = instructionLayout,
                 codeLength = codeLength,
             )
-            if (entry.index >= maxLocals) {
+            val slots = localVariableTableSlots(entryPath, entry, constantPool)
+            if (entry.index + slots > maxLocals) {
                 throw ClassFileFormatException(
-                    "Invalid $attributePath.local_variable_table[$entryIndex] LocalVariableTable.index=${entry.index}: " +
-                        "must be less than max_locals=$maxLocals",
+                    "Invalid $entryPath LocalVariableTable.index=${entry.index}: " +
+                        "requires slots=$slots within max_locals=$maxLocals",
                 )
             }
         }
+    }
+
+    private fun localVariableTableSlots(
+        entryPath: String,
+        entry: LocalVariableTableEntry,
+        constantPool: ConstantPool,
+    ): Int {
+        val descriptor = try {
+            constantPool[entry.descriptorIndex]
+        } catch (exception: ConstantPoolFormatException) {
+            throw ClassFileFormatException(
+                "Invalid $entryPath.descriptor_index=${entry.descriptorIndex}: ${exception.message}",
+            )
+        }
+        if (descriptor !is ConstantUtf8Entry) {
+            throw ClassFileFormatException(
+                "Invalid $entryPath.descriptor_index=${entry.descriptorIndex}: " +
+                    "expected CONSTANT_Utf8_info but found ${descriptor.javaClass.simpleName}",
+            )
+        }
+        return if (descriptor.value == "J" || descriptor.value == "D") 2 else 1
     }
 
     private fun validateLocalVariableTypeTable(
