@@ -19,6 +19,8 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolFormatException
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
+import me.moeyinlo.visualize.jvm.classfile.ClassFileFormatException
+import me.moeyinlo.visualize.jvm.classfile.DescriptorValidator
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallDispatcher
 import me.moeyinlo.visualize.jvm.jni.JvmJniUpcallException
@@ -4792,6 +4794,18 @@ object JvmInterpreter {
                         "Invalid ldc CONSTANT_MethodType descriptor_index ${entry.descriptorIndex} at offset " +
                             "${instruction.offset}: expected ConstantUtf8Entry but was " +
                             descriptorEntry.javaClass.simpleName,
+                    )
+                }
+                try {
+                    DescriptorValidator.validateMethodDescriptor(
+                        owner = index,
+                        role = "ldc CONSTANT_MethodType descriptor",
+                        descriptor = descriptorEntry.value,
+                    )
+                } catch (exception: ClassFileFormatException) {
+                    throw JvmUnsupportedInstructionException(
+                        "Invalid ldc CONSTANT_MethodType descriptor ${descriptorEntry.value} at offset " +
+                            "${instruction.offset}: not a method descriptor: ${exception.message}",
                     )
                 }
                 operandStack.push(heap.internMethodType(descriptorEntry.value))

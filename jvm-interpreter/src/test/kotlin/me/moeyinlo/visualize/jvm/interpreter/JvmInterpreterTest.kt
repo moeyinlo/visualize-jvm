@@ -13406,6 +13406,32 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc rejects method type constants with field descriptors`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                        ConstantMethodTypeEntry(descriptorIndex = ConstantPoolIndex(1)),
+                    ),
+                ),
+            )
+        }
+
+        assertTrue(
+            exception.message!!.contains(
+                "Invalid ldc CONSTANT_MethodType descriptor I at offset 0: not a method descriptor",
+            ),
+            exception.message,
+        )
+    }
+
+    @Test
     fun `ldc reuses guest method handle constants with identical symbolic references`() {
         val heap = JvmHeap()
 
