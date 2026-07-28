@@ -185,4 +185,30 @@ class ModuleMetadataAttributesParserTest {
         assertTrue(failure.message.orEmpty().contains("main_class_index"), failure.message)
         assertTrue(failure.message.orEmpty().contains("CONSTANT_Class"), failure.message)
     }
+
+    @Test
+    fun `rejects ModuleMainClass indexes that name array classes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("ModuleMainClass", byteArrayOf()),
+                ConstantUtf8Entry("[Lapp/Main;", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(2)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 2, 0, 3),
+                    source = "bad-module-main-class.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("ModuleMainClass" to ModuleMainClassAttributeParser),
+                ownerPath = "ClassFile",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ClassFile.attributes[0].main_class_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("internal form"), failure.message)
+    }
 }

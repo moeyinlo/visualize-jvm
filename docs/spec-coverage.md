@@ -387,6 +387,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.27 | `ModuleMainClass` | `jvm-classfile` | `ModuleMetadataAttributesParserTest` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
+| 4.7.27 | `ModuleMainClass.main_class_index` must name a non-array class type | `jvm-classfile` | `ModuleMetadataAttributesParserTest.rejects ModuleMainClass indexes that name array classes` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects ModuleMainClass attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects ModuleMainClass attributes in method attribute tables` | IMPLEMENTED |
 | 4.7.27 | `ModuleMainClass` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects ModuleMainClass attributes in Code` | IMPLEMENTED |

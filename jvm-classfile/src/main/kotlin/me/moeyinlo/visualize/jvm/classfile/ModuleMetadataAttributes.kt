@@ -44,7 +44,8 @@ object ModuleMainClassAttributeParser : AttributeBodyParser {
         }
         return ModuleMainClassAttribute(
             nameIndex = context.nameIndex,
-            mainClassIndex = readRequiredIndex<ConstantClassEntry>(context, "${context.ownerPath}.main_class_index"),
+            mainClassIndex = readRequiredIndex<ConstantClassEntry>(context, "${context.ownerPath}.main_class_index")
+                .also { index -> className(context, index, "${context.ownerPath}.main_class_index") },
         )
     }
 }
@@ -88,6 +89,31 @@ private fun packageName(
             ModulePackageNameValidator.validatePackageName(packageEntry.nameIndex, "name_index", name)
         } catch (exception: ClassFileFormatException) {
             throw ClassFileFormatException("Invalid $role=$index name_index=${packageEntry.nameIndex}: ${exception.message}")
+        }
+    }
+}
+
+private fun className(
+    context: AttributeParseContext,
+    index: ConstantPoolIndex,
+    role: String,
+): String {
+    val classEntry = expectEntryValue<ConstantClassEntry>(
+        context = context,
+        role = role,
+        index = index,
+        expected = "CONSTANT_Class_info",
+    )
+    return expectEntryValue<ConstantUtf8Entry>(
+        context = context,
+        role = "$role.name_index",
+        index = classEntry.nameIndex,
+        expected = "CONSTANT_Utf8_info",
+    ).value.also { name ->
+        try {
+            ClassNameValidator.validateInternalBinaryName(classEntry.nameIndex, "name_index", name)
+        } catch (exception: ClassFileFormatException) {
+            throw ClassFileFormatException("Invalid $role=$index name_index=${classEntry.nameIndex}: ${exception.message}")
         }
     }
 }
