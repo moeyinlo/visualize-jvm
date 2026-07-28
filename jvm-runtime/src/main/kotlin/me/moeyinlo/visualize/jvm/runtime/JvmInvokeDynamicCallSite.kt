@@ -765,6 +765,11 @@ object JvmInvokeDynamicCallSiteResolver {
     ) {
         val nameAndTypeIndex = when (referencedEntry) {
             is ConstantFieldRefEntry -> {
+                validateMethodHandleOwnerClassName(
+                    constantPool = constantPool,
+                    classIndex = referencedEntry.classIndex,
+                    role = role,
+                )
                 val nameAndDescriptor = nameAndDescriptor(
                     constantPool = constantPool,
                     index = referencedEntry.nameAndTypeIndex,
@@ -787,8 +792,22 @@ object JvmInvokeDynamicCallSiteResolver {
                 }
                 return
             }
-            is ConstantMethodRefEntry -> referencedEntry.nameAndTypeIndex
-            is ConstantInterfaceMethodRefEntry -> referencedEntry.nameAndTypeIndex
+            is ConstantMethodRefEntry -> {
+                validateMethodHandleOwnerClassName(
+                    constantPool = constantPool,
+                    classIndex = referencedEntry.classIndex,
+                    role = role,
+                )
+                referencedEntry.nameAndTypeIndex
+            }
+            is ConstantInterfaceMethodRefEntry -> {
+                validateMethodHandleOwnerClassName(
+                    constantPool = constantPool,
+                    classIndex = referencedEntry.classIndex,
+                    role = role,
+                )
+                referencedEntry.nameAndTypeIndex
+            }
             else -> return
         }
         val nameAndDescriptor = nameAndDescriptor(
@@ -833,6 +852,32 @@ object JvmInvokeDynamicCallSiteResolver {
             referenceKind = referenceKind,
             role = role,
         )
+    }
+
+    private fun validateMethodHandleOwnerClassName(
+        constantPool: ConstantPool,
+        classIndex: ConstantPoolIndex,
+        role: String,
+    ) {
+        val classEntry = constantPoolEntry(constantPool, classIndex)
+        if (classEntry !is ConstantClassEntry) {
+            throw JvmInvokeDynamicLinkageException(
+                "$role owner class_index $classIndex expected CONSTANT_Class_info but found " +
+                    classEntry.javaClass.simpleName,
+            )
+        }
+        val ownerClassName = utf8Value(constantPool, classEntry.nameIndex, "$role owner class name_index")
+        try {
+            ClassNameValidator.validateConstantClassName(
+                owner = classEntry.nameIndex,
+                role = "$role owner class name",
+                value = ownerClassName,
+            )
+        } catch (_: ClassFileFormatException) {
+            throw JvmInvokeDynamicLinkageException(
+                "$role owner class name $ownerClassName is not a valid constant class name",
+            )
+        }
     }
 
     private fun String.requireMethodHandleFieldName(
