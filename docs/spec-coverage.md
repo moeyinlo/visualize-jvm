@@ -348,6 +348,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.24 | `MethodParameters` is rejected from `field_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects MethodParameters attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` is rejected from nested `Code.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects MethodParameters attributes in Code` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` is rejected from `ClassFile.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `ClassFileParserTest.rejects MethodParameters attributes in ClassFile attribute table` | IMPLEMENTED |
+| 4.7.24 | `MethodParameters` is rejected from `record_component_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects MethodParameters attributes in record components` | IMPLEMENTED |
 | 4.7.25 | `Module` classfile structure | `jvm-classfile` | `ModuleAttributeParserTest` | IMPLEMENTED |
 | 4.7.25 | `Module` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.25 | `Module.module_name_index` must name a valid module name | `jvm-classfile` | `ModuleAttributeParserTest.rejects module name indexes with invalid module names` | IMPLEMENTED |

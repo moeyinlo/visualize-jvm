@@ -57,6 +57,7 @@ object RecordAttributeParser : AttributeBodyParser {
         val codePaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
         val exceptionsPaths = mutableListOf<String>()
+        val methodParametersPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val name = attributeName(context, attribute, "$ownerPath.attributes[$index].attribute_name_index")
             when (name) {
@@ -72,11 +73,13 @@ object RecordAttributeParser : AttributeBodyParser {
                 "Code" -> codePaths += "$ownerPath.attributes[$index]"
                 "ConstantValue" -> constantValuePaths += "$ownerPath.attributes[$index]"
                 "Exceptions" -> exceptionsPaths += "$ownerPath.attributes[$index]"
+                "MethodParameters" -> methodParametersPaths += "$ownerPath.attributes[$index]"
             }
         }
         requireAbsentAttribute(codePaths, "Code", "method_info", ownerPath)
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", ownerPath)
         requireAbsentAttribute(exceptionsPaths, "Exceptions", "method_info", ownerPath)
+        requireAbsentAttribute(methodParametersPaths, "MethodParameters", "method_info", ownerPath)
         requireAbsentAttribute(
             runtimeVisibleParameterAnnotationsPaths,
             "RuntimeVisibleParameterAnnotations",
