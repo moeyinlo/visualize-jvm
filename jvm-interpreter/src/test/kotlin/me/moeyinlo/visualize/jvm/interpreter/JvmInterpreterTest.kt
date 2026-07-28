@@ -13480,6 +13480,45 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc rejects field method handles with method descriptors`() {
+        val exception = assertFailsWith<JvmUnsupportedInstructionException> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x07.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("pkg/Example", "pkg/Example".encodeToByteArray()),
+                        ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                        ConstantUtf8Entry("field", "field".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantFieldRefEntry(
+                            classIndex = ConstantPoolIndex(2),
+                            nameAndTypeIndex = ConstantPoolIndex(5),
+                        ),
+                        ConstantMethodHandleEntry(
+                            referenceKind = MethodHandleReferenceKind.GetStatic,
+                            referenceIndex = ConstantPoolIndex(6),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals(
+            "Invalid ldc CONSTANT_MethodHandle reference_index #6 at offset 0: " +
+                "target descriptor ()I is not a field descriptor",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `ldc rejects new invoke special method handles that do not target constructors`() {
         val exception = assertFailsWith<JvmUnsupportedInstructionException> {
             JvmInterpreter.execute(

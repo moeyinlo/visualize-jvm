@@ -4845,6 +4845,7 @@ object JvmInterpreter {
         offset: Int,
     ) {
         val nameAndTypeIndex = when (referencedEntry) {
+            is ConstantFieldRefEntry -> referencedEntry.nameAndTypeIndex
             is ConstantMethodRefEntry -> referencedEntry.nameAndTypeIndex
             is ConstantInterfaceMethodRefEntry -> referencedEntry.nameAndTypeIndex
             else -> return
@@ -4890,6 +4891,21 @@ object JvmInterpreter {
                 "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
                     "expected ConstantUtf8Entry descriptor but was ${descriptorEntry.javaClass.simpleName}",
             )
+        }
+        if (referencedEntry is ConstantFieldRefEntry) {
+            try {
+                DescriptorValidator.validateFieldDescriptor(
+                    owner = referenceIndex,
+                    role = "CONSTANT_MethodHandle target descriptor",
+                    descriptor = descriptorEntry.value,
+                )
+            } catch (exception: ClassFileFormatException) {
+                throw JvmUnsupportedInstructionException(
+                    "Invalid ldc CONSTANT_MethodHandle reference_index $referenceIndex at offset $offset: " +
+                        "target descriptor ${descriptorEntry.value} is not a field descriptor",
+                )
+            }
+            return
         }
         try {
             DescriptorValidator.validateMethodDescriptor(
