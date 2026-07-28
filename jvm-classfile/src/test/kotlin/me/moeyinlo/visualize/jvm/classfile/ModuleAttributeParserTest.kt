@@ -43,6 +43,44 @@ class ModuleAttributeParserTest {
     }
 
     @Test
+    fun `rejects Module attributes before Java 9`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Module", byteArrayOf()),
+                ConstantUtf8Entry("java.base", byteArrayOf()),
+                ConstantModuleEntry(ConstantPoolIndex(2)),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    bytes(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 16,
+                        0, 3, 0, 0, 0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                        0, 0,
+                    ),
+                    source = "java8-module.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("Module" to ModuleAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 52,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("Module"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version=52"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("53"), failure.message)
+    }
+
+    @Test
     fun `rejects module name index that is not a module constant`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

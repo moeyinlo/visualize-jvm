@@ -407,6 +407,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.24 | `MethodParameters` is rejected from `ClassFile.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `ClassFileParserTest.rejects MethodParameters attributes in ClassFile attribute table` | IMPLEMENTED |
 | 4.7.24 | `MethodParameters` is rejected from `record_component_info.attributes`, preserving its predefined `method_info`-only location | `jvm-classfile` | `RecordAttributeParserTest.rejects MethodParameters attributes in record components` | IMPLEMENTED |
 | 4.7.25 | `Module` classfile structure | `jvm-classfile` | `ModuleAttributeParserTest` | IMPLEMENTED |
+| 4.7.25, 4.7-C | `Module` attributes are permitted only in class file major version 53.0 or later | `jvm-classfile` | `ModuleAttributeParserTest.rejects Module attributes before Java 9` | IMPLEMENTED |
 | 4.7.25 | `Module` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.25 | `Module.module_name_index` must name a valid module name | `jvm-classfile` | `ModuleAttributeParserTest.rejects module name indexes with invalid module names` | IMPLEMENTED |
 | 4.7.25 | `Module` rejects unknown `module_flags` bits | `jvm-classfile` | `ModuleAttributeParserTest.rejects unknown Module flags` | IMPLEMENTED |

@@ -42,6 +42,7 @@ object ModuleAttributeParser : AttributeBodyParser {
     private const val AccSynthetic = 0x1000
     private const val AccMandated = 0x8000
     private const val JavaBaseModuleName = "java.base"
+    private const val Java9MajorVersion = 53
     private const val Java10MajorVersion = 54
     private const val AllowedModuleFlags = AccOpen or AccSynthetic or AccMandated
     private const val AllowedRequiresFlags = AccTransitive or AccStaticPhase or AccSynthetic or AccMandated
@@ -49,6 +50,12 @@ object ModuleAttributeParser : AttributeBodyParser {
     private const val AllowedOpensFlags = AccSynthetic or AccMandated
 
     override fun parse(context: AttributeParseContext): AttributeInfo {
+        if (context.majorVersion < Java9MajorVersion) {
+            throw ClassFileFormatException(
+                "Invalid Module attribute at ${context.ownerPath}: " +
+                    "major_version=${context.majorVersion} must be at least $Java9MajorVersion",
+            )
+        }
         val moduleNameIndex = readRequiredIndex<ConstantModuleEntry>(context, "${context.ownerPath}.module_name_index")
         val moduleFlags = context.reader.readU2()
         requireAllowedFlags(
