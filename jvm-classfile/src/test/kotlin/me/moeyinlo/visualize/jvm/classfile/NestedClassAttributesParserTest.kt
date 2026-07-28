@@ -64,6 +64,36 @@ class NestedClassAttributesParserTest {
     }
 
     @Test
+    fun `rejects modern anonymous InnerClasses entries with nonzero outer class indexes`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("InnerClasses", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("pkg/Outer\$1", byteArrayOf()),
+                ConstantClassEntry(ConstantPoolIndex(5)),
+                ConstantUtf8Entry("pkg/Outer", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(0, 1, 0, 1, 0, 0, 0, 10, 0, 1, 0, 2, 0, 4, 0, 0, 0, 0),
+                    source = "bad-anonymous-inner-outer.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of("InnerClasses" to InnerClassesAttributeParser),
+                ownerPath = "ClassFile",
+                majorVersion = 51,
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("outer_class_info_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("inner_name_index"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("major_version"), failure.message)
+    }
+
+    @Test
     fun `rejects InnerClasses inner names that are not unqualified names`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

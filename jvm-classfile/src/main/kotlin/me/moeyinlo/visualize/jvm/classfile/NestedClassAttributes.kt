@@ -47,6 +47,12 @@ object InnerClassesAttributeParser : AttributeBodyParser {
             )
         }
         val innerNameIndex = readOptionalUtf8Index(context, "$ownerPath.inner_name_index")
+        if (context.majorVersion >= 51 && innerNameIndex == null && outerClassInfoIndex != null) {
+            throw ClassFileFormatException(
+                "Invalid $ownerPath.outer_class_info_index=$outerClassInfoIndex: " +
+                    "must be zero when inner_name_index is zero for major_version=${context.majorVersion}",
+            )
+        }
         return InnerClassEntry(
             innerClassInfoIndex = innerClassInfoIndex,
             outerClassInfoIndex = outerClassInfoIndex,
