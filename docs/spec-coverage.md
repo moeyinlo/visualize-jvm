@@ -189,6 +189,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.7.11 | `SourceDebugExtension` at-most-one class attribute rule | `jvm-classfile` | `ClassFileParserTest` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` is rejected from `field_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `FieldInfoParserTest.rejects SourceDebugExtension attributes in field attribute tables` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` is rejected from `method_info.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `MethodInfoParserTest.rejects SourceDebugExtension attributes in method attribute tables` | IMPLEMENTED |
+| 4.7.11 | `SourceDebugExtension` is rejected from nested `Code.attributes`, preserving its predefined `ClassFile`-only location | `jvm-classfile` | `CodeAttributeHeaderParserTest.rejects SourceDebugExtension attributes in Code` | IMPLEMENTED |
 | 4.7.11 | `SourceDebugExtension` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` | `jvm-classfile` | `LineNumberTableAttributeParserTest` | IMPLEMENTED |
 | 4.7.12 | `LineNumberTable` writer | `jvm-classfile` | `AttributeInfoWriterTest` | IMPLEMENTED |

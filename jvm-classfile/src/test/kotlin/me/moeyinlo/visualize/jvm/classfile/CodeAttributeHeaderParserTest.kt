@@ -296,6 +296,48 @@ class CodeAttributeHeaderParserTest {
     }
 
     @Test
+    fun `rejects SourceDebugExtension attributes in Code`() {
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("Code", byteArrayOf()),
+                ConstantUtf8Entry("SourceDebugExtension", byteArrayOf()),
+            ),
+        )
+
+        val failure = assertFailsWith<ClassFileFormatException> {
+            AttributeInfoParser.parseAttributes(
+                reader = ClassFileByteReader(
+                    byteArrayOf(
+                        0, 1,
+                        0, 1,
+                        0, 0, 0, 23,
+                        0, 0,
+                        0, 0,
+                        0, 0, 0, 1,
+                        0xB1.toByte(),
+                        0, 0,
+                        0, 1,
+                        0, 2,
+                        0, 0, 0, 4,
+                        83, 77, 65, 80,
+                    ),
+                    source = "code-source-debug-extension.class",
+                ),
+                constantPool = constantPool,
+                registry = AttributeParserRegistry.of(
+                    "Code" to CodeAttributeParser,
+                    "SourceDebugExtension" to SourceDebugExtensionAttributeParser,
+                ),
+                ownerPath = "methods[0]",
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("SourceDebugExtension"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("methods[0].attributes[0]"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+    }
+
+    @Test
     fun `rejects duplicate RuntimeVisibleTypeAnnotations attributes in Code`() {
         val constantPool = ConstantPool.fromEntries(
             listOf(

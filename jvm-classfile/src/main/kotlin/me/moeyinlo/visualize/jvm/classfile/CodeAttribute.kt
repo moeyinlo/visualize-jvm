@@ -79,6 +79,7 @@ object CodeAttributeParser : AttributeBodyParser {
         val codePaths = mutableListOf<String>()
         val constantValuePaths = mutableListOf<String>()
         val sourceFilePaths = mutableListOf<String>()
+        val sourceDebugExtensionPaths = mutableListOf<String>()
         attributes.forEachIndexed { index, attribute ->
             val attributePath = "${context.ownerPath}.attributes[$index]"
             val name = attributeName(context, attribute, "$attributePath.attribute_name_index")
@@ -109,11 +110,13 @@ object CodeAttributeParser : AttributeBodyParser {
                 "Code" -> codePaths += attributePath
                 "ConstantValue" -> constantValuePaths += attributePath
                 "SourceFile" -> sourceFilePaths += attributePath
+                "SourceDebugExtension" -> sourceDebugExtensionPaths += attributePath
             }
         }
         requireAbsentAttribute(codePaths, "Code", "method_info", context.ownerPath)
         requireAbsentAttribute(constantValuePaths, "ConstantValue", "field_info", context.ownerPath)
         requireAbsentAttribute(sourceFilePaths, "SourceFile", "ClassFile", context.ownerPath)
+        requireAbsentAttribute(sourceDebugExtensionPaths, "SourceDebugExtension", "ClassFile", context.ownerPath)
         requireAtMostOneAttribute(stackMapTablePaths, "StackMapTable", context.ownerPath)
         requireAtMostOneAttribute(runtimeVisibleTypeAnnotationsPaths, "RuntimeVisibleTypeAnnotations", context.ownerPath)
         requireAtMostOneAttribute(runtimeInvisibleTypeAnnotationsPaths, "RuntimeInvisibleTypeAnnotations", context.ownerPath)
