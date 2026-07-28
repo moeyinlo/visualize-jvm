@@ -58,6 +58,21 @@ class ClassFileParserTest {
     }
 
     @Test
+    fun `rejects ConstantValue attributes in ClassFile attribute table`() {
+        val failure = assertFailsWith<ClassFileFormatException> {
+            ClassFileParser.parse(
+                bytes = classFileWithClassLevelConstantValueBytes(),
+                source = "ClassLevelConstantValue.class",
+                attributeParsers = AttributeParserRegistry.of("ConstantValue" to ConstantValueAttributeParser),
+            )
+        }
+
+        assertTrue(failure.message.orEmpty().contains("ConstantValue"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("ClassFile"), failure.message)
+        assertTrue(failure.message.orEmpty().contains("field_info"), failure.message)
+    }
+
+    @Test
     fun `rejects ClassFile with duplicate SourceFile attributes`() {
         val failure = assertFailsWith<ClassFileFormatException> {
             ClassFileParser.parse(
@@ -435,6 +450,35 @@ class ClassFileParserTest {
             0xB1,
             0, 0,
             0, 0,
+        )
+
+    private fun classFileWithClassLevelConstantValueBytes(): ByteArray =
+        bytes(
+            0xCA, 0xFE, 0xBA, 0xBE,
+            0, 0,
+            0, 70,
+            0, 7,
+            1, 0, 4, 'T'.code, 'e'.code, 's'.code, 't'.code,
+            7, 0, 1,
+            1, 0, 16,
+            'j'.code, 'a'.code, 'v'.code, 'a'.code, '/'.code,
+            'l'.code, 'a'.code, 'n'.code, 'g'.code, '/'.code,
+            'O'.code, 'b'.code, 'j'.code, 'e'.code, 'c'.code, 't'.code,
+            7, 0, 3,
+            1, 0, 13,
+            'C'.code, 'o'.code, 'n'.code, 's'.code, 't'.code, 'a'.code, 'n'.code,
+            't'.code, 'V'.code, 'a'.code, 'l'.code, 'u'.code, 'e'.code,
+            3, 0, 0, 0, 1,
+            0, 0x21,
+            0, 2,
+            0, 4,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 1,
+            0, 5,
+            0, 0, 0, 2,
+            0, 6,
         )
 
     private fun classFileWithDuplicateSourceDebugExtensionBytes(): ByteArray =
