@@ -137,6 +137,29 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetSuperclass preserves loaded class key on returned superclass handles`() {
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 101, displayName = "app")
+        val childKey = JvmLoadedClassKey("pkg/Child", loader)
+        val baseKey = JvmLoadedClassKey("pkg/Base", loader)
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            handles = handles,
+        )
+        val childHandle = handles.newClassHandle("pkg/Child", loadedClassKey = childKey)
+
+        val superclassHandle = environment.getSuperclass(childHandle)
+
+        assertEquals("pkg/Base", handles.resolveClass(superclassHandle!!))
+        assertEquals(baseKey, handles.resolveClassLoadedKey(superclassHandle))
+    }
+
+    @Test
     fun `IsAssignableFrom returns whether source class objects can be cast to target class`() {
         val environment = JvmSimulatedJniEnvironment(
             classHierarchy = JvmClassHierarchy(

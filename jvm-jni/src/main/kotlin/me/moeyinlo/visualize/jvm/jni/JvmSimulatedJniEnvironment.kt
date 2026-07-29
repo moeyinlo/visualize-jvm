@@ -313,7 +313,10 @@ class JvmSimulatedJniEnvironment(
     fun getSuperclass(classHandle: JvmJniHandleId): JvmJniHandleId? {
         val className = handles.resolveClass(classHandle)
         val superclassName = classHierarchy.directSuperclassName(className) ?: return null
-        return handles.newClassHandle(superclassName)
+        return handles.newClassHandle(
+            className = superclassName,
+            loadedClassKey = handles.resolveClassLoadedKey(classHandle)?.copy(internalName = superclassName),
+        )
     }
 
     fun isAssignableFrom(sourceClassHandle: JvmJniHandleId, targetClassHandle: JvmJniHandleId): Boolean {
