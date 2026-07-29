@@ -6366,10 +6366,41 @@ object JvmVmIntrinsics {
         }
         val sourceKey = sourcePayload.loadedClassKey
         val targetKey = targetPayload.loadedClassKey
-        if (sourceKey != null && targetKey != null && sourceClassName == targetClassName) {
-            return sourceKey == targetKey
+        if (sourceKey != null && targetKey != null) {
+            loadedClassKeyAssignable(context, sourceKey, targetKey)?.let { assignable -> return assignable }
         }
         return context.classHierarchy.isAssignable(sourceClassName, targetClassName)
+    }
+
+    private fun loadedClassKeyAssignable(
+        context: JvmNativeMethodContext,
+        sourceKey: JvmLoadedClassKey,
+        targetKey: JvmLoadedClassKey,
+    ): Boolean? {
+        val methodArea = context.methodArea ?: return null
+        if (!methodArea.hasClass(sourceKey) || !methodArea.hasClass(targetKey)) {
+            return null
+        }
+        if (sourceKey == targetKey) {
+            return true
+        }
+        var currentKey = sourceKey
+        val visited = linkedSetOf(sourceKey)
+        while (true) {
+            val currentEntry = methodArea.getClass(currentKey) ?: return false
+            val superclassName = currentEntry.definition.superclassName ?: return false
+            val superclassKey = methodArea.getClass(
+                internalName = superclassName,
+                initiatingLoader = sourceKey.definingLoader,
+            )?.loadedClassKey ?: currentKey.copy(internalName = superclassName)
+            if (superclassKey == targetKey) {
+                return true
+            }
+            if (!visited.add(superclassKey)) {
+                return false
+            }
+            currentKey = superclassKey
+        }
     }
 
     private fun loadedClassKeyForMirrorRelatedClass(

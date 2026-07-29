@@ -1572,6 +1572,54 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isAssignableFrom intrinsic follows loaded superclass definitions`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 185, displayName = "app")
+        val baseKey = JvmLoadedClassKey("pkg/Base", loader)
+        val childKey = JvmLoadedClassKey("pkg/Child", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Base"),
+                loadedClassKey = baseKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                loadedClassKey = childKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val baseMirror = heap.internClassMirror("pkg/Base", loadedClassKey = baseKey)
+        val childMirror = heap.internClassMirror("pkg/Child", loadedClassKey = childKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsAssignableFromMethod())
+            ?: error("Class.isAssignableFrom intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/OtherBase"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/OtherBase"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(baseMirror, listOf(childMirror))),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(childMirror, listOf(baseMirror))),
+        )
+    }
+
+    @Test
     fun `Class isInstance intrinsic tests guest object assignability`() {
         val heap = JvmHeap()
         val baseMirror = heap.internClassMirror("pkg/Base")
