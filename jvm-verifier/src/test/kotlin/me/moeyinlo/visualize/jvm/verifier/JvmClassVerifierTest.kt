@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
+import me.moeyinlo.visualize.jvm.classfile.ConstantIntegerEntry
+import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.SameStackMapFrame
 import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
@@ -57,6 +59,34 @@ class JvmClassVerifierTest {
 
         assertEquals("pkg/Bad", failure.className)
         assertEquals("tooManyLocals(J)V", failure.methodSignature)
+    }
+
+    @Test
+    fun `class verifier uses method constant pool for ldc type checking`() {
+        val verifier = JvmClassVerifier()
+
+        val result = verifier.verify(
+            JvmClassVerificationRequest(
+                className = "pkg/LdcExample",
+                majorVersion = 70,
+                methods = listOf(
+                    JvmMethodVerificationRequest(
+                        name = "pushLiteral",
+                        descriptor = "()V",
+                        isStatic = true,
+                        constantPool = ConstantPool.fromEntries(listOf(ConstantIntegerEntry(7))),
+                        code = CodeAttribute(
+                            nameIndex = ConstantPoolIndex(1),
+                            maxStack = 1,
+                            maxLocals = 0,
+                            code = byteArrayOf(0x12, 0x01, 0x57, 0xB1.toByte()),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(listOf("pushLiteral()V"), result.verifiedMethodSignatures)
     }
 
     @Test

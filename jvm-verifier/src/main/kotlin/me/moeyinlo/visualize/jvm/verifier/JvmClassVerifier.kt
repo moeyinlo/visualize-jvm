@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.verifier
 
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 
 class JvmClassVerifier {
@@ -54,12 +55,22 @@ class JvmClassVerifier {
         val stackMapFrames = code.attributes
             .filterIsInstance<StackMapTableAttribute>()
             .flatMap { attribute -> StackMapFrameExpander.expand(initialFrame.locals, attribute.entries) }
-        MethodTypeCheckingVerifier.verify(
-            code = code,
-            initialFrame = initialFrame,
-            throwableType = VerificationType.ObjectType(ConstantPoolIndex(1)),
-            frameStates = stackMapFrames,
-        )
+        if (method.constantPool == null) {
+            MethodTypeCheckingVerifier.verify(
+                code = code,
+                initialFrame = initialFrame,
+                throwableType = VerificationType.ObjectType(ConstantPoolIndex(1)),
+                frameStates = stackMapFrames,
+            )
+        } else {
+            MethodTypeCheckingVerifier.verify(
+                code = code,
+                constantPool = method.constantPool,
+                initialFrame = initialFrame,
+                throwableType = VerificationType.ObjectType(ConstantPoolIndex(1)),
+                frameStates = stackMapFrames,
+            )
+        }
     }
 
     private fun initialFrame(
@@ -95,6 +106,7 @@ data class JvmMethodVerificationRequest(
     val isAbstract: Boolean = false,
     val isNative: Boolean = false,
     val code: CodeAttribute? = null,
+    val constantPool: ConstantPool? = null,
     val hasStackMapTable: Boolean = code?.attributes?.any { attribute -> attribute is StackMapTableAttribute } ?: false,
 ) {
     init {

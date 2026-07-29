@@ -28,6 +28,7 @@ class JvmVerifierLinkingVerifier(
             isAbstract = isAbstract,
             isNative = isNative,
             code = toCodeAttribute(),
+            constantPool = constantPool,
             hasStackMapTable = hasStackMapTable,
         )
 
