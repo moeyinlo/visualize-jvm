@@ -138,4 +138,23 @@ class JvmArrayClassFactoryTest {
         assertSame(nestedArrayClass, methodArea.getClass(nestedArrayKey))
         assertEquals(2, methodArea.classCount)
     }
+
+    @Test
+    fun `records loading constraint resolution for created array classes`() {
+        val methodArea = JvmMethodArea()
+        val loadingConstraints = JvmLoadingConstraintSet()
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val factory = JvmArrayClassFactory(
+            methodArea = methodArea,
+            loadingConstraints = loadingConstraints,
+        )
+        val arrayKey = JvmLoadedClassKey("[Lpkg/Type;", appLoader)
+
+        factory.createReferenceArrayClass(
+            componentInternalName = "pkg/Type",
+            componentDefiningLoader = appLoader,
+        )
+
+        assertEquals(arrayKey, loadingConstraints.resolvedClass("[Lpkg/Type;", appLoader))
+    }
 }

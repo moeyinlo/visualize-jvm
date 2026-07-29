@@ -54,6 +54,7 @@ data class JvmArrayClassMetadata(
 
 class JvmArrayClassFactory(
     private val methodArea: JvmMethodArea,
+    private val loadingConstraints: JvmLoadingConstraintSet? = null,
 ) {
     private val metadataByInternalName = linkedMapOf<String, JvmArrayClassMetadata>()
     private val metadataByLoadedClassKey = linkedMapOf<JvmLoadedClassKey, JvmArrayClassMetadata>()
@@ -178,6 +179,7 @@ class JvmArrayClassFactory(
             ),
         )
         methodArea.defineClass(entry)
+        recordLoadingConstraintResolution(loadedClassKey)
         return entry
     }
 
@@ -218,6 +220,14 @@ class JvmArrayClassFactory(
     ) {
         metadataByInternalName.putIfAbsent(metadata.internalName, metadata)
         metadataByLoadedClassKey.putIfAbsent(loadedClassKey, metadata)
+    }
+
+    private fun recordLoadingConstraintResolution(loadedClassKey: JvmLoadedClassKey) {
+        loadingConstraints?.recordResolution(
+            internalName = loadedClassKey.internalName,
+            initiatingLoader = loadedClassKey.definingLoader,
+            resolvedClass = loadedClassKey,
+        )
     }
 
     private fun arrayMetadata(
