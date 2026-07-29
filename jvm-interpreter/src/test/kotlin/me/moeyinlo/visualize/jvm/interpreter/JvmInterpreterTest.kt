@@ -18117,6 +18117,156 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `JNI OnUnload initializes interpreted JavaVM GetEnv static upcall targets`() {
+        val heap = JvmHeap()
+        val staticFields = JvmStaticFields()
+        val initializationStates = JvmClassInitializationStates()
+        val initializedField = JvmFieldReference(
+            ownerClassName = "Helper",
+            name = "initialized",
+            descriptor = "I",
+        )
+        val helperConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Helper", "Helper".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("initialized", "initialized".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val nativeLibrariesClass = JvmClassDefinition(
+            internalName = "jdk/internal/loader/NativeLibraries",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "unload",
+                    descriptor = "(Ljava/lang/String;ZJ)V",
+                    isStatic = true,
+                    isNative = true,
+                ),
+            ),
+        )
+        val helper = JvmClassDefinition(
+            internalName = "Helper",
+            fields = listOf(
+                JvmFieldDefinition(name = "initialized", descriptor = "I", isStatic = true),
+            ),
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<clinit>",
+                    descriptor = "()V",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0x10.toByte(),
+                        0x28.toByte(),
+                        0xB3.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    constantPool = helperConstantPool,
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+                JvmMethodDefinition(
+                    name = "addInitialized",
+                    descriptor = "(I)I",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x1A.toByte(),
+                        0x60.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    constantPool = helperConstantPool,
+                    maxStack = 2,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(listOf(nativeLibrariesClass, helper))
+        val descriptor = JvmNativeLibraryDescriptor(
+            logicalName = "loader-native",
+            path = Path.of("loader-native.dll"),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        val loader = JvmNativeLibraryLoader(
+            catalog = JvmNativeLibraryCatalog(listOf(descriptor)),
+            lifecycle = JvmNativeLibraryLifecycle(
+                backend = JvmPanamaDowncallBackend { path, symbolName ->
+                    if (path == descriptor.path && symbolName == "JNI_OnUnload") {
+                        JvmNativeSymbolAddress(symbolName, 0x4444L)
+                    } else {
+                        null
+                    }
+                },
+                registry = registry,
+                invokeDowncall = { invocation ->
+                    val javaVmArgument = invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJavaVm
+                    val jniEnvironment = javaVmArgument.javaVm.getEnv(JvmJniVersions.Version24).environment!!
+                    val targetClass = jniEnvironment.handles.newClassHandle("Helper")
+                    val targetMethod = jniEnvironment.getStaticMethodId(targetClass, "addInitialized", "(I)I")
+                    assertEquals(44, jniEnvironment.callStaticIntMethod(targetClass, targetMethod, listOf(JvmIntValue(4))))
+                    JvmNativeDowncallReturn.Void
+                },
+            ),
+        )
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = classHierarchy,
+                heap = heap,
+                staticFields = staticFields,
+            ),
+        )
+        loader.loadLibrary("loader-native", javaVm)
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, heap.internString("loader-native"))
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x03.toByte(),
+                0x14.toByte(),
+                0x00.toByte(),
+                0x07.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 4,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry(
+                        "jdk/internal/loader/NativeLibraries",
+                        "jdk/internal/loader/NativeLibraries".encodeToByteArray(),
+                    ),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("unload", "unload".encodeToByteArray()),
+                    ConstantUtf8Entry("(Ljava/lang/String;ZJ)V", "(Ljava/lang/String;ZJ)V".encodeToByteArray()),
+                    ConstantLongEntry(0x1234L),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            classInitializationStates = initializationStates,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            currentClassName = "Caller",
+            nativeLibraryLoader = loader,
+            javaVm = javaVm,
+        )
+
+        assertNull(registry.loadedLibrary("loader-native"))
+        assertEquals(JvmIntValue(40), staticFields.get(initializedField))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Helper"))
+    }
+    @Test
     fun `JNI OnUnload propagates method area through JavaVM GetEnv static upcalls`() {
         val heap = JvmHeap()
         val staticFields = JvmStaticFields()
