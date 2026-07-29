@@ -37,6 +37,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassLoaderIdentity
 import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
 import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
@@ -60,12 +61,14 @@ import me.moeyinlo.visualize.jvm.runtime.JvmInvokeDynamicCallSiteResolver
 import me.moeyinlo.visualize.jvm.runtime.JvmInvokeDynamicCallSiteRegistry
 import me.moeyinlo.visualize.jvm.runtime.JvmInvokeDynamicLinkageException
 import me.moeyinlo.visualize.jvm.runtime.JvmLocalVariables
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLineNumberTableEntry
 import me.moeyinlo.visualize.jvm.runtime.JvmLinkedInvokeDynamicCallSite
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleTarget
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodArea
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorEnterResult
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
@@ -886,6 +889,7 @@ object JvmInterpreter {
         javaVm: JvmSimulatedJavaVm? = null,
         initialOperandStackValues: List<JvmValue> = emptyList(),
         startBytecodeOffset: Int = 0,
+        methodArea: JvmMethodArea? = null,
     ): JvmExecutionResult {
         val effectiveLoadNativeLibraryHandler = if (nativeLibraryLoader == null) {
             loadNativeLibraryHandler
@@ -934,6 +938,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = effectiveLoadNativeLibraryHandler,
             unloadNativeLibraryHandler = effectiveUnloadNativeLibraryHandler,
             initialOperandStackValues = initialOperandStackValues,
+            methodArea = methodArea,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -1188,6 +1193,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         initialOperandStackValues: List<JvmValue> = emptyList(),
+        methodArea: JvmMethodArea? = null,
     ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack.fromValues(maxStack = maxStack, values = initialOperandStackValues)
         val instructions = BytecodeDecoder.decode(code)
@@ -1259,6 +1265,7 @@ object JvmInterpreter {
                             hostActiveUseHandler,
                             loadNativeLibraryHandler,
                             unloadNativeLibraryHandler,
+                            methodArea,
                         )
                         throwIfCurrentThreadSuspended(
                             threadScheduler = threadScheduler,
@@ -1574,6 +1581,7 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -1952,6 +1960,7 @@ object JvmInterpreter {
                 hostActiveUseHandler = hostActiveUseHandler,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                methodArea = methodArea,
             )
             0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
             0xBE -> executeArrayLength(instruction, operandStack, heap)
@@ -9101,6 +9110,7 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         val className = resolveConstantClassName(instruction, constantPool)
         initializeClassForActiveUse(
@@ -9144,7 +9154,15 @@ object JvmInterpreter {
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             )
         }
-        operandStack.push(heap.allocateUninitializedObject(className))
+        val reference = if (methodArea == null) {
+            heap.allocateUninitializedObject(className)
+        } else {
+            heap.allocateUninitializedObject(
+                methodArea = methodArea,
+                loadedClassKey = JvmLoadedClassKey(className, JvmClassLoaderIdentity.Bootstrap),
+            )
+        }
+        operandStack.push(reference)
     }
 
     private fun executeANewArray(

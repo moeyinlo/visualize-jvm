@@ -45,6 +45,10 @@ import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
 import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassLoaderIdentity
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodArea
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodAreaEntry
 import me.moeyinlo.visualize.jvm.runtime.JvmExceptionHandler
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
@@ -4017,6 +4021,52 @@ class JvmInterpreterTest {
         assertEquals(1, result.operandStack.slotDepth)
         assertEquals("example/Foo", heap.get(reference).className)
         assertFalse(heap.isInitialized(reference))
+    }
+
+    @Test
+    fun `new uses method area layout for uninitialized object fields`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val parent = JvmClassDefinition(
+            internalName = "example/Parent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val child = JvmClassDefinition(
+            internalName = "example/Foo",
+            superclassName = "example/Parent",
+            fields = listOf(JvmFieldDefinition(name = "childValue", descriptor = "I", isStatic = false)),
+        )
+        listOf(parent, child).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBB.toByte(),
+                0x00.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("example/Foo", "example/Foo".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(listOf(parent, child)),
+            methodArea = methodArea,
+        )
+
+        val reference = result.operandStack.toList().single() as JvmObjectReferenceValue
+        assertFalse(heap.isInitialized(reference))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(reference, JvmFieldReference("example/Parent", "parentValue", "J")))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(reference, JvmFieldReference("example/Foo", "childValue", "I")))
     }
 
     @Test
