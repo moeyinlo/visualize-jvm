@@ -971,6 +971,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticDoubleMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 

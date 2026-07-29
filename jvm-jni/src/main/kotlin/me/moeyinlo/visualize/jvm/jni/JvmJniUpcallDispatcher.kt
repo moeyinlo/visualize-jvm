@@ -222,6 +222,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticDoubleMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ): JvmDoubleValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

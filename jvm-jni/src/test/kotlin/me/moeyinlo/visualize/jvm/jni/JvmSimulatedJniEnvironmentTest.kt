@@ -5598,8 +5598,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticDoubleMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmDoubleValue {
-                    calls += RecordedStaticDoubleUpcall(method, arguments)
+                    calls += RecordedStaticDoubleUpcall(method, arguments, currentLoadedClassKey)
                     return JvmDoubleValue(12.5)
                 }
             },
@@ -5656,6 +5657,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticDoubleMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmDoubleValue = error("CallStaticDoubleMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -5670,6 +5672,70 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(
             "CallStaticDoubleMethod requires class Other to be assignable to Example",
             exception.message,
+        )
+    }
+
+    @Test
+    fun `CallStaticDoubleMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(11, "double-loader"),
+        )
+        val calls = mutableListOf<RecordedStaticDoubleUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "score",
+                                descriptor = "()D",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticDoubleMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ): JvmDoubleValue {
+                    calls += RecordedStaticDoubleUpcall(method, arguments, currentLoadedClassKey)
+                    return JvmDoubleValue(44.25)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "score", "()D")
+
+        val result = environment.callStaticDoubleMethod(classHandle, methodHandle)
+
+        assertEquals(44.25, result)
+        assertEquals(
+            listOf(
+                RecordedStaticDoubleUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "score",
+                        descriptor = "()D",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
+                ),
+            ),
+            calls,
         )
     }
 
@@ -14006,6 +14072,7 @@ private data class RecordedStaticFloatUpcall(
 private data class RecordedStaticDoubleUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedNewObjectUpcall(

@@ -869,6 +869,7 @@ object JvmInterpreter {
         override fun callStaticDoubleMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
+            currentLoadedClassKey: JvmLoadedClassKey?,
         ): JvmDoubleValue {
             val returnValue = executeStaticMethodUpcall(
                 ownerClassName = method.ownerClassName,
@@ -886,6 +887,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 dynamicConstants = dynamicConstants,
                 methodArea = methodArea,
             )

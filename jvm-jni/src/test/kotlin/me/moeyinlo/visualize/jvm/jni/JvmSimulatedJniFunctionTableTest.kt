@@ -2563,6 +2563,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticDoubleMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmDoubleValue {
                     calls += RecordedFunctionTableStaticDoubleUpcall(method, arguments)
                     return JvmDoubleValue(99.5)
