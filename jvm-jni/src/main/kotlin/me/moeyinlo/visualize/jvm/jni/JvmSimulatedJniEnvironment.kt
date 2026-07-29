@@ -41,9 +41,10 @@ class JvmSimulatedJniEnvironment(
     private val monitors: JvmMonitorState = JvmMonitorState(),
     private val currentThreadId: String = "main",
     private val exceptionReporter: (String) -> Unit = {},
-    private val upcallDispatcher: JvmJniUpcallDispatcher = JvmJniUpcallDispatcher.Unbound,
+    upcallDispatcher: JvmJniUpcallDispatcher = JvmJniUpcallDispatcher.Unbound,
     val registeredNativeMethods: JvmJniNativeMethodRegistry = JvmJniNativeMethodRegistry(),
 ) {
+    private var upcallDispatcher: JvmJniUpcallDispatcher = upcallDispatcher
     private val throwableDetailMessageField = JvmFieldReference(
         ownerClassName = "java/lang/Throwable",
         name = "detailMessage",
@@ -76,6 +77,16 @@ class JvmSimulatedJniEnvironment(
 
     internal fun bindJavaVm(javaVm: JvmSimulatedJavaVm) {
         owningJavaVm = javaVm
+    }
+
+    fun <T> withUpcallDispatcher(dispatcher: JvmJniUpcallDispatcher, action: () -> T): T {
+        val previousDispatcher = upcallDispatcher
+        upcallDispatcher = dispatcher
+        try {
+            return action()
+        } finally {
+            upcallDispatcher = previousDispatcher
+        }
     }
 
     fun registerNatives(

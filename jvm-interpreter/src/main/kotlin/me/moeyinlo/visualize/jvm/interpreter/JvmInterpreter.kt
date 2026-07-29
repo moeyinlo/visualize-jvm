@@ -8510,6 +8510,9 @@ object JvmInterpreter {
                 currentThreadId = currentThreadId,
                 terminationState = terminationState,
                 classInitializationStates = classInitializationStates,
+                nativeMethods = nativeMethods,
+                dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
                 ensureClassInitializedHandler = { className ->
                     initializeClassForActiveUse(
                         className = className,

@@ -16,6 +16,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
+import me.moeyinlo.visualize.jvm.runtime.JvmDynamicConstantRegistry
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
@@ -24,6 +25,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodArea
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -655,6 +657,9 @@ data class JvmNativeMethodContext(
     val threadYieldHandler: () -> Unit = Thread::yield,
     val threadSleepHandler: (millis: Long, nanos: Int) -> Unit = { _, _ -> },
     val classInitializationStates: JvmClassInitializationStates = JvmClassInitializationStates(),
+    val nativeMethods: JvmNativeMethodRegistry = JvmNativeMethodRegistry.Empty,
+    val dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
+    val methodArea: JvmMethodArea? = null,
     val ensureClassInitializedHandler: (className: String) -> Unit = {},
     val loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
         throw JvmUnsupportedInstructionException(
@@ -776,7 +781,7 @@ class JvmNativeMethodRegistry(
                         }
                         .firstOrNull()
                 target?.let { resolvedTarget ->
-                    JvmNativeMethodIntrinsic { _, invocation ->
+                    JvmNativeMethodIntrinsic { context, invocation ->
                         environment.pushLocalFrame(NativeInvocationLocalCapacity)
                         try {
                             val downcallInvocation = if (key.isStatic) {
@@ -798,7 +803,32 @@ class JvmNativeMethodRegistry(
                                     guestArguments = invocation.arguments,
                                 )
                             }
-                            return@JvmNativeMethodIntrinsic invokeDowncall.invoke(downcallInvocation).toGuestValue(environment)
+                            val invokeNativeExport = {
+                                invokeDowncall.invoke(downcallInvocation).toGuestValue(environment)
+                            }
+                            val methodArea = context.methodArea
+                            return@JvmNativeMethodIntrinsic if (methodArea == null) {
+                                invokeNativeExport()
+                            } else {
+                                environment.withUpcallDispatcher(
+                                    JvmInterpreter.jniUpcallDispatcher(
+                                        heap = context.heap,
+                                        classHierarchy = context.classHierarchy,
+                                        staticFields = context.staticFields,
+                                        classInitializationStates = context.classInitializationStates,
+                                        nativeMethods = context.nativeMethods,
+                                        monitors = context.monitors,
+                                        threadScheduler = context.threadScheduler,
+                                        currentThreadId = context.currentThreadId,
+                                        terminationState = context.terminationState,
+                                        currentClassName = context.currentClassName,
+                                        dynamicConstants = context.dynamicConstants,
+                                        methodArea = methodArea,
+                                    ),
+                                ) {
+                                    invokeNativeExport()
+                                }
+                            }
                         } finally {
                             environment.popLocalFrame(null)
                         }
