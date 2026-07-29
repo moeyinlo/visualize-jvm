@@ -15708,6 +15708,34 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc rejects package private class literals from another package`() {
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("pkg/Hidden", "pkg/Hidden".encodeToByteArray()),
+                        ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "pkg/Hidden", isPublic = false),
+                        JvmClassDefinition(internalName = "other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Hidden", exception.message)
+    }
+    @Test
     fun `ldc reuses guest method type constants with identical descriptors`() {
         val heap = JvmHeap()
 

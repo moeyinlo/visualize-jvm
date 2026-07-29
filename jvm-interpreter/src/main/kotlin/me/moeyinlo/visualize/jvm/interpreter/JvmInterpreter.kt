@@ -1666,11 +1666,13 @@ object JvmInterpreter {
                 threadScheduler = threadScheduler,
                 currentThreadId = currentThreadId,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                methodArea = methodArea,
             )
             0x14 -> executeLdc2(
                 instruction = instruction,
@@ -4814,6 +4816,7 @@ object JvmInterpreter {
         threadScheduler: JvmThreadScheduler? = null,
         currentThreadId: String,
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -4823,6 +4826,7 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -4849,6 +4853,15 @@ object JvmInterpreter {
                             nameEntry.javaClass.simpleName,
                     )
                 }
+                val className = nameEntry.value
+                val accessibleClassName = innermostReferenceArrayComponentClassName(className) ?: className
+                requireAccessibleClass(
+                    targetClassName = accessibleClassName,
+                    currentClassName = currentClassName,
+                    classHierarchy = classHierarchy,
+                    currentLoadedClassKey = currentLoadedClassKey,
+                    methodArea = methodArea,
+                )
                 operandStack.push(heap.internClassMirror(nameEntry.value))
             }
             is ConstantDynamicEntry -> {
