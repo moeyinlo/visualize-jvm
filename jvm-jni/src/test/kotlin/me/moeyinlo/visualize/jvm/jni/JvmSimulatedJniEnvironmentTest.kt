@@ -142,6 +142,70 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `UnregisterNatives removes only entries for the class handle loaded class key`() {
+        val handles = JvmJniHandleTable()
+        val registry = JvmJniNativeMethodRegistry()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/NativeApi",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "a",
+                                descriptor = "()V",
+                                isStatic = false,
+                                isNative = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            registeredNativeMethods = registry,
+        )
+        val firstKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(1L, "first-loader"),
+        )
+        val secondKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(2L, "second-loader"),
+        )
+        val firstHandle = handles.newClassHandle("pkg/NativeApi", firstKey)
+        val secondHandle = handles.newClassHandle("pkg/NativeApi", secondKey)
+        environment.registerNatives(firstHandle, listOf(JvmJniNativeMethodDescriptor("a", "()V", 0x1111L)))
+        environment.registerNatives(secondHandle, listOf(JvmJniNativeMethodDescriptor("a", "()V", 0x2222L)))
+
+        environment.unregisterNatives(firstHandle)
+
+        assertEquals(
+            null,
+            registry.resolve(
+                className = "pkg/NativeApi",
+                name = "a",
+                descriptor = "()V",
+                loadedClassKey = firstKey,
+            ),
+        )
+        assertEquals(
+            JvmJniRegisteredNativeMethod(
+                className = "pkg/NativeApi",
+                name = "a",
+                descriptor = "()V",
+                functionAddress = 0x2222L,
+                loadedClassKey = secondKey,
+            ),
+            registry.resolve(
+                className = "pkg/NativeApi",
+                name = "a",
+                descriptor = "()V",
+                loadedClassKey = secondKey,
+            ),
+        )
+    }
+
+    @Test
     fun `FindClass returns a class handle for loaded guest classes`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
