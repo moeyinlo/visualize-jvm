@@ -7092,6 +7092,7 @@ object JvmInterpreter {
                 linkedCallSite = linkedCallSite,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                methodArea = methodArea,
             )
             JvmMethodHandleReferenceKind.InvokeSpecial -> executeLinkedInvokeDynamicSpecialTarget(
                 instruction = instruction,
@@ -7588,6 +7589,7 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         requireInstanceMethod(instruction, linkedCallSite.targetMethod)
         val expectedDescriptor = linkedCallSite.targetMethod.invokeVirtualMethodHandleDescriptor()
@@ -7645,6 +7647,7 @@ object JvmInterpreter {
             opcodeMnemonic = "invokedynamic virtual",
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+            methodArea = methodArea,
         )?.let { returnValue ->
             operandStack.push(returnValue)
         }
