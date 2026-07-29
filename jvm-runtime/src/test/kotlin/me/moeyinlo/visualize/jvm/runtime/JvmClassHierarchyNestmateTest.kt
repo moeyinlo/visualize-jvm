@@ -58,6 +58,33 @@ class JvmClassHierarchyNestmateTest {
     }
 
     @Test
+    fun `runtime nestmates reject members when their nominated host is not self hosted`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "pkg/ActualHost",
+                    nestMemberInternalNames = listOf("pkg/Host"),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Host",
+                    nestHostInternalName = "pkg/ActualHost",
+                    nestMemberInternalNames = listOf("pkg/Host\$A", "pkg/Host\$B"),
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Host\$A",
+                    nestHostInternalName = "pkg/Host",
+                ),
+                JvmClassDefinition(
+                    internalName = "pkg/Host\$B",
+                    nestHostInternalName = "pkg/Host",
+                ),
+            ),
+        )
+
+        assertEquals(false, hierarchy.areRuntimeNestmates("pkg/Host\$A", "pkg/Host\$B"))
+    }
+
+    @Test
     fun `runtime nestmates reject members whose host class is not loaded`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

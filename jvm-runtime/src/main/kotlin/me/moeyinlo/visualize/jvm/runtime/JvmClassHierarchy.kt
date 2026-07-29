@@ -154,7 +154,8 @@ class JvmClassHierarchy(
             return host
         }
         return host.takeIf { candidate ->
-            member.internalName in candidate.nestMemberInternalNames &&
+            candidate.nestHostInternalName == candidate.internalName &&
+                member.internalName in candidate.nestMemberInternalNames &&
                 member.internalName.packageName() == candidate.internalName.packageName()
         }
     }
