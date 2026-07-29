@@ -319,6 +319,11 @@ class JvmSimulatedJniEnvironment(
     fun isAssignableFrom(sourceClassHandle: JvmJniHandleId, targetClassHandle: JvmJniHandleId): Boolean {
         val sourceClassName = handles.resolveClass(sourceClassHandle)
         val targetClassName = handles.resolveClass(targetClassHandle)
+        val sourceClassKey = handles.resolveClassLoadedKey(sourceClassHandle)
+        val targetClassKey = handles.resolveClassLoadedKey(targetClassHandle)
+        if (sourceClassKey != null && targetClassKey != null && sourceClassName == targetClassName) {
+            return sourceClassKey == targetClassKey
+        }
         return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
     }
 

@@ -156,6 +156,32 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsAssignableFrom distinguishes same name class handles by loaded class key`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Target"),
+                ),
+            ),
+            handles = handles,
+        )
+        val firstKey = JvmLoadedClassKey(
+            internalName = "pkg/Target",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 91, displayName = "first"),
+        )
+        val secondKey = JvmLoadedClassKey(
+            internalName = "pkg/Target",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 92, displayName = "second"),
+        )
+        val firstHandle = handles.newClassHandle("pkg/Target", loadedClassKey = firstKey)
+        val secondHandle = handles.newClassHandle("pkg/Target", loadedClassKey = secondKey)
+
+        assertEquals(true, environment.isAssignableFrom(firstHandle, firstHandle))
+        assertEquals(false, environment.isAssignableFrom(secondHandle, firstHandle))
+    }
+
+    @Test
     fun `GetStaticMethodID returns a method handle for loaded static guest methods`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
