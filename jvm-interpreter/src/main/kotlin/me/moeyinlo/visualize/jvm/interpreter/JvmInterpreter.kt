@@ -1946,6 +1946,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler,
                 unloadNativeLibraryHandler,
                 methodArea,
+                moduleLayer,
             )
             0xB8 -> executeInvokeStatic(
                 instruction,
@@ -6793,6 +6794,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
@@ -6803,6 +6805,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         requireAccessibleMethod(
             method = resolvedMethod,
