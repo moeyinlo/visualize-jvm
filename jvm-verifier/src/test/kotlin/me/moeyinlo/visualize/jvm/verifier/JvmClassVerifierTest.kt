@@ -180,6 +180,34 @@ class JvmClassVerifierTest {
         assertEquals(listOf("skip()V"), result.verifiedMethodSignatures)
     }
 
+    @Test
+    fun `inferred frame class verifier accepts branch targets without StackMapTable frames`() {
+        val verifier = JvmClassVerifier()
+
+        val result = verifier.verify(
+            JvmClassVerificationRequest(
+                className = "pkg/InferredBranch",
+                majorVersion = 50,
+                methods = listOf(
+                    JvmMethodVerificationRequest(
+                        name = "skip",
+                        descriptor = "()V",
+                        isStatic = true,
+                        code = CodeAttribute(
+                            nameIndex = ConstantPoolIndex(1),
+                            maxStack = 0,
+                            maxLocals = 0,
+                            code = byteArrayOf(0xA7.toByte(), 0x00, 0x03, 0xB1.toByte()),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(JvmVerificationStrategy.TypeCheckingWithInferredFrames, result.strategy)
+        assertEquals(listOf("skip()V"), result.verifiedMethodSignatures)
+    }
+
     private fun returningCode(maxStack: Int, maxLocals: Int): CodeAttribute =
         CodeAttribute(
             nameIndex = ConstantPoolIndex(1),
