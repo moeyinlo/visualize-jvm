@@ -44,6 +44,7 @@ class JvmArrayClassFactory(
     private val methodArea: JvmMethodArea,
 ) {
     private val metadataByInternalName = linkedMapOf<String, JvmArrayClassMetadata>()
+    private val metadataByLoadedClassKey = linkedMapOf<JvmLoadedClassKey, JvmArrayClassMetadata>()
 
     fun createPrimitiveArrayClass(component: JvmPrimitiveArrayComponent): JvmMethodAreaEntry {
         val internalName = "[${component.descriptor}"
@@ -52,9 +53,9 @@ class JvmArrayClassFactory(
             definingLoader = JvmClassLoaderIdentity.Bootstrap,
         )
         methodArea.getClass(loadedClassKey)?.let { existing ->
-            metadataByInternalName.putIfAbsent(
-                internalName,
-                arrayMetadata(
+            rememberMetadataIfAbsent(
+                loadedClassKey = loadedClassKey,
+                metadata = arrayMetadata(
                     internalName = internalName,
                     component = JvmArrayComponent.Primitive(component),
                     definingLoader = JvmClassLoaderIdentity.Bootstrap,
@@ -80,9 +81,9 @@ class JvmArrayClassFactory(
             definingLoader = componentDefiningLoader,
         )
         methodArea.getClass(loadedClassKey)?.let { existing ->
-            metadataByInternalName.putIfAbsent(
-                internalName,
-                arrayMetadata(
+            rememberMetadataIfAbsent(
+                loadedClassKey = loadedClassKey,
+                metadata = arrayMetadata(
                     internalName = internalName,
                     component = JvmArrayComponent.Reference(componentInternalName, componentDefiningLoader),
                     definingLoader = componentDefiningLoader,
@@ -100,6 +101,9 @@ class JvmArrayClassFactory(
     fun metadataFor(internalName: String): JvmArrayClassMetadata? =
         metadataByInternalName[internalName]
 
+    fun metadataFor(loadedClassKey: JvmLoadedClassKey): JvmArrayClassMetadata? =
+        metadataByLoadedClassKey[loadedClassKey]
+
     private fun defineArrayClass(
         internalName: String,
         loadedClassKey: JvmLoadedClassKey,
@@ -114,13 +118,32 @@ class JvmArrayClassFactory(
             loadedClassKey = loadedClassKey,
             initiatingLoaders = setOf(loadedClassKey.definingLoader),
         )
-        metadataByInternalName[internalName] = arrayMetadata(
-            internalName = internalName,
-            component = component,
-            definingLoader = loadedClassKey.definingLoader,
+        rememberMetadata(
+            loadedClassKey = loadedClassKey,
+            metadata = arrayMetadata(
+                internalName = internalName,
+                component = component,
+                definingLoader = loadedClassKey.definingLoader,
+            ),
         )
         methodArea.defineClass(entry)
         return entry
+    }
+
+    private fun rememberMetadata(
+        loadedClassKey: JvmLoadedClassKey,
+        metadata: JvmArrayClassMetadata,
+    ) {
+        metadataByInternalName[metadata.internalName] = metadata
+        metadataByLoadedClassKey[loadedClassKey] = metadata
+    }
+
+    private fun rememberMetadataIfAbsent(
+        loadedClassKey: JvmLoadedClassKey,
+        metadata: JvmArrayClassMetadata,
+    ) {
+        metadataByInternalName.putIfAbsent(metadata.internalName, metadata)
+        metadataByLoadedClassKey.putIfAbsent(loadedClassKey, metadata)
     }
 
     private fun arrayMetadata(

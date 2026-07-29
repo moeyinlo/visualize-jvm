@@ -52,6 +52,7 @@ class JvmArrayClassFactoryTest {
         val methodArea = JvmMethodArea()
         val factory = JvmArrayClassFactory(methodArea)
         val componentLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val loadedClassKey = JvmLoadedClassKey("[Ljava/lang/String;", componentLoader)
 
         val arrayClass = factory.createReferenceArrayClass(
             componentInternalName = "java/lang/String",
@@ -64,12 +65,33 @@ class JvmArrayClassFactoryTest {
             listOf("java/lang/Cloneable", "java/io/Serializable"),
             arrayClass.definition.interfaceNames,
         )
-        assertEquals(JvmLoadedClassKey("[Ljava/lang/String;", componentLoader), arrayClass.loadedClassKey)
+        assertEquals(loadedClassKey, arrayClass.loadedClassKey)
         assertEquals(setOf(componentLoader), arrayClass.initiatingLoaders)
         assertEquals(
             JvmArrayComponent.Reference("java/lang/String", componentLoader),
-            factory.metadataFor("[Ljava/lang/String;")?.component,
+            factory.metadataFor(loadedClassKey)?.component,
         )
         assertSame(arrayClass, methodArea.getClass("[Ljava/lang/String;", componentLoader))
+    }
+
+    @Test
+    fun `distinguishes reference array metadata by component defining loader`() {
+        val methodArea = JvmMethodArea()
+        val factory = JvmArrayClassFactory(methodArea)
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val pluginLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "plugin")
+        val appKey = JvmLoadedClassKey("[Lpkg/Type;", appLoader)
+        val pluginKey = JvmLoadedClassKey("[Lpkg/Type;", pluginLoader)
+
+        val appArrayClass = factory.createReferenceArrayClass("pkg/Type", appLoader)
+        val pluginArrayClass = factory.createReferenceArrayClass("pkg/Type", pluginLoader)
+
+        assertEquals(appKey, appArrayClass.loadedClassKey)
+        assertEquals(pluginKey, pluginArrayClass.loadedClassKey)
+        assertSame(appArrayClass, methodArea.getClass(appKey))
+        assertSame(pluginArrayClass, methodArea.getClass(pluginKey))
+        assertEquals(2, methodArea.classCount)
+        assertEquals(JvmArrayComponent.Reference("pkg/Type", appLoader), factory.metadataFor(appKey)?.component)
+        assertEquals(JvmArrayComponent.Reference("pkg/Type", pluginLoader), factory.metadataFor(pluginKey)?.component)
     }
 }
