@@ -30411,6 +30411,107 @@ class JvmInterpreterTest {
         assertEquals("Class pkg/Caller cannot access class pkg/Face", exception.message)
     }
     @Test
+    fun `invokeinterface rejects public owner classes from unreadable runtime modules before invocation`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 141, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val faceKey = JvmLoadedClassKey("lib/api/Face", loader)
+        val implKey = JvmLoadedClassKey("lib/api/Impl", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Face", isInterface = true),
+                loadedClassKey = faceKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Impl", interfaceNames = listOf("lib/api/Face")),
+                loadedClassKey = implKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("lib/api/Impl")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB9.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("lib/api/Face", "lib/api/Face".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("call", "call".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "lib/api/Face",
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "call",
+                                    descriptor = "()V",
+                                    isStatic = false,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(
+                            internalName = "lib/api/Impl",
+                            interfaceNames = listOf("lib/api/Face"),
+                        ),
+                        JvmClassDefinition("app/Caller"),
+                    ),
+                ),
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class lib/api/Face", exception.message)
+    }
+
+    @Test
     fun `invokeinterface rejects package private interface methods from same named package in different defining loaders`() {
         val appLoader = JvmClassLoaderIdentity.UserDefined(id = 63, displayName = "app")
         val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 64, displayName = "library")
