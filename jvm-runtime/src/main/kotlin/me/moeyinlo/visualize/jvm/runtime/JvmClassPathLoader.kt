@@ -62,7 +62,7 @@ class JvmClassPathLoader(
                 definingLoader = definingLoader,
             ),
             initiatingLoaders = setOf(definingLoader, initiatingLoader),
-            runtimeModuleName = runtimeModuleName ?: moduleLayer?.runtimeModuleNameFor(methodAreaEntry.definition),
+            runtimeModuleName = runtimeModuleNameFor(methodAreaEntry.definition),
         )
         loadingConstraints?.recordResolution(
             internalName = definedInternalName,
@@ -105,11 +105,34 @@ class JvmClassPathLoader(
         }
     }
 
+    private fun runtimeModuleNameFor(definition: JvmClassDefinition): String? {
+        val explicitModuleName = runtimeModuleName
+            ?: return moduleLayer?.runtimeModuleNameFor(definition)
+        moduleLayer?.validateModuleOwnsPackage(explicitModuleName, definition)
+        return explicitModuleName
+    }
+
     private fun JvmModuleLayer.runtimeModuleNameFor(definition: JvmClassDefinition): String? =
         definition.runtimePackageName()
             ?.takeIf(String::isNotBlank)
             ?.let(::findPackageOwner)
             ?.name
+
+    private fun JvmModuleLayer.validateModuleOwnsPackage(
+        moduleName: String,
+        definition: JvmClassDefinition,
+    ) {
+        findModule(moduleName)
+            ?: throw JvmModuleLayerException("Module $moduleName is not defined in this layer graph")
+        val packageName = definition.runtimePackageName()
+            ?.takeIf(String::isNotBlank)
+            ?: return
+        if (findPackageOwner(packageName)?.name != moduleName) {
+            throw JvmModuleLayerException(
+                "Module $moduleName does not own package $packageName for class ${definition.internalName}",
+            )
+        }
+    }
 }
 
 private data class ClassPathClassBytes(

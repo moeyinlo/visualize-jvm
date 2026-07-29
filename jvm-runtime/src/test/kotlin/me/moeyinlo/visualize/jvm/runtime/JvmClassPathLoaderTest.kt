@@ -147,6 +147,59 @@ class JvmClassPathLoaderTest {
 
         assertEquals("app.module", loaded.runtimeModuleName)
     }
+
+    @Test
+    fun `rejects explicit runtime modules missing from the module layer`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-missing-module")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "app.module", packages = setOf("pkg")))
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            runtimeModuleName = "missing.module",
+            moduleLayer = moduleLayer,
+        )
+
+        val failure = assertFailsWith<JvmModuleLayerException> {
+            loader.load("pkg/Example")
+        }
+
+        assertEquals("Module missing.module is not defined in this layer graph", failure.message)
+        assertFalse(methodArea.hasClass("pkg/Example"))
+    }
+
+    @Test
+    fun `rejects explicit runtime modules that do not own the loaded package`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-wrong-module-package")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "app.module", packages = setOf("app")))
+            .define(JvmModuleDescriptor(name = "pkg.module", packages = setOf("pkg")))
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            runtimeModuleName = "app.module",
+            moduleLayer = moduleLayer,
+        )
+
+        val failure = assertFailsWith<JvmModuleLayerException> {
+            loader.load("pkg/Example")
+        }
+
+        assertEquals("Module app.module does not own package pkg for class pkg/Example", failure.message)
+        assertFalse(methodArea.hasClass("pkg/Example"))
+    }
     @Test
     fun `records the initiating loader for classpath loads`() {
         val root = Files.createTempDirectory("visualize-jvm-classpath-initiating-loader")
