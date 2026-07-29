@@ -1,5 +1,8 @@
 package me.moeyinlo.visualize.jvm.host
 
+import me.moeyinlo.visualize.jvm.runtime.JvmClassExecutionPolicy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -24,6 +27,50 @@ class JvmHostFieldAccessorTest {
         JvmHostFieldAccessor.setStatic(field, JvmIntValue(11), heap)
 
         assertEquals(11, HostFieldFixture.staticCount)
+    }
+
+    @Test
+    fun `static host field get records opaque active use without mutating guest initialization state`() {
+        HostFieldFixture.staticCount = 7
+        val heap = JvmHeap()
+        val mirror = JvmHostDelegatedClassMirror.fromHostClass(HostFieldFixture::class.java)
+        val field = JvmHostFieldResolver.resolveStaticField(
+            owner = mirror,
+            name = "staticCount",
+            descriptor = "I",
+        )
+        val initializationStates = JvmClassInitializationStates()
+        val boundaryEvents = JvmHostBoundaryEventRecorder()
+        val executionPolicy = JvmClassExecutionPolicy(
+            hostDelegatedClassNames = setOf(mirror.guestInternalName),
+        )
+
+        val value = JvmHostFieldAccessor.getStatic(
+            field = field,
+            heap = heap,
+            executionPolicy = executionPolicy,
+            classInitializationStates = initializationStates,
+            boundaryEvents = boundaryEvents,
+        )
+
+        assertEquals(JvmIntValue(7), value)
+        assertEquals(
+            JvmClassInitializationState.Prepared,
+            initializationStates.get(mirror.guestInternalName),
+        )
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = mirror.guestInternalName,
+                    methodName = "<clinit>",
+                    descriptor = "()V",
+                    detail = "host-delegated initialization is opaque to guest state",
+                ),
+            ),
+            boundaryEvents.snapshots(),
+        )
     }
 
     @Test
