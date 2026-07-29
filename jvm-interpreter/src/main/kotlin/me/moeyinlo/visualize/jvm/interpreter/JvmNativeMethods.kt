@@ -1778,8 +1778,11 @@ object JvmVmIntrinsics {
     private val ObjectGetClass = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Object.getClass intrinsic requires a receiver")
-        val receiverClassName = context.heap.get(receiver).className
-        context.heap.internClassMirror(receiverClassName)
+        val receiverObject = context.heap.get(receiver)
+        context.heap.internClassMirror(
+            className = receiverObject.className,
+            loadedClassKey = receiverObject.loadedClassKey,
+        )
     }
     private val ObjectHashCode = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver

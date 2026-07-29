@@ -586,6 +586,49 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Object getClass intrinsic preserves receiver loaded class key in class mirror`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val firstLoader = JvmClassLoaderIdentity.UserDefined(id = 41, displayName = "first")
+        val secondLoader = JvmClassLoaderIdentity.UserDefined(id = 42, displayName = "second")
+        val firstKey = JvmLoadedClassKey("pkg/Target", firstLoader)
+        val secondKey = JvmLoadedClassKey("pkg/Target", secondLoader)
+        listOf(firstKey, secondKey).forEach { key ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = JvmClassDefinition(internalName = key.internalName),
+                    loadedClassKey = key,
+                    initiatingLoaders = setOf(key.definingLoader),
+                ),
+            )
+        }
+        val firstReceiver = heap.allocateObject(methodArea, firstKey)
+        val secondReceiver = heap.allocateObject(methodArea, secondKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectGetClassMethod())
+            ?: error("Object.getClass intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy.Empty,
+            staticFields = JvmStaticFields(),
+            currentClassName = "pkg/Target",
+            methodArea = methodArea,
+        )
+
+        val firstMirror = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = firstReceiver, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+        val secondMirror = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = secondReceiver, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+
+        assertNotEquals(firstMirror, secondMirror)
+        assertEquals(JvmClassPayload("pkg/Target", loadedClassKey = firstKey), heap.get(firstMirror).payload)
+        assertEquals(JvmClassPayload("pkg/Target", loadedClassKey = secondKey), heap.get(secondMirror).payload)
+    }
+
+    @Test
     fun `Object getClass intrinsic rejects missing receivers`() {
         val heap = JvmHeap()
         val intrinsic = JvmVmIntrinsics.Registry.resolve(objectGetClassMethod())
