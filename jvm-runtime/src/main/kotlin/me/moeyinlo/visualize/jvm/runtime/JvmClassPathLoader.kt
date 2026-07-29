@@ -21,6 +21,11 @@ class JvmClassPathLoader(
     fun load(internalName: String): JvmMethodAreaEntry {
         require(internalName.isNotBlank()) { "class internal name must not be blank" }
 
+        loadingConstraints
+            ?.resolvedClass(internalName, initiatingLoader)
+            ?.let(methodArea::getClass)
+            ?.let { entry -> return entry }
+
         val classBytes = entries.firstNotNullOfOrNull { entry -> entry.findClassBytes(internalName) }
             ?: throw JvmClassPathLookupException(internalName)
         val classFile = ClassFileParser.parse(bytes = classBytes.bytes, source = classBytes.source)

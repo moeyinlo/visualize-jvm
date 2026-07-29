@@ -167,6 +167,76 @@ class JvmClassPathLoaderTest {
         assertEquals(loaded.loadedClassKey, loadingConstraints.resolvedClass("pkg/Example", initiatingLoader))
     }
 
+    @Test
+    fun `rejects constrained classpath resolutions before defining the class`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-loading-constraint-conflict")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val loadingConstraints = JvmLoadingConstraintSet()
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val pluginLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "plugin")
+        val childLoader = JvmClassLoaderIdentity.UserDefined(id = 9, displayName = "child")
+        val pluginClass = JvmLoadedClassKey("pkg/Example", pluginLoader)
+        loadingConstraints.addConstraint("pkg/Example", childLoader, pluginLoader)
+        loadingConstraints.recordResolution("pkg/Example", pluginLoader, pluginClass)
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            definingLoader = appLoader,
+            initiatingLoader = childLoader,
+            loadingConstraints = loadingConstraints,
+        )
+
+        val exception = assertFailsWith<JvmLoadingConstraintViolationException> {
+            loader.load("pkg/Example")
+        }
+
+        assertEquals("java/lang/LinkageError", exception.guestThrowableClassName)
+        assertEquals(pluginClass, exception.expectedClass)
+        assertEquals(JvmLoadedClassKey("pkg/Example", appLoader), exception.actualClass)
+        assertFalse(methodArea.hasClass(JvmLoadedClassKey("pkg/Example", appLoader)))
+    }
+
+    @Test
+    fun `reuses previously resolved constrained classes for initiating loaders`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-loading-constraint-reuse")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "app/Base")),
+        )
+        val methodArea = JvmMethodArea()
+        val loadingConstraints = JvmLoadingConstraintSet()
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val pluginLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "plugin")
+        val childLoader = JvmClassLoaderIdentity.UserDefined(id = 9, displayName = "child")
+        val pluginClass = JvmLoadedClassKey("pkg/Example", pluginLoader)
+        val pluginEntry = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "pkg/Example", superclassName = "plugin/Base"),
+            loadedClassKey = pluginClass,
+            initiatingLoaders = setOf(pluginLoader),
+        )
+        methodArea.defineClass(pluginEntry)
+        loadingConstraints.addConstraint("pkg/Example", childLoader, pluginLoader)
+        loadingConstraints.recordResolution("pkg/Example", pluginLoader, pluginClass)
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            definingLoader = appLoader,
+            initiatingLoader = childLoader,
+            loadingConstraints = loadingConstraints,
+        )
+
+        val loaded = loader.load("pkg/Example")
+
+        assertSame(pluginEntry, loaded)
+        assertEquals(1, methodArea.classCount)
+    }
+
     private fun writeDirectoryClass(
         root: Path,
         internalName: String,
