@@ -7305,7 +7305,11 @@ object JvmInterpreter {
                 operandStack = operandStack,
                 heap = heap,
                 classHierarchy = classHierarchy,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 linkedCallSite = linkedCallSite,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             JvmMethodHandleReferenceKind.PutField -> executeLinkedInvokeDynamicPutFieldTarget(
                 instruction = instruction,
@@ -7494,7 +7498,11 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         linkedCallSite: JvmLinkedInvokeDynamicCallSite,
+        methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
             ?: throw JvmUnsupportedInstructionException(
@@ -7511,6 +7519,14 @@ object JvmInterpreter {
                     "does not match call site descriptor",
             )
         }
+        requireAccessibleClass(
+            targetClassName = resolvedField.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+            moduleLayer = moduleLayer,
+        )
         val receiver = operandStack.pop()
         if (receiver == JvmNullValue) {
             throw JvmNullPointerException(
