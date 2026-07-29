@@ -1671,6 +1671,66 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isAssignableFrom intrinsic follows loaded recursive superinterface definitions`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 187, displayName = "app")
+        val rootServiceKey = JvmLoadedClassKey("pkg/RootService", loader)
+        val childServiceKey = JvmLoadedClassKey("pkg/ChildService", loader)
+        val childKey = JvmLoadedClassKey("pkg/Child", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/RootService", isInterface = true),
+                loadedClassKey = rootServiceKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/ChildService",
+                    isInterface = true,
+                    interfaceNames = listOf("pkg/RootService"),
+                ),
+                loadedClassKey = childServiceKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Child",
+                    interfaceNames = listOf("pkg/ChildService"),
+                ),
+                loadedClassKey = childKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val rootServiceMirror = heap.internClassMirror("pkg/RootService", loadedClassKey = rootServiceKey)
+        val childMirror = heap.internClassMirror("pkg/Child", loadedClassKey = childKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsAssignableFromMethod())
+            ?: error("Class.isAssignableFrom intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/RootService", isInterface = true),
+                    JvmClassDefinition(internalName = "pkg/ChildService", isInterface = true),
+                    JvmClassDefinition(internalName = "pkg/Child", interfaceNames = listOf("pkg/ChildService")),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(rootServiceMirror, listOf(childMirror))),
+        )
+    }
+
+    @Test
     fun `Class isInstance intrinsic tests guest object assignability`() {
         val heap = JvmHeap()
         val baseMirror = heap.internClassMirror("pkg/Base")

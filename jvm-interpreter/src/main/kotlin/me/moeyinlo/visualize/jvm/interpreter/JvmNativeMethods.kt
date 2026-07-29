@@ -6389,7 +6389,12 @@ object JvmVmIntrinsics {
         while (true) {
             val currentEntry = methodArea.getClass(currentKey) ?: return false
             if (currentEntry.definition.interfaceNames.any { interfaceName ->
-                    loadedRelatedClassKey(methodArea, currentKey, interfaceName) == targetKey
+                    loadedInterfaceAssignable(
+                        methodArea = methodArea,
+                        ownerKey = currentKey,
+                        interfaceName = interfaceName,
+                        targetKey = targetKey,
+                    )
                 }
             ) {
                 return true
@@ -6403,6 +6408,32 @@ object JvmVmIntrinsics {
                 return false
             }
             currentKey = superclassKey
+        }
+    }
+
+    private fun loadedInterfaceAssignable(
+        methodArea: JvmMethodArea,
+        ownerKey: JvmLoadedClassKey,
+        interfaceName: String,
+        targetKey: JvmLoadedClassKey,
+        visited: MutableSet<JvmLoadedClassKey> = linkedSetOf(),
+    ): Boolean {
+        val interfaceKey = loadedRelatedClassKey(methodArea, ownerKey, interfaceName)
+        if (interfaceKey == targetKey) {
+            return true
+        }
+        if (!visited.add(interfaceKey)) {
+            return false
+        }
+        val interfaceEntry = methodArea.getClass(interfaceKey) ?: return false
+        return interfaceEntry.definition.interfaceNames.any { superinterfaceName ->
+            loadedInterfaceAssignable(
+                methodArea = methodArea,
+                ownerKey = interfaceKey,
+                interfaceName = superinterfaceName,
+                targetKey = targetKey,
+                visited = visited,
+            )
         }
     }
 
