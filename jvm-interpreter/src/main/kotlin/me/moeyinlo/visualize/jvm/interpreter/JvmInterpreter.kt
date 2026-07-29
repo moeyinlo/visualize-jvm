@@ -6223,6 +6223,7 @@ object JvmInterpreter {
             hostActiveUseHandler = hostActiveUseHandler,
             resolvedMethod = resolvedMethod,
             opcodeMnemonic = "invokestatic",
+            currentLoadedClassKey = currentLoadedClassKey,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
@@ -6249,6 +6250,7 @@ object JvmInterpreter {
         hostActiveUseHandler: JvmHostActiveUseHandler = JvmHostActiveUseHandler.None,
         resolvedMethod: JvmResolvedMethod,
         opcodeMnemonic: String,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
@@ -6295,6 +6297,11 @@ object JvmInterpreter {
             resolvedMethod = resolvedMethod,
             arguments = arguments,
             opcodeMnemonic = opcodeMnemonic,
+            currentLoadedClassKey = ownerLoadedClassKey(
+                ownerClassName = resolvedMethod.ownerClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            ),
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
@@ -6323,6 +6330,7 @@ object JvmInterpreter {
         resolvedMethod: JvmResolvedMethod,
         arguments: List<JvmValue>,
         opcodeMnemonic: String,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
         },
@@ -6368,6 +6376,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = resolvedMethod.ownerClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -6424,6 +6433,7 @@ object JvmInterpreter {
             terminationState = terminationState,
             monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = resolvedMethod.ownerClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
             currentMethodName = resolvedMethod.name,
             currentSourceFile = resolvedMethod.sourceFile,
             currentLineNumberTable = resolvedMethod.lineNumberTable,
@@ -7971,6 +7981,7 @@ object JvmInterpreter {
             hostActiveUseHandler = hostActiveUseHandler,
             resolvedMethod = linkedCallSite.targetMethod,
             opcodeMnemonic = "invokedynamic",
+            currentLoadedClassKey = currentLoadedClassKey,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
@@ -8961,6 +8972,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable = JvmBootstrapMethodTable(),
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry = JvmInvokeDynamicCallSiteRegistry(),
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -8985,6 +8997,7 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 staticFields = staticFields,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 monitors = monitors,
                 threadScheduler = threadScheduler,
                 currentThreadId = currentThreadId,
@@ -9056,6 +9069,7 @@ object JvmInterpreter {
                         terminationState = terminationState,
                         monitorUnblockedHandler = monitorUnblockedHandler,
                         currentClassName = currentClassName,
+                        currentLoadedClassKey = currentLoadedClassKey,
                         dynamicConstants = dynamicConstants,
                         loadNativeLibraryHandler = loadNativeLibraryHandler,
                         unloadNativeLibraryHandler = unloadNativeLibraryHandler,
@@ -9109,6 +9123,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         dynamicConstants: JvmDynamicConstantRegistry,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
@@ -9124,7 +9139,13 @@ object JvmInterpreter {
             descriptor = descriptor,
         )
         requireStaticUpcallMethod(resolvedMethod)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         if (arguments.size != argumentDescriptors.size) {
             throw JvmUnsupportedInstructionException(
@@ -10200,6 +10221,22 @@ object JvmInterpreter {
         throw JvmUnsupportedInstructionException(
             "Method ${method.ownerClassName}.${method.name}:${method.descriptor} cannot be invoked with invokevirtual",
         )
+    }
+
+    private fun ownerLoadedClassKey(
+        ownerClassName: String,
+        currentLoadedClassKey: JvmLoadedClassKey?,
+        methodArea: JvmMethodArea?,
+    ): JvmLoadedClassKey? {
+        if (currentLoadedClassKey == null || methodArea == null) {
+            return null
+        }
+        return methodArea.getClass(
+            internalName = ownerClassName,
+            initiatingLoader = currentLoadedClassKey.definingLoader,
+        )?.loadedClassKey ?: methodArea.getClass(
+            currentLoadedClassKey.copy(internalName = ownerClassName),
+        )?.loadedClassKey
     }
 
     private fun requireAccessibleMethod(

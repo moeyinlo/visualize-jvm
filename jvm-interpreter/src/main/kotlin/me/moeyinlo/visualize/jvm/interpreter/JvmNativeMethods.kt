@@ -25,6 +25,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodArea
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
@@ -642,6 +643,7 @@ data class JvmNativeMethodContext(
     val classHierarchy: JvmClassHierarchy,
     val staticFields: JvmStaticFields,
     val currentClassName: String?,
+    val currentLoadedClassKey: JvmLoadedClassKey? = null,
     val monitors: JvmMonitorState = JvmMonitorState(),
     val threadScheduler: JvmThreadScheduler? = null,
     val currentThreadId: String = "main",
