@@ -9752,7 +9752,12 @@ object JvmInterpreter {
         if (
             method.isPackagePrivate &&
             currentClassName != null &&
-            currentClassName.runtimePackageName() != method.ownerClassName.runtimePackageName()
+            !areSameRuntimePackageForMethodAccess(
+                method = method,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
         ) {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
@@ -9806,6 +9811,29 @@ object JvmInterpreter {
             )
         }
         return classHierarchy.areRuntimeNestmates(currentClassName, method.ownerClassName)
+    }
+
+    private fun areSameRuntimePackageForMethodAccess(
+        method: JvmResolvedMethod,
+        currentClassName: String,
+        currentLoadedClassKey: JvmLoadedClassKey?,
+        methodArea: JvmMethodArea?,
+    ): Boolean {
+        if (
+            currentLoadedClassKey != null &&
+            methodArea != null &&
+            currentLoadedClassKey.internalName == currentClassName
+        ) {
+            val currentEntry = methodArea.getClass(currentLoadedClassKey) ?: return false
+            val ownerEntry = methodArea.getClass(
+                internalName = method.ownerClassName,
+                initiatingLoader = currentLoadedClassKey.definingLoader,
+            ) ?: methodArea.getClass(
+                currentLoadedClassKey.copy(internalName = method.ownerClassName),
+            ) ?: return false
+            return currentEntry.runtimePackageKey == ownerEntry.runtimePackageKey
+        }
+        return currentClassName.runtimePackageName() == method.ownerClassName.runtimePackageName()
     }
 
     private fun resolveRuntimeMethodReference(
