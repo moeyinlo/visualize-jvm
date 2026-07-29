@@ -65,6 +65,17 @@ class JvmArrayClassFactory(
             internalName = internalName,
             definingLoader = JvmClassLoaderIdentity.Bootstrap,
         )
+        reuseConstrainedResolution(
+            internalName = internalName,
+            initiatingLoader = JvmClassLoaderIdentity.Bootstrap,
+            metadataForResolvedClass = { resolvedClass ->
+                arrayMetadata(
+                    internalName = internalName,
+                    component = JvmArrayComponent.Primitive(component),
+                    definingLoader = resolvedClass.definingLoader,
+                )
+            },
+        )?.let { existing -> return existing }
         methodArea.getClass(loadedClassKey)?.let { existing ->
             rememberMetadataIfAbsent(
                 loadedClassKey = loadedClassKey,
@@ -93,6 +104,17 @@ class JvmArrayClassFactory(
             internalName = internalName,
             definingLoader = componentDefiningLoader,
         )
+        reuseConstrainedResolution(
+            internalName = internalName,
+            initiatingLoader = componentDefiningLoader,
+            metadataForResolvedClass = { resolvedClass ->
+                arrayMetadata(
+                    internalName = internalName,
+                    component = JvmArrayComponent.Reference(componentInternalName, resolvedClass.definingLoader),
+                    definingLoader = resolvedClass.definingLoader,
+                )
+            },
+        )?.let { existing -> return existing }
         methodArea.getClass(loadedClassKey)?.let { existing ->
             rememberMetadataIfAbsent(
                 loadedClassKey = loadedClassKey,
@@ -121,6 +143,19 @@ class JvmArrayClassFactory(
             definingLoader = componentLoadedClassKey.definingLoader,
         )
         val component = JvmArrayComponent.Array(componentLoadedClassKey)
+        reuseConstrainedResolution(
+            internalName = internalName,
+            initiatingLoader = componentLoadedClassKey.definingLoader,
+            metadataForResolvedClass = { resolvedClass ->
+                arrayMetadata(
+                    internalName = internalName,
+                    component = JvmArrayComponent.Array(
+                        componentLoadedClassKey.copy(definingLoader = resolvedClass.definingLoader),
+                    ),
+                    definingLoader = resolvedClass.definingLoader,
+                )
+            },
+        )?.let { existing -> return existing }
         methodArea.getClass(loadedClassKey)?.let { existing ->
             rememberMetadataIfAbsent(
                 loadedClassKey = loadedClassKey,
@@ -228,6 +263,21 @@ class JvmArrayClassFactory(
             initiatingLoader = loadedClassKey.definingLoader,
             resolvedClass = loadedClassKey,
         )
+    }
+
+    private fun reuseConstrainedResolution(
+        internalName: String,
+        initiatingLoader: JvmClassLoaderIdentity,
+        metadataForResolvedClass: (JvmLoadedClassKey) -> JvmArrayClassMetadata,
+    ): JvmMethodAreaEntry? {
+        val resolvedClass = loadingConstraints?.resolvedClass(internalName, initiatingLoader)
+            ?: return null
+        val existing = methodArea.getClass(resolvedClass) ?: return null
+        rememberMetadataIfAbsent(
+            loadedClassKey = resolvedClass,
+            metadata = metadataForResolvedClass(resolvedClass),
+        )
+        return methodArea.recordInitiatingLoader(resolvedClass, initiatingLoader)
     }
 
     private fun arrayMetadata(

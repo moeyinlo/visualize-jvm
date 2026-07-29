@@ -157,4 +157,29 @@ class JvmArrayClassFactoryTest {
 
         assertEquals(arrayKey, loadingConstraints.resolvedClass("[Lpkg/Type;", appLoader))
     }
+
+    @Test
+    fun `reuses constrained array class resolutions before defining another array class`() {
+        val methodArea = JvmMethodArea()
+        val loadingConstraints = JvmLoadingConstraintSet()
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val pluginLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "plugin")
+        val factory = JvmArrayClassFactory(
+            methodArea = methodArea,
+            loadingConstraints = loadingConstraints,
+        )
+        val appArrayKey = JvmLoadedClassKey("[Lpkg/Type;", appLoader)
+        loadingConstraints.addConstraint("[Lpkg/Type;", appLoader, pluginLoader)
+        val appArrayClass = factory.createReferenceArrayClass("pkg/Type", appLoader)
+
+        val pluginArrayClass = factory.createReferenceArrayClass("pkg/Type", pluginLoader)
+
+        assertEquals(appArrayClass.loadedClassKey, pluginArrayClass.loadedClassKey)
+        assertEquals(appArrayKey, pluginArrayClass.loadedClassKey)
+        assertEquals(setOf(appLoader, pluginLoader), pluginArrayClass.initiatingLoaders)
+        assertSame(pluginArrayClass, methodArea.getClass(appArrayKey))
+        assertSame(pluginArrayClass, methodArea.getClass("[Lpkg/Type;", pluginLoader))
+        assertEquals(appArrayKey, loadingConstraints.resolvedClass("[Lpkg/Type;", pluginLoader))
+        assertEquals(1, methodArea.classCount)
+    }
 }
