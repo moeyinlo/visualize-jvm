@@ -23,6 +23,7 @@ import me.moeyinlo.visualize.jvm.classfile.FieldInfo
 import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
 import me.moeyinlo.visualize.jvm.classfile.LineNumberTableEntry
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
+import me.moeyinlo.visualize.jvm.classfile.SameStackMapFrame
 import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
 import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 
@@ -236,7 +237,7 @@ class JvmClassfileRuntimeAdapterTest {
                             attributes = listOf(
                                 StackMapTableAttribute(
                                     nameIndex = ConstantPoolIndex(26),
-                                    entries = emptyList(),
+                                    entries = listOf(SameStackMapFrame(frameType = 0)),
                                 ),
                             ),
                         ),
@@ -250,6 +251,7 @@ class JvmClassfileRuntimeAdapterTest {
 
         assertEquals(61, definition.majorVersion)
         assertEquals(true, definition.methods.single().hasStackMapTable)
+        assertEquals(listOf(SameStackMapFrame(frameType = 0)), definition.methods.single().stackMapTableEntries)
     }
 
     @Test

@@ -88,6 +88,10 @@ private fun MethodInfo.toJvmMethodDefinition(
         sourceFile = sourceFile,
         hasStackMapTable = codeAttribute?.attributes
             ?.any { attribute -> attribute is StackMapTableAttribute } ?: false,
+        stackMapTableEntries = codeAttribute?.attributes
+            ?.filterIsInstance<StackMapTableAttribute>()
+            ?.singleOrNull()
+            ?.entries ?: emptyList(),
         lineNumberTable = codeAttribute?.attributes
             ?.filterIsInstance<LineNumberTableAttribute>()
             ?.singleOrNull()

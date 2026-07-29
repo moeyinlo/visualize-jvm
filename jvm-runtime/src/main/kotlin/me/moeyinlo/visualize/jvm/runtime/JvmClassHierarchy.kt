@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.runtime
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
+import me.moeyinlo.visualize.jvm.classfile.StackMapFrame
 
 data class JvmClassDefinition(
     val internalName: String,
@@ -81,6 +82,7 @@ data class JvmMethodDefinition(
     val sourceFile: String? = null,
     val lineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
     val hasStackMapTable: Boolean = false,
+    val stackMapTableEntries: List<StackMapFrame> = emptyList(),
 ) {
     fun sourceLineForBytecodeOffset(bytecodeOffset: Int): Int? =
         lineNumberTable
@@ -109,6 +111,7 @@ data class JvmResolvedMethod(
     val sourceFile: String? = null,
     val lineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
     val hasStackMapTable: Boolean = false,
+    val stackMapTableEntries: List<StackMapFrame> = emptyList(),
 ) {
     val isSignaturePolymorphic: Boolean
         get() = ownerClassName == "java/lang/invoke/MethodHandle" &&
@@ -434,6 +437,7 @@ class JvmClassHierarchy(
                     sourceFile = method.sourceFile,
                     lineNumberTable = method.lineNumberTable,
                     hasStackMapTable = method.hasStackMapTable,
+                    stackMapTableEntries = method.stackMapTableEntries,
                 )
             }
 

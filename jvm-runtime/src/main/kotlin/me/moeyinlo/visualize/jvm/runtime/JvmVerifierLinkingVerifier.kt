@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.runtime
 
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 import me.moeyinlo.visualize.jvm.verifier.JvmClassVerificationRequest
 import me.moeyinlo.visualize.jvm.verifier.JvmClassVerifier
 import me.moeyinlo.visualize.jvm.verifier.JvmMethodVerificationRequest
@@ -30,6 +31,14 @@ class JvmVerifierLinkingVerifier(
             hasStackMapTable = hasStackMapTable,
         )
 
+
+    private fun JvmMethodDefinition.stackMapTableAttribute(): List<StackMapTableAttribute> =
+        if (hasStackMapTable) {
+            listOf(StackMapTableAttribute(nameIndex = ConstantPoolIndex(1), entries = stackMapTableEntries))
+        } else {
+            emptyList()
+        }
+
     private fun JvmMethodDefinition.toCodeAttribute(): CodeAttribute? {
         val methodCode = code ?: return null
         return CodeAttribute(
@@ -37,6 +46,7 @@ class JvmVerifierLinkingVerifier(
             maxStack = maxStack,
             maxLocals = maxLocals,
             code = methodCode,
+            attributes = stackMapTableAttribute(),
         )
     }
 }
