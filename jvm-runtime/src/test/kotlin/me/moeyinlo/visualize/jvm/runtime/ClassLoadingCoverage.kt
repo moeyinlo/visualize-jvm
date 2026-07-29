@@ -39,8 +39,9 @@ object ClassLoadingCoverage {
         ClassLoadingCoverageEntry(
             rule = "loading constraints",
             specSection = "JVMS 5.3.4 Loading Constraints",
-            currentComponent = "No initiating-loader constraint table yet",
-            status = ClassLoadingCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmLoadingConstraintSet models initiating-loader constraint groups and LinkageError violations",
+            status = ClassLoadingCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmLoadingConstraintSetTest",
         ),
         ClassLoadingCoverageEntry(
             rule = "erroneous class state",

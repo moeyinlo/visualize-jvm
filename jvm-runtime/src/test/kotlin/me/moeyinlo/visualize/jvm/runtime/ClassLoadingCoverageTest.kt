@@ -47,7 +47,6 @@ class ClassLoadingCoverageTest {
             listOf(
                 "binary name to class bytes",
                 "array class creation",
-                "loading constraints",
                 "erroneous class state",
                 "class loader consistency checks",
             ),
