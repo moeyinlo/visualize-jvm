@@ -5017,6 +5017,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `anewarray rejects package private component classes from another package`() {
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x06.toByte(),
+                    0xBD.toByte(),
+                    0x00.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("pkg/Hidden", "pkg/Hidden".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "pkg/Hidden", isPublic = false),
+                        JvmClassDefinition(internalName = "other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Hidden", exception.message)
+    }
+
+    @Test
     fun `newarray allocates an int array with default zero values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(

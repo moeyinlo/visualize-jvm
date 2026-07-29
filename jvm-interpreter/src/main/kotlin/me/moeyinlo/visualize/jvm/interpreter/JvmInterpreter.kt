@@ -2039,7 +2039,16 @@ object JvmInterpreter {
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
             )
-            0xBD -> executeANewArray(instruction, operandStack, constantPool, heap)
+            0xBD -> executeANewArray(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
             0xBE -> executeArrayLength(instruction, operandStack, heap)
             0xBF -> executeAThrow(instruction, operandStack, heap)
             0xC0 -> executeCheckCast(instruction, operandStack, constantPool, heap, classHierarchy)
@@ -9404,6 +9413,10 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
         heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+        methodArea: JvmMethodArea? = null,
     ) {
         val count = operandStack.pop()
         if (count !is JvmIntValue) {
@@ -9419,9 +9432,17 @@ object JvmInterpreter {
             )
         }
 
+        val componentClassName = resolveConstantClassName(instruction, constantPool)
+        requireAccessibleClass(
+            targetClassName = componentClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         operandStack.push(
             heap.allocateReferenceArray(
-                componentClassName = resolveConstantClassName(instruction, constantPool),
+                componentClassName = componentClassName,
                 length = count.value,
             ),
         )
