@@ -220,6 +220,60 @@ class JvmSimulatedJniEnvironmentTest {
         val classHandle = environment.findClass("Example")
 
         assertEquals("Example", handles.resolveClass(classHandle))
+        assertEquals(null, handles.resolveClassLoadedKey(classHandle))
+    }
+
+    @Test
+    fun `FindClass preserves the scoped native class loader context on returned jclass handles`() {
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 301, displayName = "native-loader")
+        val nativeOwnerKey = JvmLoadedClassKey("pkg/NativeOwner", loader)
+        val targetKey = JvmLoadedClassKey("pkg/Target", loader)
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/NativeOwner"),
+                    JvmClassDefinition(internalName = "pkg/Target"),
+                ),
+            ),
+            handles = handles,
+        )
+
+        val classHandle = environment.withNativeClassLoaderContext(nativeOwnerKey) {
+            environment.findClass("pkg/Target")
+        }
+
+        assertEquals("pkg/Target", handles.resolveClass(classHandle))
+        assertEquals(targetKey, handles.resolveClassLoadedKey(classHandle))
+    }
+
+    @Test
+    fun `FindClass restores the previous native class loader context after scoped lookup`() {
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 302, displayName = "outer-loader")
+        val nativeOwnerKey = JvmLoadedClassKey("pkg/NativeOwner", loader)
+        val targetKey = JvmLoadedClassKey("pkg/Target", loader)
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/NativeOwner"),
+                    JvmClassDefinition(internalName = "pkg/Target"),
+                    JvmClassDefinition(internalName = "pkg/Other"),
+                ),
+            ),
+            handles = handles,
+        )
+
+        val classHandle = environment.withNativeClassLoaderContext(nativeOwnerKey) {
+            environment.withNativeClassLoaderContext(null) {
+                val unkeyedHandle = environment.findClass("pkg/Other")
+                assertEquals(null, handles.resolveClassLoadedKey(unkeyedHandle))
+            }
+            environment.findClass("pkg/Target")
+        }
+
+        assertEquals(targetKey, handles.resolveClassLoadedKey(classHandle))
+        assertEquals(null, handles.resolveClassLoadedKey(environment.findClass("pkg/Target")))
     }
 
     @Test

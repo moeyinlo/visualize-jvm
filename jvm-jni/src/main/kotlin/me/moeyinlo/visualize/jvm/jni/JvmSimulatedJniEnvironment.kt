@@ -52,6 +52,7 @@ class JvmSimulatedJniEnvironment(
         descriptor = "Ljava/lang/String;",
     )
     private var pendingException: JvmObjectReferenceValue? = null
+    private var nativeClassLoaderContext: JvmLoadedClassKey? = null
     val pendingExceptionReference: JvmObjectReferenceValue?
         get() = pendingException
     private val localFrameCapacities = mutableListOf<Int>()
@@ -87,6 +88,16 @@ class JvmSimulatedJniEnvironment(
             return action()
         } finally {
             upcallDispatcher = previousDispatcher
+        }
+    }
+
+    fun <T> withNativeClassLoaderContext(loadedClassKey: JvmLoadedClassKey?, action: () -> T): T {
+        val previousContext = nativeClassLoaderContext
+        nativeClassLoaderContext = loadedClassKey
+        try {
+            return action()
+        } finally {
+            nativeClassLoaderContext = previousContext
         }
     }
 
@@ -321,7 +332,10 @@ class JvmSimulatedJniEnvironment(
                 message = className,
             )
         }
-        return handles.newClassHandle(className)
+        return handles.newClassHandle(
+            className = className,
+            loadedClassKey = nativeClassLoaderContext?.copy(internalName = className),
+        )
     }
 
     fun getSuperclass(classHandle: JvmJniHandleId): JvmJniHandleId? {
