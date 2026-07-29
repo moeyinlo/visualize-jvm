@@ -51,6 +51,13 @@ object ClassLoadingCoverage {
             coveringTestClass = "JvmModuleLayerTest",
         ),
         ClassLoadingCoverageEntry(
+            rule = "verification during linking boundary",
+            specSection = "JVMS 5.4.1 Verification",
+            currentComponent = "JvmClassLinker invokes a verifier boundary before recording linked classes and maps failures to guest VerifyError",
+            status = ClassLoadingCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmClassLinkerTest",
+        ),
+        ClassLoadingCoverageEntry(
             rule = "erroneous class state",
             specSection = "JVMS 5.3.5 Deriving a Class from a class File Representation",
             currentComponent = "No class state machine yet, so failed derivation is not remembered per loader/name",
