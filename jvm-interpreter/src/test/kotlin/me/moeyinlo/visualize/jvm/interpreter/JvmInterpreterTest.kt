@@ -10383,6 +10383,128 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putstatic class initializer frames retain runtime module context`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 171, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val ensureTargetKey = JvmLoadedClassKey("app/EnsureTarget", loader)
+        val upcallTargetKey = JvmLoadedClassKey("lib/api/UpcallTarget", loader)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition("app/Caller", isPublic = true)
+        val ensureTarget = JvmClassDefinition(
+            internalName = "app/EnsureTarget",
+            isPublic = true,
+            fields = listOf(JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = true)),
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<clinit>",
+                    descriptor = "()V",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0xB8.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x57.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                            ConstantClassEntry(ConstantPoolIndex(3)),
+                            ConstantUtf8Entry("lib/api/UpcallTarget", "lib/api/UpcallTarget".encodeToByteArray()),
+                            ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                            ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                            ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+            ),
+        )
+        val upcallTarget = JvmClassDefinition(
+            internalName = "lib/api/UpcallTarget",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "value",
+                    descriptor = "()I",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0x10.toByte(),
+                        0x2A.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = caller, loadedClassKey = callerKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = ensureTarget, loadedClassKey = ensureTargetKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = upcallTarget,
+                loadedClassKey = upcallTargetKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                caller,
+                ensureTarget,
+                upcallTarget,
+                JvmClassDefinition("java/lang/Error"),
+                JvmClassDefinition("java/lang/IllegalAccessError", superclassName = "java/lang/Error"),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x04.toByte(),
+                    0xB3.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("app/EnsureTarget", "app/EnsureTarget".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                heap = JvmHeap(),
+                classHierarchy = classHierarchy,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/EnsureTarget cannot access class lib/api/UpcallTarget", exception.message)
+    }
+
+    @Test
     fun `putstatic rejects package private owner classes from another package`() {
         val exception = assertFailsWith<JvmIllegalAccessError> {
             JvmInterpreter.execute(
