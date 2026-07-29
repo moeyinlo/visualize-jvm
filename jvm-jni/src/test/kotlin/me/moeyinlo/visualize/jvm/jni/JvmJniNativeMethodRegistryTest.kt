@@ -1,5 +1,7 @@
 package me.moeyinlo.visualize.jvm.jni
 
+import me.moeyinlo.visualize.jvm.runtime.JvmClassLoaderIdentity
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -24,6 +26,62 @@ class JvmJniNativeMethodRegistryTest {
                 functionAddress = 0x1234L,
             ),
             registry.resolve(className = "pkg/NativeApi", name = "a", descriptor = "(I)V"),
+        )
+        assertEquals(null, registry.resolve(className = "pkg/NativeApi", name = "a", descriptor = "()V"))
+    }
+
+    @Test
+    fun `registered native methods distinguish same class name by loaded class key`() {
+        val registry = JvmJniNativeMethodRegistry()
+        val firstKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(1L, "first-loader"),
+        )
+        val secondKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(2L, "second-loader"),
+        )
+
+        registry.register(
+            className = "pkg/NativeApi",
+            loadedClassKey = firstKey,
+            methods = listOf(JvmJniNativeMethodDescriptor("a", "()V", 0x1111L)),
+        )
+        registry.register(
+            className = "pkg/NativeApi",
+            loadedClassKey = secondKey,
+            methods = listOf(JvmJniNativeMethodDescriptor("a", "()V", 0x2222L)),
+        )
+
+        assertEquals(
+            JvmJniRegisteredNativeMethod(
+                className = "pkg/NativeApi",
+                name = "a",
+                descriptor = "()V",
+                functionAddress = 0x1111L,
+                loadedClassKey = firstKey,
+            ),
+            registry.resolve(
+                className = "pkg/NativeApi",
+                loadedClassKey = firstKey,
+                name = "a",
+                descriptor = "()V",
+            ),
+        )
+        assertEquals(
+            JvmJniRegisteredNativeMethod(
+                className = "pkg/NativeApi",
+                name = "a",
+                descriptor = "()V",
+                functionAddress = 0x2222L,
+                loadedClassKey = secondKey,
+            ),
+            registry.resolve(
+                className = "pkg/NativeApi",
+                loadedClassKey = secondKey,
+                name = "a",
+                descriptor = "()V",
+            ),
         )
         assertEquals(null, registry.resolve(className = "pkg/NativeApi", name = "a", descriptor = "()V"))
     }
