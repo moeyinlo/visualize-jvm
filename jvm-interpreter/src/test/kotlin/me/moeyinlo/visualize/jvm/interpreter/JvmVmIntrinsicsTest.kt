@@ -1817,6 +1817,68 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getInterfaces0 intrinsic reads interfaces from loaded class definition`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 182, displayName = "app")
+        val childKey = JvmLoadedClassKey("pkg/Child", loader)
+        val runtimeServiceKey = JvmLoadedClassKey("pkg/RuntimeService", loader)
+        val runtimeMarkerKey = JvmLoadedClassKey("pkg/RuntimeMarker", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Child",
+                    interfaceNames = listOf("pkg/RuntimeService", "pkg/RuntimeMarker"),
+                ),
+                loadedClassKey = childKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/RuntimeService", isInterface = true),
+                loadedClassKey = runtimeServiceKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/RuntimeMarker", isInterface = true),
+                loadedClassKey = runtimeMarkerKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val childMirror = heap.internClassMirror("pkg/Child", loadedClassKey = childKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetInterfaces0Method())
+            ?: error("Class.getInterfaces0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Child", interfaceNames = listOf("pkg/HierarchyService")),
+                    JvmClassDefinition(internalName = "pkg/HierarchyService", isInterface = true),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        val interfaces = intrinsic.invoke(context, JvmNativeMethodInvocation(childMirror, emptyList()))
+            as JvmObjectReferenceValue
+        val payload = heap.get(interfaces).payload as JvmReferenceArrayPayload
+
+        assertEquals(
+            JvmClassPayload("pkg/RuntimeService", loadedClassKey = runtimeServiceKey),
+            heap.get(payload.elements[0] as JvmObjectReferenceValue).payload,
+        )
+        assertEquals(
+            JvmClassPayload("pkg/RuntimeMarker", loadedClassKey = runtimeMarkerKey),
+            heap.get(payload.elements[1] as JvmObjectReferenceValue).payload,
+        )
+    }
+
+    @Test
     fun `Class desiredAssertionStatus0 intrinsic defaults guest assertions to disabled`() {
         val heap = JvmHeap()
         val classMirror = heap.internClassMirror("pkg/Example")

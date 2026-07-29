@@ -2077,10 +2077,12 @@ object JvmVmIntrinsics {
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
         val representedClassName = classPayload.representedClassName
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
         val interfaceNames = when {
             representedClassName in PrimitiveClassNames -> emptyList()
             representedClassName.startsWith("[") -> listOf("java/lang/Cloneable", "java/io/Serializable")
-            else -> context.classHierarchy.directSuperinterfaceNames(representedClassName)
+            else -> classDefinition?.interfaceNames
+                ?: context.classHierarchy.directSuperinterfaceNames(representedClassName)
         }
         val interfaces = context.heap.allocateReferenceArray("java/lang/Class", interfaceNames.size)
         val payload = context.heap.get(interfaces).payload as JvmReferenceArrayPayload
