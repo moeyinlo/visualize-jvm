@@ -6585,6 +6585,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )?.let { returnValue ->
             operandStack.push(returnValue)
         }
@@ -6623,6 +6624,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmValue? {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         if (arguments.size != argumentDescriptors.size) {
@@ -6691,6 +6693,11 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = targetMethod.ownerClassName,
+                currentLoadedClassKey = ownerLoadedClassKey(
+                    ownerClassName = targetMethod.ownerClassName,
+                    currentLoadedClassKey = currentLoadedClassKey,
+                    methodArea = methodArea,
+                ),
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -6698,6 +6705,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
