@@ -2037,18 +2037,19 @@ object JvmVmIntrinsics {
         }
     }
     private val ClassIsAssignableFrom = JvmNativeMethodIntrinsic { context, invocation ->
-        val targetClassName = requireClassMirrorReceiverWithArguments("Class.isAssignableFrom", context, invocation)
+        val targetClassPayload = requireClassMirrorReceiverPayloadWithArguments(
+            "Class.isAssignableFrom",
+            context,
+            invocation,
+        )
+        val targetClassName = targetClassPayload.representedClassName
         if (invocation.arguments.size != 1) {
             throw JvmUnsupportedInstructionException("Class.isAssignableFrom expects one Class mirror argument")
         }
         val sourceMirror = invocation.arguments.single() as? JvmObjectReferenceValue
             ?: throw JvmUnsupportedInstructionException("Class.isAssignableFrom expects one Class mirror argument")
-        val sourceClassName = requireClassMirrorReference("Class.isAssignableFrom argument", context, sourceMirror)
-        val assignable = if (sourceClassName in PrimitiveClassNames || targetClassName in PrimitiveClassNames) {
-            sourceClassName == targetClassName
-        } else {
-            context.classHierarchy.isAssignable(sourceClassName, targetClassName)
-        }
+        val sourceClassPayload = requireClassMirrorPayload("Class.isAssignableFrom argument", context, sourceMirror)
+        val assignable = classMirrorAssignable(context, sourceClassPayload, targetClassPayload)
         jvmBoolean(assignable)
     }
     private val ClassGetSuperclass = JvmNativeMethodIntrinsic { context, invocation ->
@@ -6318,6 +6319,16 @@ object JvmVmIntrinsics {
         return requireClassMirrorPayload(name, context, receiver)
     }
 
+    private fun requireClassMirrorReceiverPayloadWithArguments(
+        name: String,
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): JvmClassPayload {
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("$name intrinsic requires a receiver")
+        return requireClassMirrorPayload(name, context, receiver)
+    }
+
     private fun requireClassMirrorReference(
         name: String,
         context: JvmNativeMethodContext,
@@ -6342,6 +6353,24 @@ object JvmVmIntrinsics {
         mirrorPayload: JvmClassPayload,
     ) = mirrorPayload.loadedClassKey
         ?.let { loadedClassKey -> context.methodArea?.getClass(loadedClassKey)?.definition }
+
+    private fun classMirrorAssignable(
+        context: JvmNativeMethodContext,
+        sourcePayload: JvmClassPayload,
+        targetPayload: JvmClassPayload,
+    ): Boolean {
+        val sourceClassName = sourcePayload.representedClassName
+        val targetClassName = targetPayload.representedClassName
+        if (sourceClassName in PrimitiveClassNames || targetClassName in PrimitiveClassNames) {
+            return sourceClassName == targetClassName
+        }
+        val sourceKey = sourcePayload.loadedClassKey
+        val targetKey = targetPayload.loadedClassKey
+        if (sourceKey != null && targetKey != null && sourceClassName == targetClassName) {
+            return sourceKey == targetKey
+        }
+        return context.classHierarchy.isAssignable(sourceClassName, targetClassName)
+    }
 
     private fun loadedClassKeyForMirrorRelatedClass(
         context: JvmNativeMethodContext,
