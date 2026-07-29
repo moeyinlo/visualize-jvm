@@ -5157,6 +5157,45 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsInstanceOf distinguishes same name guest objects by loaded class key`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val firstKey = JvmLoadedClassKey(
+            internalName = "pkg/Target",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 81, displayName = "first"),
+        )
+        val secondKey = JvmLoadedClassKey(
+            internalName = "pkg/Target",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 82, displayName = "second"),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Target"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val firstReference = heap.allocateObject(
+            classDefinition = JvmClassDefinition(internalName = "pkg/Target"),
+            superclasses = emptyList(),
+            loadedClassKey = firstKey,
+        )
+        val secondReference = heap.allocateObject(
+            classDefinition = JvmClassDefinition(internalName = "pkg/Target"),
+            superclasses = emptyList(),
+            loadedClassKey = secondKey,
+        )
+        val firstHandle = handles.newObjectHandle(firstReference)
+        val secondHandle = handles.newObjectHandle(secondReference)
+        val firstClassHandle = environment.getObjectClass(firstHandle)
+
+        assertEquals(true, environment.isInstanceOf(firstHandle, firstClassHandle))
+        assertEquals(false, environment.isInstanceOf(secondHandle, firstClassHandle))
+    }
+
+    @Test
     fun `IsInstanceOf returns false when a guest object is not assignable to the target class`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

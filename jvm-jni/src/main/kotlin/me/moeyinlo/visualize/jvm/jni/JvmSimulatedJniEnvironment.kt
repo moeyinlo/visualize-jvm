@@ -19,6 +19,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
@@ -970,10 +971,27 @@ class JvmSimulatedJniEnvironment(
         if (objectHandle == null) {
             return true
         }
-        val sourceClassName = requireLoadedClass(resolveJObjectClassName(objectHandle))
+        val sourceClass = resolveJObjectClass(objectHandle)
+        val sourceClassName = requireLoadedClass(sourceClass.className)
         val targetClassName = handles.resolveClass(classHandle)
+        val targetClassKey = handles.resolveClassLoadedKey(classHandle)
+        if (sourceClass.loadedClassKey != null && targetClassKey != null && sourceClassName == targetClassName) {
+            return sourceClass.loadedClassKey == targetClassKey
+        }
         return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
     }
+
+    private fun resolveJObjectClass(handle: JvmJniHandleId): JvmJniClassReference =
+        when (val reference = handles.snapshotLocalReference(handle)) {
+            is JvmJniLocalReferenceSnapshot.ObjectReference -> {
+                val heapObject = heap.get(reference.reference)
+                JvmJniClassReference(
+                    className = heapObject.className,
+                    loadedClassKey = heapObject.loadedClassKey,
+                )
+            }
+            is JvmJniLocalReferenceSnapshot.ClassReference -> JvmJniClassReference("java/lang/Class")
+        }
 
     private fun resolveJObjectClassName(handle: JvmJniHandleId): String =
         when (val reference = handles.snapshotLocalReference(handle)) {
@@ -2507,6 +2525,11 @@ private fun JvmResolvedMethod.requireNonvirtualInstanceObjectMethod(helperName: 
         )
     }
 }
+
+private data class JvmJniClassReference(
+    val className: String,
+    val loadedClassKey: JvmLoadedClassKey? = null,
+)
 
 private fun JvmResolvedMethod.requireInstanceBooleanMethod(helperName: String) {
     if (isStatic || returnDescriptor != "Z") {
