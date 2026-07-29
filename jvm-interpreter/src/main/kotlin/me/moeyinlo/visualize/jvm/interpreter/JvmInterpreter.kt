@@ -921,7 +921,6 @@ object JvmInterpreter {
         }
         fun <T> withNativeLibraryLifecycleUpcalls(action: () -> T): T {
             val configuredJavaVm = nativeLibraryJavaVm ?: return action()
-            val configuredMethodArea = methodArea ?: return action()
             return configuredJavaVm.environment.withUpcallDispatcher(
                 jniUpcallDispatcher(
                     heap = heap,
@@ -936,7 +935,7 @@ object JvmInterpreter {
                     monitorUnblockedHandler = monitorUnblockedHandler,
                     currentClassName = currentClassName,
                     dynamicConstants = dynamicConstants,
-                    methodArea = configuredMethodArea,
+                    methodArea = methodArea,
                 ),
             ) {
                 action()
