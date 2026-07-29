@@ -18,6 +18,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
@@ -5834,6 +5835,38 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertEquals("Example", heap.get(objectReference).className)
         assertEquals(false, heap.isInitialized(objectReference))
+    }
+
+    @Test
+    fun `AllocObject preserves the class handle loaded class key on allocated guest objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 12, displayName = "alloc-loader"),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+
+        val objectHandle = environment.allocObject(classHandle)
+        val objectReference = handles.resolveObject(objectHandle)
+
+        assertEquals(
+            JvmHeapObject(
+                className = "Example",
+                isInitialized = false,
+                loadedClassKey = loadedClassKey,
+            ),
+            heap.get(objectReference),
+        )
     }
 
     @Test

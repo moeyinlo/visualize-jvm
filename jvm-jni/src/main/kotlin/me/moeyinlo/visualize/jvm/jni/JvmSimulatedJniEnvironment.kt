@@ -977,7 +977,10 @@ class JvmSimulatedJniEnvironment(
 
     fun allocObject(classHandle: JvmJniHandleId): JvmJniHandleId {
         val className = handles.resolveClass(classHandle)
-        val receiver = heap.allocateUninitializedObject(className)
+        val receiver = heap.allocateUninitializedObject(
+            className = className,
+            loadedClassKey = handles.resolveClassLoadedKey(classHandle),
+        )
         return handles.newObjectHandle(receiver)
     }
 

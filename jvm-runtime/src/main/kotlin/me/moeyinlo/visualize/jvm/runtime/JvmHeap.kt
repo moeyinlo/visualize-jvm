@@ -139,13 +139,17 @@ class JvmHeap {
         return reference
     }
 
-    fun allocateUninitializedObject(className: String): JvmObjectReferenceValue {
+    fun allocateUninitializedObject(
+        className: String,
+        loadedClassKey: JvmLoadedClassKey? = null,
+    ): JvmObjectReferenceValue {
         require(className.isNotBlank()) { "class name must not be blank" }
 
         return allocate(
             JvmHeapObject(
                 className = className,
                 isInitialized = false,
+                loadedClassKey = loadedClassKey,
             ),
         )
     }
