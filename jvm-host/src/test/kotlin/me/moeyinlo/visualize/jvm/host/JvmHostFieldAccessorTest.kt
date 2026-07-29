@@ -74,6 +74,51 @@ class JvmHostFieldAccessorTest {
     }
 
     @Test
+    fun `static host field set records opaque active use without mutating guest initialization state`() {
+        HostFieldFixture.staticCount = 5
+        val heap = JvmHeap()
+        val mirror = JvmHostDelegatedClassMirror.fromHostClass(HostFieldFixture::class.java)
+        val field = JvmHostFieldResolver.resolveStaticField(
+            owner = mirror,
+            name = "staticCount",
+            descriptor = "I",
+        )
+        val initializationStates = JvmClassInitializationStates()
+        val boundaryEvents = JvmHostBoundaryEventRecorder()
+        val executionPolicy = JvmClassExecutionPolicy(
+            hostDelegatedClassNames = setOf(mirror.guestInternalName),
+        )
+
+        JvmHostFieldAccessor.setStatic(
+            field = field,
+            value = JvmIntValue(23),
+            heap = heap,
+            executionPolicy = executionPolicy,
+            classInitializationStates = initializationStates,
+            boundaryEvents = boundaryEvents,
+        )
+
+        assertEquals(23, HostFieldFixture.staticCount)
+        assertEquals(
+            JvmClassInitializationState.Prepared,
+            initializationStates.get(mirror.guestInternalName),
+        )
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = mirror.guestInternalName,
+                    methodName = "<clinit>",
+                    descriptor = "()V",
+                    detail = "host-delegated initialization is opaque to guest state",
+                ),
+            ),
+            boundaryEvents.snapshots(),
+        )
+    }
+
+    @Test
     fun `gets and sets instance string host fields through identity mapped receivers`() {
         val heap = JvmHeap()
         val hostReceiver = HostFieldFixture().also { it.label = "old" }
