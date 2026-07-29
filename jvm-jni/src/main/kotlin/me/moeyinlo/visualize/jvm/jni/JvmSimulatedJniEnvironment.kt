@@ -95,6 +95,7 @@ class JvmSimulatedJniEnvironment(
         methods: List<JvmJniNativeMethodDescriptor>,
     ): Int {
         val className = requireLoadedClass(handles.resolveClass(classHandle))
+        val loadedClassKey = handles.resolveClassLoadedKey(classHandle)
         methods.forEach { method ->
             classHierarchy.requireDeclaredNativeMethod(
                 ownerClassName = className,
@@ -102,12 +103,19 @@ class JvmSimulatedJniEnvironment(
                 descriptor = method.descriptor,
             )
         }
-        return registeredNativeMethods.register(className, methods)
+        return registeredNativeMethods.register(
+            className = className,
+            methods = methods,
+            loadedClassKey = loadedClassKey,
+        )
     }
 
     fun unregisterNatives(classHandle: JvmJniHandleId): Int {
         val className = requireLoadedClass(handles.resolveClass(classHandle))
-        return registeredNativeMethods.unregister(className)
+        return registeredNativeMethods.unregister(
+            className = className,
+            loadedClassKey = handles.resolveClassLoadedKey(classHandle),
+        )
     }
 
     fun throwObject(throwableHandle: JvmJniHandleId): Int {
