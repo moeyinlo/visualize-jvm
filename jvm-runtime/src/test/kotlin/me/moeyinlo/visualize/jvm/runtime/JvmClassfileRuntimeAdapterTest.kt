@@ -24,6 +24,7 @@ import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
 import me.moeyinlo.visualize.jvm.classfile.LineNumberTableEntry
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
 import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
+import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 
 class JvmClassfileRuntimeAdapterTest {
     @Test
@@ -209,6 +210,49 @@ class JvmClassfileRuntimeAdapterTest {
     }
 
     @Test
+    fun `classfile adapter maps verification metadata to runtime definition`() {
+        val classFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 61),
+            constantPool = constantPool(),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = listOf(
+                MethodInfo(
+                    accessFlags = 0x0009,
+                    nameIndex = ConstantPoolIndex(11),
+                    descriptorIndex = ConstantPoolIndex(12),
+                    attributes = listOf(
+                        CodeAttribute(
+                            nameIndex = ConstantPoolIndex(13),
+                            maxStack = 1,
+                            maxLocals = 0,
+                            code = byteArrayOf(0x04, 0xAC.toByte()),
+                            attributes = listOf(
+                                StackMapTableAttribute(
+                                    nameIndex = ConstantPoolIndex(26),
+                                    entries = emptyList(),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            attributes = emptyList(),
+        )
+
+        val definition = classFile.toJvmClassDefinition()
+
+        assertEquals(61, definition.majorVersion)
+        assertEquals(true, definition.methods.single().hasStackMapTable)
+    }
+
+    @Test
     fun `classfile adapter creates method area entries`() {
         val classFile = ClassFile(
             magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
@@ -344,6 +388,7 @@ class JvmClassfileRuntimeAdapterTest {
                 ConstantUtf8Entry("SourceFile", "SourceFile".encodeToByteArray()),
                 ConstantUtf8Entry("LineNumberTable", "LineNumberTable".encodeToByteArray()),
                 ConstantUtf8Entry("Example.java", "Example.java".encodeToByteArray()),
+                ConstantUtf8Entry("StackMapTable", "StackMapTable".encodeToByteArray()),
             ),
         )
 }

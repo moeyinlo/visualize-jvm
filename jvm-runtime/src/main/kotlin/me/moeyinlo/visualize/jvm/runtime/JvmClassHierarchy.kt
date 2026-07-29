@@ -9,6 +9,7 @@ data class JvmClassDefinition(
     val fields: List<JvmFieldDefinition> = emptyList(),
     val methods: List<JvmMethodDefinition> = emptyList(),
     val isInterface: Boolean = false,
+    val majorVersion: Int = 70,
 )
 
 data class JvmFieldDefinition(
@@ -79,6 +80,7 @@ data class JvmMethodDefinition(
     val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
     val sourceFile: String? = null,
     val lineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
+    val hasStackMapTable: Boolean = false,
 ) {
     fun sourceLineForBytecodeOffset(bytecodeOffset: Int): Int? =
         lineNumberTable
@@ -106,6 +108,7 @@ data class JvmResolvedMethod(
     val exceptionHandlers: List<JvmExceptionHandler> = emptyList(),
     val sourceFile: String? = null,
     val lineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
+    val hasStackMapTable: Boolean = false,
 ) {
     val isSignaturePolymorphic: Boolean
         get() = ownerClassName == "java/lang/invoke/MethodHandle" &&
@@ -430,6 +433,7 @@ class JvmClassHierarchy(
                     exceptionHandlers = method.exceptionHandlers,
                     sourceFile = method.sourceFile,
                     lineNumberTable = method.lineNumberTable,
+                    hasStackMapTable = method.hasStackMapTable,
                 )
             }
 

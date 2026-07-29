@@ -19,6 +19,7 @@ import me.moeyinlo.visualize.jvm.classfile.FieldInfo
 import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
 import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
+import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 
 fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
     val sourceFile = attributes.filterIsInstance<SourceFileAttribute>().singleOrNull()
@@ -30,6 +31,7 @@ fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
         fields = fields.map { field -> field.toJvmFieldDefinition(constantPool) },
         methods = methods.map { method -> method.toJvmMethodDefinition(constantPool, sourceFile) },
         isInterface = accessFlags.has(ClassAccessFlag.Interface),
+        majorVersion = version.major,
     )
 }
 
@@ -84,6 +86,8 @@ private fun MethodInfo.toJvmMethodDefinition(
             handler.toJvmExceptionHandler(constantPool)
         } ?: emptyList(),
         sourceFile = sourceFile,
+        hasStackMapTable = codeAttribute?.attributes
+            ?.any { attribute -> attribute is StackMapTableAttribute } ?: false,
         lineNumberTable = codeAttribute?.attributes
             ?.filterIsInstance<LineNumberTableAttribute>()
             ?.singleOrNull()
