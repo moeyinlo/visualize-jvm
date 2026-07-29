@@ -39,6 +39,25 @@ class JvmClassHierarchyNestmateTest {
     }
 
     @Test
+    fun `runtime nestmates reject a member in a different package than its loaded host`() {
+        val hierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "host/Owner",
+                    nestMemberInternalNames = listOf("other/Owner\$Nested"),
+                ),
+                JvmClassDefinition(
+                    internalName = "other/Owner\$Nested",
+                    nestHostInternalName = "host/Owner",
+                ),
+            ),
+        )
+
+        assertEquals(false, hierarchy.areRuntimeNestmates("host/Owner", "other/Owner\$Nested"))
+        assertEquals(false, hierarchy.areRuntimeNestmates("other/Owner\$Nested", "host/Owner"))
+    }
+
+    @Test
     fun `runtime nestmates reject members whose host class is not loaded`() {
         val hierarchy = JvmClassHierarchy(
             listOf(

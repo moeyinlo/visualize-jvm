@@ -1,4 +1,4 @@
-package me.moeyinlo.visualize.jvm.runtime
+﻿package me.moeyinlo.visualize.jvm.runtime
 
 import me.moeyinlo.visualize.jvm.classfile.ConstantPool
 import me.moeyinlo.visualize.jvm.classfile.StackMapFrame
@@ -153,7 +153,10 @@ class JvmClassHierarchy(
         if (member.internalName == host.internalName) {
             return host
         }
-        return host.takeIf { candidate -> member.internalName in candidate.nestMemberInternalNames }
+        return host.takeIf { candidate ->
+            member.internalName in candidate.nestMemberInternalNames &&
+                member.internalName.packageName() == candidate.internalName.packageName()
+        }
     }
 
     fun directSuperclassName(internalName: String): String? =
