@@ -875,6 +875,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticByteMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 

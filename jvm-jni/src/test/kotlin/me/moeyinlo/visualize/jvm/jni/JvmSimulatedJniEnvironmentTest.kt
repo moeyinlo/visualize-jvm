@@ -4564,8 +4564,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticByteMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmByteValue {
-                    calls += RecordedStaticByteUpcall(method, arguments)
+                    calls += RecordedStaticByteUpcall(method, arguments, currentLoadedClassKey)
                     return JvmByteValue(-12)
                 }
             },
@@ -4622,6 +4623,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticByteMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmByteValue = error("CallStaticByteMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -4636,6 +4638,68 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(
             "CallStaticByteMethod requires class Other to be assignable to Example",
             exception.message,
+        )
+    }
+
+    @Test
+    fun `CallStaticByteMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 404, displayName = "jni-upcall-loader")
+        val loadedClassKey = JvmLoadedClassKey("Example", loader)
+        val calls = mutableListOf<RecordedStaticByteUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "code",
+                                descriptor = "()B",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticByteMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ): JvmByteValue {
+                    calls += RecordedStaticByteUpcall(method, arguments, currentLoadedClassKey)
+                    return JvmByteValue(-12)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "code", "()B")
+
+        val result = environment.callStaticByteMethod(classHandle, methodHandle)
+
+        assertEquals(-12, result)
+        assertEquals(
+            listOf(
+                RecordedStaticByteUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "code",
+                        descriptor = "()B",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
+                ),
+            ),
+            calls,
         )
     }
 
@@ -13578,6 +13642,7 @@ private data class RecordedStaticBooleanUpcall(
 private data class RecordedStaticByteUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedStaticCharUpcall(

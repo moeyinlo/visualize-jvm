@@ -156,6 +156,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticByteMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ): JvmByteValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

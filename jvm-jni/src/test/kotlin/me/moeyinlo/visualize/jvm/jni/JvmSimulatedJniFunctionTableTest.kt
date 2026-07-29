@@ -2215,6 +2215,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticByteMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmByteValue {
                     calls += RecordedFunctionTableStaticByteUpcall(method, arguments)
                     return JvmByteValue(-7)
