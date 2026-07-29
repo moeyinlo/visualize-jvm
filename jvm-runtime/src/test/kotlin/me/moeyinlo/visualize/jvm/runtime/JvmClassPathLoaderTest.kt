@@ -142,6 +142,31 @@ class JvmClassPathLoaderTest {
         assertEquals("Class pkg/Missing is not present on the classpath", exception.message)
     }
 
+    @Test
+    fun `records loading constraint resolution for classpath loads`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-loading-constraints")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val loadingConstraints = JvmLoadingConstraintSet()
+        val definingLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val initiatingLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "child")
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            definingLoader = definingLoader,
+            initiatingLoader = initiatingLoader,
+            loadingConstraints = loadingConstraints,
+        )
+
+        val loaded = loader.load("pkg/Example")
+
+        assertEquals(loaded.loadedClassKey, loadingConstraints.resolvedClass("pkg/Example", initiatingLoader))
+    }
+
     private fun writeDirectoryClass(
         root: Path,
         internalName: String,

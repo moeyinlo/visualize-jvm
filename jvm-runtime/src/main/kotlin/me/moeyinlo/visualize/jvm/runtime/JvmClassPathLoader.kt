@@ -16,6 +16,7 @@ class JvmClassPathLoader(
     private val methodArea: JvmMethodArea,
     private val definingLoader: JvmClassLoaderIdentity = JvmClassLoaderIdentity.Bootstrap,
     private val initiatingLoader: JvmClassLoaderIdentity = definingLoader,
+    private val loadingConstraints: JvmLoadingConstraintSet? = null,
 ) {
     fun load(internalName: String): JvmMethodAreaEntry {
         require(internalName.isNotBlank()) { "class internal name must not be blank" }
@@ -36,6 +37,11 @@ class JvmClassPathLoader(
                 definingLoader = definingLoader,
             ),
             initiatingLoaders = setOf(definingLoader, initiatingLoader),
+        )
+        loadingConstraints?.recordResolution(
+            internalName = definedInternalName,
+            initiatingLoader = initiatingLoader,
+            resolvedClass = keyedEntry.loadedClassKey!!,
         )
         methodArea.defineClass(keyedEntry)
         return keyedEntry
