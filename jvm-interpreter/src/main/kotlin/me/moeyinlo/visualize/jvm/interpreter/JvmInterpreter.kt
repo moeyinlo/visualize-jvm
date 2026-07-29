@@ -9290,6 +9290,13 @@ object JvmInterpreter {
             name = name,
             descriptor = descriptor,
         )
+        requireAccessibleClass(
+            targetClassName = resolvedMethod.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         requireInstanceUpcallMethod(resolvedMethod)
         requireVirtualMethodName(resolvedMethod)
         requireAccessibleMethod(
