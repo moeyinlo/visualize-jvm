@@ -23018,6 +23018,153 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `Unsafe ensureClassInitialized0 class initializer frames retain runtime module context`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 168, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val unsafeKey = JvmLoadedClassKey("jdk/internal/misc/Unsafe", loader)
+        val ensureTargetKey = JvmLoadedClassKey("app/EnsureTarget", loader)
+        val upcallTargetKey = JvmLoadedClassKey("lib/api/UpcallTarget", loader)
+        val heap = JvmHeap()
+        val unsafe = heap.allocateObject("jdk/internal/misc/Unsafe")
+        val targetClassMirror = heap.internClassMirror("app/EnsureTarget")
+        val locals = JvmLocalVariables(maxLocals = 2)
+        locals.store(0, unsafe)
+        locals.store(1, targetClassMirror)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition("app/Caller", isPublic = true)
+        val unsafeClass = JvmClassDefinition(
+            internalName = "jdk/internal/misc/Unsafe",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "ensureClassInitialized0",
+                    descriptor = "(Ljava/lang/Class;)V",
+                    isStatic = false,
+                    isNative = true,
+                ),
+            ),
+        )
+        val ensureTarget = JvmClassDefinition(
+            internalName = "app/EnsureTarget",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<clinit>",
+                    descriptor = "()V",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0xB8.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x57.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                            ConstantClassEntry(ConstantPoolIndex(3)),
+                            ConstantUtf8Entry("lib/api/UpcallTarget", "lib/api/UpcallTarget".encodeToByteArray()),
+                            ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                            ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                            ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                        ),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+            ),
+        )
+        val upcallTarget = JvmClassDefinition(
+            internalName = "lib/api/UpcallTarget",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "value",
+                    descriptor = "()I",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0x10.toByte(),
+                        0x2A.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = caller, loadedClassKey = callerKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = unsafeClass, loadedClassKey = unsafeKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = ensureTarget, loadedClassKey = ensureTargetKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = upcallTarget,
+                loadedClassKey = upcallTargetKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app", "jdk/internal/misc")))
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                caller,
+                unsafeClass,
+                ensureTarget,
+                upcallTarget,
+                JvmClassDefinition("java/lang/Error"),
+                JvmClassDefinition("java/lang/IllegalAccessError", superclassName = "java/lang/Error"),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x2B.toByte(),
+                    0xB6.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("jdk/internal/misc/Unsafe", "jdk/internal/misc/Unsafe".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("ensureClassInitialized0", "ensureClassInitialized0".encodeToByteArray()),
+                        ConstantUtf8Entry("(Ljava/lang/Class;)V", "(Ljava/lang/Class;)V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = classHierarchy,
+                nativeMethods = JvmVmIntrinsics.Registry,
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/EnsureTarget cannot access class lib/api/UpcallTarget", exception.message)
+    }
+
+    @Test
     fun `simulated JNI bindings can upcall interpreted instance guest methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeOwner")

@@ -9090,9 +9090,15 @@ object JvmInterpreter {
                             resolvedMethod = classInitializer,
                             arguments = emptyList(),
                             opcodeMnemonic = "class initialization",
+                            currentLoadedClassKey = ownerLoadedClassKey(
+                                ownerClassName = classInitializer.ownerClassName,
+                                currentLoadedClassKey = currentLoadedClassKey,
+                                methodArea = methodArea,
+                            ),
                             loadNativeLibraryHandler = loadNativeLibraryHandler,
                             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                             methodArea = methodArea,
+                            moduleLayer = moduleLayer,
                         )
                     }
                 },
