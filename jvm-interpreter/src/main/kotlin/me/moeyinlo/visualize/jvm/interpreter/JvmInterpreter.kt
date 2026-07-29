@@ -8004,6 +8004,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
     }
 

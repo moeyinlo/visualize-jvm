@@ -32198,6 +32198,125 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked static native target passes runtime module context into simulated JNI static upcalls`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 166, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val nativeOwnerKey = JvmLoadedClassKey("app/NativeOwner", loader)
+        val upcallTargetKey = JvmLoadedClassKey("lib/api/UpcallTarget", loader)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition("app/Caller", isPublic = true)
+        val nativeOwner = JvmClassDefinition(
+            internalName = "app/NativeOwner",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "nativeValue",
+                    descriptor = "()I",
+                    isStatic = true,
+                    isNative = true,
+                ),
+            ),
+        )
+        val upcallTarget = JvmClassDefinition(
+            internalName = "lib/api/UpcallTarget",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "value",
+                    descriptor = "()I",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0x10.toByte(),
+                        0x2A.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = caller, loadedClassKey = callerKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = nativeOwner, loadedClassKey = nativeOwnerKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = upcallTarget,
+                loadedClassKey = upcallTargetKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+        val classHierarchy = JvmClassHierarchy(listOf(caller, nativeOwner, upcallTarget))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "app/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "nativeValue",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "app/NativeOwner",
+                    name = "nativeValue",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicIntCallSiteConstantPool(),
+                classHierarchy = classHierarchy,
+                nativeMethods = JvmNativeMethodRegistry.from(
+                    JvmNativeMethodKey("app/NativeOwner", "nativeValue", "()I", isStatic = true) to
+                        JvmNativeMethodIntrinsic { context, _ ->
+                            context.callStaticMethod(
+                                ownerClassName = "lib/api/UpcallTarget",
+                                name = "value",
+                                descriptor = "()I",
+                                arguments = emptyList(),
+                            )
+                        },
+                ),
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+                invokeDynamicCallSites = callSites,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/NativeOwner cannot access class lib/api/UpcallTarget", exception.message)
+    }
+
+    @Test
     fun `invokedynamic cached static target rejects package private methods from same named package in different defining loaders`() {
         val appLoader = JvmClassLoaderIdentity.UserDefined(id = 143, displayName = "app")
         val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 144, displayName = "library")
