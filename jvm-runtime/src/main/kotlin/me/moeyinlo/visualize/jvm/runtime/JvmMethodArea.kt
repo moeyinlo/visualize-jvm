@@ -3,6 +3,7 @@ package me.moeyinlo.visualize.jvm.runtime
 data class JvmMethodAreaEntry(
     val definition: JvmClassDefinition,
     val staticFields: JvmStaticFields = JvmStaticFields(),
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 class JvmMethodArea {

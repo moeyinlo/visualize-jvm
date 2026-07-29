@@ -77,6 +77,30 @@ class JvmClassPathLoaderTest {
         assertFalse(methodArea.hasClass("pkg/Actual"))
     }
 
+    @Test
+    fun `records the defining loader identity on loaded classpath classes`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-defining-loader")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val definingLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            definingLoader = definingLoader,
+        )
+
+        val loaded = loader.load("pkg/Example")
+
+        assertEquals(
+            JvmLoadedClassKey(internalName = "pkg/Example", definingLoader = definingLoader),
+            loaded.loadedClassKey,
+        )
+    }
+
     private fun writeDirectoryClass(
         root: Path,
         internalName: String,

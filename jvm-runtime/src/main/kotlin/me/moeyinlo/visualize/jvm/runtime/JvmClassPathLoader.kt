@@ -14,6 +14,7 @@ sealed interface JvmClassPathEntry {
 class JvmClassPathLoader(
     private val entries: List<JvmClassPathEntry>,
     private val methodArea: JvmMethodArea,
+    private val definingLoader: JvmClassLoaderIdentity = JvmClassLoaderIdentity.Bootstrap,
 ) {
     fun load(internalName: String): JvmMethodAreaEntry {
         require(internalName.isNotBlank()) { "class internal name must not be blank" }
@@ -28,8 +29,14 @@ class JvmClassPathLoader(
                 "Class path entry for $internalName defined $definedInternalName instead",
             )
         }
-        methodArea.defineClass(methodAreaEntry)
-        return methodAreaEntry
+        val keyedEntry = methodAreaEntry.copy(
+            loadedClassKey = JvmLoadedClassKey(
+                internalName = definedInternalName,
+                definingLoader = definingLoader,
+            ),
+        )
+        methodArea.defineClass(keyedEntry)
+        return keyedEntry
     }
 
     private fun JvmClassPathEntry.findClassBytes(internalName: String): ClassPathClassBytes? {
