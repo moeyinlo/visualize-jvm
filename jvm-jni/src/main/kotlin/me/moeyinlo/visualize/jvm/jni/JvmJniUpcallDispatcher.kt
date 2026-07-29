@@ -145,6 +145,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticBooleanMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ): JvmBooleanValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

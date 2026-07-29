@@ -634,6 +634,7 @@ object JvmInterpreter {
         override fun callStaticBooleanMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
+            currentLoadedClassKey: JvmLoadedClassKey?,
         ): JvmBooleanValue {
             val returnValue = executeStaticMethodUpcall(
                 ownerClassName = method.ownerClassName,
@@ -651,6 +652,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 dynamicConstants = dynamicConstants,
                 methodArea = methodArea,
             )

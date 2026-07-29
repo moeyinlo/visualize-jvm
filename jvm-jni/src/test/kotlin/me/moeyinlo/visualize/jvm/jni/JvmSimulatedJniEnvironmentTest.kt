@@ -4393,8 +4393,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticBooleanMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmBooleanValue {
-                    calls += RecordedStaticBooleanUpcall(method, arguments)
+                    calls += RecordedStaticBooleanUpcall(method, arguments, currentLoadedClassKey)
                     return JvmBooleanValue(true)
                 }
             },
@@ -4451,6 +4452,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticBooleanMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmBooleanValue = error("CallStaticBooleanMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -4465,6 +4467,68 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(
             "CallStaticBooleanMethod requires class Other to be assignable to Example",
             exception.message,
+        )
+    }
+
+    @Test
+    fun `CallStaticBooleanMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 403, displayName = "jni-upcall-loader")
+        val loadedClassKey = JvmLoadedClassKey("Example", loader)
+        val calls = mutableListOf<RecordedStaticBooleanUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "enabled",
+                                descriptor = "()Z",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticBooleanMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ): JvmBooleanValue {
+                    calls += RecordedStaticBooleanUpcall(method, arguments, currentLoadedClassKey)
+                    return JvmBooleanValue(true)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "enabled", "()Z")
+
+        val result = environment.callStaticBooleanMethod(classHandle, methodHandle)
+
+        assertEquals(true, result)
+        assertEquals(
+            listOf(
+                RecordedStaticBooleanUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "enabled",
+                        descriptor = "()Z",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
+                ),
+            ),
+            calls,
         )
     }
 
@@ -13508,6 +13572,7 @@ private data class RecordedStaticObjectUpcall(
 private data class RecordedStaticBooleanUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedStaticByteUpcall(

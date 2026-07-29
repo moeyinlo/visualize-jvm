@@ -2157,6 +2157,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticBooleanMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmBooleanValue {
                     calls += RecordedFunctionTableStaticBooleanUpcall(method, arguments)
                     return JvmBooleanValue(true)

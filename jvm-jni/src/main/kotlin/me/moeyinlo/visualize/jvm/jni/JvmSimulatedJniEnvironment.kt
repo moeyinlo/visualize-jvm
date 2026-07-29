@@ -859,6 +859,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticBooleanMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 
