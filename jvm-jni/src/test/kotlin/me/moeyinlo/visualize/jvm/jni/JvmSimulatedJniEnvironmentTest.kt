@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassLoaderIdentity
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmBooleanValue
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
@@ -21,6 +22,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
@@ -5036,6 +5038,36 @@ class JvmSimulatedJniEnvironmentTest {
         val classHandle = environment.getObjectClass(objectHandle)
 
         assertEquals("Example", handles.resolveClass(classHandle))
+    }
+
+    @Test
+    fun `GetObjectClass preserves object loaded class key on returned class handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val key = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 71, displayName = "app"),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val objectReference = heap.allocateObject(
+            classDefinition = JvmClassDefinition(internalName = "Example"),
+            superclasses = emptyList(),
+            loadedClassKey = key,
+        )
+        val objectHandle = handles.newObjectHandle(objectReference)
+
+        val classHandle = environment.getObjectClass(objectHandle)
+
+        assertEquals("Example", handles.resolveClass(classHandle))
+        assertEquals(key, handles.resolveClassLoadedKey(classHandle))
     }
 
     @Test

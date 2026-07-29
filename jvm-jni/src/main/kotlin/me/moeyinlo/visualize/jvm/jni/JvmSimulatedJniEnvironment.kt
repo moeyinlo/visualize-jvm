@@ -953,8 +953,17 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {
-        val className = requireLoadedClass(resolveJObjectClassName(objectHandle))
-        return handles.newClassHandle(className)
+        return when (val reference = handles.snapshotLocalReference(objectHandle)) {
+            is JvmJniLocalReferenceSnapshot.ObjectReference -> {
+                val heapObject = heap.get(reference.reference)
+                val className = requireLoadedClass(heapObject.className)
+                handles.newClassHandle(className, loadedClassKey = heapObject.loadedClassKey)
+            }
+            is JvmJniLocalReferenceSnapshot.ClassReference -> {
+                val className = requireLoadedClass("java/lang/Class")
+                handles.newClassHandle(className)
+            }
+        }
     }
 
     fun isInstanceOf(objectHandle: JvmJniHandleId?, classHandle: JvmJniHandleId): Boolean {
