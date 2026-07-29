@@ -9291,6 +9291,11 @@ object JvmInterpreter {
             terminationState = terminationState,
             monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = resolvedMethod.ownerClassName,
+            currentLoadedClassKey = ownerLoadedClassKey(
+                ownerClassName = resolvedMethod.ownerClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            ),
             allowReturn = true,
             exceptionHandlers = resolvedMethod.exceptionHandlers,
             bootstrapMethods = JvmBootstrapMethodTable(),
@@ -9299,6 +9304,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI static upcall",
