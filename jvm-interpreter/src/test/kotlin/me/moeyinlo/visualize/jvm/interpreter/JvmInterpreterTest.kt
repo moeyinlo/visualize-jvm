@@ -28017,6 +28017,59 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `multianewarray rejects package private component classes from same named package in different defining loaders`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 57, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 58, displayName = "library")
+        val callerKey = JvmLoadedClassKey("pkg/Caller", appLoader)
+        val hiddenKey = JvmLoadedClassKey("pkg/Hidden", libraryLoader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Caller"),
+                loadedClassKey = callerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Hidden", isPublic = false),
+                loadedClassKey = hiddenKey,
+                initiatingLoaders = setOf(appLoader),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x03.toByte(),
+                    0xC5.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("[Lpkg/Hidden;", "[Lpkg/Hidden;".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition("pkg/Hidden", isPublic = false),
+                        JvmClassDefinition("pkg/Caller"),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class pkg/Caller cannot access class pkg/Hidden", exception.message)
+    }
+
+    @Test
     fun `multianewarray allocates one dimensional primitive arrays`() {
         val heap = JvmHeap()
 
