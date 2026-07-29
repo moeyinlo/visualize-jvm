@@ -9084,7 +9084,10 @@ object JvmInterpreter {
         methodArea: JvmMethodArea? = null,
         moduleLayer: JvmModuleLayer? = null,
     ): JvmValue? {
-        val intrinsic = nativeMethods.resolve(method)
+        val intrinsic = nativeMethods.resolve(
+            method = method,
+            currentLoadedClassKey = currentLoadedClassKey,
+        )
             ?: throw JvmUnsatisfiedLinkError(
                 guestClassName = "java/lang/UnsatisfiedLinkError",
                 message = "Native method ${method.ownerClassName}.${method.name}:" +
