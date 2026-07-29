@@ -95,8 +95,17 @@ class JvmHeap {
     }
 
     fun allocateObject(classDefinition: JvmClassDefinition): JvmObjectReferenceValue {
+        return allocateObject(classDefinition, superclasses = emptyList())
+    }
+
+    fun allocateObject(
+        classDefinition: JvmClassDefinition,
+        superclasses: List<JvmClassDefinition>,
+    ): JvmObjectReferenceValue {
         val reference = allocateObject(classDefinition.internalName)
-        prepareDeclaredInstanceFields(reference, classDefinition)
+        (superclasses + classDefinition).forEach { definition ->
+            prepareDeclaredInstanceFields(reference, definition)
+        }
         return reference
     }
 

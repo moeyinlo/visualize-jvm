@@ -64,6 +64,37 @@ class JvmHeapTest {
         assertEquals(JvmIntValue(0), heap.getInstanceField(reference, counter))
         assertEquals(JvmNullValue, heap.getInstanceField(reference, name))
     }
+
+    @Test
+    fun `heap allocates objects with prepared superclass instance fields`() {
+        val heap = JvmHeap()
+        val parent = JvmClassDefinition(
+            internalName = "Parent",
+            fields = listOf(
+                JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false),
+                JvmFieldDefinition(name = "parentStatic", descriptor = "I", isStatic = true),
+            ),
+        )
+        val child = JvmClassDefinition(
+            internalName = "Child",
+            superclassName = "Parent",
+            fields = listOf(
+                JvmFieldDefinition(name = "childValue", descriptor = "D", isStatic = false),
+            ),
+        )
+        val parentValue = JvmFieldReference("Parent", "parentValue", "J")
+        val parentStatic = JvmFieldReference("Parent", "parentStatic", "I")
+        val childValue = JvmFieldReference("Child", "childValue", "D")
+
+        val reference = heap.allocateObject(child, superclasses = listOf(parent))
+
+        assertEquals(JvmHeapObject("Child"), heap.get(reference))
+        assertTrue(heap.hasInstanceField(reference, parentValue))
+        assertTrue(heap.hasInstanceField(reference, childValue))
+        assertFalse(heap.hasInstanceField(reference, parentStatic))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(reference, parentValue))
+        assertEquals(JvmDoubleValue(0.0), heap.getInstanceField(reference, childValue))
+    }
     @Test
     fun `heap tracks uninitialized object state for constructor execution`() {
         val heap = JvmHeap()
