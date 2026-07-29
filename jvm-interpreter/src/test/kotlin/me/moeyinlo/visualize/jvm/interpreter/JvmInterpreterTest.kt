@@ -1,4 +1,4 @@
-package me.moeyinlo.visualize.jvm.interpreter
+﻿package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.BootstrapMethodIndex
 import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlags
@@ -7,6 +7,7 @@ import me.moeyinlo.visualize.jvm.classfile.ClassFileKind
 import me.moeyinlo.visualize.jvm.classfile.ClassFileMagic
 import me.moeyinlo.visualize.jvm.classfile.ClassFileVersion
 import me.moeyinlo.visualize.jvm.classfile.ClassIdentity
+import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.FieldInfo
 import me.moeyinlo.visualize.jvm.classfile.NestHostAttribute
 import me.moeyinlo.visualize.jvm.classfile.NestMembersAttribute
@@ -28,6 +29,7 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.ConstantStringEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantUtf8Entry
 import me.moeyinlo.visualize.jvm.classfile.MethodHandleReferenceKind
+import me.moeyinlo.visualize.jvm.classfile.MethodInfo
 import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallArgument
 import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallInvocation
 import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallReturn
@@ -20984,6 +20986,117 @@ class JvmInterpreterTest {
                         internalName = "Owner\$Nested",
                         nestHostInternalName = "Owner",
                     ),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+        )
+
+        assertEquals(listOf(JvmIntValue(3)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
+    fun `invokestatic allows private methods from classfile derived nest metadata`() {
+        val hostClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ConstantUtf8Entry("Code", "Code".encodeToByteArray()),
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(8)),
+                    ConstantUtf8Entry("NestMembers", "NestMembers".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = listOf(
+                MethodInfo(
+                    accessFlags = 0x000A,
+                    nameIndex = ConstantPoolIndex(5),
+                    descriptorIndex = ConstantPoolIndex(6),
+                    attributes = listOf(
+                        CodeAttribute(
+                            nameIndex = ConstantPoolIndex(7),
+                            maxStack = 1,
+                            maxLocals = 0,
+                            code = byteArrayOf(
+                                0x06.toByte(),
+                                0xAC.toByte(),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            attributes = listOf(
+                NestMembersAttribute(
+                    nameIndex = ConstantPoolIndex(10),
+                    classes = listOf(ConstantPoolIndex(9)),
+                ),
+            ),
+        )
+        val memberClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(5)),
+                    ConstantUtf8Entry("NestHost", "NestHost".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = emptyList(),
+            attributes = listOf(
+                NestHostAttribute(
+                    nameIndex = ConstantPoolIndex(7),
+                    hostClassIndex = ConstantPoolIndex(6),
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    hostClassFile.toJvmClassDefinition(),
+                    memberClassFile.toJvmClassDefinition(),
                 ),
             ),
             currentClassName = "Owner\$Nested",
