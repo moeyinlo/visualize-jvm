@@ -2075,6 +2075,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 currentLoadedClassKey = currentLoadedClassKey,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xC1 -> executeInstanceOf(
                 instruction = instruction,
@@ -5555,6 +5556,7 @@ object JvmInterpreter {
         currentClassName: String?,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val targetClassName = resolveConstantClassName(instruction, constantPool)
         requireAccessibleClass(
@@ -5563,6 +5565,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         val value = operandStack.peek()
         if (value !is JvmReferenceValue) {
