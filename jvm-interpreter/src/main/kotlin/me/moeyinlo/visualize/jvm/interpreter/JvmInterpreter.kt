@@ -1866,12 +1866,14 @@ object JvmInterpreter {
                 methodArea = methodArea,
             )
             0xB5 -> executePutField(
-                instruction,
-                operandStack,
-                constantPool,
-                heap,
-                classHierarchy,
-                currentClassName,
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
             )
             0xB6 -> executeInvokeVirtual(
                 instruction,
@@ -5933,6 +5935,8 @@ object JvmInterpreter {
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+        methodArea: JvmMethodArea? = null,
     ) {
         val value = operandStack.pop()
         val objectref = operandStack.pop()
@@ -5952,7 +5956,14 @@ object JvmInterpreter {
         val receiverClassName = heap.get(objectref).className
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireInstanceField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName, classHierarchy, receiverClassName)
+        requireAccessibleField(
+            field = resolvedField,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            receiverClassName = receiverClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val field = resolvedField.reference
         requireFieldValue(instruction, field, value)
         requireReferenceFieldAssignable(instruction, field, value, heap, classHierarchy)
