@@ -2054,12 +2054,13 @@ object JvmVmIntrinsics {
     private val ClassGetSuperclass = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getSuperclass", context, invocation)
         val representedClassName = classPayload.representedClassName
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
         when {
             representedClassName in PrimitiveClassNames -> JvmNullValue
             representedClassName == "java/lang/Object" -> JvmNullValue
-            context.classHierarchy.isInterface(representedClassName) -> JvmNullValue
+            classDefinition?.isInterface ?: context.classHierarchy.isInterface(representedClassName) -> JvmNullValue
             representedClassName.startsWith("[") -> context.heap.internClassMirror("java/lang/Object")
-            else -> context.classHierarchy.directSuperclassName(representedClassName)
+            else -> (classDefinition?.superclassName ?: context.classHierarchy.directSuperclassName(representedClassName))
                 ?.let { superclassName ->
                     context.heap.internClassMirror(
                         className = superclassName,

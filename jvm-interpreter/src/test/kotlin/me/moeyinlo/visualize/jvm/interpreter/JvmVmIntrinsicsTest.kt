@@ -1652,6 +1652,52 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getSuperclass intrinsic reads superclass from loaded class definition`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 181, displayName = "app")
+        val childKey = JvmLoadedClassKey("pkg/Child", loader)
+        val methodAreaBaseKey = JvmLoadedClassKey("pkg/MethodAreaBase", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/MethodAreaBase"),
+                loadedClassKey = methodAreaBaseKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/MethodAreaBase"),
+                loadedClassKey = childKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val childMirror = heap.internClassMirror("pkg/Child", loadedClassKey = childKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetSuperclassMethod())
+            ?: error("Class.getSuperclass intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/HierarchyBase"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/HierarchyBase"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        val superclass = intrinsic.invoke(context, JvmNativeMethodInvocation(childMirror, emptyList()))
+            as JvmObjectReferenceValue
+
+        assertEquals(
+            JvmClassPayload("pkg/MethodAreaBase", loadedClassKey = methodAreaBaseKey),
+            heap.get(superclass).payload,
+        )
+    }
+
+    @Test
     fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
         val heap = JvmHeap()
         val childMirror = heap.internClassMirror("pkg/Child")
