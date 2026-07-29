@@ -24026,6 +24026,66 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial allows private methods from a nestmate class`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        nestHostInternalName = "Owner",
+                        nestMemberInternalNames = listOf("Owner\$Nested"),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "secret",
+                                descriptor = "()I",
+                                isStatic = false,
+                                isPrivate = true,
+                                code = byteArrayOf(
+                                    0x08.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Owner\$Nested",
+                        nestHostInternalName = "Owner",
+                    ),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokespecial throws guest IllegalAccessError for package private methods from another package`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Owner")
