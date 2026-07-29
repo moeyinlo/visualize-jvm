@@ -88,6 +88,14 @@ class JvmMethodArea {
             strictClassResolution = strictClassResolution,
         )
 
+    fun areRuntimeNestmates(firstKey: JvmLoadedClassKey, secondKey: JvmLoadedClassKey): Boolean {
+        val firstEntry = entriesByLoadedClassKey[firstKey] ?: return false
+        val secondEntry = entriesByLoadedClassKey[secondKey] ?: return false
+        val firstHostKey = runtimeNestHostKey(firstKey, firstEntry) ?: return false
+        val secondHostKey = runtimeNestHostKey(secondKey, secondEntry) ?: return false
+        return firstHostKey == secondHostKey
+    }
+
     fun superclassDefinitionsFor(loadedClassKey: JvmLoadedClassKey): List<JvmClassDefinition> {
         var currentKey = loadedClassKey
         var currentEntry = entriesByLoadedClassKey[currentKey]
@@ -138,6 +146,25 @@ class JvmMethodArea {
                 "is already associated with module ${conflictingEntry.runtimeModuleName.diagnosticModuleName()}, " +
                 "cannot define ${entry.definition.internalName} in module ${entry.runtimeModuleName.diagnosticModuleName()}",
         )
+    }
+
+    private fun runtimeNestHostKey(
+        memberKey: JvmLoadedClassKey,
+        memberEntry: JvmMethodAreaEntry,
+    ): JvmLoadedClassKey? {
+        val hostKey = JvmLoadedClassKey(
+            internalName = memberEntry.definition.nestHostInternalName,
+            definingLoader = memberKey.definingLoader,
+        )
+        val hostEntry = entriesByLoadedClassKey[hostKey] ?: return null
+        if (memberKey == hostKey) {
+            return hostKey
+        }
+        return hostKey.takeIf {
+            hostEntry.definition.nestHostInternalName == hostEntry.definition.internalName &&
+                memberEntry.definition.internalName in hostEntry.definition.nestMemberInternalNames &&
+                memberEntry.runtimePackageKey == hostEntry.runtimePackageKey
+        }
     }
 
     private fun indexInitiatingLoaders(

@@ -188,6 +188,45 @@ class JvmMethodAreaTest {
         assertEquals("()I", resolved.descriptor)
     }
     @Test
+    fun `method area runtime nestmates require the same defining loader runtime package`() {
+        val methodArea = JvmMethodArea()
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 21, displayName = "app")
+        val pluginLoader = JvmClassLoaderIdentity.UserDefined(id = 22, displayName = "plugin")
+        val hostKey = JvmLoadedClassKey("pkg/Host", appLoader)
+        val appMemberKey = JvmLoadedClassKey("pkg/Host\$Member", appLoader)
+        val pluginMemberKey = JvmLoadedClassKey("pkg/Host\$Member", pluginLoader)
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Host",
+                    nestMemberInternalNames = listOf("pkg/Host\$Member"),
+                ),
+                loadedClassKey = hostKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Host\$Member",
+                    nestHostInternalName = "pkg/Host",
+                ),
+                loadedClassKey = appMemberKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Host\$Member",
+                    nestHostInternalName = "pkg/Host",
+                ),
+                loadedClassKey = pluginMemberKey,
+            ),
+        )
+
+        assertTrue(methodArea.areRuntimeNestmates(hostKey, appMemberKey))
+        assertFalse(methodArea.areRuntimeNestmates(hostKey, pluginMemberKey))
+    }
+    @Test
     fun `method area entry exposes runtime package and module metadata`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 11, displayName = "app-loader")
         val key = JvmLoadedClassKey("app/internal/Example", loader)
