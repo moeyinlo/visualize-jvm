@@ -11151,6 +11151,58 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getfield rejects package private owner classes from another package`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("pkg/Owner")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB4.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Owner",
+                            isPublic = false,
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "value",
+                                    descriptor = "I",
+                                    isStatic = false,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Owner", exception.message)
+    }
+
+    @Test
     fun `getfield allows package private fields from the same package`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("pkg/Owner")

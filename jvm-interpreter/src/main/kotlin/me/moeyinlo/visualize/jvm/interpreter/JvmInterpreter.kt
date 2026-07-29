@@ -5989,6 +5989,13 @@ object JvmInterpreter {
         }
         val receiverClassName = heap.get(objectref).className
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        requireAccessibleClass(
+            targetClassName = resolvedField.reference.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         requireInstanceField(instruction, resolvedField)
         requireAccessibleField(
             field = resolvedField,
