@@ -1,6 +1,8 @@
 package me.moeyinlo.visualize.jvm.jni
 
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
+import me.moeyinlo.visualize.jvm.runtime.JvmClassLoaderIdentity
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceId
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
@@ -97,6 +99,26 @@ class JvmJniHandleTableTest {
 
         assertEquals("java/lang/String", table.resolveClassOrNull(classHandle))
         assertEquals(null, table.resolveClassOrNull(null))
+    }
+
+    @Test
+    fun `jclass handles preserve optional loaded class keys through snapshots and references`() {
+        val table = JvmJniHandleTable()
+        val key = JvmLoadedClassKey(
+            internalName = "pkg/Target",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 61, displayName = "app"),
+        )
+
+        val classHandle = table.newClassHandle("pkg/Target", loadedClassKey = key)
+        val snapshot = table.snapshotLocalReference(classHandle)
+        val localCopy = table.newLocalReference(snapshot)
+        val globalCopy = table.newGlobalReference(snapshot)
+        val weakGlobalCopy = table.newWeakGlobalReference(snapshot)
+
+        assertEquals(key, table.resolveClassLoadedKey(classHandle))
+        assertEquals(key, table.resolveClassLoadedKey(localCopy))
+        assertEquals(key, table.resolveClassLoadedKey(globalCopy))
+        assertEquals(key, table.resolveClassLoadedKey(weakGlobalCopy))
     }
 
     @Test

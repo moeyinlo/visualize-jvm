@@ -1,5 +1,6 @@
 package me.moeyinlo.visualize.jvm.jni
 
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedField
 import me.moeyinlo.visualize.jvm.runtime.JvmResolvedMethod
@@ -38,9 +39,9 @@ class JvmJniHandleTable {
     fun newWeakGlobalObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
         allocate(JvmJniHandleEntry.ObjectHandle(reference), JvmJniHandleScope.WeakGlobal)
 
-    fun newClassHandle(className: String): JvmJniHandleId {
+    fun newClassHandle(className: String, loadedClassKey: JvmLoadedClassKey? = null): JvmJniHandleId {
         require(className.isNotBlank()) { "JNI class handle name must not be blank" }
-        return allocate(JvmJniHandleEntry.ClassHandle(className), JvmJniHandleScope.Local)
+        return allocate(JvmJniHandleEntry.ClassHandle(className, loadedClassKey), JvmJniHandleScope.Local)
     }
 
     fun newMethodIdHandle(method: JvmResolvedMethod): JvmJniHandleId =
@@ -57,6 +58,9 @@ class JvmJniHandleTable {
 
     fun resolveClass(handle: JvmJniHandleId): String =
         entry(handle).expect<JvmJniHandleEntry.ClassHandle>(handle).className
+
+    fun resolveClassLoadedKey(handle: JvmJniHandleId): JvmLoadedClassKey? =
+        entry(handle).expect<JvmJniHandleEntry.ClassHandle>(handle).loadedClassKey
 
     fun resolveClassOrNull(handle: JvmJniHandleId?): String? =
         handle?.let(::resolveClass)
@@ -110,7 +114,10 @@ class JvmJniHandleTable {
     fun snapshotLocalReference(handle: JvmJniHandleId): JvmJniLocalReferenceSnapshot =
         when (val handleEntry = entry(handle)) {
             is JvmJniHandleEntry.ObjectHandle -> JvmJniLocalReferenceSnapshot.ObjectReference(handleEntry.reference)
-            is JvmJniHandleEntry.ClassHandle -> JvmJniLocalReferenceSnapshot.ClassReference(handleEntry.className)
+            is JvmJniHandleEntry.ClassHandle -> JvmJniLocalReferenceSnapshot.ClassReference(
+                className = handleEntry.className,
+                loadedClassKey = handleEntry.loadedClassKey,
+            )
             is JvmJniHandleEntry.MethodIdHandle,
             is JvmJniHandleEntry.FieldIdHandle,
             -> throw JvmJniHandleTypeException(
@@ -121,21 +128,30 @@ class JvmJniHandleTable {
     fun newLocalReference(snapshot: JvmJniLocalReferenceSnapshot): JvmJniHandleId =
         when (snapshot) {
             is JvmJniLocalReferenceSnapshot.ObjectReference -> newObjectHandle(snapshot.reference)
-            is JvmJniLocalReferenceSnapshot.ClassReference -> newClassHandle(snapshot.className)
+            is JvmJniLocalReferenceSnapshot.ClassReference -> newClassHandle(
+                className = snapshot.className,
+                loadedClassKey = snapshot.loadedClassKey,
+            )
         }
 
     fun newGlobalReference(snapshot: JvmJniLocalReferenceSnapshot): JvmJniHandleId =
         when (snapshot) {
             is JvmJniLocalReferenceSnapshot.ObjectReference -> newGlobalObjectHandle(snapshot.reference)
             is JvmJniLocalReferenceSnapshot.ClassReference ->
-                allocate(JvmJniHandleEntry.ClassHandle(snapshot.className), JvmJniHandleScope.Global)
+                allocate(
+                    JvmJniHandleEntry.ClassHandle(snapshot.className, snapshot.loadedClassKey),
+                    JvmJniHandleScope.Global,
+                )
         }
 
     fun newWeakGlobalReference(snapshot: JvmJniLocalReferenceSnapshot): JvmJniHandleId =
         when (snapshot) {
             is JvmJniLocalReferenceSnapshot.ObjectReference -> newWeakGlobalObjectHandle(snapshot.reference)
             is JvmJniLocalReferenceSnapshot.ClassReference ->
-                allocate(JvmJniHandleEntry.ClassHandle(snapshot.className), JvmJniHandleScope.WeakGlobal)
+                allocate(
+                    JvmJniHandleEntry.ClassHandle(snapshot.className, snapshot.loadedClassKey),
+                    JvmJniHandleScope.WeakGlobal,
+                )
         }
 
     private fun allocate(entry: JvmJniHandleEntry, scope: JvmJniHandleScope): JvmJniHandleId {
@@ -200,7 +216,10 @@ enum class JvmJniReferenceType {
 sealed interface JvmJniLocalReferenceSnapshot {
     data class ObjectReference(val reference: JvmObjectReferenceValue) : JvmJniLocalReferenceSnapshot
 
-    data class ClassReference(val className: String) : JvmJniLocalReferenceSnapshot
+    data class ClassReference(
+        val className: String,
+        val loadedClassKey: JvmLoadedClassKey? = null,
+    ) : JvmJniLocalReferenceSnapshot
 }
 
 private fun JvmJniHandleScope.toReferenceType(): JvmJniReferenceType =
@@ -213,7 +232,10 @@ private fun JvmJniHandleScope.toReferenceType(): JvmJniReferenceType =
 
 private sealed interface JvmJniHandleEntry {
     data class ObjectHandle(val reference: JvmObjectReferenceValue) : JvmJniHandleEntry
-    data class ClassHandle(val className: String) : JvmJniHandleEntry
+    data class ClassHandle(
+        val className: String,
+        val loadedClassKey: JvmLoadedClassKey? = null,
+    ) : JvmJniHandleEntry
     data class MethodIdHandle(val method: JvmResolvedMethod) : JvmJniHandleEntry
     data class FieldIdHandle(val field: JvmResolvedField) : JvmJniHandleEntry
 }
