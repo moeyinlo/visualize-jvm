@@ -3,7 +3,9 @@ package me.moeyinlo.visualize.jvm.runtime
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.jar.JarFile
+import me.moeyinlo.visualize.jvm.classfile.ClassFileFormatException
 import me.moeyinlo.visualize.jvm.classfile.ClassFileParser
+import me.moeyinlo.visualize.jvm.classfile.ClassFileReadException
 
 sealed interface JvmClassPathEntry {
     data class Directory(val root: Path) : JvmClassPathEntry
@@ -30,8 +32,22 @@ class JvmClassPathLoader(
 
         val classBytes = entries.firstNotNullOfOrNull { entry -> entry.findClassBytes(internalName) }
             ?: throw JvmClassPathLookupException(internalName)
-        val classFile = ClassFileParser.parse(bytes = classBytes.bytes, source = classBytes.source)
-        val methodAreaEntry = classFile.toJvmMethodAreaEntry()
+        val methodAreaEntry = try {
+            ClassFileParser.parse(bytes = classBytes.bytes, source = classBytes.source)
+                .toJvmMethodAreaEntry()
+        } catch (exception: ClassFileFormatException) {
+            throw JvmClassPathFormatException(
+                internalName = internalName,
+                source = classBytes.source,
+                cause = exception,
+            )
+        } catch (exception: ClassFileReadException) {
+            throw JvmClassPathFormatException(
+                internalName = internalName,
+                source = classBytes.source,
+                cause = exception,
+            )
+        }
         val definedInternalName = methodAreaEntry.definition.internalName
         if (definedInternalName != internalName) {
             throw JvmClassPathNameMismatchException(
@@ -89,6 +105,14 @@ class JvmClassPathLookupException(
     val internalName: String,
 ) : IllegalStateException("Class $internalName is not present on the classpath") {
     val guestThrowableClassName: String = "java/lang/NoClassDefFoundError"
+}
+
+class JvmClassPathFormatException(
+    val internalName: String,
+    val source: String,
+    cause: Throwable,
+) : IllegalStateException("Class $internalName has malformed classfile bytes from $source", cause) {
+    val guestThrowableClassName: String = "java/lang/ClassFormatError"
 }
 
 class JvmClassPathNameMismatchException(message: String) : IllegalStateException(message)

@@ -9,6 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
+import me.moeyinlo.visualize.jvm.classfile.ClassFileFormatException
 import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlags
 import me.moeyinlo.visualize.jvm.classfile.ClassFile
 import me.moeyinlo.visualize.jvm.classfile.ClassFileKind
@@ -140,6 +141,28 @@ class JvmClassPathLoaderTest {
         assertEquals("java/lang/NoClassDefFoundError", exception.guestThrowableClassName)
         assertEquals("pkg/Missing", exception.internalName)
         assertEquals("Class pkg/Missing is not present on the classpath", exception.message)
+    }
+
+    @Test
+    fun `reports malformed classpath bytes as guest ClassFormatError`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-format-error")
+        val malformedBytes = byteArrayOf(0x00, 0x00, 0x00, 0x00)
+        writeDirectoryClass(root, "pkg/Broken", malformedBytes)
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+        )
+
+        val exception = assertFailsWith<JvmClassPathFormatException> {
+            loader.load("pkg/Broken")
+        }
+
+        assertEquals("java/lang/ClassFormatError", exception.guestThrowableClassName)
+        assertEquals("pkg/Broken", exception.internalName)
+        assertEquals(root.resolve("pkg/Broken.class").toString(), exception.source)
+        assertEquals(ClassFileFormatException::class, exception.cause!!::class)
+        assertFalse(methodArea.hasClass("pkg/Broken"))
     }
 
     @Test
