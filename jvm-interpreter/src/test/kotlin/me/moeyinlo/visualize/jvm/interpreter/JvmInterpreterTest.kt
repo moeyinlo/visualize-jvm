@@ -17690,6 +17690,143 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `JNI OnLoad propagates method area through JavaVM GetEnv static upcalls`() {
+        val heap = JvmHeap()
+        val staticFields = JvmStaticFields()
+        val methodArea = JvmMethodArea()
+        val nestedParent = JvmClassDefinition(
+            internalName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val nested = JvmClassDefinition(
+            internalName = "Nested",
+            superclassName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "nestedValue", descriptor = "I", isStatic = false)),
+        )
+        val systemClass = JvmClassDefinition(
+            internalName = "java/lang/System",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "loadLibrary",
+                    descriptor = "(Ljava/lang/String;)V",
+                    isStatic = true,
+                    isNative = true,
+                ),
+            ),
+        )
+        val upcallTarget = JvmClassDefinition(
+            internalName = "UpcallTarget",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "make",
+                    descriptor = "()I",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0xBB.toByte(),
+                        0x00.toByte(),
+                        0x02.toByte(),
+                        0x57.toByte(),
+                        0x03.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Nested", "Nested".encodeToByteArray()),
+                            ConstantClassEntry(ConstantPoolIndex(1)),
+                        ),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+            ),
+        )
+        listOf(nestedParent, nested, systemClass, upcallTarget).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+        val classHierarchy = JvmClassHierarchy(listOf(nestedParent, nested, systemClass, upcallTarget))
+        val descriptor = JvmNativeLibraryDescriptor(
+            logicalName = "loader-native",
+            path = Path.of("loader-native.dll"),
+        )
+        val registry = JvmNativeLibraryRegistry()
+        val loader = JvmNativeLibraryLoader(
+            catalog = JvmNativeLibraryCatalog(listOf(descriptor)),
+            lifecycle = JvmNativeLibraryLifecycle(
+                backend = JvmPanamaDowncallBackend { path, symbolName ->
+                    if (path == descriptor.path && symbolName == "JNI_OnLoad") {
+                        JvmNativeSymbolAddress(symbolName, 0x1111L)
+                    } else {
+                        null
+                    }
+                },
+                registry = registry,
+                invokeDowncall = { invocation ->
+                    val javaVmArgument = invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJavaVm
+                    val jniEnvironment = javaVmArgument.javaVm.getEnv(JvmJniVersions.Version24).environment!!
+                    val targetClass = jniEnvironment.handles.newClassHandle("UpcallTarget")
+                    val targetMethod = jniEnvironment.getStaticMethodId(targetClass, "make", "()I")
+                    assertEquals(0, jniEnvironment.callStaticIntMethod(targetClass, targetMethod))
+                    JvmNativeDowncallReturn.IntPrimitive(JvmJniVersions.Version24)
+                },
+            ),
+        )
+        val javaVm = JvmSimulatedJavaVm(
+            JvmSimulatedJniEnvironment(
+                classHierarchy = classHierarchy,
+                heap = heap,
+                staticFields = staticFields,
+            ),
+        )
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, heap.internString("loader-native"))
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("java/lang/System", "java/lang/System".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("loadLibrary", "loadLibrary".encodeToByteArray()),
+                    ConstantUtf8Entry("(Ljava/lang/String;)V", "(Ljava/lang/String;)V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            nativeMethods = JvmVmIntrinsics.Registry,
+            currentClassName = "Caller",
+            nativeLibraryLoader = loader,
+            javaVm = javaVm,
+            methodArea = methodArea,
+        )
+
+        val nestedReference = JvmObjectReferenceValue(JvmReferenceId(2))
+        val parentField = JvmFieldReference("NestedParent", "parentValue", "J")
+        val nestedField = JvmFieldReference("Nested", "nestedValue", "I")
+        assertEquals(descriptor, registry.loadedLibrary("loader-native")?.library)
+        assertEquals("Nested", heap.get(nestedReference).className)
+        assertFalse(heap.isInitialized(nestedReference))
+        assertTrue(heap.hasInstanceField(nestedReference, parentField))
+        assertTrue(heap.hasInstanceField(nestedReference, nestedField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(nestedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(nestedReference, nestedField))
+    }
+
+    @Test
     fun `invokestatic System loadLibrary loads through configured native library loader`() {
         val descriptor = JvmNativeLibraryDescriptor(
             logicalName = "loader-native",

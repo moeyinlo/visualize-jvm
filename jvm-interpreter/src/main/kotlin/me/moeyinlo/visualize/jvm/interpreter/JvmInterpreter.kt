@@ -912,23 +912,55 @@ object JvmInterpreter {
         startBytecodeOffset: Int = 0,
         methodArea: JvmMethodArea? = null,
     ): JvmExecutionResult {
+        val nativeLibraryJavaVm = if (nativeLibraryLoader == null) {
+            null
+        } else {
+            javaVm ?: throw JvmUnsupportedInstructionException(
+                "Native library loader requires a simulated JavaVM",
+            )
+        }
+        fun <T> withNativeLibraryLifecycleUpcalls(action: () -> T): T {
+            val configuredJavaVm = nativeLibraryJavaVm ?: return action()
+            val configuredMethodArea = methodArea ?: return action()
+            return configuredJavaVm.environment.withUpcallDispatcher(
+                jniUpcallDispatcher(
+                    heap = heap,
+                    classHierarchy = classHierarchy,
+                    staticFields = staticFields,
+                    classInitializationStates = classInitializationStates,
+                    nativeMethods = nativeMethods,
+                    monitors = monitors,
+                    threadScheduler = threadScheduler,
+                    currentThreadId = currentThreadId,
+                    terminationState = terminationState,
+                    monitorUnblockedHandler = monitorUnblockedHandler,
+                    currentClassName = currentClassName,
+                    dynamicConstants = dynamicConstants,
+                    methodArea = configuredMethodArea,
+                ),
+            ) {
+                action()
+            }
+        }
         val effectiveLoadNativeLibraryHandler = if (nativeLibraryLoader == null) {
             loadNativeLibraryHandler
         } else {
-            nativeLibraryLoader.loadHook(
-                javaVm ?: throw JvmUnsupportedInstructionException(
-                    "Native library loader requires a simulated JavaVM",
-                ),
-            )
+            { logicalName ->
+                withNativeLibraryLifecycleUpcalls {
+                    nativeLibraryLoader.loadLibrary(logicalName, nativeLibraryJavaVm!!)
+                    Unit
+                }
+            }
         }
         val effectiveUnloadNativeLibraryHandler = if (nativeLibraryLoader == null) {
             unloadNativeLibraryHandler
         } else {
-            nativeLibraryLoader.unloadHook(
-                javaVm ?: throw JvmUnsupportedInstructionException(
-                    "Native library loader requires a simulated JavaVM",
-                ),
-            )
+            { logicalName ->
+                withNativeLibraryLifecycleUpcalls {
+                    nativeLibraryLoader.unloadLibrary(logicalName, nativeLibraryJavaVm!!)
+                    Unit
+                }
+            }
         }
         val frameResult = executeFrame(
             code = code,
