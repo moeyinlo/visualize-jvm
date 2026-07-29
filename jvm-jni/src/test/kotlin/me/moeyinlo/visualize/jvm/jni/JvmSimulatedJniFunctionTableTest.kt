@@ -2447,6 +2447,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticLongMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmLongValue {
                     calls += RecordedFunctionTableStaticLongUpcall(method, arguments)
                     return JvmLongValue(1_234_567_890_123L)

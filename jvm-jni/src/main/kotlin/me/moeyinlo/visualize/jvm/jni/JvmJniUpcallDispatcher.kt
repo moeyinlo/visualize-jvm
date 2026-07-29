@@ -200,6 +200,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticLongMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ): JvmLongValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

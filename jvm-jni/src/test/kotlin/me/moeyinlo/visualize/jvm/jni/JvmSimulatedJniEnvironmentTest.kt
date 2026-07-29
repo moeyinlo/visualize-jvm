@@ -5252,8 +5252,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticLongMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmLongValue {
-                    calls += RecordedStaticLongUpcall(method, arguments)
+                    calls += RecordedStaticLongUpcall(method, arguments, currentLoadedClassKey)
                     return JvmLongValue(9_876_543_210L)
                 }
             },
@@ -5310,6 +5311,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticLongMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmLongValue = error("CallStaticLongMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -5324,6 +5326,70 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(
             "CallStaticLongMethod requires class Other to be assignable to Example",
             exception.message,
+        )
+    }
+
+    @Test
+    fun `CallStaticLongMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(9, "long-loader"),
+        )
+        val calls = mutableListOf<RecordedStaticLongUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "wide",
+                                descriptor = "()J",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticLongMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ): JvmLongValue {
+                    calls += RecordedStaticLongUpcall(method, arguments, currentLoadedClassKey)
+                    return JvmLongValue(8_877_665_544L)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "wide", "()J")
+
+        val result = environment.callStaticLongMethod(classHandle, methodHandle)
+
+        assertEquals(8_877_665_544L, result)
+        assertEquals(
+            listOf(
+                RecordedStaticLongUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "wide",
+                        descriptor = "()J",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
+                ),
+            ),
+            calls,
         )
     }
 
@@ -13862,6 +13928,7 @@ private data class RecordedStaticIntUpcall(
 private data class RecordedStaticLongUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedStaticFloatUpcall(

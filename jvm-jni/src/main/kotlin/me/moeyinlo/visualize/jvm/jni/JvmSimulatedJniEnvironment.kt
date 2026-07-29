@@ -939,6 +939,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticLongMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 
