@@ -1999,6 +1999,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 currentMethodName = currentMethodName,
                 currentSourceFile = currentSourceFile,
                 currentLineNumberTable = currentLineNumberTable,
@@ -2026,6 +2027,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 currentMethodName = currentMethodName,
                 currentSourceFile = currentSourceFile,
                 currentLineNumberTable = currentLineNumberTable,
@@ -6834,6 +6836,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -7109,6 +7112,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -9319,6 +9323,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -9335,7 +9340,13 @@ object JvmInterpreter {
         methodArea: JvmMethodArea? = null,
     ) {
         val className = resolveConstantClassName(instruction, constantPool)
-        requireAccessibleClass(className, currentClassName, classHierarchy)
+        requireAccessibleClass(
+            targetClassName = className,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         initializeClassForActiveUse(
             className,
             classHierarchy,
@@ -9459,7 +9470,30 @@ object JvmInterpreter {
         targetClassName: String,
         currentClassName: String?,
         classHierarchy: JvmClassHierarchy,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+        methodArea: JvmMethodArea? = null,
     ) {
+        if (
+            currentClassName != null &&
+            currentLoadedClassKey != null &&
+            methodArea != null &&
+            currentLoadedClassKey.internalName == currentClassName
+        ) {
+            val currentEntry = methodArea.getClass(currentLoadedClassKey) ?: return
+            val targetEntry = methodArea.getClass(
+                internalName = targetClassName,
+                initiatingLoader = currentLoadedClassKey.definingLoader,
+            ) ?: methodArea.getClass(
+                currentLoadedClassKey.copy(internalName = targetClassName),
+            ) ?: return
+            if (!targetEntry.definition.isPublic && currentEntry.runtimePackageKey != targetEntry.runtimePackageKey) {
+                throw JvmIllegalAccessError(
+                    guestClassName = "java/lang/IllegalAccessError",
+                    message = "Class $currentClassName cannot access class $targetClassName",
+                )
+            }
+            return
+        }
         val targetClass = classHierarchy.classDefinition(targetClassName) ?: return
         if (
             currentClassName != null &&

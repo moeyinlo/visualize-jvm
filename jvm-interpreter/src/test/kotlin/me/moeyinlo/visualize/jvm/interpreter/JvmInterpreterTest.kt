@@ -4070,6 +4070,57 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new rejects package private target classes from same named package in different defining loaders`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 75, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 76, displayName = "library")
+        val callerKey = JvmLoadedClassKey("pkg/Caller", appLoader)
+        val targetKey = JvmLoadedClassKey("pkg/Hidden", libraryLoader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Caller"),
+                loadedClassKey = callerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Hidden", isPublic = false),
+                loadedClassKey = targetKey,
+                initiatingLoaders = setOf(appLoader),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBB.toByte(),
+                    0x00.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("pkg/Hidden", "pkg/Hidden".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "pkg/Hidden", isPublic = false),
+                        JvmClassDefinition("pkg/Caller"),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class pkg/Caller cannot access class pkg/Hidden", exception.message)
+    }
+
+    @Test
     fun `new uses method area layout for uninitialized object fields`() {
         val heap = JvmHeap()
         val methodArea = JvmMethodArea()
