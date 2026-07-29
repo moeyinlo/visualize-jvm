@@ -136,6 +136,39 @@ class JvmHeapTest {
     }
 
     @Test
+    fun `heap allocates uninitialized objects with superclass layout from method area`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val parent = JvmClassDefinition(
+            internalName = "Parent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val child = JvmClassDefinition(
+            internalName = "Child",
+            superclassName = "Parent",
+            fields = listOf(JvmFieldDefinition(name = "childValue", descriptor = "I", isStatic = false)),
+        )
+        listOf(parent, child).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+
+        val reference = heap.allocateUninitializedObject(
+            methodArea,
+            JvmLoadedClassKey("Child", JvmClassLoaderIdentity.Bootstrap),
+        )
+
+        assertEquals(JvmHeapObject("Child", isInitialized = false), heap.get(reference))
+        assertFalse(heap.isInitialized(reference))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(reference, JvmFieldReference("Parent", "parentValue", "J")))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(reference, JvmFieldReference("Child", "childValue", "I")))
+    }
+
+    @Test
     fun `heap tracks uninitialized object state for constructor execution`() {
         val heap = JvmHeap()
 

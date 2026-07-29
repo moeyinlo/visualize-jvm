@@ -134,6 +134,31 @@ class JvmHeap {
         )
     }
 
+    fun allocateUninitializedObject(
+        methodArea: JvmMethodArea,
+        loadedClassKey: JvmLoadedClassKey,
+    ): JvmObjectReferenceValue {
+        val entry = methodArea.getClass(loadedClassKey)
+            ?: throw JvmMethodAreaAccessException(
+                "Class ${loadedClassKey.diagnosticName} is not defined in the method area",
+            )
+        return allocateUninitializedObject(
+            classDefinition = entry.definition,
+            superclasses = methodArea.superclassDefinitionsFor(loadedClassKey),
+        )
+    }
+
+    fun allocateUninitializedObject(
+        classDefinition: JvmClassDefinition,
+        superclasses: List<JvmClassDefinition> = emptyList(),
+    ): JvmObjectReferenceValue {
+        val reference = allocateUninitializedObject(classDefinition.internalName)
+        (superclasses + classDefinition).forEach { definition ->
+            prepareDeclaredInstanceFields(reference, definition)
+        }
+        return reference
+    }
+
     fun allocateBooleanArray(length: Int): JvmObjectReferenceValue {
         require(length >= 0) { "array length must be non-negative: $length" }
 
