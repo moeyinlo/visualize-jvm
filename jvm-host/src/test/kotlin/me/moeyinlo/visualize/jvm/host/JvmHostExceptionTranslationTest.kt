@@ -114,6 +114,55 @@ class JvmHostExceptionTranslationTest {
         assertEquals("java/lang/IllegalStateException", heap.get(exception.guestThrowable).className)
     }
 
+    @Test
+    fun `instance host method throwable records opaque failed boundary event`() {
+        val heap = JvmHeap()
+        val hostReceiver = ThrowingHostFixture()
+        val guestReceiver = heap.allocateObject("me/moeyinlo/visualize/jvm/host/JvmHostExceptionTranslationTest\$ThrowingHostFixture")
+        val identityMap = JvmHostIdentityMap()
+        identityMap.bind(guestReceiver, hostReceiver)
+        val recorder = JvmHostBoundaryEventRecorder()
+        val mirror = JvmHostDelegatedClassMirror.fromHostClass(ThrowingHostFixture::class.java)
+        val method = JvmHostMethodResolver.resolveInstanceMethod(
+            owner = mirror,
+            name = "throwInstance",
+            descriptor = "(I)I",
+        )
+
+        assertFailsWith<JvmHostTranslatedException> {
+            JvmHostMethodInvoker.invokeInstance(
+                method = method,
+                receiver = guestReceiver,
+                arguments = listOf(JvmIntValue(7)),
+                heap = heap,
+                identityMap = identityMap,
+                boundaryEvents = recorder,
+            )
+        }
+
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = mirror.guestInternalName,
+                    methodName = "throwInstance",
+                    descriptor = "(I)I",
+                    detail = "instance args=1",
+                ),
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 2,
+                    action = JvmHostBoundaryAction.Failed,
+                    className = mirror.guestInternalName,
+                    methodName = "throwInstance",
+                    descriptor = "(I)I",
+                    detail = "translated=java.lang.IllegalStateException",
+                ),
+            ),
+            recorder.snapshots(),
+        )
+    }
+
     class ThrowingHostFixture {
         fun throwInstance(value: Int): Int {
             throw IllegalStateException("bad instance $value")
