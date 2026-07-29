@@ -16723,6 +16723,90 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `ldc class mirrors preserve loaded class key identity`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 176, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 177, displayName = "library")
+        val appCallerKey = JvmLoadedClassKey("app/Caller", appLoader)
+        val libraryCallerKey = JvmLoadedClassKey("lib/Caller", libraryLoader)
+        val appTargetKey = JvmLoadedClassKey("pkg/Target", appLoader)
+        val libraryTargetKey = JvmLoadedClassKey("pkg/Target", libraryLoader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = appCallerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/Caller"),
+                loadedClassKey = libraryCallerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Target", isPublic = true),
+                loadedClassKey = appTargetKey,
+                initiatingLoaders = setOf(appLoader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Target", isPublic = true),
+                loadedClassKey = libraryTargetKey,
+                initiatingLoaders = setOf(libraryLoader),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition("app/Caller"),
+                JvmClassDefinition("lib/Caller"),
+                JvmClassDefinition("pkg/Target", isPublic = true),
+            ),
+        )
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantUtf8Entry("pkg/Target", "pkg/Target".encodeToByteArray()),
+                ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+            ),
+        )
+        val heap = JvmHeap()
+
+        val appResult = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            methodArea = methodArea,
+            currentClassName = "app/Caller",
+            currentLoadedClassKey = appCallerKey,
+        )
+        val libraryResult = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = constantPool,
+            heap = heap,
+            classHierarchy = classHierarchy,
+            methodArea = methodArea,
+            currentClassName = "lib/Caller",
+            currentLoadedClassKey = libraryCallerKey,
+        )
+
+        val appMirror = appResult.operandStack.pop() as JvmObjectReferenceValue
+        val libraryMirror = libraryResult.operandStack.pop() as JvmObjectReferenceValue
+        assertTrue(appMirror != libraryMirror)
+        assertEquals(JvmClassPayload("pkg/Target", loadedClassKey = appTargetKey), heap.get(appMirror).payload)
+        assertEquals(JvmClassPayload("pkg/Target", loadedClassKey = libraryTargetKey), heap.get(libraryMirror).payload)
+    }
+
+    @Test
     fun `ldc rejects package private class literals from another package`() {
         val exception = assertFailsWith<JvmIllegalAccessError> {
             JvmInterpreter.execute(
@@ -16923,7 +17007,7 @@ class JvmInterpreterTest {
         assertEquals(
             JvmHeapObject(
                 className = "java/lang/Class",
-                payload = JvmClassPayload("lib/api/Hidden"),
+                payload = JvmClassPayload("lib/api/Hidden", loadedClassKey = hiddenKey),
             ),
             heap.get(reference),
         )

@@ -12,7 +12,10 @@ sealed interface JvmHeapPayload {
 
 data class JvmStringPayload(val value: String) : JvmHeapPayload
 
-data class JvmClassPayload(val representedClassName: String) : JvmHeapPayload
+data class JvmClassPayload(
+    val representedClassName: String,
+    val loadedClassKey: JvmLoadedClassKey? = null,
+) : JvmHeapPayload
 
 data class JvmStackTraceFrame(
     val declaringClass: String,
@@ -77,11 +80,16 @@ private data class JvmMethodHandleKey(
     val referenceIndex: Int,
 )
 
+private data class JvmClassMirrorKey(
+    val representedClassName: String,
+    val loadedClassKey: JvmLoadedClassKey?,
+)
+
 class JvmHeap {
     private val objects = linkedMapOf<JvmReferenceId, JvmHeapObject>()
     private val instanceFields = linkedMapOf<JvmReferenceId, MutableMap<JvmFieldReference, JvmValue>>()
     private val internedStrings = linkedMapOf<String, JvmObjectReferenceValue>()
-    private val classMirrors = linkedMapOf<String, JvmObjectReferenceValue>()
+    private val classMirrors = linkedMapOf<JvmClassMirrorKey, JvmObjectReferenceValue>()
     private val methodTypes = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodHandleLookups = linkedMapOf<String, JvmObjectReferenceValue>()
     private val methodHandles = linkedMapOf<JvmMethodHandleKey, JvmObjectReferenceValue>()
@@ -311,14 +319,20 @@ class JvmHeap {
         }
     }
 
-    fun internClassMirror(className: String): JvmObjectReferenceValue {
+    fun internClassMirror(
+        className: String,
+        loadedClassKey: JvmLoadedClassKey? = null,
+    ): JvmObjectReferenceValue {
         require(className.isNotBlank()) { "class name must not be blank" }
 
-        return classMirrors.getOrPut(className) {
+        return classMirrors.getOrPut(JvmClassMirrorKey(className, loadedClassKey)) {
             allocate(
                 JvmHeapObject(
                     className = "java/lang/Class",
-                    payload = JvmClassPayload(className),
+                    payload = JvmClassPayload(
+                        representedClassName = className,
+                        loadedClassKey = loadedClassKey,
+                    ),
                 ),
             )
         }

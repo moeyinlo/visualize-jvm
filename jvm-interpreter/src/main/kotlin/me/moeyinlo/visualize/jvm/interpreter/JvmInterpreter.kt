@@ -4889,7 +4889,20 @@ object JvmInterpreter {
                     methodArea = methodArea,
                     moduleLayer = moduleLayer,
                 )
-                operandStack.push(heap.internClassMirror(nameEntry.value))
+                operandStack.push(
+                    heap.internClassMirror(
+                        className = nameEntry.value,
+                        loadedClassKey = if (className.startsWith("[")) {
+                            null
+                        } else {
+                            ownerLoadedClassKey(
+                                ownerClassName = className,
+                                currentLoadedClassKey = currentLoadedClassKey,
+                                methodArea = methodArea,
+                            )
+                        },
+                    ),
+                )
             }
             is ConstantDynamicEntry -> {
                 val value = resolveDynamicConstant(
