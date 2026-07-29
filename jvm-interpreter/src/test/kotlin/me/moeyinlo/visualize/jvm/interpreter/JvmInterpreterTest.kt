@@ -35367,6 +35367,91 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached constructor target rejects package private constructors from same named package in different defining loaders`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 151, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 152, displayName = "library")
+        val callerKey = JvmLoadedClassKey("pkg/Caller", appLoader)
+        val constructedKey = JvmLoadedClassKey("pkg/Constructed", libraryLoader)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition(internalName = "pkg/Caller")
+        val constructed = JvmClassDefinition(
+            internalName = "pkg/Constructed",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<init>",
+                    descriptor = "()V",
+                    isStatic = false,
+                    isPackagePrivate = true,
+                    code = byteArrayOf(0xB1.toByte()),
+                    maxStack = 0,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = caller,
+                loadedClassKey = callerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = constructed,
+                loadedClassKey = constructedKey,
+                initiatingLoaders = setOf(appLoader, libraryLoader),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(listOf(caller, constructed))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicConstructorCallSiteConstantPool(),
+                heap = JvmHeap(),
+                classHierarchy = classHierarchy,
+                currentClassName = "pkg/Caller",
+                currentLoadedClassKey = callerKey,
+                invokeDynamicCallSites = callSites,
+                methodArea = methodArea,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals(
+            "Class pkg/Caller cannot access package-private method pkg/Constructed.<init>:()V",
+            exception.message,
+        )
+    }
+    @Test
     fun `invokedynamic executes cached new invoke special constructor target`() {
         val heap = JvmHeap()
         val classHierarchy = JvmClassHierarchy(

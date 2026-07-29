@@ -8557,7 +8557,13 @@ object JvmInterpreter {
             methodArea = methodArea,
             moduleLayer = moduleLayer,
         )
-        requireAccessibleMethod(constructor, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = constructor,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val argumentDescriptors = constructor.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
