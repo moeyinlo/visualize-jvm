@@ -806,28 +806,23 @@ class JvmNativeMethodRegistry(
                             val invokeNativeExport = {
                                 invokeDowncall.invoke(downcallInvocation).toGuestValue(environment)
                             }
-                            val methodArea = context.methodArea
-                            return@JvmNativeMethodIntrinsic if (methodArea == null) {
+                            return@JvmNativeMethodIntrinsic environment.withUpcallDispatcher(
+                                JvmInterpreter.jniUpcallDispatcher(
+                                    heap = context.heap,
+                                    classHierarchy = context.classHierarchy,
+                                    staticFields = context.staticFields,
+                                    classInitializationStates = context.classInitializationStates,
+                                    nativeMethods = context.nativeMethods,
+                                    monitors = context.monitors,
+                                    threadScheduler = context.threadScheduler,
+                                    currentThreadId = context.currentThreadId,
+                                    terminationState = context.terminationState,
+                                    currentClassName = context.currentClassName,
+                                    dynamicConstants = context.dynamicConstants,
+                                    methodArea = context.methodArea,
+                                ),
+                            ) {
                                 invokeNativeExport()
-                            } else {
-                                environment.withUpcallDispatcher(
-                                    JvmInterpreter.jniUpcallDispatcher(
-                                        heap = context.heap,
-                                        classHierarchy = context.classHierarchy,
-                                        staticFields = context.staticFields,
-                                        classInitializationStates = context.classInitializationStates,
-                                        nativeMethods = context.nativeMethods,
-                                        monitors = context.monitors,
-                                        threadScheduler = context.threadScheduler,
-                                        currentThreadId = context.currentThreadId,
-                                        terminationState = context.terminationState,
-                                        currentClassName = context.currentClassName,
-                                        dynamicConstants = context.dynamicConstants,
-                                        methodArea = methodArea,
-                                    ),
-                                ) {
-                                    invokeNativeExport()
-                                }
                             }
                         } finally {
                             environment.popLocalFrame(null)

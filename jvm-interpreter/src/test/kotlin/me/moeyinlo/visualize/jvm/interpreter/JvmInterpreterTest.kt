@@ -16105,6 +16105,154 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `loaded native library static exports initialize interpreted JNI static upcall targets`() {
+        val heap = JvmHeap()
+        val staticFields = JvmStaticFields()
+        val initializationStates = JvmClassInitializationStates()
+        val initializedField = JvmFieldReference(
+            ownerClassName = "Helper",
+            name = "initialized",
+            descriptor = "I",
+        )
+        val helperConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Helper", "Helper".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("initialized", "initialized".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val nativeOwner = JvmClassDefinition(
+            internalName = "NativeOwner",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "nativeAddInitialized",
+                    descriptor = "(I)I",
+                    isStatic = true,
+                    isNative = true,
+                ),
+            ),
+        )
+        val helper = JvmClassDefinition(
+            internalName = "Helper",
+            fields = listOf(
+                JvmFieldDefinition(name = "initialized", descriptor = "I", isStatic = true),
+            ),
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<clinit>",
+                    descriptor = "()V",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0x10.toByte(),
+                        0x28.toByte(),
+                        0xB3.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    constantPool = helperConstantPool,
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+                JvmMethodDefinition(
+                    name = "addInitialized",
+                    descriptor = "(I)I",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x1A.toByte(),
+                        0x60.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    constantPool = helperConstantPool,
+                    maxStack = 2,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(listOf(nativeOwner, helper))
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+        )
+        val loadedLibraries = JvmNativeLibraryRegistry()
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "NativeOwner",
+            methodName = "nativeAddInitialized",
+            methodDescriptor = "(I)I",
+            isStatic = true,
+            symbolName = "Java_NativeOwner_nativeAddInitialized__I",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(export),
+        )
+        val target = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x3579L,
+        )
+        loadedLibraries.markLoaded(
+            binding = JvmNativeLibraryBinding(
+                library = library,
+                onLoadTarget = null,
+                onUnloadTarget = null,
+                exportTargets = mapOf(export.guestMethod to target),
+            ),
+            onLoadVersion = null,
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x07.toByte(),
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeAddInitialized", "nativeAddInitialized".encodeToByteArray()),
+                    ConstantUtf8Entry("(I)I", "(I)I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            classInitializationStates = initializationStates,
+            nativeMethods = JvmNativeMethodRegistry.fromLoadedNativeLibraries(
+                loadedLibraries = loadedLibraries,
+                environment = environment,
+                invokeDowncall = { invocation ->
+                    assertEquals(target, invocation.target)
+                    val jniEnvironment =
+                        (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJniEnv).environment
+                    val targetClass = jniEnvironment.handles.newClassHandle("Helper")
+                    val targetMethod = jniEnvironment.getStaticMethodId(targetClass, "addInitialized", "(I)I")
+                    JvmNativeDowncallReturn.IntPrimitive(
+                        jniEnvironment.callStaticIntMethod(targetClass, targetMethod, listOf(JvmIntValue(4))),
+                    )
+                },
+            ),
+            currentClassName = "Caller",
+        )
+
+        assertEquals(listOf(JvmIntValue(44)), result.operandStack.toList())
+        assertEquals(JvmIntValue(40), staticFields.get(initializedField))
+        assertEquals(JvmClassInitializationState.Initialized, initializationStates.get("Helper"))
+    }
+    @Test
     fun `loaded native library exports run inside an automatic JNI local frame`() {
         val heap = JvmHeap()
         val inputReference = heap.allocateObject("java/lang/Object")
