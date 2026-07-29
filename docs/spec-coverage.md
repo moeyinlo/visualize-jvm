@@ -879,7 +879,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.3.5 | Deriving class from class file bytes | `jvm-runtime`, `jvm-classfile` | TBD | PENDING |
 | 5.3.6 | Modules and layers | `jvm-runtime` | TBD | PENDING |
 | 5.4.1 | Verification during linking | `jvm-verifier`, `jvm-runtime` | TBD | PENDING |
-| 5.4.2 | Preparation | `jvm-runtime` | TBD | PENDING |
+| 5.4.2 | Preparation partially covers runtime static-field storage allocation, descriptor default values, numeric `ConstantValue` assignment, and heap-aware guest String constant interning during class preparation; full JVMS preparation for all class/interface state remains pending | `jvm-runtime` | `JvmStaticFieldsTest`, `JvmClassfileRuntimeAdapterTest` | PARTIAL |
 | 5.4.3.1 | Class and interface resolution | `jvm-runtime` | TBD | PENDING |
 | 5.4.3.1, 5.4.3.2 | Field reference resolution throws guest `NoClassDefFoundError` when the referenced owner class cannot be resolved in strict class-resolution mode | `jvm-runtime`, `jvm-interpreter` | `JvmInterpreterTest.getstatic throws guest NoClassDefFoundError when field owner class is missing` | IMPLEMENTED |
 | 5.4.3.2 | Field resolution resolves the referenced owner class in strict mode, searches declared fields, direct and indirect superinterfaces, then the superclass chain, and reports guest `NoClassDefFoundError` or `NoSuchFieldError` for resolution failures; access-control checks remain tracked separately under 5.4.4 | `jvm-runtime`, `jvm-interpreter` | `JvmFieldResolutionTest`, `JvmInterpreterTest.getstatic throws guest NoClassDefFoundError when field owner class is missing` | IMPLEMENTED |
