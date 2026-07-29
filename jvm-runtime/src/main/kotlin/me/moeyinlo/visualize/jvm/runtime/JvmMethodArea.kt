@@ -36,6 +36,7 @@ class JvmMethodArea {
         require(loadedClassKey.internalName == className) {
             "loaded class key ${loadedClassKey.diagnosticName} must match class internal name $className"
         }
+        validateRuntimePackageModule(entry, loadedClassKey)
         val previous = entriesByLoadedClassKey.putIfAbsent(loadedClassKey, entry)
         if (previous != null) {
             throw JvmMethodAreaDefinitionException("Class $className is already defined in the method area")
@@ -92,6 +93,21 @@ class JvmMethodArea {
 
     fun toList(): List<JvmMethodAreaEntry> = entriesByLoadedClassKey.values.toList()
 
+    private fun validateRuntimePackageModule(
+        entry: JvmMethodAreaEntry,
+        loadedClassKey: JvmLoadedClassKey,
+    ) {
+        val runtimePackageKey = loadedClassKey.runtimePackageKey() ?: return
+        val conflictingEntry = classesInRuntimePackage(runtimePackageKey)
+            .firstOrNull { existingEntry -> existingEntry.runtimeModuleName != entry.runtimeModuleName }
+            ?: return
+        throw JvmMethodAreaDefinitionException(
+            "Runtime package ${runtimePackageKey.packageName} @ ${runtimePackageKey.definingLoader.diagnosticName} " +
+                "is already associated with module ${conflictingEntry.runtimeModuleName.diagnosticModuleName()}, " +
+                "cannot define ${entry.definition.internalName} in module ${entry.runtimeModuleName.diagnosticModuleName()}",
+        )
+    }
+
     private fun indexInitiatingLoaders(
         internalName: String,
         loadedClassKey: JvmLoadedClassKey,
@@ -106,6 +122,8 @@ class JvmMethodArea {
 class JvmMethodAreaDefinitionException(message: String) : IllegalStateException(message)
 
 class JvmMethodAreaAccessException(message: String) : IllegalStateException(message)
+
+private fun String?.diagnosticModuleName(): String = this ?: "<unnamed>"
 
 private data class JvmInitiatingClassKey(
     val internalName: String,

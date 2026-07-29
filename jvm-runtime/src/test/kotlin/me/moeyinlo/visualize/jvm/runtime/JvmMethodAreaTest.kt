@@ -189,4 +189,34 @@ class JvmMethodAreaTest {
 
         assertEquals(listOf(first, second), methodArea.classesInRuntimePackage(packageKey))
     }
+    @Test
+    fun `method area rejects different modules in one runtime package`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/First"),
+                loadedClassKey = JvmLoadedClassKey("pkg/First", loader),
+                runtimeModuleName = "first.module",
+            ),
+        )
+
+        val failure = assertFailsWith<JvmMethodAreaDefinitionException> {
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = JvmClassDefinition(internalName = "pkg/Second"),
+                    loadedClassKey = JvmLoadedClassKey("pkg/Second", loader),
+                    runtimeModuleName = "second.module",
+                ),
+            )
+        }
+
+        assertEquals(
+            "Runtime package pkg @ app#7 is already associated with module first.module, " +
+                "cannot define pkg/Second in module second.module",
+            failure.message,
+        )
+        assertEquals(1, methodArea.classCount)
+        assertFalse(methodArea.hasClass(JvmLoadedClassKey("pkg/Second", loader)))
+    }
 }
