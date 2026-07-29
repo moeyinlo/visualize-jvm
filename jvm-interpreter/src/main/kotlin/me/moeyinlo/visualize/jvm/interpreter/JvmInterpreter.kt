@@ -6437,6 +6437,13 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
         requireVirtualMethodName(resolvedMethod)
+        requireAccessibleClass(
+            targetClassName = resolvedMethod.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         requireAccessibleMethod(
             method = resolvedMethod,
             currentClassName = currentClassName,
