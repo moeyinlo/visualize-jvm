@@ -8550,9 +8550,17 @@ object JvmInterpreter {
         val receiver = if (methodArea == null) {
             heap.allocateUninitializedObject(constructor.ownerClassName)
         } else {
+            val constructorLoadedClassKey = currentLoadedClassKey
+                ?.let { callerKey ->
+                    methodArea.getClass(
+                        internalName = constructor.ownerClassName,
+                        initiatingLoader = callerKey.definingLoader,
+                    )?.loadedClassKey
+                }
+                ?: JvmLoadedClassKey(constructor.ownerClassName, JvmClassLoaderIdentity.Bootstrap)
             heap.allocateUninitializedObject(
                 methodArea,
-                JvmLoadedClassKey(constructor.ownerClassName, JvmClassLoaderIdentity.Bootstrap),
+                constructorLoadedClassKey,
             )
         }
         if (constructor.isNative) {

@@ -34756,6 +34756,98 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached constructor target allocates receiver with current loader method area layout`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 151, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val parentKey = JvmLoadedClassKey("pkg/ConstructedParent", loader)
+        val constructedKey = JvmLoadedClassKey("pkg/Constructed", loader)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition(internalName = "app/Caller")
+        val constructedParent = JvmClassDefinition(
+            internalName = "pkg/ConstructedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val constructed = JvmClassDefinition(
+            internalName = "pkg/Constructed",
+            superclassName = "pkg/ConstructedParent",
+            fields = listOf(JvmFieldDefinition(name = "childValue", descriptor = "I", isStatic = false)),
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<init>",
+                    descriptor = "()V",
+                    isStatic = false,
+                    code = byteArrayOf(0xB1.toByte()),
+                    maxStack = 0,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        listOf(
+            callerKey to caller,
+            parentKey to constructedParent,
+            constructedKey to constructed,
+        ).forEach { (key, definition) ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = key,
+                ),
+            )
+        }
+        val classHierarchy = JvmClassHierarchy(listOf(caller, constructedParent, constructed))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "app/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicConstructorCallSiteConstantPool(),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            currentClassName = "app/Caller",
+            currentLoadedClassKey = callerKey,
+            invokeDynamicCallSites = callSites,
+            methodArea = methodArea,
+        )
+
+        val constructedReference = result.operandStack.toList().single() as JvmObjectReferenceValue
+        val parentField = JvmFieldReference("pkg/ConstructedParent", "parentValue", "J")
+        val childField = JvmFieldReference("pkg/Constructed", "childValue", "I")
+        assertEquals("pkg/Constructed", heap.get(constructedReference).className)
+        assertTrue(heap.isInitialized(constructedReference))
+        assertTrue(heap.hasInstanceField(constructedReference, parentField))
+        assertTrue(heap.hasInstanceField(constructedReference, childField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(constructedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(constructedReference, childField))
+    }
+
+    @Test
     fun `invokedynamic cached constructor target rejects public owner classes from unreadable runtime modules`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 150, displayName = "app")
         val callerKey = JvmLoadedClassKey("app/Caller", loader)
