@@ -9783,7 +9783,12 @@ object JvmInterpreter {
         if (
             method.isProtected &&
             currentClassName != null &&
-            currentClassName.runtimePackageName() != method.ownerClassName.runtimePackageName() &&
+            !areSameRuntimePackageForMethodAccess(
+                method = method,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            ) &&
             !classHierarchy.isAssignable(currentClassName, method.ownerClassName)
         ) {
             throw JvmIllegalAccessError(
@@ -9796,7 +9801,12 @@ object JvmInterpreter {
             method.isProtected &&
             currentClassName != null &&
             receiverClassName != null &&
-            currentClassName.runtimePackageName() != method.ownerClassName.runtimePackageName() &&
+            !areSameRuntimePackageForMethodAccess(
+                method = method,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            ) &&
             classHierarchy.isAssignable(currentClassName, method.ownerClassName) &&
             !classHierarchy.isAssignable(receiverClassName, currentClassName)
         ) {

@@ -22027,6 +22027,74 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokestatic rejects protected methods from same named package in different defining loaders`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 65, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 66, displayName = "library")
+        val callerKey = JvmLoadedClassKey("pkg/Caller", appLoader)
+        val ownerKey = JvmLoadedClassKey("pkg/Owner", libraryLoader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Caller"),
+                loadedClassKey = callerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Owner"),
+                loadedClassKey = ownerKey,
+                initiatingLoaders = setOf(appLoader),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB8.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 0,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("shared", "shared".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "shared",
+                                    descriptor = "()V",
+                                    isStatic = true,
+                                    isProtected = true,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 0,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("pkg/Caller"),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class pkg/Caller cannot access protected method pkg/Owner.shared:()V", exception.message)
+    }
+
+    @Test
     fun `invokestatic allows protected superclass methods from subclasses in another package`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
