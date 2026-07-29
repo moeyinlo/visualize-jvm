@@ -7469,6 +7469,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -7476,6 +7477,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             JvmMethodHandleReferenceKind.NewInvokeSpecial -> executeLinkedInvokeDynamicConstructorTarget(
                 instruction = instruction,
@@ -8280,6 +8282,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -8291,12 +8294,21 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val resolvedMethod = linkedCallSite.targetMethod
         requireInstanceMethod(instruction, resolvedMethod)
         requireVirtualMethodName(resolvedMethod)
         val expectedDescriptor = resolvedMethod.invokeVirtualMethodHandleDescriptor()
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, expectedDescriptor)
+        requireAccessibleClass(
+            targetClassName = resolvedMethod.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+            moduleLayer = moduleLayer,
+        )
         requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
