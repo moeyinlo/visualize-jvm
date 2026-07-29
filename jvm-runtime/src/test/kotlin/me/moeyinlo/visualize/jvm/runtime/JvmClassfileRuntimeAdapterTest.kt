@@ -24,6 +24,7 @@ import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
 import me.moeyinlo.visualize.jvm.classfile.LineNumberTableEntry
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
 import me.moeyinlo.visualize.jvm.classfile.NestHostAttribute
+import me.moeyinlo.visualize.jvm.classfile.NestMembersAttribute
 import me.moeyinlo.visualize.jvm.classfile.SameStackMapFrame
 import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
 import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
@@ -238,6 +239,34 @@ class JvmClassfileRuntimeAdapterTest {
 
         assertEquals("pkg/Example", definition.internalName)
         assertEquals("pkg/Example\$Host", definition.nestHostInternalName)
+    }
+
+    @Test
+    fun `classfile adapter maps NestMembers to runtime nest member metadata`() {
+        val classFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = constantPool(),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = emptyList(),
+            attributes = listOf(
+                NestMembersAttribute(
+                    nameIndex = ConstantPoolIndex(32),
+                    classes = listOf(ConstantPoolIndex(31)),
+                ),
+            ),
+        )
+
+        val definition = classFile.toJvmClassDefinition()
+
+        assertEquals("pkg/Example", definition.internalName)
+        assertEquals(listOf("pkg/Example\$Nested"), definition.nestMemberInternalNames)
     }
 
     @Test
@@ -460,6 +489,9 @@ class JvmClassfileRuntimeAdapterTest {
                 ConstantUtf8Entry("pkg/Example\$Host", "pkg/Example\$Host".encodeToByteArray()),
                 ConstantClassEntry(ConstantPoolIndex(27)),
                 ConstantUtf8Entry("NestHost", "NestHost".encodeToByteArray()),
+                ConstantUtf8Entry("pkg/Example\$Nested", "pkg/Example\$Nested".encodeToByteArray()),
+                ConstantClassEntry(ConstantPoolIndex(30)),
+                ConstantUtf8Entry("NestMembers", "NestMembers".encodeToByteArray()),
             ),
         )
 }

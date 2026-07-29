@@ -12,6 +12,7 @@ data class JvmClassDefinition(
     val methods: List<JvmMethodDefinition> = emptyList(),
     val isInterface: Boolean = false,
     val majorVersion: Int = 70,
+    val nestMemberInternalNames: List<String> = emptyList(),
 )
 
 data class JvmFieldDefinition(
