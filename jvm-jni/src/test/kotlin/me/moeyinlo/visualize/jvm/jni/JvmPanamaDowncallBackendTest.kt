@@ -589,7 +589,14 @@ class JvmPanamaDowncallBackendTest {
             ),
             heap = heap,
         )
-        val classMirror = heap.internClassMirror("pkg/NativeApi")
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(1L, "plugin-loader"),
+        )
+        val classMirror = heap.internClassMirror(
+            className = "pkg/NativeApi",
+            loadedClassKey = loadedClassKey,
+        )
 
         val invocation = target.prepareInvocation(
             environment = environment,
@@ -598,6 +605,7 @@ class JvmPanamaDowncallBackendTest {
 
         val classArgument = invocation.arguments[1] as JvmNativeDowncallArgument.ObjectHandle
         assertEquals("pkg/NativeApi", environment.handles.resolveClass(classArgument.handle!!))
+        assertEquals(loadedClassKey, environment.handles.resolveClassLoadedKey(classArgument.handle))
     }
 
     @Test

@@ -169,7 +169,10 @@ class JvmSimulatedJniEnvironment(
 
     internal fun newJObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
         when (val payload = heap.get(reference).payload) {
-            is JvmClassPayload -> handles.newClassHandle(payload.representedClassName)
+            is JvmClassPayload -> handles.newClassHandle(
+                className = payload.representedClassName,
+                loadedClassKey = payload.loadedClassKey,
+            )
             else -> handles.newObjectHandle(reference)
         }
 
