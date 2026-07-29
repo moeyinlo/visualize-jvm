@@ -19,6 +19,19 @@ class JvmModuleLayerTest {
         assertFailsWith<IllegalArgumentException> {
             JvmModuleDescriptor(name = "app", requires = setOf(" "))
         }
+        assertFailsWith<IllegalArgumentException> {
+            JvmModuleExport(packageName = "")
+        }
+        assertFailsWith<IllegalArgumentException> {
+            JvmModuleExport(packageName = "api", targets = setOf(" "))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            JvmModuleDescriptor(
+                name = "app",
+                packages = setOf("impl"),
+                exports = setOf(JvmModuleExport(packageName = "api")),
+            )
+        }
     }
 
     @Test
@@ -80,6 +93,46 @@ class JvmModuleLayerTest {
 
         assertEquals("Module missing is not defined in this layer graph", failure.message)
     }
+
+    @Test
+    fun `module exports distinguish unqualified and qualified package exports`() {
+        val layer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api", "lib/spi", "lib/internal"),
+                    exports = setOf(
+                        JvmModuleExport(packageName = "lib/api"),
+                        JvmModuleExport(packageName = "lib/spi", targets = setOf("friend")),
+                    ),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "friend", packages = setOf("friend"), requires = setOf("lib")))
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app"), requires = setOf("lib")))
+
+        assertTrue(layer.exportsPackageTo("lib", "lib/api", "app"))
+        assertTrue(layer.exportsPackageTo("lib", "lib/api", "friend"))
+        assertTrue(layer.exportsPackageTo("lib", "lib/spi", "friend"))
+        assertFalse(layer.exportsPackageTo("lib", "lib/spi", "app"))
+        assertFalse(layer.exportsPackageTo("lib", "lib/internal", "app"))
+        assertTrue(layer.exportsPackageTo("lib", "lib/internal", "lib"))
+    }
+
+    @Test
+    fun `module exports report missing modules and invalid package names`() {
+        val layer = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "lib", packages = setOf("lib")))
+
+        assertFailsWith<IllegalArgumentException> {
+            layer.exportsPackageTo("lib", "", "lib")
+        }
+        val failure = assertFailsWith<JvmModuleLayerException> {
+            layer.exportsPackageTo("lib", "lib", "missing")
+        }
+
+        assertEquals("Module missing is not defined in this layer graph", failure.message)
+    }
+
     @Test
     fun `module layer finds package owners with parent fallback`() {
         val parent = JvmModuleLayer(parent = null)
