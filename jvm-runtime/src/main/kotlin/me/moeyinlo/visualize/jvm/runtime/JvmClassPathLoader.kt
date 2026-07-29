@@ -21,7 +21,7 @@ class JvmClassPathLoader(
         require(internalName.isNotBlank()) { "class internal name must not be blank" }
 
         val classBytes = entries.firstNotNullOfOrNull { entry -> entry.findClassBytes(internalName) }
-            ?: throw JvmClassPathLookupException("Class $internalName is not present on the classpath")
+            ?: throw JvmClassPathLookupException(internalName)
         val classFile = ClassFileParser.parse(bytes = classBytes.bytes, source = classBytes.source)
         val methodAreaEntry = classFile.toJvmMethodAreaEntry()
         val definedInternalName = methodAreaEntry.definition.internalName
@@ -72,6 +72,10 @@ private data class ClassPathClassBytes(
     val source: String,
 )
 
-class JvmClassPathLookupException(message: String) : IllegalStateException(message)
+class JvmClassPathLookupException(
+    val internalName: String,
+) : IllegalStateException("Class $internalName is not present on the classpath") {
+    val guestThrowableClassName: String = "java/lang/NoClassDefFoundError"
+}
 
 class JvmClassPathNameMismatchException(message: String) : IllegalStateException(message)

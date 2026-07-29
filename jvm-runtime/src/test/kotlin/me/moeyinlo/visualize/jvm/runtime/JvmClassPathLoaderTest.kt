@@ -125,6 +125,23 @@ class JvmClassPathLoaderTest {
         assertSame(loaded, methodArea.getClass("pkg/Example", initiatingLoader))
     }
 
+    @Test
+    fun `reports missing classpath classes as guest NoClassDefFoundError`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-missing")
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = JvmMethodArea(),
+        )
+
+        val exception = assertFailsWith<JvmClassPathLookupException> {
+            loader.load("pkg/Missing")
+        }
+
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestThrowableClassName)
+        assertEquals("pkg/Missing", exception.internalName)
+        assertEquals("Class pkg/Missing is not present on the classpath", exception.message)
+    }
+
     private fun writeDirectoryClass(
         root: Path,
         internalName: String,
