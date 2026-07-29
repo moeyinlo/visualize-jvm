@@ -6388,11 +6388,14 @@ object JvmVmIntrinsics {
         val visited = linkedSetOf(sourceKey)
         while (true) {
             val currentEntry = methodArea.getClass(currentKey) ?: return false
+            if (currentEntry.definition.interfaceNames.any { interfaceName ->
+                    loadedRelatedClassKey(methodArea, currentKey, interfaceName) == targetKey
+                }
+            ) {
+                return true
+            }
             val superclassName = currentEntry.definition.superclassName ?: return false
-            val superclassKey = methodArea.getClass(
-                internalName = superclassName,
-                initiatingLoader = sourceKey.definingLoader,
-            )?.loadedClassKey ?: currentKey.copy(internalName = superclassName)
+            val superclassKey = loadedRelatedClassKey(methodArea, currentKey, superclassName)
             if (superclassKey == targetKey) {
                 return true
             }
@@ -6402,6 +6405,16 @@ object JvmVmIntrinsics {
             currentKey = superclassKey
         }
     }
+
+    private fun loadedRelatedClassKey(
+        methodArea: JvmMethodArea,
+        currentKey: JvmLoadedClassKey,
+        relatedClassName: String,
+    ): JvmLoadedClassKey =
+        methodArea.getClass(
+            internalName = relatedClassName,
+            initiatingLoader = currentKey.definingLoader,
+        )?.loadedClassKey ?: currentKey.copy(internalName = relatedClassName)
 
     private fun loadedClassKeyForMirrorRelatedClass(
         context: JvmNativeMethodContext,
