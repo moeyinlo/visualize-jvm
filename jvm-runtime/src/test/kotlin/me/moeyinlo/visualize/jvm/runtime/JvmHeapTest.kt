@@ -96,6 +96,46 @@ class JvmHeapTest {
         assertEquals(JvmDoubleValue(0.0), heap.getInstanceField(reference, childValue))
     }
     @Test
+    fun `heap allocates objects with superclass layout from method area`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 5, displayName = "app")
+        val root = JvmClassDefinition(
+            internalName = "Root",
+            fields = listOf(JvmFieldDefinition(name = "rootFlag", descriptor = "Z", isStatic = false)),
+        )
+        val parent = JvmClassDefinition(
+            internalName = "Parent",
+            superclassName = "Root",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val child = JvmClassDefinition(
+            internalName = "Child",
+            superclassName = "Parent",
+            fields = listOf(JvmFieldDefinition(name = "childName", descriptor = "Ljava/lang/String;", isStatic = false)),
+        )
+        listOf(root, parent, child).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, loader),
+                ),
+            )
+        }
+        val childKey = JvmLoadedClassKey("Child", loader)
+
+        val reference = heap.allocateObject(methodArea, childKey)
+
+        assertEquals(JvmHeapObject("Child"), heap.get(reference))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(reference, JvmFieldReference("Root", "rootFlag", "Z")))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(reference, JvmFieldReference("Parent", "parentValue", "J")))
+        assertEquals(
+            JvmNullValue,
+            heap.getInstanceField(reference, JvmFieldReference("Child", "childName", "Ljava/lang/String;")),
+        )
+    }
+
+    @Test
     fun `heap tracks uninitialized object state for constructor execution`() {
         val heap = JvmHeap()
 

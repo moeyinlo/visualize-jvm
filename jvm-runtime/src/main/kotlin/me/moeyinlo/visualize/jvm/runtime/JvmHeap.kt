@@ -99,6 +99,20 @@ class JvmHeap {
     }
 
     fun allocateObject(
+        methodArea: JvmMethodArea,
+        loadedClassKey: JvmLoadedClassKey,
+    ): JvmObjectReferenceValue {
+        val entry = methodArea.getClass(loadedClassKey)
+            ?: throw JvmMethodAreaAccessException(
+                "Class ${loadedClassKey.diagnosticName} is not defined in the method area",
+            )
+        return allocateObject(
+            classDefinition = entry.definition,
+            superclasses = methodArea.superclassDefinitionsFor(loadedClassKey),
+        )
+    }
+
+    fun allocateObject(
         classDefinition: JvmClassDefinition,
         superclasses: List<JvmClassDefinition>,
     ): JvmObjectReferenceValue {
