@@ -39,6 +39,8 @@ import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
 import me.moeyinlo.visualize.jvm.jni.JvmJniNativeMethodDescriptor
 import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallReturn
+import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallTarget
+import me.moeyinlo.visualize.jvm.jni.JvmNativeGuestMethodSignature
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryBinding
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryDescriptor
 import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryRegistry
@@ -180,6 +182,81 @@ class JvmVmIntrinsicsTest {
             ),
         )
         assertEquals(listOf(0x1111L, 0x2222L), invokedAddresses)
+    }
+
+    @Test
+    fun `loaded native library downcalls scope FindClass to the current loaded class key`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(3L, "native-loader")
+        val ownerKey = JvmLoadedClassKey("pkg/NativeApi", loader)
+        val targetKey = JvmLoadedClassKey("pkg/Target", loader)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(internalName = "pkg/NativeApi"),
+                JvmClassDefinition(internalName = "pkg/Target"),
+            ),
+        )
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = classHierarchy)
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val signature = JvmNativeGuestMethodSignature(
+            ownerClassName = "pkg/NativeApi",
+            methodName = "nativeFind",
+            methodDescriptor = "()V",
+            isStatic = true,
+        )
+        val loadedLibraries = JvmNativeLibraryRegistry()
+        loadedLibraries.markLoaded(
+            binding = JvmNativeLibraryBinding(
+                library = library,
+                onLoadTarget = null,
+                onUnloadTarget = null,
+                exportTargets = mapOf(
+                    signature to JvmNativeDowncallTarget(
+                        library = library,
+                        guestMethod = signature,
+                        symbolName = "Java_pkg_NativeApi_nativeFind",
+                        address = 0x3333L,
+                    ),
+                ),
+            ),
+            onLoadVersion = 0x00180000,
+        )
+        var findClassLoadedKey: JvmLoadedClassKey? = null
+        val registry = JvmNativeMethodRegistry.fromLoadedNativeLibraries(
+            loadedLibraries = loadedLibraries,
+            environment = environment,
+            invokeDowncall = {
+                val targetHandle = environment.findClass("pkg/Target")
+                findClassLoadedKey = environment.handles.resolveClassLoadedKey(targetHandle)
+                JvmNativeDowncallReturn.Void
+            },
+        )
+        val method = JvmResolvedMethod(
+            ownerClassName = "pkg/NativeApi",
+            name = "nativeFind",
+            descriptor = "()V",
+            isStatic = true,
+            isNative = true,
+        )
+        val intrinsic = registry.resolve(method, currentLoadedClassKey = ownerKey)
+            ?: error("loaded native export should resolve")
+
+        val result = intrinsic.invoke(
+            context = JvmNativeMethodContext(
+                heap = JvmHeap(),
+                classHierarchy = classHierarchy,
+                staticFields = JvmStaticFields(),
+                currentClassName = "pkg/NativeApi",
+                currentLoadedClassKey = ownerKey,
+            ),
+            invocation = JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+        )
+
+        assertEquals(null, result)
+        assertEquals(targetKey, findClassLoadedKey)
+        assertEquals(null, environment.handles.resolveClassLoadedKey(environment.findClass("pkg/Target")))
     }
 
     @Test

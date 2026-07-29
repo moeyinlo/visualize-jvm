@@ -832,7 +832,9 @@ class JvmNativeMethodRegistry(
                                     methodArea = context.methodArea,
                                 ),
                             ) {
-                                invokeNativeExport()
+                                environment.withNativeClassLoaderContext(context.currentLoadedClassKey) {
+                                    invokeNativeExport()
+                                }
                             }
                         } finally {
                             environment.popLocalFrame(null)
