@@ -1972,6 +1972,7 @@ object JvmInterpreter {
                 terminationState,
                 monitorUnblockedHandler,
                 currentClassName,
+                currentLoadedClassKey,
                 bootstrapMethods,
                 invokeDynamicCallSites,
                 dynamicConstants,
@@ -8372,6 +8373,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -8413,7 +8415,13 @@ object JvmInterpreter {
         }
         requireInstanceMethod(instruction, resolvedMethod)
         requireVirtualMethodName(resolvedMethod)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val arguments = argumentDescriptors
             .asReversed()
             .map { descriptor ->
@@ -8455,7 +8463,14 @@ object JvmInterpreter {
             )
         }
         requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            receiverClassName = receiverClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val targetMethod = try {
             classHierarchy.resolveInterfaceMethodTarget(
                 receiverClassName = receiverClassName,
