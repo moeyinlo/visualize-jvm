@@ -18,6 +18,13 @@ data class ClassLoadingCoverageEntry(
 object ClassLoadingCoverage {
     val entries: List<ClassLoadingCoverageEntry> = listOf(
         ClassLoadingCoverageEntry(
+            rule = "JVM startup main entry point",
+            specSection = "JVMS 5.2 Java Virtual Machine Startup",
+            currentComponent = "JvmStartupResolver selects public static main(String[]) from the method area and maps startup lookup failures to guest throwable identities",
+            status = ClassLoadingCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmStartupTest",
+        ),
+        ClassLoadingCoverageEntry(
             rule = "binary name to class bytes",
             specSection = "JVMS 5.3 Creation and Loading",
             currentComponent = "No runtime classpath loader yet; ClassFileParser parses bytes after external selection",
