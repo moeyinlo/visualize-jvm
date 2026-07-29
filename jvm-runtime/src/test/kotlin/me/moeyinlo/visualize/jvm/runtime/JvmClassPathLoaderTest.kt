@@ -233,7 +233,9 @@ class JvmClassPathLoaderTest {
 
         val loaded = loader.load("pkg/Example")
 
-        assertSame(pluginEntry, loaded)
+        assertEquals(pluginClass, loaded.loadedClassKey)
+        assertEquals(setOf(pluginLoader, childLoader), loaded.initiatingLoaders)
+        assertSame(loaded, methodArea.getClass("pkg/Example", childLoader))
         assertEquals(1, methodArea.classCount)
     }
 

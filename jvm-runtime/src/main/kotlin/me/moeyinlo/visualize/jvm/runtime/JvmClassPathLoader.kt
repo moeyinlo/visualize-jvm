@@ -24,7 +24,9 @@ class JvmClassPathLoader(
         loadingConstraints
             ?.resolvedClass(internalName, initiatingLoader)
             ?.let(methodArea::getClass)
-            ?.let { entry -> return entry }
+            ?.let { entry ->
+                return methodArea.recordInitiatingLoader(entry.loadedClassKey!!, initiatingLoader)
+            }
 
         val classBytes = entries.firstNotNullOfOrNull { entry -> entry.findClassBytes(internalName) }
             ?: throw JvmClassPathLookupException(internalName)

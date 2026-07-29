@@ -29,10 +29,7 @@ class JvmMethodArea {
         if (previous != null) {
             throw JvmMethodAreaDefinitionException("Class $className is already defined in the method area")
         }
-        val initiatingLoaders = entry.initiatingLoaders + loadedClassKey.definingLoader
-        initiatingLoaders.forEach { initiatingLoader ->
-            loadedClassKeysByInitiatingLoader[JvmInitiatingClassKey(className, initiatingLoader)] = loadedClassKey
-        }
+        indexInitiatingLoaders(className, loadedClassKey, entry.initiatingLoaders + loadedClassKey.definingLoader)
     }
 
     fun getClass(internalName: String): JvmMethodAreaEntry {
@@ -43,6 +40,19 @@ class JvmMethodArea {
 
     fun getClass(loadedClassKey: JvmLoadedClassKey): JvmMethodAreaEntry? =
         entriesByLoadedClassKey[loadedClassKey]
+
+    fun recordInitiatingLoader(
+        loadedClassKey: JvmLoadedClassKey,
+        initiatingLoader: JvmClassLoaderIdentity,
+    ): JvmMethodAreaEntry {
+        val entry = entriesByLoadedClassKey[loadedClassKey]
+            ?: throw JvmMethodAreaAccessException("Class ${loadedClassKey.diagnosticName} is not defined in the method area")
+        val initiatingLoaders = entry.initiatingLoaders + loadedClassKey.definingLoader + initiatingLoader
+        val updated = entry.copy(initiatingLoaders = initiatingLoaders)
+        entriesByLoadedClassKey[loadedClassKey] = updated
+        indexInitiatingLoaders(loadedClassKey.internalName, loadedClassKey, initiatingLoaders)
+        return updated
+    }
 
     fun getClass(
         internalName: String,
@@ -67,6 +77,16 @@ class JvmMethodArea {
         )
 
     fun toList(): List<JvmMethodAreaEntry> = entriesByLoadedClassKey.values.toList()
+
+    private fun indexInitiatingLoaders(
+        internalName: String,
+        loadedClassKey: JvmLoadedClassKey,
+        initiatingLoaders: Set<JvmClassLoaderIdentity>,
+    ) {
+        initiatingLoaders.forEach { initiatingLoader ->
+            loadedClassKeysByInitiatingLoader[JvmInitiatingClassKey(internalName, initiatingLoader)] = loadedClassKey
+        }
+    }
 }
 
 class JvmMethodAreaDefinitionException(message: String) : IllegalStateException(message)
