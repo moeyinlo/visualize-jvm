@@ -103,6 +103,63 @@ class JvmMethodAreaTest {
     }
 
     @Test
+    fun `method area lists loaded superclass definitions from root to direct parent`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 3, displayName = "app")
+        val root = JvmClassDefinition(internalName = "Root")
+        val parent = JvmClassDefinition(internalName = "Parent", superclassName = "Root")
+        val child = JvmClassDefinition(internalName = "Child", superclassName = "Parent")
+        listOf(root, parent, child).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, loader),
+                ),
+            )
+        }
+
+        val definitions = methodArea.superclassDefinitionsFor(JvmLoadedClassKey("Child", loader))
+
+        assertEquals(listOf(root, parent), definitions)
+    }
+
+    @Test
+    fun `method area reports missing loaded superclass definitions without loading them`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 3, displayName = "app")
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "Child", superclassName = "Parent"),
+                loadedClassKey = JvmLoadedClassKey("Child", loader),
+            ),
+        )
+
+        val failure = assertFailsWith<JvmMethodAreaAccessException> {
+            methodArea.superclassDefinitionsFor(JvmLoadedClassKey("Child", loader))
+        }
+
+        assertEquals("Superclass Parent @ app#3 of Child @ app#3 is not defined in the method area", failure.message)
+        assertFalse(methodArea.hasClass(JvmLoadedClassKey("Parent", loader)))
+    }
+
+    @Test
+    fun `method area returns no superclass definitions for java lang Object`() {
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "java/lang/Object"),
+                loadedClassKey = JvmLoadedClassKey("java/lang/Object", JvmClassLoaderIdentity.Bootstrap),
+            ),
+        )
+
+        val definitions = methodArea.superclassDefinitionsFor(
+            JvmLoadedClassKey("java/lang/Object", JvmClassLoaderIdentity.Bootstrap),
+        )
+
+        assertEquals(emptyList(), definitions)
+    }
+
+    @Test
     fun `method area exposes a class hierarchy view over defined classes`() {
         val methodArea = JvmMethodArea()
         methodArea.defineClass(

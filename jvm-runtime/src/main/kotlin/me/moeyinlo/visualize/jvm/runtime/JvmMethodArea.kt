@@ -88,6 +88,38 @@ class JvmMethodArea {
             strictClassResolution = strictClassResolution,
         )
 
+    fun superclassDefinitionsFor(loadedClassKey: JvmLoadedClassKey): List<JvmClassDefinition> {
+        var currentKey = loadedClassKey
+        var currentEntry = entriesByLoadedClassKey[currentKey]
+            ?: throw JvmMethodAreaAccessException("Class ${loadedClassKey.diagnosticName} is not defined in the method area")
+        val definitions = mutableListOf<JvmClassDefinition>()
+        val visited = linkedSetOf(currentKey)
+
+        while (true) {
+            val superclassName = currentEntry.definition.superclassName ?: break
+            val superclassKey = JvmLoadedClassKey(
+                internalName = superclassName,
+                definingLoader = loadedClassKey.definingLoader,
+            )
+            if (!visited.add(superclassKey)) {
+                throw JvmMethodAreaAccessException(
+                    "Superclass cycle detected while resolving ${loadedClassKey.diagnosticName}: " +
+                        superclassKey.diagnosticName,
+                )
+            }
+            val superclassEntry = entriesByLoadedClassKey[superclassKey]
+                ?: throw JvmMethodAreaAccessException(
+                    "Superclass ${superclassKey.diagnosticName} of ${currentKey.diagnosticName} " +
+                        "is not defined in the method area",
+                )
+            definitions += superclassEntry.definition
+            currentKey = superclassKey
+            currentEntry = superclassEntry
+        }
+
+        return definitions.asReversed()
+    }
+
     fun classesInRuntimePackage(runtimePackageKey: JvmRuntimePackageKey): List<JvmMethodAreaEntry> =
         entriesByLoadedClassKey.values.filter { entry -> entry.runtimePackageKey == runtimePackageKey }
 
