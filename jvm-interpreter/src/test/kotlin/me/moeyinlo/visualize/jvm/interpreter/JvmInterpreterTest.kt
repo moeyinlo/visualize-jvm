@@ -7732,6 +7732,55 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic allows private fields from a nestmate class`() {
+        val staticFields = JvmStaticFields()
+        staticFields.put(JvmFieldReference("Owner", "secret", "I"), JvmIntValue(31))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        nestHostInternalName = "Owner",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "secret",
+                                descriptor = "I",
+                                isStatic = true,
+                                isPrivate = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Owner\$Nested",
+                        nestHostInternalName = "Owner",
+                    ),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+        )
+
+        assertEquals(listOf(JvmIntValue(31)), result.operandStack.toList())
+    }
+
+    @Test
     fun `getstatic private field error transfers control to matching IllegalAccessError handler`() {
         val heap = JvmHeap()
         val localVariables = JvmLocalVariables(maxLocals = 1)

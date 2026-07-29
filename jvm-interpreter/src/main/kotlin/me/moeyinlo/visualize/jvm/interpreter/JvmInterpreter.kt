@@ -9365,7 +9365,12 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         receiverClassName: String? = null,
     ) {
-        if (field.isPrivate && currentClassName != null && currentClassName != field.reference.ownerClassName) {
+        if (
+            field.isPrivate &&
+            currentClassName != null &&
+            currentClassName != field.reference.ownerClassName &&
+            !classHierarchy.areRuntimeNestmates(currentClassName, field.reference.ownerClassName)
+        ) {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
                 message = "Class $currentClassName cannot access private field " +
@@ -9580,7 +9585,12 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         receiverClassName: String? = null,
     ) {
-        if (method.isPrivate && currentClassName != null && currentClassName != method.ownerClassName) {
+        if (
+            method.isPrivate &&
+            currentClassName != null &&
+            currentClassName != method.ownerClassName &&
+            !classHierarchy.areRuntimeNestmates(currentClassName, method.ownerClassName)
+        ) {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
                 message = "Class $currentClassName cannot access private method " +

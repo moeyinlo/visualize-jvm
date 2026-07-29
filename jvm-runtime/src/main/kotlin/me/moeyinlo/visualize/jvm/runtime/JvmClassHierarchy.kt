@@ -5,6 +5,7 @@ import me.moeyinlo.visualize.jvm.classfile.StackMapFrame
 
 data class JvmClassDefinition(
     val internalName: String,
+    val nestHostInternalName: String = internalName,
     val superclassName: String? = null,
     val interfaceNames: List<String> = emptyList(),
     val fields: List<JvmFieldDefinition> = emptyList(),
@@ -137,6 +138,12 @@ class JvmClassHierarchy(
     fun requiresResolvedClasses(): Boolean = strictClassResolution
 
     fun hasClass(internalName: String): Boolean = internalName in classesByName
+
+    fun areRuntimeNestmates(firstClassName: String, secondClassName: String): Boolean {
+        val first = classesByName[firstClassName] ?: return false
+        val second = classesByName[secondClassName] ?: return false
+        return first.nestHostInternalName == second.nestHostInternalName
+    }
 
     fun directSuperclassName(internalName: String): String? =
         classesByName[internalName]?.superclassName
