@@ -1880,6 +1880,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 currentLoadedClassKey = currentLoadedClassKey,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xB5 -> executePutField(
                 instruction = instruction,
@@ -6013,6 +6014,7 @@ object JvmInterpreter {
         currentClassName: String?,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val objectref = operandStack.pop()
         if (objectref == JvmNullValue) {
@@ -6036,6 +6038,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         requireInstanceField(instruction, resolvedField)
         requireAccessibleField(
