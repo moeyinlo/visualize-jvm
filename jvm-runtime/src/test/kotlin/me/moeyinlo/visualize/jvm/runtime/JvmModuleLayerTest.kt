@@ -80,4 +80,26 @@ class JvmModuleLayerTest {
 
         assertEquals("Module missing is not defined in this layer graph", failure.message)
     }
+    @Test
+    fun `module layer finds package owners with parent fallback`() {
+        val parent = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "java.base", packages = setOf("java/lang")))
+        val child = JvmModuleLayer(parent = parent)
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+
+        assertEquals("app", child.findPackageOwner("app")?.name)
+        assertEquals("java.base", child.findPackageOwner("java/lang")?.name)
+        assertEquals(null, child.findPackageOwner("missing"))
+    }
+
+    @Test
+    fun `package owner lookup rejects blank package names`() {
+        val layer = JvmModuleLayer(parent = null)
+
+        val failure = assertFailsWith<IllegalArgumentException> {
+            layer.findPackageOwner("")
+        }
+
+        assertEquals("package name must not be blank", failure.message)
+    }
 }

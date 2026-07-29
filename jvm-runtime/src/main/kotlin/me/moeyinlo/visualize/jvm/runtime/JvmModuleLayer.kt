@@ -41,6 +41,13 @@ class JvmModuleLayer(
         return modulesByName[name] ?: parent?.findModule(name)
     }
 
+    fun findPackageOwner(packageName: String): JvmModuleDescriptor? {
+        require(packageName.isNotBlank()) { "package name must not be blank" }
+        val moduleName = packageOwners[packageName]
+            ?: return parent?.findPackageOwner(packageName)
+        return modulesByName[moduleName]
+    }
+
     fun modules(): List<JvmModuleDescriptor> = modulesByName.values.toList()
 
     fun canRead(
