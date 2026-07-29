@@ -16300,6 +16300,150 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `loaded native library instance exports propagate method area through JNI instance upcalls`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val nestedParent = JvmClassDefinition(
+            internalName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val nested = JvmClassDefinition(
+            internalName = "Nested",
+            superclassName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "nestedValue", descriptor = "I", isStatic = false)),
+        )
+        val nativeOwner = JvmClassDefinition(
+            internalName = "NativeOwner",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "nativeValue",
+                    descriptor = "()I",
+                    isStatic = false,
+                    isNative = true,
+                ),
+                JvmMethodDefinition(
+                    name = "make",
+                    descriptor = "()I",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xBB.toByte(),
+                        0x00.toByte(),
+                        0x02.toByte(),
+                        0x57.toByte(),
+                        0x03.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Nested", "Nested".encodeToByteArray()),
+                            ConstantClassEntry(ConstantPoolIndex(1)),
+                        ),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        listOf(nestedParent, nested, nativeOwner).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+        val receiver = heap.allocateObject(nativeOwner)
+        val localVariables = JvmLocalVariables(maxLocals = 1)
+        localVariables.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(listOf(nestedParent, nested, nativeOwner))
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+        )
+        val loadedLibraries = JvmNativeLibraryRegistry()
+        val export = JvmNativeMethodExportDescriptor(
+            ownerClassName = "NativeOwner",
+            methodName = "nativeValue",
+            methodDescriptor = "()I",
+            isStatic = false,
+            symbolName = "Java_NativeOwner_nativeValue",
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+            exports = listOf(export),
+        )
+        val target = JvmNativeDowncallTarget(
+            library = library,
+            guestMethod = export.guestMethod,
+            symbolName = export.symbolName,
+            address = 0x3579L,
+        )
+        loadedLibraries.markLoaded(
+            binding = JvmNativeLibraryBinding(
+                library = library,
+                onLoadTarget = null,
+                onUnloadTarget = null,
+                exportTargets = mapOf(export.guestMethod to target),
+            ),
+            onLoadVersion = null,
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = localVariables,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmNativeMethodRegistry.fromLoadedNativeLibraries(
+                loadedLibraries = loadedLibraries,
+                environment = environment,
+                invokeDowncall = { invocation ->
+                    assertEquals(target, invocation.target)
+                    val jniEnvironment =
+                        (invocation.arguments[0] as JvmNativeDowncallArgument.SimulatedJniEnv).environment
+                    val receiverHandle = invocation.arguments[1] as JvmNativeDowncallArgument.ObjectHandle
+                    val ownerClass = jniEnvironment.handles.newClassHandle("NativeOwner")
+                    val targetMethod = jniEnvironment.getMethodId(ownerClass, "make", "()I")
+                    JvmNativeDowncallReturn.IntPrimitive(
+                        jniEnvironment.callIntMethod(receiverHandle.handle!!, targetMethod),
+                    )
+                },
+            ),
+            currentClassName = "Caller",
+            methodArea = methodArea,
+        )
+
+        val nestedReference = JvmObjectReferenceValue(JvmReferenceId(2))
+        val parentField = JvmFieldReference("NestedParent", "parentValue", "J")
+        val nestedField = JvmFieldReference("Nested", "nestedValue", "I")
+        assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+        assertEquals("NativeOwner", heap.get(receiver).className)
+        assertTrue(heap.isInitialized(receiver))
+        assertEquals("Nested", heap.get(nestedReference).className)
+        assertFalse(heap.isInitialized(nestedReference))
+        assertTrue(heap.hasInstanceField(nestedReference, parentField))
+        assertTrue(heap.hasInstanceField(nestedReference, nestedField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(nestedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(nestedReference, nestedField))
+    }
+
+    @Test
     fun `invokevirtual Runtime loadLibrary0 delegates to VM native library load hook`() {
         val loadedLogicalNames = mutableListOf<String>()
         val heap = JvmHeap()
