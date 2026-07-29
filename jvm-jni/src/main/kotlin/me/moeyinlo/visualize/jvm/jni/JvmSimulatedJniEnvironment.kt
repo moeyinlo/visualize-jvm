@@ -923,6 +923,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticIntMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 

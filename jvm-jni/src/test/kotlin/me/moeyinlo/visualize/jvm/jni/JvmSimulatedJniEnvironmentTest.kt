@@ -5079,8 +5079,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticIntMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmIntValue {
-                    calls += RecordedStaticIntUpcall(method, arguments)
+                    calls += RecordedStaticIntUpcall(method, arguments, currentLoadedClassKey)
                     return JvmIntValue(123456)
                 }
             },
@@ -5137,6 +5138,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticIntMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmIntValue = error("CallStaticIntMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -5151,6 +5153,70 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(
             "CallStaticIntMethod requires class Other to be assignable to Example",
             exception.message,
+        )
+    }
+
+    @Test
+    fun `CallStaticIntMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(8, "int-loader"),
+        )
+        val calls = mutableListOf<RecordedStaticIntUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "answer",
+                                descriptor = "()I",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticIntMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ): JvmIntValue {
+                    calls += RecordedStaticIntUpcall(method, arguments, currentLoadedClassKey)
+                    return JvmIntValue(998877)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "answer", "()I")
+
+        val result = environment.callStaticIntMethod(classHandle, methodHandle)
+
+        assertEquals(998877, result)
+        assertEquals(
+            listOf(
+                RecordedStaticIntUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "answer",
+                        descriptor = "()I",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
+                ),
+            ),
+            calls,
         )
     }
 
@@ -13790,6 +13856,7 @@ private data class RecordedStaticShortUpcall(
 private data class RecordedStaticIntUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedStaticLongUpcall(

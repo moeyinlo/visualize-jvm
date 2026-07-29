@@ -770,6 +770,7 @@ object JvmInterpreter {
         override fun callStaticIntMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
+            currentLoadedClassKey: JvmLoadedClassKey?,
         ): JvmIntValue {
             val returnValue = executeStaticMethodUpcall(
                 ownerClassName = method.ownerClassName,
@@ -787,6 +788,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 dynamicConstants = dynamicConstants,
                 methodArea = methodArea,
             )

@@ -2389,6 +2389,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticIntMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmIntValue {
                     calls += RecordedFunctionTableStaticIntUpcall(method, arguments)
                     return JvmIntValue(654321)
