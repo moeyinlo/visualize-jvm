@@ -10729,6 +10729,63 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putfield allows private fields from a nestmate class`() {
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("Owner")
+        val field = JvmFieldReference("Owner", "secret", "I")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0xB5.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        nestHostInternalName = "Owner",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "secret",
+                                descriptor = "I",
+                                isStatic = false,
+                                isPrivate = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Owner\$Nested",
+                        nestHostInternalName = "Owner",
+                    ),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmIntValue(1), heap.getInstanceField(reference, field))
+    }
+
+    @Test
     fun `putfield throws guest IllegalAccessError for package private fields from another package`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("pkg/Owner")
