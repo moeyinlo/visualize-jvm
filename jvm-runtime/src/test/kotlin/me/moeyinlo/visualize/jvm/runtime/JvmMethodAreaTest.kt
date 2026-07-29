@@ -262,6 +262,46 @@ class JvmMethodAreaTest {
             check.failure,
         )
     }
+
+    @Test
+    fun `method area runtime nestmate diagnostics reject non self hosted nest hosts`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 24, displayName = "app")
+        val memberKey = JvmLoadedClassKey("pkg/Member", loader)
+        val hostKey = JvmLoadedClassKey("pkg/Host", loader)
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Member",
+                    nestHostInternalName = "pkg/Host",
+                ),
+                loadedClassKey = memberKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Host",
+                    nestHostInternalName = "pkg/OtherHost",
+                    nestMemberInternalNames = listOf("pkg/Member"),
+                ),
+                loadedClassKey = hostKey,
+            ),
+        )
+
+        val check = methodArea.checkRuntimeNestmates(memberKey, hostKey)
+
+        assertFalse(check.areNestmates)
+        assertEquals(
+            JvmRuntimeNestmateFailure.HostNotSelfHosted(
+                memberKey = memberKey,
+                hostKey = hostKey,
+                nominatedHostName = "pkg/OtherHost",
+            ),
+            check.failure,
+        )
+        assertFalse(methodArea.areRuntimeNestmates(memberKey, hostKey))
+    }
     @Test
     fun `method area entry exposes runtime package and module metadata`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 11, displayName = "app-loader")
