@@ -1841,6 +1841,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xB3 -> executePutStatic(
                 instruction = instruction,
@@ -5838,6 +5839,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireAccessibleClass(
@@ -5846,6 +5848,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         requireStaticField(instruction, resolvedField)
         requireAccessibleField(
