@@ -722,7 +722,7 @@ fun interface JvmNativeMethodIntrinsic {
     ): JvmValue?
 }
 
-private typealias DynamicNativeMethodResolver = (JvmNativeMethodKey) -> JvmNativeMethodIntrinsic?
+private typealias DynamicNativeMethodResolver = (JvmNativeMethodKey, JvmLoadedClassKey?) -> JvmNativeMethodIntrinsic?
 
 class JvmNativeMethodRegistry(
     private val intrinsics: Map<JvmNativeMethodKey, JvmNativeMethodIntrinsic> = emptyMap(),
@@ -730,11 +730,14 @@ class JvmNativeMethodRegistry(
     private val dynamicSimulatedJniResolvers: List<DynamicNativeMethodResolver> = emptyList(),
     private val intrinsicOwnerWhitelist: Set<String>? = null,
 ) {
-    fun resolve(method: JvmResolvedMethod): JvmNativeMethodIntrinsic? =
+    fun resolve(
+        method: JvmResolvedMethod,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+    ): JvmNativeMethodIntrinsic? =
         JvmNativeMethodKey.from(method).let { key ->
             key.intrinsicWhenWhitelisted()
                 ?: simulatedJni[key]
-                ?: key.resolveDynamicSimulatedJni()
+                ?: key.resolveDynamicSimulatedJni(currentLoadedClassKey)
         }
 
     private fun JvmNativeMethodKey.intrinsicWhenWhitelisted(): JvmNativeMethodIntrinsic? {
@@ -744,8 +747,8 @@ class JvmNativeMethodRegistry(
         return intrinsics[this]
     }
 
-    private fun JvmNativeMethodKey.resolveDynamicSimulatedJni(): JvmNativeMethodIntrinsic? =
-        dynamicSimulatedJniResolvers.firstNotNullOfOrNull { resolver -> resolver(this) }
+    private fun JvmNativeMethodKey.resolveDynamicSimulatedJni(currentLoadedClassKey: JvmLoadedClassKey?): JvmNativeMethodIntrinsic? =
+        dynamicSimulatedJniResolvers.firstNotNullOfOrNull { resolver -> resolver(this, currentLoadedClassKey) }
 
     companion object {
         val Empty: JvmNativeMethodRegistry = JvmNativeMethodRegistry()
@@ -763,7 +766,7 @@ class JvmNativeMethodRegistry(
             environment: JvmSimulatedJniEnvironment,
             invokeDowncall: JvmNativeDowncallInvoker,
         ): JvmNativeMethodRegistry {
-            val loadedLibraryResolver: DynamicNativeMethodResolver = { key ->
+            val loadedLibraryResolver: DynamicNativeMethodResolver = { key, currentLoadedClassKey ->
                 val signature = JvmNativeGuestMethodSignature(
                     ownerClassName = key.ownerClassName,
                     methodName = key.name,
@@ -780,6 +783,7 @@ class JvmNativeMethodRegistry(
                                 name = key.name,
                                 descriptor = key.descriptor,
                                 isStatic = key.isStatic,
+                                loadedClassKey = currentLoadedClassKey,
                             )
                         }
                         .firstOrNull()

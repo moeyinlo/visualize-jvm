@@ -37,6 +37,13 @@ import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
+import me.moeyinlo.visualize.jvm.jni.JvmJniNativeMethodDescriptor
+import me.moeyinlo.visualize.jvm.jni.JvmNativeDowncallReturn
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryBinding
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryDescriptor
+import me.moeyinlo.visualize.jvm.jni.JvmNativeLibraryRegistry
+import me.moeyinlo.visualize.jvm.jni.JvmSimulatedJniEnvironment
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -87,6 +94,92 @@ class JvmVmIntrinsicsTest {
         )
 
         assertEquals(null, registry.resolve(mismatchedMethod))
+    }
+
+    @Test
+    fun `loaded native registry resolves RegisterNatives targets by current loaded class key`() {
+        val firstKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(1L, "first-loader"),
+        )
+        val secondKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(2L, "second-loader"),
+        )
+        val environment = JvmSimulatedJniEnvironment(classHierarchy = JvmClassHierarchy.Empty)
+        environment.registeredNativeMethods.register(
+            className = "pkg/NativeApi",
+            methods = listOf(JvmJniNativeMethodDescriptor("nativeValue", "()I", 0x1111L)),
+            loadedClassKey = firstKey,
+        )
+        environment.registeredNativeMethods.register(
+            className = "pkg/NativeApi",
+            methods = listOf(JvmJniNativeMethodDescriptor("nativeValue", "()I", 0x2222L)),
+            loadedClassKey = secondKey,
+        )
+        val library = JvmNativeLibraryDescriptor(
+            logicalName = "native-api",
+            path = Path.of("native-api.dll"),
+        )
+        val loadedLibraries = JvmNativeLibraryRegistry()
+        loadedLibraries.markLoaded(
+            binding = JvmNativeLibraryBinding(
+                library = library,
+                onLoadTarget = null,
+                onUnloadTarget = null,
+                exportTargets = emptyMap(),
+            ),
+            onLoadVersion = 0x00180000,
+        )
+        val invokedAddresses = mutableListOf<Long>()
+        val registry = JvmNativeMethodRegistry.fromLoadedNativeLibraries(
+            loadedLibraries = loadedLibraries,
+            environment = environment,
+            invokeDowncall = { invocation ->
+                invokedAddresses += invocation.target.address
+                JvmNativeDowncallReturn.IntPrimitive(invocation.target.address.toInt())
+            },
+        )
+        val method = JvmResolvedMethod(
+            ownerClassName = "pkg/NativeApi",
+            name = "nativeValue",
+            descriptor = "()I",
+            isStatic = true,
+            isNative = true,
+        )
+
+        val firstIntrinsic = registry.resolve(method, currentLoadedClassKey = firstKey)
+            ?: error("first loader registered native should resolve")
+        val secondIntrinsic = registry.resolve(method, currentLoadedClassKey = secondKey)
+            ?: error("second loader registered native should resolve")
+
+        assertEquals(
+            JvmIntValue(0x1111),
+            firstIntrinsic.invoke(
+                context = JvmNativeMethodContext(
+                    heap = JvmHeap(),
+                    classHierarchy = JvmClassHierarchy.Empty,
+                    staticFields = JvmStaticFields(),
+                    currentClassName = "pkg/NativeApi",
+                    currentLoadedClassKey = firstKey,
+                ),
+                invocation = JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+            ),
+        )
+        assertEquals(
+            JvmIntValue(0x2222),
+            secondIntrinsic.invoke(
+                context = JvmNativeMethodContext(
+                    heap = JvmHeap(),
+                    classHierarchy = JvmClassHierarchy.Empty,
+                    staticFields = JvmStaticFields(),
+                    currentClassName = "pkg/NativeApi",
+                    currentLoadedClassKey = secondKey,
+                ),
+                invocation = JvmNativeMethodInvocation(receiver = null, arguments = emptyList()),
+            ),
+        )
+        assertEquals(listOf(0x1111L, 0x2222L), invokedAddresses)
     }
 
     @Test
