@@ -1919,6 +1919,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler,
                 unloadNativeLibraryHandler,
                 methodArea,
+                moduleLayer,
             )
             0xB7 -> executeInvokeSpecial(
                 instruction,
@@ -6496,6 +6497,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         requireAccessibleMethod(
             method = resolvedMethod,
