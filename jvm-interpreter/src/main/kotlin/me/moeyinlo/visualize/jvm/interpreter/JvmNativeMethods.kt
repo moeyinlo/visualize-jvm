@@ -792,7 +792,10 @@ class JvmNativeMethodRegistry(
                         environment.pushLocalFrame(NativeInvocationLocalCapacity)
                         try {
                             val downcallInvocation = if (key.isStatic) {
-                                val classHandle = environment.handles.newClassHandle(key.ownerClassName)
+                                val classHandle = environment.handles.newClassHandle(
+                                    className = key.ownerClassName,
+                                    loadedClassKey = context.currentLoadedClassKey,
+                                )
                                 resolvedTarget.prepareStaticInvocation(
                                     environment = environment,
                                     classHandle = classHandle,

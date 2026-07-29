@@ -23396,6 +23396,8 @@ class JvmInterpreterTest {
                 environment = environment,
                 invokeDowncall = { invocation ->
                     invocations += invocation
+                    val classArgument = invocation.arguments[1] as JvmNativeDowncallArgument.ClassHandle
+                    assertEquals(ownerKey, environment.handles.resolveClassLoadedKey(classArgument.handle))
                     JvmNativeDowncallReturn.IntPrimitive(46)
                 },
             ),
