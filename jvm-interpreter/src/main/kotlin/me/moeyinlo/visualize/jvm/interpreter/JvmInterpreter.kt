@@ -600,6 +600,7 @@ object JvmInterpreter {
         override fun callStaticObjectMethod(
             method: JvmResolvedMethod,
             arguments: List<JvmValue>,
+            currentLoadedClassKey: JvmLoadedClassKey?,
         ): JvmReferenceValue {
             val returnValue = executeStaticMethodUpcall(
                 ownerClassName = method.ownerClassName,
@@ -617,6 +618,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 dynamicConstants = dynamicConstants,
                 methodArea = methodArea,
             )

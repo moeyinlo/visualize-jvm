@@ -839,6 +839,7 @@ class JvmSimulatedJniEnvironment(
             val result = upcallDispatcher.callStaticObjectMethod(
                 method = method,
                 arguments = arguments,
+                currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
             )
         ) {
             JvmNullValue -> null

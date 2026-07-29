@@ -2099,6 +2099,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticObjectMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmReferenceValue {
                     calls += RecordedFunctionTableStaticObjectUpcall(method, arguments)
                     return resultReference
