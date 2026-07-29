@@ -4,6 +4,7 @@ data class JvmHeapObject(
     val className: String,
     val payload: JvmHeapPayload = JvmHeapPayload.None,
     val isInitialized: Boolean = true,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 sealed interface JvmHeapPayload {
@@ -117,14 +118,21 @@ class JvmHeap {
         return allocateObject(
             classDefinition = entry.definition,
             superclasses = methodArea.superclassDefinitionsFor(loadedClassKey),
+            loadedClassKey = loadedClassKey,
         )
     }
 
     fun allocateObject(
         classDefinition: JvmClassDefinition,
         superclasses: List<JvmClassDefinition>,
+        loadedClassKey: JvmLoadedClassKey? = null,
     ): JvmObjectReferenceValue {
-        val reference = allocateObject(classDefinition.internalName)
+        val reference = allocate(
+            JvmHeapObject(
+                className = classDefinition.internalName,
+                loadedClassKey = loadedClassKey,
+            ),
+        )
         (superclasses + classDefinition).forEach { definition ->
             prepareDeclaredInstanceFields(reference, definition)
         }
@@ -153,14 +161,22 @@ class JvmHeap {
         return allocateUninitializedObject(
             classDefinition = entry.definition,
             superclasses = methodArea.superclassDefinitionsFor(loadedClassKey),
+            loadedClassKey = loadedClassKey,
         )
     }
 
     fun allocateUninitializedObject(
         classDefinition: JvmClassDefinition,
         superclasses: List<JvmClassDefinition> = emptyList(),
+        loadedClassKey: JvmLoadedClassKey? = null,
     ): JvmObjectReferenceValue {
-        val reference = allocateUninitializedObject(classDefinition.internalName)
+        val reference = allocate(
+            JvmHeapObject(
+                className = classDefinition.internalName,
+                isInitialized = false,
+                loadedClassKey = loadedClassKey,
+            ),
+        )
         (superclasses + classDefinition).forEach { definition ->
             prepareDeclaredInstanceFields(reference, definition)
         }

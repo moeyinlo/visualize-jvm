@@ -126,13 +126,34 @@ class JvmHeapTest {
 
         val reference = heap.allocateObject(methodArea, childKey)
 
-        assertEquals(JvmHeapObject("Child"), heap.get(reference))
+        assertEquals(JvmHeapObject("Child", loadedClassKey = childKey), heap.get(reference))
         assertEquals(JvmIntValue(0), heap.getInstanceField(reference, JvmFieldReference("Root", "rootFlag", "Z")))
         assertEquals(JvmLongValue(0L), heap.getInstanceField(reference, JvmFieldReference("Parent", "parentValue", "J")))
         assertEquals(
             JvmNullValue,
             heap.getInstanceField(reference, JvmFieldReference("Child", "childName", "Ljava/lang/String;")),
         )
+    }
+
+    @Test
+    fun `heap preserves loaded class keys for method area object allocations`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "child-loader")
+        val key = JvmLoadedClassKey("Child", loader)
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "Child"),
+                loadedClassKey = key,
+            ),
+        )
+
+        val initialized = heap.allocateObject(methodArea, key)
+        val uninitialized = heap.allocateUninitializedObject(methodArea, key)
+
+        assertEquals(key, heap.get(initialized).loadedClassKey)
+        assertEquals(key, heap.get(uninitialized).loadedClassKey)
+        assertFalse(heap.isInitialized(uninitialized))
     }
 
     @Test
@@ -157,12 +178,11 @@ class JvmHeapTest {
             )
         }
 
-        val reference = heap.allocateUninitializedObject(
-            methodArea,
-            JvmLoadedClassKey("Child", JvmClassLoaderIdentity.Bootstrap),
-        )
+        val childKey = JvmLoadedClassKey("Child", JvmClassLoaderIdentity.Bootstrap)
 
-        assertEquals(JvmHeapObject("Child", isInitialized = false), heap.get(reference))
+        val reference = heap.allocateUninitializedObject(methodArea, childKey)
+
+        assertEquals(JvmHeapObject("Child", isInitialized = false, loadedClassKey = childKey), heap.get(reference))
         assertFalse(heap.isInitialized(reference))
         assertEquals(JvmLongValue(0L), heap.getInstanceField(reference, JvmFieldReference("Parent", "parentValue", "J")))
         assertEquals(JvmIntValue(0), heap.getInstanceField(reference, JvmFieldReference("Child", "childValue", "I")))
