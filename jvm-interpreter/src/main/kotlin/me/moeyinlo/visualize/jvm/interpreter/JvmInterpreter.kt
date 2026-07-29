@@ -6227,6 +6227,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
     }
 
@@ -6305,6 +6306,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )?.let { returnValue ->
             operandStack.push(returnValue)
         }
@@ -6338,6 +6340,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmValue? {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         if (arguments.size != argumentDescriptors.size) {
@@ -6384,6 +6387,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
@@ -6446,6 +6450,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
         if (returnDescriptor == "V") {
@@ -8984,6 +8989,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmValue? {
         val intrinsic = nativeMethods.resolve(method)
             ?: throw JvmUnsatisfiedLinkError(
@@ -9074,6 +9080,7 @@ object JvmInterpreter {
                         loadNativeLibraryHandler = loadNativeLibraryHandler,
                         unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                         methodArea = methodArea,
+                        moduleLayer = moduleLayer,
                     )
                 },
                 callInstanceMethodHandler = { upcallReceiver, ownerClassName, name, descriptor, upcallArguments ->
@@ -9133,6 +9140,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
             ownerClassName = ownerClassName,
@@ -9145,6 +9153,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         requireStaticUpcallMethod(resolvedMethod)
         requireAccessibleMethod(
