@@ -7445,6 +7445,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -7452,6 +7453,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             JvmMethodHandleReferenceKind.InvokeInterface -> executeLinkedInvokeDynamicInterfaceTarget(
                 instruction = instruction,
@@ -8075,6 +8077,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -8086,6 +8089,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val targetMethod = linkedCallSite.targetMethod
         requireInstanceMethod(instruction, targetMethod)
@@ -8098,6 +8102,14 @@ object JvmInterpreter {
         }
         val expectedDescriptor = targetMethod.invokeVirtualMethodHandleDescriptor()
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, expectedDescriptor)
+        requireAccessibleClass(
+            targetClassName = targetMethod.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+            moduleLayer = moduleLayer,
+        )
         val argumentDescriptors = targetMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
