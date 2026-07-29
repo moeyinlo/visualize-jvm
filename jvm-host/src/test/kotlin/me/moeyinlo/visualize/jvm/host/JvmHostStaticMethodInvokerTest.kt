@@ -1,5 +1,8 @@
 package me.moeyinlo.visualize.jvm.host
 
+import me.moeyinlo.visualize.jvm.runtime.JvmClassExecutionPolicy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
+import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -27,6 +30,62 @@ class JvmHostStaticMethodInvokerTest {
         assertEquals(JvmIntValue(5), result)
     }
 
+    @Test
+    fun `static host method invocation records opaque active use without mutating guest initialization state`() {
+        val heap = JvmHeap()
+        val recorder = JvmHostBoundaryEventRecorder()
+        val initializationStates = JvmClassInitializationStates()
+        val mirror = JvmHostDelegatedClassMirror.fromHostClass(HostStaticFixture::class.java)
+        val method = JvmHostMethodResolver.resolveStaticMethod(
+            owner = mirror,
+            name = "add",
+            descriptor = "(II)I",
+        )
+        val executionPolicy = JvmClassExecutionPolicy(
+            hostDelegatedClassNames = setOf(mirror.guestInternalName),
+        )
+
+        val result = JvmHostMethodInvoker.invokeStatic(
+            method = method,
+            arguments = listOf(JvmIntValue(2), JvmIntValue(3)),
+            heap = heap,
+            executionPolicy = executionPolicy,
+            classInitializationStates = initializationStates,
+            boundaryEvents = recorder,
+        )
+
+        assertEquals(JvmIntValue(5), result)
+        assertEquals(JvmClassInitializationState.Prepared, initializationStates.get(mirror.guestInternalName))
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = mirror.guestInternalName,
+                    methodName = "<clinit>",
+                    descriptor = "()V",
+                    detail = "host-delegated initialization is opaque to guest state",
+                ),
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 2,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = mirror.guestInternalName,
+                    methodName = "add",
+                    descriptor = "(II)I",
+                    detail = "static args=2",
+                ),
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 3,
+                    action = JvmHostBoundaryAction.Returned,
+                    className = mirror.guestInternalName,
+                    methodName = "add",
+                    descriptor = "(II)I",
+                    detail = "return=int",
+                ),
+            ),
+            recorder.snapshots(),
+        )
+    }
     @Test
     fun `invokes static host methods with string arguments and returns`() {
         val heap = JvmHeap()
