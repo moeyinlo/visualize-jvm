@@ -101,6 +101,30 @@ class JvmClassPathLoaderTest {
         )
     }
 
+    @Test
+    fun `records the initiating loader for classpath loads`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-initiating-loader")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val definingLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val initiatingLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "child")
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            definingLoader = definingLoader,
+            initiatingLoader = initiatingLoader,
+        )
+
+        val loaded = loader.load("pkg/Example")
+
+        assertEquals(setOf(definingLoader, initiatingLoader), loaded.initiatingLoaders)
+        assertSame(loaded, methodArea.getClass("pkg/Example", initiatingLoader))
+    }
+
     private fun writeDirectoryClass(
         root: Path,
         internalName: String,

@@ -4,10 +4,12 @@ data class JvmMethodAreaEntry(
     val definition: JvmClassDefinition,
     val staticFields: JvmStaticFields = JvmStaticFields(),
     val loadedClassKey: JvmLoadedClassKey? = null,
+    val initiatingLoaders: Set<JvmClassLoaderIdentity> = emptySet(),
 )
 
 class JvmMethodArea {
     private val entriesByLoadedClassKey = linkedMapOf<JvmLoadedClassKey, JvmMethodAreaEntry>()
+    private val loadedClassKeysByInitiatingLoader = linkedMapOf<JvmInitiatingClassKey, JvmLoadedClassKey>()
 
     val classCount: Int
         get() = entriesByLoadedClassKey.size
@@ -27,6 +29,10 @@ class JvmMethodArea {
         if (previous != null) {
             throw JvmMethodAreaDefinitionException("Class $className is already defined in the method area")
         }
+        val initiatingLoaders = entry.initiatingLoaders + loadedClassKey.definingLoader
+        initiatingLoaders.forEach { initiatingLoader ->
+            loadedClassKeysByInitiatingLoader[JvmInitiatingClassKey(className, initiatingLoader)] = loadedClassKey
+        }
     }
 
     fun getClass(internalName: String): JvmMethodAreaEntry {
@@ -37,6 +43,16 @@ class JvmMethodArea {
 
     fun getClass(loadedClassKey: JvmLoadedClassKey): JvmMethodAreaEntry? =
         entriesByLoadedClassKey[loadedClassKey]
+
+    fun getClass(
+        internalName: String,
+        initiatingLoader: JvmClassLoaderIdentity,
+    ): JvmMethodAreaEntry? {
+        require(internalName.isNotBlank()) { "class internal name must not be blank" }
+        val loadedClassKey = loadedClassKeysByInitiatingLoader[JvmInitiatingClassKey(internalName, initiatingLoader)]
+            ?: return null
+        return entriesByLoadedClassKey[loadedClassKey]
+    }
 
     fun hasClass(internalName: String): Boolean =
         hasClass(JvmLoadedClassKey(internalName, JvmClassLoaderIdentity.Bootstrap))
@@ -56,3 +72,8 @@ class JvmMethodArea {
 class JvmMethodAreaDefinitionException(message: String) : IllegalStateException(message)
 
 class JvmMethodAreaAccessException(message: String) : IllegalStateException(message)
+
+private data class JvmInitiatingClassKey(
+    val internalName: String,
+    val initiatingLoader: JvmClassLoaderIdentity,
+)
