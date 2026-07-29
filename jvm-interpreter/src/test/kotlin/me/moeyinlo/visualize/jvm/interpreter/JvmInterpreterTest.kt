@@ -27985,6 +27985,38 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `multianewarray rejects package private component classes from another package`() {
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x03.toByte(),
+                    0xC5.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("[Lpkg/Hidden;", "[Lpkg/Hidden;".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "pkg/Hidden", isPublic = false),
+                        JvmClassDefinition(internalName = "other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Hidden", exception.message)
+    }
+
+    @Test
     fun `multianewarray allocates one dimensional primitive arrays`() {
         val heap = JvmHeap()
 

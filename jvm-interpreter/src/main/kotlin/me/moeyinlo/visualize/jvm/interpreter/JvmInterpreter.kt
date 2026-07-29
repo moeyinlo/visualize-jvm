@@ -2082,7 +2082,16 @@ object JvmInterpreter {
                 terminationState,
                 monitorUnblockedHandler,
             )
-            0xC5 -> executeMultiANewArray(instruction, operandStack, constantPool, heap)
+            0xC5 -> executeMultiANewArray(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
                 "Unsupported instruction ${instruction.metadata.mnemonic} " +
@@ -10283,6 +10292,10 @@ object JvmInterpreter {
         operandStack: JvmOperandStack,
         constantPool: ConstantPool,
         heap: JvmHeap,
+        classHierarchy: JvmClassHierarchy,
+        currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+        methodArea: JvmMethodArea? = null,
     ) {
         val dimensions = instruction.operands[2]
         if (dimensions == 0) {
@@ -10310,7 +10323,28 @@ object JvmInterpreter {
             )
         }
         val arrayClassName = resolveConstantClassName(instruction, constantPool)
+        innermostReferenceArrayComponentClassName(arrayClassName)?.let { componentClassName ->
+            requireAccessibleClass(
+                targetClassName = componentClassName,
+                currentClassName = currentClassName,
+                classHierarchy = classHierarchy,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
+        }
         operandStack.push(allocateMultiDimensionalArray(arrayClassName, counts, heap, instruction))
+    }
+
+    private fun innermostReferenceArrayComponentClassName(arrayClassName: String): String? {
+        var descriptor = arrayClassName
+        while (descriptor.startsWith("[")) {
+            descriptor = descriptor.substring(1)
+        }
+        return if (descriptor.startsWith("L") && descriptor.endsWith(";")) {
+            descriptor.substring(1, descriptor.length - 1)
+        } else {
+            null
+        }
     }
 
     private fun allocateMultiDimensionalArray(
