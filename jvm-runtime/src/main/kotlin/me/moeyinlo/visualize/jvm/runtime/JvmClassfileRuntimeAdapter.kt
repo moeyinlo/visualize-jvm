@@ -18,14 +18,20 @@ import me.moeyinlo.visualize.jvm.classfile.ConstantValueAttribute
 import me.moeyinlo.visualize.jvm.classfile.FieldInfo
 import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
+import me.moeyinlo.visualize.jvm.classfile.NestHostAttribute
 import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
 import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 
 fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
+    val internalName = constantPool.className(identity.thisClassIndex)
+    val nestHostInternalName = attributes.filterIsInstance<NestHostAttribute>().singleOrNull()
+        ?.let { attribute -> constantPool.className(attribute.hostClassIndex) }
+        ?: internalName
     val sourceFile = attributes.filterIsInstance<SourceFileAttribute>().singleOrNull()
         ?.let { attribute -> constantPool.utf8(attribute.sourceFileIndex) }
     return JvmClassDefinition(
-        internalName = constantPool.className(identity.thisClassIndex),
+        internalName = internalName,
+        nestHostInternalName = nestHostInternalName,
         superclassName = identity.superClassIndex?.let(constantPool::className),
         interfaceNames = identity.interfaceIndexes.map(constantPool::className),
         fields = fields.map { field -> field.toJvmFieldDefinition(constantPool) },
