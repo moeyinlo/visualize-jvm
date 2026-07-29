@@ -20,6 +20,7 @@ class JvmClassPathLoader(
     private val initiatingLoader: JvmClassLoaderIdentity = definingLoader,
     private val loadingConstraints: JvmLoadingConstraintSet? = null,
     private val runtimeModuleName: String? = null,
+    private val moduleLayer: JvmModuleLayer? = null,
 ) {
     fun load(internalName: String): JvmMethodAreaEntry {
         require(internalName.isNotBlank()) { "class internal name must not be blank" }
@@ -61,7 +62,7 @@ class JvmClassPathLoader(
                 definingLoader = definingLoader,
             ),
             initiatingLoaders = setOf(definingLoader, initiatingLoader),
-            runtimeModuleName = runtimeModuleName,
+            runtimeModuleName = runtimeModuleName ?: moduleLayer?.runtimeModuleNameFor(methodAreaEntry.definition),
         )
         loadingConstraints?.recordResolution(
             internalName = definedInternalName,
@@ -103,6 +104,12 @@ class JvmClassPathLoader(
             }
         }
     }
+
+    private fun JvmModuleLayer.runtimeModuleNameFor(definition: JvmClassDefinition): String? =
+        definition.runtimePackageName()
+            ?.takeIf(String::isNotBlank)
+            ?.let(::findPackageOwner)
+            ?.name
 }
 
 private data class ClassPathClassBytes(
