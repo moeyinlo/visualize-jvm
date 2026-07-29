@@ -8578,6 +8578,7 @@ object JvmInterpreter {
                         dynamicConstants = dynamicConstants,
                         loadNativeLibraryHandler = loadNativeLibraryHandler,
                         unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                        methodArea = methodArea,
                     )
                 },
             ),
@@ -8748,6 +8749,7 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
             ownerClassName = ownerClassName,
@@ -8834,6 +8836,7 @@ object JvmInterpreter {
             dynamicConstants = dynamicConstants,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+            methodArea = methodArea,
         )
         return requireUpcallReturnValue(
             upcallKind = "simulated JNI instance upcall",

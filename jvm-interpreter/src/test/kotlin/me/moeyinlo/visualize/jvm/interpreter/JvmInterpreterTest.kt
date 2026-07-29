@@ -15708,6 +15708,116 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `native instance upcalls propagate method area layout into reentered instance frames`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val nestedParent = JvmClassDefinition(
+            internalName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val nested = JvmClassDefinition(
+            internalName = "Nested",
+            superclassName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "nestedValue", descriptor = "I", isStatic = false)),
+        )
+        val nativeOwner = JvmClassDefinition(
+            internalName = "NativeOwner",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "nativeValue",
+                    descriptor = "()I",
+                    isStatic = true,
+                    isNative = true,
+                ),
+            ),
+        )
+        val upcallTarget = JvmClassDefinition(
+            internalName = "UpcallTarget",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "make",
+                    descriptor = "()I",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xBB.toByte(),
+                        0x00.toByte(),
+                        0x02.toByte(),
+                        0x57.toByte(),
+                        0x03.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Nested", "Nested".encodeToByteArray()),
+                            ConstantClassEntry(ConstantPoolIndex(1)),
+                        ),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        listOf(nestedParent, nested, nativeOwner, upcallTarget).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+        val receiver = heap.allocateObject(upcallTarget)
+        val classHierarchy = JvmClassHierarchy(listOf(nestedParent, nested, nativeOwner, upcallTarget))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB8.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("NativeOwner", "NativeOwner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            nativeMethods = JvmNativeMethodRegistry.from(
+                JvmNativeMethodKey("NativeOwner", "nativeValue", "()I", isStatic = true) to
+                    JvmNativeMethodIntrinsic { context, _ ->
+                        context.callInstanceMethod(
+                            receiver = receiver,
+                            ownerClassName = "UpcallTarget",
+                            name = "make",
+                            descriptor = "()I",
+                            arguments = emptyList(),
+                        )
+                    },
+            ),
+            currentClassName = "Caller",
+            methodArea = methodArea,
+        )
+
+        val nestedReference = JvmObjectReferenceValue(JvmReferenceId(2))
+        val parentField = JvmFieldReference("NestedParent", "parentValue", "J")
+        val nestedField = JvmFieldReference("Nested", "nestedValue", "I")
+        assertEquals(listOf(JvmIntValue(0)), result.operandStack.toList())
+        assertEquals("UpcallTarget", heap.get(receiver).className)
+        assertTrue(heap.isInitialized(receiver))
+        assertEquals("Nested", heap.get(nestedReference).className)
+        assertFalse(heap.isInitialized(nestedReference))
+        assertTrue(heap.hasInstanceField(nestedReference, parentField))
+        assertTrue(heap.hasInstanceField(nestedReference, nestedField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(nestedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(nestedReference, nestedField))
+    }
+
+    @Test
     fun `invokestatic falls back to simulated JNI when no native intrinsic is bound`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
