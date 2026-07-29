@@ -93,6 +93,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
 import me.moeyinlo.visualize.jvm.runtime.JvmVmThreadSet
+import me.moeyinlo.visualize.jvm.runtime.runtimePackageKey
 
 data class JvmExecutionResult(
     val operandStack: JvmOperandStack,
@@ -9475,7 +9476,12 @@ object JvmInterpreter {
         if (
             field.isPackagePrivate &&
             currentClassName != null &&
-            currentClassName.runtimePackageName() != field.reference.ownerClassName.runtimePackageName()
+            !areSameRuntimePackageForFieldAccess(
+                field = field,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
         ) {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
@@ -9530,6 +9536,29 @@ object JvmInterpreter {
             )
         }
         return classHierarchy.areRuntimeNestmates(currentClassName, field.reference.ownerClassName)
+    }
+
+    private fun areSameRuntimePackageForFieldAccess(
+        field: RuntimeResolvedField,
+        currentClassName: String,
+        currentLoadedClassKey: JvmLoadedClassKey?,
+        methodArea: JvmMethodArea?,
+    ): Boolean {
+        if (
+            currentLoadedClassKey != null &&
+            methodArea != null &&
+            currentLoadedClassKey.internalName == currentClassName
+        ) {
+            val currentEntry = methodArea.getClass(currentLoadedClassKey) ?: return false
+            val ownerEntry = methodArea.getClass(
+                internalName = field.reference.ownerClassName,
+                initiatingLoader = currentLoadedClassKey.definingLoader,
+            ) ?: methodArea.getClass(
+                currentLoadedClassKey.copy(internalName = field.reference.ownerClassName),
+            ) ?: return false
+            return currentEntry.runtimePackageKey == ownerEntry.runtimePackageKey
+        }
+        return currentClassName.runtimePackageName() == field.reference.ownerClassName.runtimePackageName()
     }
 
     private fun String.runtimePackageName(): String {
