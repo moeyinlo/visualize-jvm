@@ -2086,6 +2086,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 currentLoadedClassKey = currentLoadedClassKey,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, threadScheduler, currentThreadId)
             0xC3 -> executeMonitorExit(
@@ -5596,6 +5597,7 @@ object JvmInterpreter {
         currentClassName: String?,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val targetClassName = resolveConstantClassName(instruction, constantPool)
         requireAccessibleClass(
@@ -5604,6 +5606,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         val value = operandStack.pop()
         if (value !is JvmReferenceValue) {
