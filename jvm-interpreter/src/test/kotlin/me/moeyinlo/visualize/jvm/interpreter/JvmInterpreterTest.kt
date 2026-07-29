@@ -4124,6 +4124,68 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new rejects public target classes from unreadable runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 129, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val targetKey = JvmLoadedClassKey("lib/api/Hidden", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Hidden"),
+                loadedClassKey = targetKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBB.toByte(),
+                    0x00.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("lib/api/Hidden", "lib/api/Hidden".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "lib/api/Hidden"),
+                        JvmClassDefinition(internalName = "app/Caller"),
+                    ),
+                ),
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class lib/api/Hidden", exception.message)
+    }
+
+    @Test
     fun `new uses method area layout for uninitialized object fields`() {
         val heap = JvmHeap()
         val methodArea = JvmMethodArea()

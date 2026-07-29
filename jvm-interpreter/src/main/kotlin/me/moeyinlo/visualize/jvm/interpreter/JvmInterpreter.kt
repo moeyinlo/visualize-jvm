@@ -2051,6 +2051,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xBD -> executeANewArray(
                 instruction = instruction,
@@ -6228,6 +6229,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
@@ -6459,6 +6461,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
@@ -9476,6 +9479,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val className = resolveConstantClassName(instruction, constantPool)
         requireAccessibleClass(
@@ -9484,6 +9488,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         initializeClassForActiveUse(
             className,
