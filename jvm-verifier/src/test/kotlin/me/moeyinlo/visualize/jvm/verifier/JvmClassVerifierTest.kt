@@ -5,6 +5,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
 import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
+import me.moeyinlo.visualize.jvm.classfile.SameStackMapFrame
+import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 
 class JvmClassVerifierTest {
     @Test
@@ -55,6 +57,42 @@ class JvmClassVerifierTest {
 
         assertEquals("pkg/Bad", failure.className)
         assertEquals("tooManyLocals(J)V", failure.methodSignature)
+    }
+
+    @Test
+    fun `class verifier type checks instructions at StackMapTable frame offsets`() {
+        val verifier = JvmClassVerifier()
+
+        val failure = assertFailsWith<JvmClassVerificationException> {
+            verifier.verify(
+                JvmClassVerificationRequest(
+                    className = "pkg/BadReturn",
+                    majorVersion = 70,
+                    methods = listOf(
+                        JvmMethodVerificationRequest(
+                            name = "badReturn",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = CodeAttribute(
+                                nameIndex = ConstantPoolIndex(1),
+                                maxStack = 1,
+                                maxLocals = 0,
+                                code = byteArrayOf(0x00, 0xAC.toByte()),
+                                attributes = listOf(
+                                    StackMapTableAttribute(
+                                        nameIndex = ConstantPoolIndex(2),
+                                        entries = listOf(SameStackMapFrame(frameType = 1)),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        assertEquals("pkg/BadReturn", failure.className)
+        assertEquals("badReturn()I", failure.methodSignature)
     }
 
     @Test

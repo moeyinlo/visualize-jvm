@@ -1,6 +1,7 @@
 package me.moeyinlo.visualize.jvm.verifier
 
 import me.moeyinlo.visualize.jvm.classfile.CodeAttribute
+import me.moeyinlo.visualize.jvm.classfile.ConstantPoolIndex
 import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
 
 class JvmClassVerifier {
@@ -53,14 +54,12 @@ class JvmClassVerifier {
         val stackMapFrames = code.attributes
             .filterIsInstance<StackMapTableAttribute>()
             .flatMap { attribute -> StackMapFrameExpander.expand(initialFrame.locals, attribute.entries) }
-        val frames = listOf(
-            VerificationFrameState(
-                bytecodeOffset = 0,
-                locals = initialFrame.locals,
-                stack = initialFrame.stack,
-            ),
-        ) + stackMapFrames
-        MethodResourceLimitsVerifier.verify(code, frames)
+        MethodTypeCheckingVerifier.verify(
+            code = code,
+            initialFrame = initialFrame,
+            throwableType = VerificationType.ObjectType(ConstantPoolIndex(1)),
+            frameStates = stackMapFrames,
+        )
     }
 
     private fun initialFrame(
