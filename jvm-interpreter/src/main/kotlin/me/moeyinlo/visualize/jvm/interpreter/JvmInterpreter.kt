@@ -7902,6 +7902,13 @@ object JvmInterpreter {
             moduleLayer = moduleLayer,
         )
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
+        requireAccessibleMethod(
+            method = linkedCallSite.targetMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, linkedCallSite.targetMethod.descriptor)
         initializeClassForActiveUse(
             linkedCallSite.targetMethod.ownerClassName,
