@@ -4906,8 +4906,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticShortMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmShortValue {
-                    calls += RecordedStaticShortUpcall(method, arguments)
+                    calls += RecordedStaticShortUpcall(method, arguments, currentLoadedClassKey)
                     return JvmShortValue(-123)
                 }
             },
@@ -4964,6 +4965,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticShortMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmShortValue = error("CallStaticShortMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -4978,6 +4980,70 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(
             "CallStaticShortMethod requires class Other to be assignable to Example",
             exception.message,
+        )
+    }
+
+    @Test
+    fun `CallStaticShortMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(7, "short-loader"),
+        )
+        val calls = mutableListOf<RecordedStaticShortUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "delta",
+                                descriptor = "()S",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticShortMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ): JvmShortValue {
+                    calls += RecordedStaticShortUpcall(method, arguments, currentLoadedClassKey)
+                    return JvmShortValue(-234)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "delta", "()S")
+
+        val result = environment.callStaticShortMethod(classHandle, methodHandle)
+
+        assertEquals(-234, result)
+        assertEquals(
+            listOf(
+                RecordedStaticShortUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "delta",
+                        descriptor = "()S",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
+                ),
+            ),
+            calls,
         )
     }
 
@@ -13718,6 +13784,7 @@ private data class RecordedStaticCharUpcall(
 private data class RecordedStaticShortUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedStaticIntUpcall(

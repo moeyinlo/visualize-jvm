@@ -178,6 +178,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticShortMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ): JvmShortValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

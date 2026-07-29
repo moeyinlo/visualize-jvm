@@ -907,6 +907,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticShortMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 

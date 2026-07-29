@@ -2331,6 +2331,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticShortMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmShortValue {
                     calls += RecordedFunctionTableStaticShortUpcall(method, arguments)
                     return JvmShortValue(-321)
