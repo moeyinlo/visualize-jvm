@@ -6904,6 +6904,11 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = resolvedMethod.ownerClassName,
+                currentLoadedClassKey = ownerLoadedClassKey(
+                    ownerClassName = resolvedMethod.ownerClassName,
+                    currentLoadedClassKey = currentLoadedClassKey,
+                    methodArea = methodArea,
+                ),
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -6911,6 +6916,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             val returnDescriptor = resolvedMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
