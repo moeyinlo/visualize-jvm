@@ -13063,6 +13063,95 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putfield rejects public owner classes from unreadable runtime modules before storing`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 137, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val ownerKey = JvmLoadedClassKey("lib/api/Owner", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Owner"),
+                loadedClassKey = ownerKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("lib/api/Owner")
+        val field = JvmFieldReference(
+            ownerClassName = "lib/api/Owner",
+            name = "value",
+            descriptor = "I",
+        )
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x05.toByte(),
+                    0xB5.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("lib/api/Owner", "lib/api/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "lib/api/Owner",
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "value",
+                                    descriptor = "I",
+                                    isStatic = false,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("app/Caller"),
+                    ),
+                ),
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class lib/api/Owner", exception.message)
+        assertEquals(JvmIntValue(0), heap.getInstanceField(reference, field))
+    }
+
+    @Test
     fun `putfield allows package private fields from the same package`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("pkg/Owner")
