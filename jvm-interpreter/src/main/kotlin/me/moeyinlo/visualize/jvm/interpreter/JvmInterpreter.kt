@@ -5805,6 +5805,13 @@ object JvmInterpreter {
         methodArea: JvmMethodArea? = null,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
+        requireAccessibleClass(
+            targetClassName = resolvedField.reference.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         requireStaticField(instruction, resolvedField)
         requireAccessibleField(
             field = resolvedField,

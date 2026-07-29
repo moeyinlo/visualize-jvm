@@ -8403,6 +8403,50 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getstatic rejects package private owner classes from another package`() {
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB2.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Owner",
+                            isPublic = false,
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "value",
+                                    descriptor = "I",
+                                    isStatic = true,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Owner", exception.message)
+    }
+
+    @Test
     fun `getstatic allows package private fields from the same package`() {
         val result = JvmInterpreter.execute(
             code = byteArrayOf(
