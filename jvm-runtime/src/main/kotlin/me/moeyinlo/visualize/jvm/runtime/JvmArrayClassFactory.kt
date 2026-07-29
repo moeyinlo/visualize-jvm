@@ -205,6 +205,7 @@ class JvmArrayClassFactory(
             loadedClassKey = loadedClassKey,
             initiatingLoaders = setOf(loadedClassKey.definingLoader),
         )
+        checkLoadingConstraintResolution(loadedClassKey)
         rememberMetadata(
             loadedClassKey = loadedClassKey,
             metadata = arrayMetadata(
@@ -259,6 +260,14 @@ class JvmArrayClassFactory(
 
     private fun recordLoadingConstraintResolution(loadedClassKey: JvmLoadedClassKey) {
         loadingConstraints?.recordResolution(
+            internalName = loadedClassKey.internalName,
+            initiatingLoader = loadedClassKey.definingLoader,
+            resolvedClass = loadedClassKey,
+        )
+    }
+
+    private fun checkLoadingConstraintResolution(loadedClassKey: JvmLoadedClassKey) {
+        loadingConstraints?.checkResolution(
             internalName = loadedClassKey.internalName,
             initiatingLoader = loadedClassKey.definingLoader,
             resolvedClass = loadedClassKey,

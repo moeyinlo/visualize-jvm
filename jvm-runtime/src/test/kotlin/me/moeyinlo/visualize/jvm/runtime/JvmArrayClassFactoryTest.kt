@@ -2,6 +2,7 @@ package me.moeyinlo.visualize.jvm.runtime
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
 
 class JvmArrayClassFactoryTest {
@@ -181,5 +182,31 @@ class JvmArrayClassFactoryTest {
         assertSame(pluginArrayClass, methodArea.getClass("[Lpkg/Type;", pluginLoader))
         assertEquals(appArrayKey, loadingConstraints.resolvedClass("[Lpkg/Type;", pluginLoader))
         assertEquals(1, methodArea.classCount)
+    }
+
+    @Test
+    fun `rejects incompatible constrained array resolutions before defining the array class`() {
+        val methodArea = JvmMethodArea()
+        val loadingConstraints = JvmLoadingConstraintSet()
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val pluginLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "plugin")
+        val factory = JvmArrayClassFactory(
+            methodArea = methodArea,
+            loadingConstraints = loadingConstraints,
+        )
+        val appArrayKey = JvmLoadedClassKey("[Lpkg/Type;", appLoader)
+        val pluginArrayKey = JvmLoadedClassKey("[Lpkg/Type;", pluginLoader)
+        loadingConstraints.addConstraint("[Lpkg/Type;", appLoader, pluginLoader)
+        loadingConstraints.recordResolution("[Lpkg/Type;", pluginLoader, pluginArrayKey)
+
+        val failure = assertFailsWith<JvmLoadingConstraintViolationException> {
+            factory.createReferenceArrayClass("pkg/Type", appLoader)
+        }
+
+        assertEquals("java/lang/LinkageError", failure.guestThrowableClassName)
+        assertEquals(pluginArrayKey, failure.expectedClass)
+        assertEquals(appArrayKey, failure.actualClass)
+        assertEquals(0, methodArea.classCount)
+        assertEquals(null, methodArea.getClass(appArrayKey))
     }
 }

@@ -63,6 +63,22 @@ class JvmLoadingConstraintSet {
         }
     }
 
+    fun checkResolution(
+        internalName: String,
+        initiatingLoader: JvmClassLoaderIdentity,
+        resolvedClass: JvmLoadedClassKey,
+    ) {
+        require(internalName.isNotBlank()) { "loading constraint class name must not be blank" }
+        require(resolvedClass.internalName == internalName) {
+            "resolved class ${resolvedClass.internalName} does not match loading constraint name $internalName"
+        }
+        checkCompatibleResolution(
+            internalName = internalName,
+            constrainedLoaders = constrainedLoaders(internalName, initiatingLoader),
+            resolvedClass = resolvedClass,
+        )
+    }
+
     fun resolvedClass(
         internalName: String,
         initiatingLoader: JvmClassLoaderIdentity,
