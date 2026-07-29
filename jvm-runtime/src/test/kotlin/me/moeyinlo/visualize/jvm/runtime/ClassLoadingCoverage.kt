@@ -26,8 +26,9 @@ object ClassLoadingCoverage {
         ClassLoadingCoverageEntry(
             rule = "bootstrap and user-defined loader identity",
             specSection = "JVMS 5.3 Creation and Loading",
-            currentComponent = "JvmClassHierarchy stores classes by internal name only",
-            status = ClassLoadingCoverageStatus.NotYetImplemented,
+            currentComponent = "JvmClassLoaderIdentity and JvmLoadedClassKey model loader-qualified class identity",
+            status = ClassLoadingCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmClassLoaderIdentityTest",
         ),
         ClassLoadingCoverageEntry(
             rule = "array class creation",

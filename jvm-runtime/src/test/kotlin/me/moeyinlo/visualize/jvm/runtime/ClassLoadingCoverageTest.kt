@@ -46,7 +46,6 @@ class ClassLoadingCoverageTest {
         assertEquals(
             listOf(
                 "binary name to class bytes",
-                "bootstrap and user-defined loader identity",
                 "array class creation",
                 "loading constraints",
                 "erroneous class state",
