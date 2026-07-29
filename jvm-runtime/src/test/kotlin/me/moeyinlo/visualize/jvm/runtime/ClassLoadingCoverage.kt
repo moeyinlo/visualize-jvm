@@ -44,6 +44,13 @@ object ClassLoadingCoverage {
             coveringTestClass = "JvmLoadingConstraintSetTest",
         ),
         ClassLoadingCoverageEntry(
+            rule = "module and layer metadata",
+            specSection = "JVMS 5.3.6 Modules and Layers",
+            currentComponent = "JvmModuleLayer models module descriptors, parent layers, readability, and same-layer package ownership",
+            status = ClassLoadingCoverageStatus.PartiallyImplemented,
+            coveringTestClass = "JvmModuleLayerTest",
+        ),
+        ClassLoadingCoverageEntry(
             rule = "erroneous class state",
             specSection = "JVMS 5.3.5 Deriving a Class from a class File Representation",
             currentComponent = "No class state machine yet, so failed derivation is not remembered per loader/name",
