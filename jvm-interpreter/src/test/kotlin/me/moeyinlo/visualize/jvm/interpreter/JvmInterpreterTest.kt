@@ -27820,6 +27820,103 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached constructor target propagates method area layout into constructor frame`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val nestedParent = JvmClassDefinition(
+            internalName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val nested = JvmClassDefinition(
+            internalName = "Nested",
+            superclassName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "nestedValue", descriptor = "I", isStatic = false)),
+        )
+        val constructed = JvmClassDefinition(
+            internalName = "pkg/Constructed",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<init>",
+                    descriptor = "()V",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xBB.toByte(),
+                        0x00.toByte(),
+                        0x02.toByte(),
+                        0x57.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 1,
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Nested", "Nested".encodeToByteArray()),
+                            ConstantClassEntry(ConstantPoolIndex(1)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        listOf(nestedParent, nested, constructed).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+        val classHierarchy = JvmClassHierarchy(listOf(nestedParent, nested, constructed))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicConstructorCallSiteConstantPool(),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            methodArea = methodArea,
+        )
+
+        val nestedReference = JvmObjectReferenceValue(JvmReferenceId(2))
+        val parentField = JvmFieldReference("NestedParent", "parentValue", "J")
+        val nestedField = JvmFieldReference("Nested", "nestedValue", "I")
+        assertEquals("Nested", heap.get(nestedReference).className)
+        assertFalse(heap.isInitialized(nestedReference))
+        assertTrue(heap.hasInstanceField(nestedReference, parentField))
+        assertTrue(heap.hasInstanceField(nestedReference, nestedField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(nestedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(nestedReference, nestedField))
+    }
+
+    @Test
     fun `invokedynamic executes cached constructor target with the constructor method constant pool`() {
         val heap = JvmHeap()
         val classHierarchy = JvmClassHierarchy(

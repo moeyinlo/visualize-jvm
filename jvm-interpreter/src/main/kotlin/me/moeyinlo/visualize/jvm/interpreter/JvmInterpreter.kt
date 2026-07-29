@@ -8181,6 +8181,7 @@ object JvmInterpreter {
             dynamicConstants = dynamicConstants,
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+            methodArea = methodArea,
         )
         if (frameResult.returnValue != null) {
             throw JvmUnsupportedInstructionException(
