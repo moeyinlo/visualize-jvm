@@ -13,9 +13,30 @@ enum class JvmPrimitiveArrayComponent(
     Double("D"),
 }
 
+sealed interface JvmArrayComponent {
+    val descriptor: String
+
+    data class Primitive(
+        val primitive: JvmPrimitiveArrayComponent,
+    ) : JvmArrayComponent {
+        override val descriptor: String = primitive.descriptor
+    }
+
+    data class Reference(
+        val internalName: String,
+        val definingLoader: JvmClassLoaderIdentity,
+    ) : JvmArrayComponent {
+        init {
+            require(internalName.isNotBlank()) { "reference array component internal name must not be blank" }
+        }
+
+        override val descriptor: String = "L$internalName;"
+    }
+}
+
 data class JvmArrayClassMetadata(
     val internalName: String,
-    val component: JvmPrimitiveArrayComponent,
+    val component: JvmArrayComponent,
     val definingLoader: JvmClassLoaderIdentity,
 )
 
@@ -33,10 +54,57 @@ class JvmArrayClassFactory(
         methodArea.getClass(loadedClassKey)?.let { existing ->
             metadataByInternalName.putIfAbsent(
                 internalName,
-                primitiveArrayMetadata(internalName, component),
+                arrayMetadata(
+                    internalName = internalName,
+                    component = JvmArrayComponent.Primitive(component),
+                    definingLoader = JvmClassLoaderIdentity.Bootstrap,
+                ),
             )
             return existing
         }
+        return defineArrayClass(
+            internalName = internalName,
+            loadedClassKey = loadedClassKey,
+            component = JvmArrayComponent.Primitive(component),
+        )
+    }
+
+    fun createReferenceArrayClass(
+        componentInternalName: String,
+        componentDefiningLoader: JvmClassLoaderIdentity,
+    ): JvmMethodAreaEntry {
+        require(componentInternalName.isNotBlank()) { "reference array component internal name must not be blank" }
+        val internalName = "[L$componentInternalName;"
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = internalName,
+            definingLoader = componentDefiningLoader,
+        )
+        methodArea.getClass(loadedClassKey)?.let { existing ->
+            metadataByInternalName.putIfAbsent(
+                internalName,
+                arrayMetadata(
+                    internalName = internalName,
+                    component = JvmArrayComponent.Reference(componentInternalName, componentDefiningLoader),
+                    definingLoader = componentDefiningLoader,
+                ),
+            )
+            return existing
+        }
+        return defineArrayClass(
+            internalName = internalName,
+            loadedClassKey = loadedClassKey,
+            component = JvmArrayComponent.Reference(componentInternalName, componentDefiningLoader),
+        )
+    }
+
+    fun metadataFor(internalName: String): JvmArrayClassMetadata? =
+        metadataByInternalName[internalName]
+
+    private fun defineArrayClass(
+        internalName: String,
+        loadedClassKey: JvmLoadedClassKey,
+        component: JvmArrayComponent,
+    ): JvmMethodAreaEntry {
         val entry = JvmMethodAreaEntry(
             definition = JvmClassDefinition(
                 internalName = internalName,
@@ -44,23 +112,25 @@ class JvmArrayClassFactory(
                 interfaceNames = listOf("java/lang/Cloneable", "java/io/Serializable"),
             ),
             loadedClassKey = loadedClassKey,
-            initiatingLoaders = setOf(JvmClassLoaderIdentity.Bootstrap),
+            initiatingLoaders = setOf(loadedClassKey.definingLoader),
         )
-        metadataByInternalName[internalName] = primitiveArrayMetadata(internalName, component)
+        metadataByInternalName[internalName] = arrayMetadata(
+            internalName = internalName,
+            component = component,
+            definingLoader = loadedClassKey.definingLoader,
+        )
         methodArea.defineClass(entry)
         return entry
     }
 
-    fun metadataFor(internalName: String): JvmArrayClassMetadata? =
-        metadataByInternalName[internalName]
-
-    private fun primitiveArrayMetadata(
+    private fun arrayMetadata(
         internalName: String,
-        component: JvmPrimitiveArrayComponent,
+        component: JvmArrayComponent,
+        definingLoader: JvmClassLoaderIdentity,
     ): JvmArrayClassMetadata =
         JvmArrayClassMetadata(
             internalName = internalName,
             component = component,
-            definingLoader = JvmClassLoaderIdentity.Bootstrap,
+            definingLoader = definingLoader,
         )
 }

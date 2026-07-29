@@ -23,7 +23,10 @@ class JvmArrayClassFactoryTest {
             arrayClass.loadedClassKey,
         )
         assertEquals(setOf(JvmClassLoaderIdentity.Bootstrap), arrayClass.initiatingLoaders)
-        assertEquals(JvmPrimitiveArrayComponent.Int, factory.metadataFor("[I")?.component)
+        assertEquals(
+            JvmArrayComponent.Primitive(JvmPrimitiveArrayComponent.Int),
+            factory.metadataFor("[I")?.component,
+        )
         assertSame(arrayClass, methodArea.getClass("[I"))
     }
 
@@ -38,6 +41,35 @@ class JvmArrayClassFactoryTest {
         assertSame(firstArrayClass, secondArrayClass)
         assertSame(firstArrayClass, methodArea.getClass("[I"))
         assertEquals(1, methodArea.classCount)
-        assertEquals(JvmPrimitiveArrayComponent.Int, factory.metadataFor("[I")?.component)
+        assertEquals(
+            JvmArrayComponent.Primitive(JvmPrimitiveArrayComponent.Int),
+            factory.metadataFor("[I")?.component,
+        )
+    }
+
+    @Test
+    fun `creates reference array class metadata with component defining loader`() {
+        val methodArea = JvmMethodArea()
+        val factory = JvmArrayClassFactory(methodArea)
+        val componentLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+
+        val arrayClass = factory.createReferenceArrayClass(
+            componentInternalName = "java/lang/String",
+            componentDefiningLoader = componentLoader,
+        )
+
+        assertEquals("[Ljava/lang/String;", arrayClass.definition.internalName)
+        assertEquals("java/lang/Object", arrayClass.definition.superclassName)
+        assertEquals(
+            listOf("java/lang/Cloneable", "java/io/Serializable"),
+            arrayClass.definition.interfaceNames,
+        )
+        assertEquals(JvmLoadedClassKey("[Ljava/lang/String;", componentLoader), arrayClass.loadedClassKey)
+        assertEquals(setOf(componentLoader), arrayClass.initiatingLoaders)
+        assertEquals(
+            JvmArrayComponent.Reference("java/lang/String", componentLoader),
+            factory.metadataFor("[Ljava/lang/String;")?.component,
+        )
+        assertSame(arrayClass, methodArea.getClass("[Ljava/lang/String;", componentLoader))
     }
 }
