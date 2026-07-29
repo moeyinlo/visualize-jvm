@@ -166,6 +166,34 @@ class JvmClassPathLoaderTest {
     }
 
     @Test
+    fun `reports duplicate classpath definitions as guest LinkageError`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-duplicate-definition")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val definingLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            definingLoader = definingLoader,
+        )
+        val firstLoaded = loader.load("pkg/Example")
+
+        val exception = assertFailsWith<JvmClassPathDuplicateDefinitionException> {
+            loader.load("pkg/Example")
+        }
+
+        assertEquals("java/lang/LinkageError", exception.guestThrowableClassName)
+        assertEquals(JvmLoadedClassKey("pkg/Example", definingLoader), exception.loadedClassKey)
+        assertEquals("pkg/Example", exception.internalName)
+        assertSame(firstLoaded, methodArea.getClass(exception.loadedClassKey))
+        assertEquals(1, methodArea.classCount)
+    }
+
+    @Test
     fun `records loading constraint resolution for classpath loads`() {
         val root = Files.createTempDirectory("visualize-jvm-classpath-loading-constraints")
         writeDirectoryClass(

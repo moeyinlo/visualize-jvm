@@ -66,7 +66,14 @@ class JvmClassPathLoader(
             initiatingLoader = initiatingLoader,
             resolvedClass = keyedEntry.loadedClassKey!!,
         )
-        methodArea.defineClass(keyedEntry)
+        try {
+            methodArea.defineClass(keyedEntry)
+        } catch (exception: JvmMethodAreaDefinitionException) {
+            throw JvmClassPathDuplicateDefinitionException(
+                loadedClassKey = keyedEntry.loadedClassKey!!,
+                cause = exception,
+            )
+        }
         return keyedEntry
     }
 
@@ -113,6 +120,14 @@ class JvmClassPathFormatException(
     cause: Throwable,
 ) : IllegalStateException("Class $internalName has malformed classfile bytes from $source", cause) {
     val guestThrowableClassName: String = "java/lang/ClassFormatError"
+}
+
+class JvmClassPathDuplicateDefinitionException(
+    val loadedClassKey: JvmLoadedClassKey,
+    cause: Throwable,
+) : IllegalStateException("Class ${loadedClassKey.diagnosticName} is already defined by the classpath loader", cause) {
+    val internalName: String = loadedClassKey.internalName
+    val guestThrowableClassName: String = "java/lang/LinkageError"
 }
 
 class JvmClassPathNameMismatchException(message: String) : IllegalStateException(message)
