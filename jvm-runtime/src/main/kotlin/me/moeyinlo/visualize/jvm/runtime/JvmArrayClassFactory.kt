@@ -138,6 +138,17 @@ class JvmArrayClassFactory(
         )
     }
 
+    fun createArrayClassFromDescriptor(
+        descriptor: String,
+        referenceComponentDefiningLoader: JvmClassLoaderIdentity,
+    ): JvmMethodAreaEntry {
+        require(descriptor.startsWith("[")) { "array descriptor must start with '[': $descriptor" }
+        return createArrayClassFromComponentDescriptor(
+            componentDescriptor = descriptor.substring(1),
+            referenceComponentDefiningLoader = referenceComponentDefiningLoader,
+        )
+    }
+
     fun metadataFor(internalName: String): JvmArrayClassMetadata? =
         metadataByInternalName[internalName]
 
@@ -170,6 +181,29 @@ class JvmArrayClassFactory(
         return entry
     }
 
+    private fun createArrayClassFromComponentDescriptor(
+        componentDescriptor: String,
+        referenceComponentDefiningLoader: JvmClassLoaderIdentity,
+    ): JvmMethodAreaEntry =
+        when {
+            componentDescriptor.startsWith("[") -> {
+                val componentArrayClass = createArrayClassFromDescriptor(
+                    descriptor = componentDescriptor,
+                    referenceComponentDefiningLoader = referenceComponentDefiningLoader,
+                )
+                createArrayClassWithArrayComponent(componentArrayClass)
+            }
+
+            componentDescriptor.startsWith("L") && componentDescriptor.endsWith(";") -> {
+                createReferenceArrayClass(
+                    componentInternalName = componentDescriptor.substring(1, componentDescriptor.length - 1),
+                    componentDefiningLoader = referenceComponentDefiningLoader,
+                )
+            }
+
+            else -> createPrimitiveArrayClass(componentDescriptor.toPrimitiveArrayComponent())
+        }
+
     private fun rememberMetadata(
         loadedClassKey: JvmLoadedClassKey,
         metadata: JvmArrayClassMetadata,
@@ -196,4 +230,8 @@ class JvmArrayClassFactory(
             component = component,
             definingLoader = definingLoader,
         )
+
+    private fun String.toPrimitiveArrayComponent(): JvmPrimitiveArrayComponent =
+        JvmPrimitiveArrayComponent.entries.firstOrNull { component -> component.descriptor == this }
+            ?: throw IllegalArgumentException("unsupported array component descriptor: $this")
 }

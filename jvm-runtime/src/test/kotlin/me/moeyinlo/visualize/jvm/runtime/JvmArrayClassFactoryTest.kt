@@ -117,4 +117,25 @@ class JvmArrayClassFactoryTest {
         assertSame(twoDimensionalArrayClass, methodArea.getClass(twoDimensionalKey))
         assertEquals(2, methodArea.classCount)
     }
+
+    @Test
+    fun `creates nested reference array classes from an array descriptor`() {
+        val methodArea = JvmMethodArea()
+        val factory = JvmArrayClassFactory(methodArea)
+        val componentLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val stringArrayKey = JvmLoadedClassKey("[Ljava/lang/String;", componentLoader)
+        val nestedArrayKey = JvmLoadedClassKey("[[Ljava/lang/String;", componentLoader)
+
+        val nestedArrayClass = factory.createArrayClassFromDescriptor(
+            descriptor = "[[Ljava/lang/String;",
+            referenceComponentDefiningLoader = componentLoader,
+        )
+
+        assertEquals(nestedArrayKey, nestedArrayClass.loadedClassKey)
+        assertEquals("[[Ljava/lang/String;", nestedArrayClass.definition.internalName)
+        assertEquals(JvmArrayComponent.Reference("java/lang/String", componentLoader), factory.metadataFor(stringArrayKey)?.component)
+        assertEquals(JvmArrayComponent.Array(stringArrayKey), factory.metadataFor(nestedArrayKey)?.component)
+        assertSame(nestedArrayClass, methodArea.getClass(nestedArrayKey))
+        assertEquals(2, methodArea.classCount)
+    }
 }
