@@ -10648,6 +10648,81 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `getfield rejects package private fields from same named package in different defining loaders`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 53, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 54, displayName = "library")
+        val callerKey = JvmLoadedClassKey("pkg/Caller", appLoader)
+        val ownerKey = JvmLoadedClassKey("pkg/Owner", libraryLoader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Caller"),
+                loadedClassKey = callerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Owner"),
+                loadedClassKey = ownerKey,
+                initiatingLoaders = setOf(appLoader),
+            ),
+        )
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("pkg/Owner")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB4.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("shared", "shared".encodeToByteArray()),
+                        ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Owner",
+                            fields = listOf(
+                                JvmFieldDefinition(
+                                    name = "shared",
+                                    descriptor = "I",
+                                    isStatic = false,
+                                    isPackagePrivate = true,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("pkg/Caller"),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals(
+            "Class pkg/Caller cannot access package-private field pkg/Owner.shared:I",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `getfield throws guest IllegalAccessError for protected fields from non subclass in another package`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("pkg/Owner")
