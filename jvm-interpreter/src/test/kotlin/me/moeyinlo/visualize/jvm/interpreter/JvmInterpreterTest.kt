@@ -1,6 +1,15 @@
 package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.BootstrapMethodIndex
+import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlags
+import me.moeyinlo.visualize.jvm.classfile.ClassFile
+import me.moeyinlo.visualize.jvm.classfile.ClassFileKind
+import me.moeyinlo.visualize.jvm.classfile.ClassFileMagic
+import me.moeyinlo.visualize.jvm.classfile.ClassFileVersion
+import me.moeyinlo.visualize.jvm.classfile.ClassIdentity
+import me.moeyinlo.visualize.jvm.classfile.FieldInfo
+import me.moeyinlo.visualize.jvm.classfile.NestHostAttribute
+import me.moeyinlo.visualize.jvm.classfile.NestMembersAttribute
 import me.moeyinlo.visualize.jvm.classfile.ConstantDoubleEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantClassEntry
 import me.moeyinlo.visualize.jvm.classfile.ConstantDynamicEntry
@@ -104,6 +113,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmThreadSchedulingState
 import me.moeyinlo.visualize.jvm.runtime.JvmThrowablePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationResult
 import me.moeyinlo.visualize.jvm.runtime.JvmVmTerminationState
+import me.moeyinlo.visualize.jvm.runtime.toJvmClassDefinition
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -7779,6 +7789,108 @@ class JvmInterpreterTest {
         )
 
         assertEquals(listOf(JvmIntValue(31)), result.operandStack.toList())
+    }
+
+    @Test
+    fun `getstatic allows private fields from classfile derived nest metadata`() {
+        val hostClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(7)),
+                    ConstantUtf8Entry("NestMembers", "NestMembers".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = listOf(
+                FieldInfo(
+                    accessFlags = 0x000A,
+                    nameIndex = ConstantPoolIndex(5),
+                    descriptorIndex = ConstantPoolIndex(6),
+                    attributes = emptyList(),
+                ),
+            ),
+            methods = emptyList(),
+            attributes = listOf(
+                NestMembersAttribute(
+                    nameIndex = ConstantPoolIndex(9),
+                    classes = listOf(ConstantPoolIndex(8)),
+                ),
+            ),
+        )
+        val memberClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(5)),
+                    ConstantUtf8Entry("NestHost", "NestHost".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = emptyList(),
+            attributes = listOf(
+                NestHostAttribute(
+                    nameIndex = ConstantPoolIndex(7),
+                    hostClassIndex = ConstantPoolIndex(6),
+                ),
+            ),
+        )
+        val staticFields = JvmStaticFields()
+        staticFields.put(JvmFieldReference("Owner", "secret", "I"), JvmIntValue(37))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    hostClassFile.toJvmClassDefinition(),
+                    memberClassFile.toJvmClassDefinition(),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+        )
+
+        assertEquals(listOf(JvmIntValue(37)), result.operandStack.toList())
     }
 
     @Test
