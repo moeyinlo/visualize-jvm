@@ -11,6 +11,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
@@ -2040,6 +2041,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticVoidMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ) {
                     calls += RecordedFunctionTableStaticVoidUpcall(method, arguments)
                 }

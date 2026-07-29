@@ -822,6 +822,7 @@ class JvmSimulatedJniEnvironment(
         upcallDispatcher.callStaticVoidMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         )
     }
 

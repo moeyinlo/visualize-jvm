@@ -6,6 +6,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
 import me.moeyinlo.visualize.jvm.runtime.JvmReferenceValue
@@ -122,6 +123,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticVoidMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ) {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

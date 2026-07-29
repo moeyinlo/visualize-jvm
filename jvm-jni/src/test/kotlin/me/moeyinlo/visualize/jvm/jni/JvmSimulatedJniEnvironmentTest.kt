@@ -4000,8 +4000,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticVoidMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ) {
-                    calls += RecordedStaticVoidUpcall(method, arguments)
+                    calls += RecordedStaticVoidUpcall(method, arguments, currentLoadedClassKey)
                 }
             },
         )
@@ -4020,6 +4021,66 @@ class JvmSimulatedJniEnvironmentTest {
                         isStatic = true,
                     ),
                     arguments = listOf(JvmIntValue(7)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
+    fun `CallStaticVoidMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 401, displayName = "jni-upcall-loader")
+        val loadedClassKey = JvmLoadedClassKey("Example", loader)
+        val calls = mutableListOf<RecordedStaticVoidUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "boot",
+                                descriptor = "()V",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticVoidMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ) {
+                    calls += RecordedStaticVoidUpcall(method, arguments, currentLoadedClassKey)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "boot", "()V")
+
+        environment.callStaticVoidMethod(classHandle, methodHandle)
+
+        assertEquals(
+            listOf(
+                RecordedStaticVoidUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "boot",
+                        descriptor = "()V",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
                 ),
             ),
             calls,
@@ -4056,6 +4117,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticVoidMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ) = error("CallStaticVoidMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -13365,6 +13427,7 @@ private data class RecordedDoubleUpcall(
 private data class RecordedStaticVoidUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedStaticObjectUpcall(
