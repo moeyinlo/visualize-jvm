@@ -130,4 +130,33 @@ class JvmMethodAreaTest {
         assertEquals("value", resolved.name)
         assertEquals("()I", resolved.descriptor)
     }
+    @Test
+    fun `method area entry exposes runtime package and module metadata`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 11, displayName = "app-loader")
+        val key = JvmLoadedClassKey("app/internal/Example", loader)
+        val entry = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "app/internal/Example"),
+            loadedClassKey = key,
+            runtimeModuleName = "app.module",
+        )
+        val methodArea = JvmMethodArea()
+
+        methodArea.defineClass(entry)
+
+        val loaded = methodArea.getClass(key)
+        assertEquals("app.module", loaded?.runtimeModuleName)
+        assertEquals(JvmRuntimePackageKey("app/internal", loader), loaded?.runtimePackageKey)
+    }
+
+    @Test
+    fun `method area entry rejects blank runtime module names`() {
+        val failure = assertFailsWith<IllegalArgumentException> {
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "Example"),
+                runtimeModuleName = " ",
+            )
+        }
+
+        assertEquals("runtime module name must not be blank", failure.message)
+    }
 }

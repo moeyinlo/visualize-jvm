@@ -5,7 +5,18 @@ data class JvmMethodAreaEntry(
     val staticFields: JvmStaticFields = JvmStaticFields(),
     val loadedClassKey: JvmLoadedClassKey? = null,
     val initiatingLoaders: Set<JvmClassLoaderIdentity> = emptySet(),
-)
+    val runtimeModuleName: String? = null,
+) {
+    init {
+        require(runtimeModuleName == null || runtimeModuleName.isNotBlank()) {
+            "runtime module name must not be blank"
+        }
+    }
+
+    val runtimePackageKey: JvmRuntimePackageKey?
+        get() = (loadedClassKey ?: JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap))
+            .runtimePackageKey()
+}
 
 class JvmMethodArea {
     private val entriesByLoadedClassKey = linkedMapOf<JvmLoadedClassKey, JvmMethodAreaEntry>()
