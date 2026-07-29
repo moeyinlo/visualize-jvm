@@ -39,6 +39,31 @@ class JvmHeapTest {
         assertEquals(JvmIntValue(5), heap.getInstanceField(second, field))
     }
 
+
+    @Test
+    fun `heap allocates objects with prepared declared instance fields`() {
+        val heap = JvmHeap()
+        val classDefinition = JvmClassDefinition(
+            internalName = "Example",
+            fields = listOf(
+                JvmFieldDefinition(name = "counter", descriptor = "I", isStatic = false),
+                JvmFieldDefinition(name = "name", descriptor = "Ljava/lang/String;", isStatic = false),
+                JvmFieldDefinition(name = "global", descriptor = "J", isStatic = true),
+            ),
+        )
+        val counter = JvmFieldReference("Example", "counter", "I")
+        val name = JvmFieldReference("Example", "name", "Ljava/lang/String;")
+        val global = JvmFieldReference("Example", "global", "J")
+
+        val reference = heap.allocateObject(classDefinition)
+
+        assertEquals(JvmHeapObject("Example"), heap.get(reference))
+        assertTrue(heap.hasInstanceField(reference, counter))
+        assertTrue(heap.hasInstanceField(reference, name))
+        assertFalse(heap.hasInstanceField(reference, global))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(reference, counter))
+        assertEquals(JvmNullValue, heap.getInstanceField(reference, name))
+    }
     @Test
     fun `heap tracks uninitialized object state for constructor execution`() {
         val heap = JvmHeap()

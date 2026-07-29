@@ -94,6 +94,12 @@ class JvmHeap {
         return allocate(JvmHeapObject(className))
     }
 
+    fun allocateObject(classDefinition: JvmClassDefinition): JvmObjectReferenceValue {
+        val reference = allocateObject(classDefinition.internalName)
+        prepareDeclaredInstanceFields(reference, classDefinition)
+        return reference
+    }
+
     fun allocateUninitializedObject(className: String): JvmObjectReferenceValue {
         require(className.isNotBlank()) { "class name must not be blank" }
 
@@ -383,10 +389,31 @@ class JvmHeap {
         instanceFields.getOrPut(reference.referenceId) { linkedMapOf() }[field] = value
     }
 
+    fun hasInstanceField(reference: JvmObjectReferenceValue, field: JvmFieldReference): Boolean {
+        get(reference)
+        return instanceFields[reference.referenceId]?.containsKey(field) == true
+    }
+
     fun getInstanceField(reference: JvmObjectReferenceValue, field: JvmFieldReference): JvmValue {
         get(reference)
         return instanceFields[reference.referenceId]?.get(field)
             ?: field.defaultFieldValue()
+    }
+
+    private fun prepareDeclaredInstanceFields(
+        reference: JvmObjectReferenceValue,
+        classDefinition: JvmClassDefinition,
+    ) {
+        classDefinition.fields
+            .filterNot(JvmFieldDefinition::isStatic)
+            .forEach { field ->
+                val fieldReference = JvmFieldReference(
+                    ownerClassName = classDefinition.internalName,
+                    name = field.name,
+                    descriptor = field.descriptor,
+                )
+                putInstanceField(reference, fieldReference, fieldReference.defaultFieldValue())
+            }
     }
 
     private fun allocate(heapObject: JvmHeapObject): JvmObjectReferenceValue {
