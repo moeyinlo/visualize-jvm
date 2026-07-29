@@ -7158,6 +7158,7 @@ object JvmInterpreter {
                 linkedCallSite = linkedCallSite,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                methodArea = methodArea,
             )
         }
     }
@@ -7305,6 +7306,7 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
             ?: throw JvmUnsupportedInstructionException(
@@ -8073,6 +8075,7 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         val constructor = linkedCallSite.targetMethod
         if (constructor.name != "<init>") {
@@ -8103,7 +8106,14 @@ object JvmInterpreter {
                 value
             }
             .asReversed()
-        val receiver = heap.allocateUninitializedObject(constructor.ownerClassName)
+        val receiver = if (methodArea == null) {
+            heap.allocateUninitializedObject(constructor.ownerClassName)
+        } else {
+            heap.allocateUninitializedObject(
+                methodArea,
+                JvmLoadedClassKey(constructor.ownerClassName, JvmClassLoaderIdentity.Bootstrap),
+            )
+        }
         if (constructor.isNative) {
             val nativeReturnValue = executeNativeMethod(
                 instruction = instruction,

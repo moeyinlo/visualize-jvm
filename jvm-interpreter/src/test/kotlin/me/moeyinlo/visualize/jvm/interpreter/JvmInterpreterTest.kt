@@ -27737,6 +27737,89 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached constructor target allocates receiver from method area layout`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val constructedParent = JvmClassDefinition(
+            internalName = "pkg/ConstructedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val constructed = JvmClassDefinition(
+            internalName = "pkg/Constructed",
+            superclassName = "pkg/ConstructedParent",
+            fields = listOf(JvmFieldDefinition(name = "childValue", descriptor = "I", isStatic = false)),
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<init>",
+                    descriptor = "()V",
+                    isStatic = false,
+                    code = byteArrayOf(0xB1.toByte()),
+                    maxStack = 0,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        listOf(constructedParent, constructed).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+        val classHierarchy = JvmClassHierarchy(listOf(constructedParent, constructed))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBA.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = invokedynamicConstructorCallSiteConstantPool(),
+            heap = heap,
+            classHierarchy = classHierarchy,
+            currentClassName = "pkg/Caller",
+            invokeDynamicCallSites = callSites,
+            methodArea = methodArea,
+        )
+
+        val constructedReference = result.operandStack.toList().single() as JvmObjectReferenceValue
+        val parentField = JvmFieldReference("pkg/ConstructedParent", "parentValue", "J")
+        val childField = JvmFieldReference("pkg/Constructed", "childValue", "I")
+        assertEquals(JvmReferenceId(1), constructedReference.referenceId)
+        assertEquals("pkg/Constructed", heap.get(constructedReference).className)
+        assertTrue(heap.isInitialized(constructedReference))
+        assertTrue(heap.hasInstanceField(constructedReference, parentField))
+        assertTrue(heap.hasInstanceField(constructedReference, childField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(constructedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(constructedReference, childField))
+    }
+
+    @Test
     fun `invokedynamic executes cached constructor target with the constructor method constant pool`() {
         val heap = JvmHeap()
         val classHierarchy = JvmClassHierarchy(
