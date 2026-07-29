@@ -2031,6 +2031,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xBC -> executeNewArray(instruction, operandStack, heap)
             0xBB -> executeNew(
@@ -7014,6 +7015,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val thirdOperand = instruction.operands[2]
         val fourthOperand = instruction.operands[3]
@@ -7056,6 +7058,7 @@ object JvmInterpreter {
                     terminationState = terminationState,
                     monitorUnblockedHandler = monitorUnblockedHandler,
                     currentClassName = currentClassName,
+                    currentLoadedClassKey = currentLoadedClassKey,
                     currentMethodName = currentMethodName,
                     currentSourceFile = currentSourceFile,
                     currentLineNumberTable = currentLineNumberTable,
@@ -7067,6 +7070,7 @@ object JvmInterpreter {
                     loadNativeLibraryHandler = loadNativeLibraryHandler,
                     unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                     methodArea = methodArea,
+                    moduleLayer = moduleLayer,
                 )
                 return
             }
@@ -7190,6 +7194,7 @@ object JvmInterpreter {
             terminationState = terminationState,
             monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = currentClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
             currentMethodName = currentMethodName,
             currentSourceFile = currentSourceFile,
             currentLineNumberTable = currentLineNumberTable,
@@ -7201,6 +7206,7 @@ object JvmInterpreter {
             loadNativeLibraryHandler = loadNativeLibraryHandler,
             unloadNativeLibraryHandler = unloadNativeLibraryHandler,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
     }
 
@@ -7291,6 +7297,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         when (linkedCallSite.targetMethodHandle.referenceKind) {
             JvmMethodHandleReferenceKind.GetField -> executeLinkedInvokeDynamicGetFieldTarget(
@@ -7374,6 +7381,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 currentMethodName = currentMethodName,
                 currentSourceFile = currentSourceFile,
                 currentLineNumberTable = currentLineNumberTable,
@@ -7385,6 +7393,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             JvmMethodHandleReferenceKind.InvokeVirtual -> executeLinkedInvokeDynamicVirtualTarget(
                 instruction = instruction,
@@ -7798,6 +7807,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -7813,7 +7823,16 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
+        requireAccessibleClass(
+            targetClassName = linkedCallSite.targetMethod.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+            moduleLayer = moduleLayer,
+        )
         requireStaticMethod(instruction, linkedCallSite.targetMethod)
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, linkedCallSite.targetMethod.descriptor)
         initializeClassForActiveUse(

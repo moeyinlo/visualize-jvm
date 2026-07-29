@@ -31165,6 +31165,104 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached linked static target rejects public owner classes from unreadable runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 142, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val targetKey = JvmLoadedClassKey("lib/api/Targets", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Targets"),
+                loadedClassKey = targetKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition(
+                    internalName = "lib/api/Targets",
+                    methods = listOf(
+                        JvmMethodDefinition(
+                            name = "answer",
+                            descriptor = "()I",
+                            isStatic = true,
+                            code = byteArrayOf(
+                                0x10.toByte(),
+                                0x2A.toByte(),
+                                0xAC.toByte(),
+                            ),
+                            maxStack = 1,
+                            maxLocals = 0,
+                        ),
+                    ),
+                ),
+                JvmClassDefinition("app/Caller"),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "app/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeStatic,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "lib/api/Targets",
+                    name = "answer",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicIntCallSiteConstantPool(),
+                classHierarchy = classHierarchy,
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+                invokeDynamicCallSites = callSites,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class lib/api/Targets", exception.message)
+    }
+
+    @Test
     fun `invokedynamic cached linked static target propagates method area layout into callee frames`() {
         val heap = JvmHeap()
         val methodArea = JvmMethodArea()
