@@ -34756,6 +34756,116 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached special target rejects package private methods from same named package in different defining loaders`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 156, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 157, displayName = "library")
+        val callerKey = JvmLoadedClassKey("pkg/Caller", appLoader)
+        val baseKey = JvmLoadedClassKey("pkg/Base", libraryLoader)
+        val childKey = JvmLoadedClassKey("pkg/Child", libraryLoader)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition(internalName = "pkg/Caller")
+        val base = JvmClassDefinition(
+            internalName = "pkg/Base",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "value",
+                    descriptor = "()I",
+                    isStatic = false,
+                    isPackagePrivate = true,
+                    code = byteArrayOf(0x10.toByte(), 0x2A.toByte(), 0xAC.toByte()),
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val child = JvmClassDefinition(
+            internalName = "pkg/Child",
+            isPublic = true,
+            superclassName = "pkg/Base",
+        )
+        listOf(
+            callerKey to caller,
+            baseKey to base,
+            childKey to child,
+        ).forEach { (key, definition) ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = key,
+                ),
+            )
+        }
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Child")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(listOf(caller, base, child))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "pkg/Caller", bytecodeOffset = 1),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "value",
+                    descriptor = "(Lpkg/Base;)I",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.InvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Base",
+                    name = "value",
+                    descriptor = "()I",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantInvokeDynamicEntry(
+                            bootstrapMethodIndex = BootstrapMethodIndex(0),
+                            nameAndTypeIndex = ConstantPoolIndex(2),
+                        ),
+                        ConstantNameAndTypeEntry(
+                            nameIndex = ConstantPoolIndex(3),
+                            descriptorIndex = ConstantPoolIndex(4),
+                        ),
+                        ConstantUtf8Entry("value", "value".encodeToByteArray()),
+                        ConstantUtf8Entry("(Lpkg/Base;)I", "(Lpkg/Base;)I".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = classHierarchy,
+                currentClassName = "pkg/Caller",
+                currentLoadedClassKey = callerKey,
+                invokeDynamicCallSites = callSites,
+                methodArea = methodArea,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals(
+            "Class pkg/Caller cannot access package-private method pkg/Base.value:()I",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `invokedynamic cached virtual target rejects package private methods from same named package in different defining loaders`() {
         val appLoader = JvmClassLoaderIdentity.UserDefined(id = 154, displayName = "app")
         val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 155, displayName = "library")

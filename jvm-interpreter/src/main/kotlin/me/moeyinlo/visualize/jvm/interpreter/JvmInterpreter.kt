@@ -8157,7 +8157,14 @@ object JvmInterpreter {
             )
         }
         requireNonConstructorReceiverInitialized(targetMethod, receiver, heap)
-        requireAccessibleMethod(targetMethod, currentClassName, classHierarchy, receiverClassName)
+        requireAccessibleMethod(
+            method = targetMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            receiverClassName = receiverClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         if (targetMethod.isAbstract) {
             throw JvmAbstractMethodError(
                 guestClassName = "java/lang/AbstractMethodError",
