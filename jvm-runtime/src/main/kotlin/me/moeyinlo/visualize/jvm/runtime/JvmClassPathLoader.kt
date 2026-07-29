@@ -22,6 +22,12 @@ class JvmClassPathLoader(
             ?: throw JvmClassPathLookupException("Class $internalName is not present on the classpath")
         val classFile = ClassFileParser.parse(bytes = classBytes.bytes, source = classBytes.source)
         val methodAreaEntry = classFile.toJvmMethodAreaEntry()
+        val definedInternalName = methodAreaEntry.definition.internalName
+        if (definedInternalName != internalName) {
+            throw JvmClassPathNameMismatchException(
+                "Class path entry for $internalName defined $definedInternalName instead",
+            )
+        }
         methodArea.defineClass(methodAreaEntry)
         return methodAreaEntry
     }
@@ -58,3 +64,5 @@ private data class ClassPathClassBytes(
 )
 
 class JvmClassPathLookupException(message: String) : IllegalStateException(message)
+
+class JvmClassPathNameMismatchException(message: String) : IllegalStateException(message)

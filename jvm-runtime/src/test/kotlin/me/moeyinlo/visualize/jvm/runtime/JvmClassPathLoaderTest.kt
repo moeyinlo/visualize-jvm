@@ -6,6 +6,8 @@ import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertSame
 import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlags
 import me.moeyinlo.visualize.jvm.classfile.ClassFile
@@ -47,6 +49,32 @@ class JvmClassPathLoaderTest {
 
         assertEquals("java/lang/Object", loaded.definition.superclassName)
         assertSame(loaded, methodArea.getClass("pkg/Example"))
+    }
+
+    @Test
+    fun `rejects classpath entries whose defined class name differs from the requested name`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-name-mismatch")
+        writeDirectoryClass(
+            root,
+            "pkg/Requested",
+            ClassFileWriter.writeClassFile(classFile("pkg/Actual", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+        )
+
+        val exception = assertFailsWith<JvmClassPathNameMismatchException> {
+            loader.load("pkg/Requested")
+        }
+
+        assertEquals(
+            "Class path entry for pkg/Requested defined pkg/Actual instead",
+            exception.message,
+        )
+        assertFalse(methodArea.hasClass("pkg/Requested"))
+        assertFalse(methodArea.hasClass("pkg/Actual"))
     }
 
     private fun writeDirectoryClass(
