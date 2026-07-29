@@ -80,6 +80,7 @@ private fun MethodInfo.toJvmMethodDefinition(
         isNative = has(MethodAccessFlag.Native),
         isVarargs = has(MethodAccessFlag.Varargs),
         code = codeAttribute?.code,
+        constantPool = constantPool,
         maxStack = codeAttribute?.maxStack ?: 0,
         maxLocals = codeAttribute?.maxLocals ?: 0,
         exceptionHandlers = codeAttribute?.exceptionTable?.map { handler ->

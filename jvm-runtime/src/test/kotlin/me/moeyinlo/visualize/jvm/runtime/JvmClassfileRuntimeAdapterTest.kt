@@ -205,9 +205,46 @@ class JvmClassfileRuntimeAdapterTest {
                 isStatic = false,
                 isNative = true,
                 isVarargs = true,
+                constantPool = classFile.constantPool,
             ),
             definition.methods[1],
         )
+    }
+
+    @Test
+    fun `classfile adapter binds constant pool to runtime methods`() {
+        val classFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = constantPool(),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = listOf(
+                MethodInfo(
+                    accessFlags = 0x0009,
+                    nameIndex = ConstantPoolIndex(11),
+                    descriptorIndex = ConstantPoolIndex(12),
+                    attributes = listOf(
+                        CodeAttribute(
+                            nameIndex = ConstantPoolIndex(13),
+                            maxStack = 1,
+                            maxLocals = 0,
+                            code = byteArrayOf(0x12, 0x14, 0x57, 0xB1.toByte()),
+                        ),
+                    ),
+                ),
+            ),
+            attributes = emptyList(),
+        )
+
+        val method = classFile.toJvmClassDefinition().methods.single()
+
+        assertEquals(classFile.constantPool, method.constantPool)
     }
 
     @Test
