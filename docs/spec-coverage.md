@@ -863,7 +863,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | Type checking verifier applies implicit reference local store transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1 | Verification by type checking partially covers MethodTypeCheckingVerifier dispatch over many explicit stack-map/source-frame transitions, operand-stack and local-variable effects for constants, loads, stores, arithmetic, conversions, comparisons, branches, switches, field access, invocation, returns, object/array operations, exception handlers, and protected/uninitialized-this rules; full JVMS type-checking verifier coverage remains pending | `jvm-verifier` | `MethodTypeCheckingVerifierTest`, instruction-specific verifier tests | PARTIAL |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
-| 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
+| 4.11 | JVM limitations are partially covered for classfile unsigned `u1`/`u2`/`u4` read/write widths, Java SE 26 classfile version bounds, `constant_pool_count` and wide-slot overflow checks, non-empty Code byte arrays, verifier `max_locals`/`max_stack` resource checks, and narrowed integral runtime value ranges; exhaustive JVMS implementation-limit enforcement remains pending | `jvm-classfile`, `jvm-verifier`, `jvm-runtime` | `ClassFileByteReaderTest`, `ClassFileWriterTest`, `ClassFileHeaderParserTest`, `ConstantPoolParserTest`, `CodeAttributeHeaderParserTest`, `MethodResourceLimitsVerifierTest`, `JvmIntegralValueTest` | PARTIAL |
 
 ## Chapter 5 - Loading, Linking, and Initializing
 
