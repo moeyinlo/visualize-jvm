@@ -18822,6 +18822,112 @@ class JvmInterpreterTest {
         assertEquals("Class app/NativeOwner cannot access class lib/api/UpcallTarget", exception.message)
     }
     @Test
+    fun `native instance upcalls reject public owner classes from unreadable runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 162, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val nativeOwnerKey = JvmLoadedClassKey("app/NativeOwner", loader)
+        val upcallTargetKey = JvmLoadedClassKey("lib/api/UpcallTarget", loader)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition("app/Caller")
+        val nativeOwner = JvmClassDefinition(
+            internalName = "app/NativeOwner",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "nativeValue",
+                    descriptor = "()I",
+                    isStatic = true,
+                    isNative = true,
+                ),
+            ),
+        )
+        val upcallTarget = JvmClassDefinition(
+            internalName = "lib/api/UpcallTarget",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "value",
+                    descriptor = "()I",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0x10.toByte(),
+                        0x2A.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = caller, loadedClassKey = callerKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(definition = nativeOwner, loadedClassKey = nativeOwnerKey, runtimeModuleName = "app"),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = upcallTarget,
+                loadedClassKey = upcallTargetKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+        val classHierarchy = JvmClassHierarchy(listOf(caller, nativeOwner, upcallTarget))
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xB8.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("app/NativeOwner", "app/NativeOwner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("nativeValue", "nativeValue".encodeToByteArray()),
+                        ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ),
+                ),
+                heap = JvmHeap(),
+                classHierarchy = classHierarchy,
+                nativeMethods = JvmNativeMethodRegistry.from(
+                    JvmNativeMethodKey("app/NativeOwner", "nativeValue", "()I", isStatic = true) to
+                        JvmNativeMethodIntrinsic { context, _ ->
+                            val receiver = context.heap.allocateObject("lib/api/UpcallTarget")
+                            context.callInstanceMethod(
+                                receiver = receiver,
+                                ownerClassName = "lib/api/UpcallTarget",
+                                name = "value",
+                                descriptor = "()I",
+                                arguments = emptyList(),
+                            )
+                        },
+                ),
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/NativeOwner cannot access class lib/api/UpcallTarget", exception.message)
+    }
+    @Test
     fun `native instance upcalls reject package private owner classes from same named package in different defining loaders`() {
         val appLoader = JvmClassLoaderIdentity.UserDefined(id = 159, displayName = "app")
         val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 160, displayName = "library")

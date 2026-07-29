@@ -9105,6 +9105,7 @@ object JvmInterpreter {
                         loadNativeLibraryHandler = loadNativeLibraryHandler,
                         unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                         methodArea = methodArea,
+                        moduleLayer = moduleLayer,
                     )
                 },
             ),
@@ -9293,6 +9294,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmValue? {
         val resolvedMethod = classHierarchy.resolveMethod(
             ownerClassName = ownerClassName,
@@ -9305,6 +9307,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         requireInstanceUpcallMethod(resolvedMethod)
         requireVirtualMethodName(resolvedMethod)
