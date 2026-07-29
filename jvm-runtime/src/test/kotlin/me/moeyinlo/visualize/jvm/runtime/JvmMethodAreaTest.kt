@@ -45,6 +45,37 @@ class JvmMethodAreaTest {
     }
 
     @Test
+    fun `method area distinguishes classes by defining loader key`() {
+        val methodArea = JvmMethodArea()
+        val bootstrapKey = JvmLoadedClassKey(
+            internalName = "pkg/Example",
+            definingLoader = JvmClassLoaderIdentity.Bootstrap,
+        )
+        val pluginKey = JvmLoadedClassKey(
+            internalName = "pkg/Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 1, displayName = "plugin"),
+        )
+        val bootstrapEntry = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "pkg/Example", superclassName = "java/lang/Object"),
+            loadedClassKey = bootstrapKey,
+        )
+        val pluginEntry = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "pkg/Example", superclassName = "plugin/Base"),
+            loadedClassKey = pluginKey,
+        )
+
+        methodArea.defineClass(bootstrapEntry)
+        methodArea.defineClass(pluginEntry)
+
+        assertEquals(2, methodArea.classCount)
+        assertTrue(methodArea.hasClass(bootstrapKey))
+        assertTrue(methodArea.hasClass(pluginKey))
+        assertSame(bootstrapEntry, methodArea.getClass(bootstrapKey))
+        assertSame(pluginEntry, methodArea.getClass(pluginKey))
+        assertSame(bootstrapEntry, methodArea.getClass("pkg/Example"))
+    }
+
+    @Test
     fun `method area rejects blank class names`() {
         val methodArea = JvmMethodArea()
 

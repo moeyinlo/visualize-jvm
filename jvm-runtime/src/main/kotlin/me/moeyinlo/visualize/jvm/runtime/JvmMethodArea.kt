@@ -7,16 +7,23 @@ data class JvmMethodAreaEntry(
 )
 
 class JvmMethodArea {
-    private val entriesByClassName = linkedMapOf<String, JvmMethodAreaEntry>()
+    private val entriesByLoadedClassKey = linkedMapOf<JvmLoadedClassKey, JvmMethodAreaEntry>()
 
     val classCount: Int
-        get() = entriesByClassName.size
+        get() = entriesByLoadedClassKey.size
 
     fun defineClass(entry: JvmMethodAreaEntry) {
         val className = entry.definition.internalName
         require(className.isNotBlank()) { "class internal name must not be blank" }
 
-        val previous = entriesByClassName.putIfAbsent(className, entry)
+        val loadedClassKey = entry.loadedClassKey ?: JvmLoadedClassKey(
+            internalName = className,
+            definingLoader = JvmClassLoaderIdentity.Bootstrap,
+        )
+        require(loadedClassKey.internalName == className) {
+            "loaded class key ${loadedClassKey.diagnosticName} must match class internal name $className"
+        }
+        val previous = entriesByLoadedClassKey.putIfAbsent(loadedClassKey, entry)
         if (previous != null) {
             throw JvmMethodAreaDefinitionException("Class $className is already defined in the method area")
         }
@@ -24,19 +31,26 @@ class JvmMethodArea {
 
     fun getClass(internalName: String): JvmMethodAreaEntry {
         require(internalName.isNotBlank()) { "class internal name must not be blank" }
-        return entriesByClassName[internalName]
+        return getClass(JvmLoadedClassKey(internalName, JvmClassLoaderIdentity.Bootstrap))
             ?: throw JvmMethodAreaAccessException("Class $internalName is not defined in the method area")
     }
 
-    fun hasClass(internalName: String): Boolean = internalName in entriesByClassName
+    fun getClass(loadedClassKey: JvmLoadedClassKey): JvmMethodAreaEntry? =
+        entriesByLoadedClassKey[loadedClassKey]
+
+    fun hasClass(internalName: String): Boolean =
+        hasClass(JvmLoadedClassKey(internalName, JvmClassLoaderIdentity.Bootstrap))
+
+    fun hasClass(loadedClassKey: JvmLoadedClassKey): Boolean =
+        loadedClassKey in entriesByLoadedClassKey
 
     fun classHierarchy(strictClassResolution: Boolean = false): JvmClassHierarchy =
         JvmClassHierarchy(
-            classes = entriesByClassName.values.map { entry -> entry.definition },
+            classes = entriesByLoadedClassKey.values.map { entry -> entry.definition },
             strictClassResolution = strictClassResolution,
         )
 
-    fun toList(): List<JvmMethodAreaEntry> = entriesByClassName.values.toList()
+    fun toList(): List<JvmMethodAreaEntry> = entriesByLoadedClassKey.values.toList()
 }
 
 class JvmMethodAreaDefinitionException(message: String) : IllegalStateException(message)
