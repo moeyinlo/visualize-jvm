@@ -2020,18 +2020,19 @@ object JvmVmIntrinsics {
         )
     }
     private val ClassIsInstance = JvmNativeMethodIntrinsic { context, invocation ->
-        val targetClassName = requireClassMirrorReceiverWithArguments("Class.isInstance", context, invocation)
+        val targetClassPayload = requireClassMirrorReceiverPayloadWithArguments("Class.isInstance", context, invocation)
         if (invocation.arguments.size != 1) {
             throw JvmUnsupportedInstructionException("Class.isInstance expects one reference argument")
         }
         when (val value = invocation.arguments.single()) {
             JvmNullValue -> JvmIntValue(0)
             is JvmObjectReferenceValue -> {
-                val sourceClassName = context.heap.get(value).className
-                jvmBoolean(
-                    targetClassName !in PrimitiveClassNames &&
-                        context.classHierarchy.isAssignable(sourceClassName, targetClassName),
+                val sourceObject = context.heap.get(value)
+                val sourceClassPayload = JvmClassPayload(
+                    representedClassName = sourceObject.className,
+                    loadedClassKey = sourceObject.loadedClassKey,
                 )
+                jvmBoolean(classMirrorAssignable(context, sourceClassPayload, targetClassPayload))
             }
             else -> throw JvmUnsupportedInstructionException("Class.isInstance expects one reference argument")
         }

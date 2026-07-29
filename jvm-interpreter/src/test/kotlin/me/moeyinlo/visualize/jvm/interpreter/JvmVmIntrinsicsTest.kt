@@ -1785,6 +1785,46 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isInstance intrinsic distinguishes same name objects by loaded class key`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val firstLoader = JvmClassLoaderIdentity.UserDefined(id = 31, displayName = "first")
+        val secondLoader = JvmClassLoaderIdentity.UserDefined(id = 32, displayName = "second")
+        val firstKey = JvmLoadedClassKey("pkg/Target", firstLoader)
+        val secondKey = JvmLoadedClassKey("pkg/Target", secondLoader)
+        listOf(firstKey, secondKey).forEach { key ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = JvmClassDefinition(internalName = key.internalName),
+                    loadedClassKey = key,
+                    initiatingLoaders = setOf(key.definingLoader),
+                ),
+            )
+        }
+        val firstMirror = heap.internClassMirror("pkg/Target", loadedClassKey = firstKey)
+        val firstObject = heap.allocateObject(methodArea, firstKey)
+        val secondObject = heap.allocateObject(methodArea, secondKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsInstanceMethod())
+            ?: error("Class.isInstance intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(emptyList()),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(firstMirror, listOf(firstObject))),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(firstMirror, listOf(secondObject))),
+        )
+    }
+
+    @Test
     fun `Class getSuperclass intrinsic returns object for arrays and declared superclass for ordinary classes`() {
         val heap = JvmHeap()
         val arrayMirror = heap.internClassMirror("[I")
