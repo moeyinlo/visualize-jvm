@@ -34756,6 +34756,98 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached constructor target rejects public owner classes from unreadable runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 150, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val constructedKey = JvmLoadedClassKey("pkg/Constructed", loader)
+        val methodArea = JvmMethodArea()
+        val caller = JvmClassDefinition(internalName = "app/Caller")
+        val constructed = JvmClassDefinition(
+            internalName = "pkg/Constructed",
+            isPublic = true,
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<init>",
+                    descriptor = "()V",
+                    isStatic = false,
+                    code = byteArrayOf(0xB1.toByte()),
+                    maxStack = 0,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = caller,
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = constructed,
+                loadedClassKey = constructedKey,
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("pkg"),
+                    exports = setOf(JvmModuleExport(packageName = "pkg")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+        val classHierarchy = JvmClassHierarchy(listOf(caller, constructed))
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "app/Caller", bytecodeOffset = 0),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "make",
+                    descriptor = "()Lpkg/Constructed;",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.NewInvokeSpecial,
+                    referenceIndex = 1,
+                ),
+                targetMethod = classHierarchy.resolveMethod(
+                    ownerClassName = "pkg/Constructed",
+                    name = "<init>",
+                    descriptor = "()V",
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = invokedynamicConstructorCallSiteConstantPool(),
+                heap = JvmHeap(),
+                classHierarchy = classHierarchy,
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                invokeDynamicCallSites = callSites,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class pkg/Constructed", exception.message)
+    }
+
+    @Test
     fun `invokedynamic executes cached new invoke special constructor target`() {
         val heap = JvmHeap()
         val classHierarchy = JvmClassHierarchy(
