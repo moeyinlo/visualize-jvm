@@ -892,6 +892,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String? = null,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String = "<main>",
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -978,6 +979,7 @@ object JvmInterpreter {
             terminationState = terminationState,
             monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = currentClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
             currentMethodName = currentMethodName,
             currentSourceFile = currentSourceFile,
             currentLineNumberTable = currentLineNumberTable,
@@ -1229,6 +1231,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String = "<active-use>",
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -1308,6 +1311,7 @@ object JvmInterpreter {
                             terminationState,
                             monitorUnblockedHandler,
                             currentClassName,
+                            currentLoadedClassKey,
                             currentMethodName,
                             currentSourceFile,
                             currentLineNumberTable,
@@ -1620,6 +1624,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -1811,6 +1816,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 currentMethodName = currentMethodName,
                 currentSourceFile = currentSourceFile,
                 currentLineNumberTable = currentLineNumberTable,
@@ -1820,6 +1826,7 @@ object JvmInterpreter {
                 hostActiveUseHandler = hostActiveUseHandler,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                methodArea = methodArea,
             )
             0xB3 -> executePutStatic(
                 instruction = instruction,
@@ -5712,6 +5719,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -5725,10 +5733,17 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
+        requireAccessibleField(
+            field = resolvedField,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         initializeClassForActiveUse(
             resolvedField.reference.ownerClassName,
             classHierarchy,
@@ -9364,12 +9379,20 @@ object JvmInterpreter {
         currentClassName: String?,
         classHierarchy: JvmClassHierarchy,
         receiverClassName: String? = null,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+        methodArea: JvmMethodArea? = null,
     ) {
         if (
             field.isPrivate &&
             currentClassName != null &&
             currentClassName != field.reference.ownerClassName &&
-            !classHierarchy.areRuntimeNestmates(currentClassName, field.reference.ownerClassName)
+            !areRuntimeNestmatesForFieldAccess(
+                field = field,
+                currentClassName = currentClassName,
+                classHierarchy = classHierarchy,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
         ) {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
@@ -9415,6 +9438,26 @@ object JvmInterpreter {
                     "on receiver $receiverClassName",
             )
         }
+    }
+
+    private fun areRuntimeNestmatesForFieldAccess(
+        field: RuntimeResolvedField,
+        currentClassName: String,
+        classHierarchy: JvmClassHierarchy,
+        currentLoadedClassKey: JvmLoadedClassKey?,
+        methodArea: JvmMethodArea?,
+    ): Boolean {
+        if (
+            currentLoadedClassKey != null &&
+            methodArea != null &&
+            currentLoadedClassKey.internalName == currentClassName
+        ) {
+            return methodArea.areRuntimeNestmates(
+                currentLoadedClassKey,
+                currentLoadedClassKey.copy(internalName = field.reference.ownerClassName),
+            )
+        }
+        return classHierarchy.areRuntimeNestmates(currentClassName, field.reference.ownerClassName)
     }
 
     private fun String.runtimePackageName(): String {

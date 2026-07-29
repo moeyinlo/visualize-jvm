@@ -1,4 +1,4 @@
-﻿package me.moeyinlo.visualize.jvm.interpreter
+package me.moeyinlo.visualize.jvm.interpreter
 
 import me.moeyinlo.visualize.jvm.classfile.BootstrapMethodIndex
 import me.moeyinlo.visualize.jvm.classfile.ClassAccessFlags
@@ -7793,6 +7793,75 @@ class JvmInterpreterTest {
         assertEquals(listOf(JvmIntValue(31)), result.operandStack.toList())
     }
 
+
+    @Test
+    fun `getstatic allows private fields from method area loaded key nestmates`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 41, displayName = "app")
+        val hostKey = JvmLoadedClassKey("Owner", loader)
+        val memberKey = JvmLoadedClassKey("Owner\$Nested", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "Owner",
+                    nestMemberInternalNames = listOf("Owner\$Nested"),
+                ),
+                loadedClassKey = hostKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "Owner\$Nested",
+                    nestHostInternalName = "Owner",
+                ),
+                loadedClassKey = memberKey,
+            ),
+        )
+        val staticFields = JvmStaticFields()
+        staticFields.put(JvmFieldReference("Owner", "secret", "I"), JvmIntValue(41))
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xB2.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            staticFields = staticFields,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "secret",
+                                descriptor = "I",
+                                isStatic = true,
+                                isPrivate = true,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition("Owner\$Nested"),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+            currentLoadedClassKey = memberKey,
+            methodArea = methodArea,
+        )
+
+        assertEquals(listOf(JvmIntValue(41)), result.operandStack.toList())
+    }
     @Test
     fun `getstatic allows private fields from classfile derived nest metadata`() {
         val hostClassFile = ClassFile(
