@@ -11166,6 +11166,116 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `putfield allows private fields from classfile derived nest metadata`() {
+        val hostClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(7)),
+                    ConstantUtf8Entry("NestMembers", "NestMembers".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = listOf(
+                FieldInfo(
+                    accessFlags = 0x0002,
+                    nameIndex = ConstantPoolIndex(5),
+                    descriptorIndex = ConstantPoolIndex(6),
+                    attributes = emptyList(),
+                ),
+            ),
+            methods = emptyList(),
+            attributes = listOf(
+                NestMembersAttribute(
+                    nameIndex = ConstantPoolIndex(9),
+                    classes = listOf(ConstantPoolIndex(8)),
+                ),
+            ),
+        )
+        val memberClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(5)),
+                    ConstantUtf8Entry("NestHost", "NestHost".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = emptyList(),
+            attributes = listOf(
+                NestHostAttribute(
+                    nameIndex = ConstantPoolIndex(7),
+                    hostClassIndex = ConstantPoolIndex(6),
+                ),
+            ),
+        )
+        val heap = JvmHeap()
+        val reference = heap.allocateObject("Owner")
+        val field = JvmFieldReference("Owner", "secret", "I")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, reference)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0x04.toByte(),
+                0xB5.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 2,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = locals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    hostClassFile.toJvmClassDefinition(),
+                    memberClassFile.toJvmClassDefinition(),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+        )
+
+        assertEquals(0, result.operandStack.slotDepth)
+        assertEquals(0, result.operandStack.valueCount)
+        assertEquals(JvmIntValue(1), heap.getInstanceField(reference, field))
+    }
+
+    @Test
     fun `putfield throws guest IllegalAccessError for package private fields from another package`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("pkg/Owner")
