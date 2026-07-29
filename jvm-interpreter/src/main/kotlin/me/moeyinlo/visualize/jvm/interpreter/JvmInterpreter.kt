@@ -9335,6 +9335,7 @@ object JvmInterpreter {
         methodArea: JvmMethodArea? = null,
     ) {
         val className = resolveConstantClassName(instruction, constantPool)
+        requireAccessibleClass(className, currentClassName, classHierarchy)
         initializeClassForActiveUse(
             className,
             classHierarchy,
@@ -9452,6 +9453,24 @@ object JvmInterpreter {
         }
 
         return nameEntry.value
+    }
+
+    private fun requireAccessibleClass(
+        targetClassName: String,
+        currentClassName: String?,
+        classHierarchy: JvmClassHierarchy,
+    ) {
+        val targetClass = classHierarchy.classDefinition(targetClassName) ?: return
+        if (
+            currentClassName != null &&
+            !targetClass.isPublic &&
+            currentClassName.runtimePackageName() != targetClassName.runtimePackageName()
+        ) {
+            throw JvmIllegalAccessError(
+                guestClassName = "java/lang/IllegalAccessError",
+                message = "Class $currentClassName cannot access class $targetClassName",
+            )
+        }
     }
 
     private data class RuntimeResolvedField(

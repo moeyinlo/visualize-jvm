@@ -4037,6 +4037,39 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new rejects package private target classes from another package`() {
+        val heap = JvmHeap()
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0xBB.toByte(),
+                    0x00.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("pkg/Hidden", "pkg/Hidden".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                    ),
+                ),
+                heap = heap,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "pkg/Hidden", isPublic = false),
+                        JvmClassDefinition(internalName = "other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Hidden", exception.message)
+    }
+
+    @Test
     fun `new uses method area layout for uninitialized object fields`() {
         val heap = JvmHeap()
         val methodArea = JvmMethodArea()

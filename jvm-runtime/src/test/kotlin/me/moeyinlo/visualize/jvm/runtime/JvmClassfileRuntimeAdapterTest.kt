@@ -157,6 +157,7 @@ class JvmClassfileRuntimeAdapterTest {
         assertEquals("java/lang/Object", definition.superclassName)
         assertEquals(listOf("pkg/Itf"), definition.interfaceNames)
         assertEquals(false, definition.isInterface)
+        assertEquals(false, definition.isPublic)
         assertEquals(
             listOf(
                 JvmFieldDefinition(

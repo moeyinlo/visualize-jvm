@@ -11,6 +11,7 @@ data class JvmClassDefinition(
     val fields: List<JvmFieldDefinition> = emptyList(),
     val methods: List<JvmMethodDefinition> = emptyList(),
     val isInterface: Boolean = false,
+    val isPublic: Boolean = true,
     val majorVersion: Int = 70,
     val nestMemberInternalNames: List<String> = emptyList(),
 )
@@ -139,6 +140,8 @@ class JvmClassHierarchy(
     fun requiresResolvedClasses(): Boolean = strictClassResolution
 
     fun hasClass(internalName: String): Boolean = internalName in classesByName
+
+    fun classDefinition(internalName: String): JvmClassDefinition? = classesByName[internalName]
 
     fun areRuntimeNestmates(firstClassName: String, secondClassName: String): Boolean {
         val first = classesByName[firstClassName] ?: return false

@@ -42,6 +42,7 @@ fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
         fields = fields.map { field -> field.toJvmFieldDefinition(constantPool) },
         methods = methods.map { method -> method.toJvmMethodDefinition(constantPool, sourceFile) },
         isInterface = accessFlags.has(ClassAccessFlag.Interface),
+        isPublic = accessFlags.has(ClassAccessFlag.Public),
         majorVersion = version.major,
         nestMemberInternalNames = nestMemberInternalNames,
     )
