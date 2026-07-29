@@ -8464,10 +8464,16 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = targetMethod.ownerClassName,
+                currentLoadedClassKey = ownerLoadedClassKey(
+                    ownerClassName = targetMethod.ownerClassName,
+                    currentLoadedClassKey = currentLoadedClassKey,
+                    methodArea = methodArea,
+                ),
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             val returnDescriptor = targetMethod.descriptor.methodReturnDescriptor()
             if (returnDescriptor == "V") {
