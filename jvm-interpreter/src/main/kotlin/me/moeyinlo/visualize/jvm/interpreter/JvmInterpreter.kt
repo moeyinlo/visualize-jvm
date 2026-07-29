@@ -2106,6 +2106,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 currentLoadedClassKey = currentLoadedClassKey,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xC4 -> executeWide(instruction, operandStack, localVariables)
             else -> throw JvmUnsupportedInstructionException(
@@ -10429,6 +10430,7 @@ object JvmInterpreter {
         currentClassName: String?,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val dimensions = instruction.operands[2]
         if (dimensions == 0) {
@@ -10463,6 +10465,7 @@ object JvmInterpreter {
                 classHierarchy = classHierarchy,
                 currentLoadedClassKey = currentLoadedClassKey,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
         }
         operandStack.push(allocateMultiDimensionalArray(arrayClassName, counts, heap, instruction))
