@@ -5,11 +5,13 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassLoaderIdentity
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -640,6 +642,39 @@ class JvmPanamaDowncallBackendTest {
         val mirror = value as JvmObjectReferenceValue
         assertEquals("java/lang/Class", heap.get(mirror).className)
         assertEquals(JvmClassPayload("pkg/NativeApi"), heap.get(mirror).payload)
+    }
+
+    @Test
+    fun `Panama backend preserves returned jclass loader keys in guest class mirrors`() {
+        val heap = JvmHeap()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/NativeApi"),
+                ),
+            ),
+            heap = heap,
+        )
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "pkg/NativeApi",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(1L, "plugin-loader"),
+        )
+        val classHandle = environment.handles.newClassHandle(
+            className = "pkg/NativeApi",
+            loadedClassKey = loadedClassKey,
+        )
+
+        val value = JvmNativeDowncallReturn.ObjectHandle(classHandle).toGuestValue(environment)
+
+        val mirror = value as JvmObjectReferenceValue
+        assertEquals("java/lang/Class", heap.get(mirror).className)
+        assertEquals(
+            JvmClassPayload(
+                representedClassName = "pkg/NativeApi",
+                loadedClassKey = loadedClassKey,
+            ),
+            heap.get(mirror).payload,
+        )
     }
 
     @Test

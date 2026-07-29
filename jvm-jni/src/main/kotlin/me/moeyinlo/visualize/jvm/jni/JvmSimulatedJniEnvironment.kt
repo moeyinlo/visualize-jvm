@@ -161,7 +161,10 @@ class JvmSimulatedJniEnvironment(
     internal fun resolveJObjectValue(handle: JvmJniHandleId): JvmObjectReferenceValue =
         when (val reference = handles.snapshotLocalReference(handle)) {
             is JvmJniLocalReferenceSnapshot.ObjectReference -> reference.reference
-            is JvmJniLocalReferenceSnapshot.ClassReference -> heap.internClassMirror(reference.className)
+            is JvmJniLocalReferenceSnapshot.ClassReference -> heap.internClassMirror(
+                className = reference.className,
+                loadedClassKey = reference.loadedClassKey,
+            )
         }
 
     internal fun newJObjectHandle(reference: JvmObjectReferenceValue): JvmJniHandleId =
