@@ -1843,6 +1843,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 currentMethodName = currentMethodName,
                 currentSourceFile = currentSourceFile,
                 currentLineNumberTable = currentLineNumberTable,
@@ -1852,6 +1853,7 @@ object JvmInterpreter {
                 hostActiveUseHandler = hostActiveUseHandler,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                methodArea = methodArea,
             )
             0xB4 -> executeGetField(
                 instruction,
@@ -5807,6 +5809,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -5820,10 +5823,17 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
     ) {
         val resolvedField = resolveRuntimeFieldReference(instruction, constantPool, classHierarchy)
         requireStaticField(instruction, resolvedField)
-        requireAccessibleField(resolvedField, currentClassName, classHierarchy)
+        requireAccessibleField(
+            field = resolvedField,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         initializeClassForActiveUse(
             resolvedField.reference.ownerClassName,
             classHierarchy,
