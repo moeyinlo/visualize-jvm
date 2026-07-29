@@ -9093,6 +9093,7 @@ object JvmInterpreter {
                         terminationState = terminationState,
                         monitorUnblockedHandler = monitorUnblockedHandler,
                         currentClassName = currentClassName,
+                        currentLoadedClassKey = currentLoadedClassKey,
                         dynamicConstants = dynamicConstants,
                         loadNativeLibraryHandler = loadNativeLibraryHandler,
                         unloadNativeLibraryHandler = unloadNativeLibraryHandler,
@@ -9267,6 +9268,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         dynamicConstants: JvmDynamicConstantRegistry,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
@@ -9283,7 +9285,13 @@ object JvmInterpreter {
         )
         requireInstanceUpcallMethod(resolvedMethod)
         requireVirtualMethodName(resolvedMethod)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val receiverClassName = heap.get(receiver).className
         if (!classHierarchy.isAssignable(receiverClassName, resolvedMethod.ownerClassName)) {
             throw JvmUnsupportedInstructionException(
@@ -9293,7 +9301,14 @@ object JvmInterpreter {
             )
         }
         requireNonConstructorReceiverInitialized(resolvedMethod, receiver, heap)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            receiverClassName = receiverClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val targetMethod = classHierarchy.resolveVirtualMethod(
             receiverClassName = receiverClassName,
             name = resolvedMethod.name,
