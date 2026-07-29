@@ -245,6 +245,7 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String? = null,
         dynamicConstants: JvmDynamicConstantRegistry = JvmDynamicConstantRegistry(),
+        methodArea: JvmMethodArea? = null,
     ): JvmJniUpcallDispatcher = object : JvmJniUpcallDispatcher {
         override fun callVoidMethod(
             receiver: JvmObjectReferenceValue,
@@ -576,6 +577,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
         }
 
@@ -600,6 +602,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             return returnValue as? JvmReferenceValue
                 ?: throw JvmJniUpcallException(
@@ -631,6 +634,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             val intValue = returnValue as? JvmIntValue
                 ?: throw JvmJniUpcallException(
@@ -662,6 +666,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             val intValue = returnValue as? JvmIntValue
                 ?: throw JvmJniUpcallException(
@@ -693,6 +698,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             val intValue = returnValue as? JvmIntValue
                 ?: throw JvmJniUpcallException(
@@ -724,6 +730,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             val intValue = returnValue as? JvmIntValue
                 ?: throw JvmJniUpcallException(
@@ -755,6 +762,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             return returnValue as? JvmIntValue
                 ?: throw JvmJniUpcallException(
@@ -785,6 +793,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             return returnValue as? JvmLongValue
                 ?: throw JvmJniUpcallException(
@@ -815,6 +824,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             return returnValue as? JvmFloatValue
                 ?: throw JvmJniUpcallException(
@@ -845,6 +855,7 @@ object JvmInterpreter {
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
                 dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
             )
             return returnValue as? JvmDoubleValue
                 ?: throw JvmJniUpcallException(

@@ -18195,6 +18195,78 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher static upcalls propagate method area layout`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val nestedParent = JvmClassDefinition(
+            internalName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val nested = JvmClassDefinition(
+            internalName = "Nested",
+            superclassName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "nestedValue", descriptor = "I", isStatic = false)),
+        )
+        val staticOwner = JvmClassDefinition(
+            internalName = "StaticOwner",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "make",
+                    descriptor = "()I",
+                    isStatic = true,
+                    code = byteArrayOf(
+                        0xBB.toByte(),
+                        0x00.toByte(),
+                        0x02.toByte(),
+                        0x57.toByte(),
+                        0x03.toByte(),
+                        0xAC.toByte(),
+                    ),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Nested", "Nested".encodeToByteArray()),
+                            ConstantClassEntry(ConstantPoolIndex(1)),
+                        ),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 0,
+                ),
+            ),
+        )
+        listOf(nestedParent, nested, staticOwner).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+        val classHierarchy = JvmClassHierarchy(listOf(nestedParent, nested, staticOwner))
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "StaticOwner",
+            name = "make",
+            descriptor = "()I",
+        )
+
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+            methodArea = methodArea,
+        )
+
+        val nestedReference = JvmObjectReferenceValue(JvmReferenceId(1))
+        val parentField = JvmFieldReference("NestedParent", "parentValue", "J")
+        val nestedField = JvmFieldReference("Nested", "nestedValue", "I")
+        assertEquals(JvmIntValue(0), dispatcher.callStaticIntMethod(method, emptyList()))
+        assertEquals("Nested", heap.get(nestedReference).className)
+        assertFalse(heap.isInitialized(nestedReference))
+        assertTrue(heap.hasInstanceField(nestedReference, parentField))
+        assertTrue(heap.hasInstanceField(nestedReference, nestedField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(nestedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(nestedReference, nestedField))
+    }
+
+    @Test
     fun `interpreter backed JNI dispatcher routes instance void upcalls into guest methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeOwner")
