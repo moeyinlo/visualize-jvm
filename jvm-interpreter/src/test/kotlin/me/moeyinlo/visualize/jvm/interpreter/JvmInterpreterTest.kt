@@ -24099,6 +24099,99 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokeinterface propagates method area layout into callee frames`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val nestedParent = JvmClassDefinition(
+            internalName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "parentValue", descriptor = "J", isStatic = false)),
+        )
+        val nested = JvmClassDefinition(
+            internalName = "Nested",
+            superclassName = "NestedParent",
+            fields = listOf(JvmFieldDefinition(name = "nestedValue", descriptor = "I", isStatic = false)),
+        )
+        val face = JvmClassDefinition(
+            internalName = "pkg/Face",
+            isInterface = true,
+            methods = listOf(JvmMethodDefinition(name = "make", descriptor = "()V", isStatic = false, isAbstract = true)),
+        )
+        val impl = JvmClassDefinition(
+            internalName = "pkg/Impl",
+            interfaceNames = listOf("pkg/Face"),
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "make",
+                    descriptor = "()V",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xBB.toByte(),
+                        0x00.toByte(),
+                        0x02.toByte(),
+                        0x57.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    constantPool = ConstantPool.fromEntries(
+                        listOf(
+                            ConstantUtf8Entry("Nested", "Nested".encodeToByteArray()),
+                            ConstantClassEntry(ConstantPoolIndex(1)),
+                        ),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        listOf(nestedParent, nested, face, impl).forEach { definition ->
+            methodArea.defineClass(
+                JvmMethodAreaEntry(
+                    definition = definition,
+                    loadedClassKey = JvmLoadedClassKey(definition.internalName, JvmClassLoaderIdentity.Bootstrap),
+                ),
+            )
+        }
+        val receiver = heap.allocateObject(impl)
+        val callerLocals = JvmLocalVariables(maxLocals = 1).apply { store(0, receiver) }
+
+        JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB9.toByte(),
+                0x00.toByte(),
+                0x03.toByte(),
+                0x01.toByte(),
+                0x00.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("pkg/Face", "pkg/Face".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantInterfaceMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("make", "make".encodeToByteArray()),
+                    ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(listOf(nestedParent, nested, face, impl)),
+            currentClassName = "pkg/Caller",
+            methodArea = methodArea,
+        )
+
+        val nestedReference = JvmObjectReferenceValue(JvmReferenceId(2))
+        val parentField = JvmFieldReference("NestedParent", "parentValue", "J")
+        val nestedField = JvmFieldReference("Nested", "nestedValue", "I")
+        assertEquals("Nested", heap.get(nestedReference).className)
+        assertFalse(heap.isInitialized(nestedReference))
+        assertTrue(heap.hasInstanceField(nestedReference, parentField))
+        assertTrue(heap.hasInstanceField(nestedReference, nestedField))
+        assertEquals(JvmLongValue(0L), heap.getInstanceField(nestedReference, parentField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(nestedReference, nestedField))
+    }
+
+    @Test
     fun `invokeinterface executes receiver class implementation`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Impl")
