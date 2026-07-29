@@ -4163,6 +4163,63 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `new allocates with resolved runtime loaded class key from current loader`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 175, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val targetKey = JvmLoadedClassKey("app/Target", loader)
+        val methodArea = JvmMethodArea()
+        val target = JvmClassDefinition(
+            internalName = "app/Target",
+            fields = listOf(JvmFieldDefinition(name = "value", descriptor = "I", isStatic = false)),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = target,
+                loadedClassKey = targetKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0xBB.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantClassEntry(ConstantPoolIndex(2)),
+                    ConstantUtf8Entry("app/Target", "app/Target".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(listOf(JvmClassDefinition("app/Caller"), target)),
+            methodArea = methodArea,
+            currentClassName = "app/Caller",
+            currentLoadedClassKey = callerKey,
+        )
+
+        val reference = result.operandStack.pop() as JvmObjectReferenceValue
+        assertEquals("app/Target", heap.get(reference).className)
+        assertEquals(
+            JvmIntValue(0),
+            heap.getInstanceField(
+                reference,
+                JvmFieldReference(ownerClassName = "app/Target", name = "value", descriptor = "I"),
+            ),
+        )
+        assertFalse(heap.isInitialized(reference))
+    }
+
+    @Test
     fun `new rejects package private target classes from another package`() {
         val heap = JvmHeap()
 

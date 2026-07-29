@@ -9910,7 +9910,11 @@ object JvmInterpreter {
         } else {
             heap.allocateUninitializedObject(
                 methodArea = methodArea,
-                loadedClassKey = JvmLoadedClassKey(className, JvmClassLoaderIdentity.Bootstrap),
+                loadedClassKey = ownerLoadedClassKey(
+                    ownerClassName = className,
+                    currentLoadedClassKey = currentLoadedClassKey,
+                    methodArea = methodArea,
+                ) ?: JvmLoadedClassKey(className, JvmClassLoaderIdentity.Bootstrap),
             )
         }
         operandStack.push(reference)
