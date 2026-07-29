@@ -8659,10 +8659,16 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = constructor.ownerClassName,
+                currentLoadedClassKey = ownerLoadedClassKey(
+                    ownerClassName = constructor.ownerClassName,
+                    currentLoadedClassKey = currentLoadedClassKey,
+                    methodArea = methodArea,
+                ),
                 dynamicConstants = dynamicConstants,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             if (nativeReturnValue != null) {
                 throw JvmUnsupportedInstructionException(
