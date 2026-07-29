@@ -24120,6 +24120,81 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual rejects package private methods from same named package in different defining loaders`() {
+        val appLoader = JvmClassLoaderIdentity.UserDefined(id = 61, displayName = "app")
+        val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 62, displayName = "library")
+        val callerKey = JvmLoadedClassKey("pkg/Caller", appLoader)
+        val ownerKey = JvmLoadedClassKey("pkg/Owner", libraryLoader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Caller"),
+                loadedClassKey = callerKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("pkg/Owner"),
+                loadedClassKey = ownerKey,
+                initiatingLoaders = setOf(appLoader),
+            ),
+        )
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0xB6.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                        ConstantClassEntry(ConstantPoolIndex(3)),
+                        ConstantUtf8Entry("pkg/Owner", "pkg/Owner".encodeToByteArray()),
+                        ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                        ConstantUtf8Entry("hidden", "hidden".encodeToByteArray()),
+                        ConstantUtf8Entry("()V", "()V".encodeToByteArray()),
+                    ),
+                ),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Owner",
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "hidden",
+                                    descriptor = "()V",
+                                    isStatic = false,
+                                    isPackagePrivate = true,
+                                    code = byteArrayOf(0xB1.toByte()),
+                                    maxStack = 0,
+                                    maxLocals = 1,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition("pkg/Caller"),
+                    ),
+                ),
+                currentClassName = "pkg/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class pkg/Caller cannot access package-private method pkg/Owner.hidden:()V", exception.message)
+    }
+
+    @Test
     fun `invokevirtual throws guest IllegalAccessError for protected methods from non subclass in another package`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Owner")
