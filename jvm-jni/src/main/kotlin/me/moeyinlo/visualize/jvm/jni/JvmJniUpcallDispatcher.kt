@@ -167,6 +167,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticCharMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ): JvmCharValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

@@ -891,6 +891,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticCharMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 

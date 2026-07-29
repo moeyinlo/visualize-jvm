@@ -2273,6 +2273,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticCharMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmCharValue {
                     calls += RecordedFunctionTableStaticCharUpcall(method, arguments)
                     return JvmCharValue('z'.code)
