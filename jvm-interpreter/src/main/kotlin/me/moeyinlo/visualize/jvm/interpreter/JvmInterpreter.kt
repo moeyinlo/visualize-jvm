@@ -8311,7 +8311,13 @@ object JvmInterpreter {
             methodArea = methodArea,
             moduleLayer = moduleLayer,
         )
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
@@ -8354,7 +8360,14 @@ object JvmInterpreter {
             )
         }
         requireNonConstructorReceiverInitialized(resolvedMethod, receiver, heap)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            receiverClassName = receiverClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val targetMethod = try {
             classHierarchy.resolveInterfaceMethodTarget(
                 receiverClassName = receiverClassName,
