@@ -7358,6 +7358,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 currentMethodName = currentMethodName,
                 currentSourceFile = currentSourceFile,
                 currentLineNumberTable = currentLineNumberTable,
@@ -7368,6 +7369,8 @@ object JvmInterpreter {
                 linkedCallSite = linkedCallSite,
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             JvmMethodHandleReferenceKind.InvokeStatic -> executeLinkedInvokeDynamicStaticTarget(
                 instruction = instruction,
@@ -7723,6 +7726,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -7737,6 +7741,8 @@ object JvmInterpreter {
         unloadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
+        methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val target = linkedCallSite.target as? JvmMethodHandleTarget.Field
             ?: throw JvmUnsupportedInstructionException(
@@ -7753,6 +7759,14 @@ object JvmInterpreter {
                 "does not match call site descriptor",
             )
         }
+        requireAccessibleClass(
+            targetClassName = resolvedField.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+            moduleLayer = moduleLayer,
+        )
         initializeClassForActiveUse(
             resolvedField.ownerClassName,
             classHierarchy,
