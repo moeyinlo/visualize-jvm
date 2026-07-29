@@ -9139,6 +9139,13 @@ object JvmInterpreter {
             name = name,
             descriptor = descriptor,
         )
+        requireAccessibleClass(
+            targetClassName = resolvedMethod.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         requireStaticUpcallMethod(resolvedMethod)
         requireAccessibleMethod(
             method = resolvedMethod,
