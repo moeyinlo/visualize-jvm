@@ -2013,8 +2013,11 @@ object JvmVmIntrinsics {
         jvmBoolean(representedClassName in PrimitiveClassNames)
     }
     private val ClassIsInterface = JvmNativeMethodIntrinsic { context, invocation ->
-        val representedClassName = requireClassMirrorReceiver("Class.isInterface", context, invocation)
-        jvmBoolean(context.classHierarchy.isInterface(representedClassName))
+        val classPayload = requireClassMirrorReceiverPayload("Class.isInterface", context, invocation)
+        jvmBoolean(
+            classDefinitionForMirrorPayload(context, classPayload)?.isInterface
+                ?: context.classHierarchy.isInterface(classPayload.representedClassName),
+        )
     }
     private val ClassIsInstance = JvmNativeMethodIntrinsic { context, invocation ->
         val targetClassName = requireClassMirrorReceiverWithArguments("Class.isInstance", context, invocation)
@@ -6330,6 +6333,12 @@ object JvmVmIntrinsics {
                 "$name intrinsic requires a java/lang/Class mirror receiver",
             )
         }
+
+    private fun classDefinitionForMirrorPayload(
+        context: JvmNativeMethodContext,
+        mirrorPayload: JvmClassPayload,
+    ) = mirrorPayload.loadedClassKey
+        ?.let { loadedClassKey -> context.methodArea?.getClass(loadedClassKey)?.definition }
 
     private fun loadedClassKeyForMirrorRelatedClass(
         context: JvmNativeMethodContext,

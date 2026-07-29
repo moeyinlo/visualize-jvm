@@ -1439,6 +1439,38 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isInterface intrinsic uses loaded class key identity`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 180, displayName = "app")
+        val interfaceKey = JvmLoadedClassKey("pkg/Target", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Target", isInterface = true),
+                loadedClassKey = interfaceKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val interfaceMirror = heap.internClassMirror("pkg/Target", loadedClassKey = interfaceKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsInterfaceMethod())
+            ?: error("Class.isInterface intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(JvmClassDefinition(internalName = "pkg/Target", isInterface = false)),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(interfaceMirror, emptyList())),
+        )
+    }
+
+    @Test
     fun `Class isAssignableFrom intrinsic compares represented guest classes`() {
         val heap = JvmHeap()
         val baseMirror = heap.internClassMirror("pkg/Base")
