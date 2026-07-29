@@ -1942,6 +1942,7 @@ object JvmInterpreter {
                 terminationState,
                 monitorUnblockedHandler,
                 currentClassName,
+                currentLoadedClassKey,
                 currentMethodName,
                 currentSourceFile,
                 currentLineNumberTable,
@@ -5985,6 +5986,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         currentMethodName: String,
         currentSourceFile: String? = null,
         currentLineNumberTable: List<JvmLineNumberTableEntry> = emptyList(),
@@ -6002,7 +6004,13 @@ object JvmInterpreter {
     ) {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireStaticMethod(instruction, resolvedMethod)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         initializeClassForActiveUse(
             resolvedMethod.ownerClassName,
             classHierarchy,
@@ -9659,12 +9667,20 @@ object JvmInterpreter {
         currentClassName: String?,
         classHierarchy: JvmClassHierarchy,
         receiverClassName: String? = null,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+        methodArea: JvmMethodArea? = null,
     ) {
         if (
             method.isPrivate &&
             currentClassName != null &&
             currentClassName != method.ownerClassName &&
-            !classHierarchy.areRuntimeNestmates(currentClassName, method.ownerClassName)
+            !areRuntimeNestmatesForMethodAccess(
+                method = method,
+                currentClassName = currentClassName,
+                classHierarchy = classHierarchy,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
         ) {
             throw JvmIllegalAccessError(
                 guestClassName = "java/lang/IllegalAccessError",
@@ -9709,6 +9725,26 @@ object JvmInterpreter {
                     "${method.ownerClassName}.${method.name}:${method.descriptor} on receiver $receiverClassName",
             )
         }
+    }
+
+    private fun areRuntimeNestmatesForMethodAccess(
+        method: JvmResolvedMethod,
+        currentClassName: String,
+        classHierarchy: JvmClassHierarchy,
+        currentLoadedClassKey: JvmLoadedClassKey?,
+        methodArea: JvmMethodArea?,
+    ): Boolean {
+        if (
+            currentLoadedClassKey != null &&
+            methodArea != null &&
+            currentLoadedClassKey.internalName == currentClassName
+        ) {
+            return methodArea.areRuntimeNestmates(
+                currentLoadedClassKey,
+                currentLoadedClassKey.copy(internalName = method.ownerClassName),
+            )
+        }
+        return classHierarchy.areRuntimeNestmates(currentClassName, method.ownerClassName)
     }
 
     private fun resolveRuntimeMethodReference(
