@@ -227,6 +227,42 @@ class JvmMethodAreaTest {
         assertFalse(methodArea.areRuntimeNestmates(hostKey, pluginMemberKey))
     }
     @Test
+    fun `method area runtime nestmate diagnostics report missing nest hosts`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 23, displayName = "app")
+        val firstKey = JvmLoadedClassKey("pkg/First", loader)
+        val secondKey = JvmLoadedClassKey("pkg/Second", loader)
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/First",
+                    nestHostInternalName = "pkg/MissingHost",
+                ),
+                loadedClassKey = firstKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Second",
+                    nestHostInternalName = "pkg/MissingHost",
+                ),
+                loadedClassKey = secondKey,
+            ),
+        )
+
+        val check = methodArea.checkRuntimeNestmates(firstKey, secondKey)
+
+        assertFalse(check.areNestmates)
+        assertEquals(
+            JvmRuntimeNestmateFailure.MissingHost(
+                memberKey = firstKey,
+                hostKey = JvmLoadedClassKey("pkg/MissingHost", loader),
+            ),
+            check.failure,
+        )
+    }
+    @Test
     fun `method area entry exposes runtime package and module metadata`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 11, displayName = "app-loader")
         val key = JvmLoadedClassKey("app/internal/Example", loader)

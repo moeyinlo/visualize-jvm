@@ -18,6 +18,43 @@ data class JvmMethodAreaEntry(
             .runtimePackageKey()
 }
 
+data class JvmRuntimeNestmateCheck(
+    val areNestmates: Boolean,
+    val failure: JvmRuntimeNestmateFailure? = null,
+)
+
+sealed interface JvmRuntimeNestmateFailure {
+    data class MissingClass(val classKey: JvmLoadedClassKey) : JvmRuntimeNestmateFailure
+
+    data class MissingHost(
+        val memberKey: JvmLoadedClassKey,
+        val hostKey: JvmLoadedClassKey,
+    ) : JvmRuntimeNestmateFailure
+
+    data class HostNotSelfHosted(
+        val memberKey: JvmLoadedClassKey,
+        val hostKey: JvmLoadedClassKey,
+        val nominatedHostName: String,
+    ) : JvmRuntimeNestmateFailure
+
+    data class HostMissingMember(
+        val memberKey: JvmLoadedClassKey,
+        val hostKey: JvmLoadedClassKey,
+    ) : JvmRuntimeNestmateFailure
+
+    data class DifferentRuntimePackage(
+        val memberKey: JvmLoadedClassKey,
+        val hostKey: JvmLoadedClassKey,
+        val memberPackageKey: JvmRuntimePackageKey?,
+        val hostPackageKey: JvmRuntimePackageKey?,
+    ) : JvmRuntimeNestmateFailure
+
+    data class DifferentNestHosts(
+        val firstHostKey: JvmLoadedClassKey,
+        val secondHostKey: JvmLoadedClassKey,
+    ) : JvmRuntimeNestmateFailure
+}
+
 class JvmMethodArea {
     private val entriesByLoadedClassKey = linkedMapOf<JvmLoadedClassKey, JvmMethodAreaEntry>()
     private val loadedClassKeysByInitiatingLoader = linkedMapOf<JvmInitiatingClassKey, JvmLoadedClassKey>()
@@ -89,11 +126,45 @@ class JvmMethodArea {
         )
 
     fun areRuntimeNestmates(firstKey: JvmLoadedClassKey, secondKey: JvmLoadedClassKey): Boolean {
-        val firstEntry = entriesByLoadedClassKey[firstKey] ?: return false
-        val secondEntry = entriesByLoadedClassKey[secondKey] ?: return false
-        val firstHostKey = runtimeNestHostKey(firstKey, firstEntry) ?: return false
-        val secondHostKey = runtimeNestHostKey(secondKey, secondEntry) ?: return false
-        return firstHostKey == secondHostKey
+        return checkRuntimeNestmates(firstKey, secondKey).areNestmates
+    }
+
+    fun checkRuntimeNestmates(firstKey: JvmLoadedClassKey, secondKey: JvmLoadedClassKey): JvmRuntimeNestmateCheck {
+        val firstEntry = entriesByLoadedClassKey[firstKey]
+            ?: return JvmRuntimeNestmateCheck(
+                areNestmates = false,
+                failure = JvmRuntimeNestmateFailure.MissingClass(firstKey),
+            )
+        val secondEntry = entriesByLoadedClassKey[secondKey]
+            ?: return JvmRuntimeNestmateCheck(
+                areNestmates = false,
+                failure = JvmRuntimeNestmateFailure.MissingClass(secondKey),
+            )
+        val firstHostKey = when (val firstHost = runtimeNestHostKey(firstKey, firstEntry)) {
+            is RuntimeNestHostLookup.Found -> firstHost.hostKey
+            is RuntimeNestHostLookup.Failed -> return JvmRuntimeNestmateCheck(
+                areNestmates = false,
+                failure = firstHost.failure,
+            )
+        }
+        val secondHostKey = when (val secondHost = runtimeNestHostKey(secondKey, secondEntry)) {
+            is RuntimeNestHostLookup.Found -> secondHost.hostKey
+            is RuntimeNestHostLookup.Failed -> return JvmRuntimeNestmateCheck(
+                areNestmates = false,
+                failure = secondHost.failure,
+            )
+        }
+        return if (firstHostKey == secondHostKey) {
+            JvmRuntimeNestmateCheck(areNestmates = true)
+        } else {
+            JvmRuntimeNestmateCheck(
+                areNestmates = false,
+                failure = JvmRuntimeNestmateFailure.DifferentNestHosts(
+                    firstHostKey = firstHostKey,
+                    secondHostKey = secondHostKey,
+                ),
+            )
+        }
     }
 
     fun superclassDefinitionsFor(loadedClassKey: JvmLoadedClassKey): List<JvmClassDefinition> {
@@ -151,20 +222,49 @@ class JvmMethodArea {
     private fun runtimeNestHostKey(
         memberKey: JvmLoadedClassKey,
         memberEntry: JvmMethodAreaEntry,
-    ): JvmLoadedClassKey? {
+    ): RuntimeNestHostLookup {
         val hostKey = JvmLoadedClassKey(
             internalName = memberEntry.definition.nestHostInternalName,
             definingLoader = memberKey.definingLoader,
         )
-        val hostEntry = entriesByLoadedClassKey[hostKey] ?: return null
+        val hostEntry = entriesByLoadedClassKey[hostKey]
+            ?: return RuntimeNestHostLookup.Failed(
+                JvmRuntimeNestmateFailure.MissingHost(
+                    memberKey = memberKey,
+                    hostKey = hostKey,
+                ),
+            )
         if (memberKey == hostKey) {
-            return hostKey
+            return RuntimeNestHostLookup.Found(hostKey)
         }
-        return hostKey.takeIf {
-            hostEntry.definition.nestHostInternalName == hostEntry.definition.internalName &&
-                memberEntry.definition.internalName in hostEntry.definition.nestMemberInternalNames &&
-                memberEntry.runtimePackageKey == hostEntry.runtimePackageKey
+        if (hostEntry.definition.nestHostInternalName != hostEntry.definition.internalName) {
+            return RuntimeNestHostLookup.Failed(
+                JvmRuntimeNestmateFailure.HostNotSelfHosted(
+                    memberKey = memberKey,
+                    hostKey = hostKey,
+                    nominatedHostName = hostEntry.definition.nestHostInternalName,
+                ),
+            )
         }
+        if (memberEntry.definition.internalName !in hostEntry.definition.nestMemberInternalNames) {
+            return RuntimeNestHostLookup.Failed(
+                JvmRuntimeNestmateFailure.HostMissingMember(
+                    memberKey = memberKey,
+                    hostKey = hostKey,
+                ),
+            )
+        }
+        if (memberEntry.runtimePackageKey != hostEntry.runtimePackageKey) {
+            return RuntimeNestHostLookup.Failed(
+                JvmRuntimeNestmateFailure.DifferentRuntimePackage(
+                    memberKey = memberKey,
+                    hostKey = hostKey,
+                    memberPackageKey = memberEntry.runtimePackageKey,
+                    hostPackageKey = hostEntry.runtimePackageKey,
+                ),
+            )
+        }
+        return RuntimeNestHostLookup.Found(hostKey)
     }
 
     private fun indexInitiatingLoaders(
@@ -183,6 +283,12 @@ class JvmMethodAreaDefinitionException(message: String) : IllegalStateException(
 class JvmMethodAreaAccessException(message: String) : IllegalStateException(message)
 
 private fun String?.diagnosticModuleName(): String = this ?: "<unnamed>"
+
+private sealed interface RuntimeNestHostLookup {
+    data class Found(val hostKey: JvmLoadedClassKey) : RuntimeNestHostLookup
+
+    data class Failed(val failure: JvmRuntimeNestmateFailure) : RuntimeNestHostLookup
+}
 
 private data class JvmInitiatingClassKey(
     val internalName: String,
