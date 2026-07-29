@@ -159,4 +159,34 @@ class JvmMethodAreaTest {
 
         assertEquals("runtime module name must not be blank", failure.message)
     }
+    @Test
+    fun `method area lists classes in a runtime package`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val packageKey = JvmRuntimePackageKey("pkg", loader)
+        val first = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "pkg/First"),
+            loadedClassKey = JvmLoadedClassKey("pkg/First", loader),
+        )
+        val second = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "pkg/Second"),
+            loadedClassKey = JvmLoadedClassKey("pkg/Second", loader),
+        )
+        val bootstrapSamePackage = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "pkg/Bootstrap"),
+            loadedClassKey = JvmLoadedClassKey("pkg/Bootstrap", JvmClassLoaderIdentity.Bootstrap),
+        )
+        val otherPackage = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "other/Other"),
+            loadedClassKey = JvmLoadedClassKey("other/Other", loader),
+        )
+        val arrayClass = JvmMethodAreaEntry(
+            definition = JvmClassDefinition(internalName = "[Lpkg/First;"),
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/First;", loader),
+        )
+
+        listOf(first, second, bootstrapSamePackage, otherPackage, arrayClass).forEach(methodArea::defineClass)
+
+        assertEquals(listOf(first, second), methodArea.classesInRuntimePackage(packageKey))
+    }
 }

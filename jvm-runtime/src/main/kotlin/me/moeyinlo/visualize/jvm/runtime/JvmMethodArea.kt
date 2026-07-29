@@ -87,6 +87,9 @@ class JvmMethodArea {
             strictClassResolution = strictClassResolution,
         )
 
+    fun classesInRuntimePackage(runtimePackageKey: JvmRuntimePackageKey): List<JvmMethodAreaEntry> =
+        entriesByLoadedClassKey.values.filter { entry -> entry.runtimePackageKey == runtimePackageKey }
+
     fun toList(): List<JvmMethodAreaEntry> = entriesByLoadedClassKey.values.toList()
 
     private fun indexInitiatingLoaders(
