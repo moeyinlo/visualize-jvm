@@ -32390,6 +32390,106 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokedynamic cached put field target rejects public owner classes from unreadable runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 146, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val targetKey = JvmLoadedClassKey("lib/api/Targets", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "lib/api/Targets",
+                    fields = listOf(JvmFieldDefinition(name = "answer", descriptor = "I", isStatic = false)),
+                ),
+                loadedClassKey = targetKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("lib/api/Targets")
+        val locals = JvmLocalVariables(maxLocals = 1)
+        locals.store(0, receiver)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                JvmClassDefinition("app/Caller"),
+                JvmClassDefinition(
+                    internalName = "lib/api/Targets",
+                    fields = listOf(JvmFieldDefinition(name = "answer", descriptor = "I", isStatic = false)),
+                ),
+            ),
+        )
+        val callSites = JvmInvokeDynamicCallSiteRegistry()
+        callSites.bind(
+            key = JvmInvokeDynamicCallSiteKey(ownerClassName = "app/Caller", bytecodeOffset = 3),
+            callSite = JvmLinkedInvokeDynamicCallSite(
+                spec = JvmInvokeDynamicCallSiteSpec(
+                    constantPoolIndex = JvmRuntimeConstantPoolIndex(1),
+                    bootstrapMethodIndex = 0,
+                    name = "store",
+                    descriptor = "(Llib/api/Targets;I)V",
+                ),
+                targetMethodHandle = JvmMethodHandlePayload(
+                    referenceKind = JvmMethodHandleReferenceKind.PutField,
+                    referenceIndex = 1,
+                ),
+                target = JvmMethodHandleTarget.Field(
+                    JvmResolvedField(
+                        ownerClassName = "lib/api/Targets",
+                        name = "answer",
+                        descriptor = "I",
+                        isStatic = false,
+                    ),
+                ),
+            ),
+        )
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x10.toByte(),
+                    0x2A.toByte(),
+                    0xBA.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x00.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 2,
+                constantPool = invokedynamicFieldSetterCallSiteConstantPool(),
+                heap = heap,
+                localVariables = locals,
+                classHierarchy = classHierarchy,
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+                invokeDynamicCallSites = callSites,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class lib/api/Targets", exception.message)
+    }
+
+    @Test
     fun `invokedynamic executes cached put field target`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Targets")
