@@ -133,6 +133,41 @@ object MethodTypeCheckingVerifier {
         )
     }
 
+    fun verifyWithInferredFrames(
+        code: CodeAttribute,
+        initialFrame: MethodInitialFrame,
+        throwableType: VerificationType.ObjectType,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = null,
+            initialFrameState = initialFrame.toVerificationFrameState(),
+            declaredReturnType = initialFrame.returnType.toVerificationReturnType(),
+            throwableType = throwableType,
+            frameStates = frameStates,
+            requireExplicitFrameTargets = false,
+        )
+    }
+
+    fun verifyWithInferredFrames(
+        code: CodeAttribute,
+        constantPool: ConstantPool,
+        initialFrame: MethodInitialFrame,
+        throwableType: VerificationType.ObjectType,
+        frameStates: Iterable<VerificationFrameState>,
+    ) {
+        verify(
+            code = code,
+            constantPool = constantPool,
+            initialFrameState = initialFrame.toVerificationFrameState(),
+            declaredReturnType = initialFrame.returnType.toVerificationReturnType(),
+            throwableType = throwableType,
+            frameStates = frameStates,
+            requireExplicitFrameTargets = false,
+        )
+    }
+
     private fun verify(
         code: CodeAttribute,
         constantPool: ConstantPool?,
@@ -140,6 +175,7 @@ object MethodTypeCheckingVerifier {
         declaredReturnType: VerificationReturnType?,
         throwableType: VerificationType.ObjectType? = null,
         frameStates: Iterable<VerificationFrameState>,
+        requireExplicitFrameTargets: Boolean = true,
     ) {
         val frames = frameStates.toList()
         val framesWithInitial = listOfNotNull(initialFrameState) + frames
@@ -150,8 +186,10 @@ object MethodTypeCheckingVerifier {
         if (initialFrameState != null) {
             frameOffsets += initialFrameState.bytecodeOffset
         }
-        verifyBranchTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
-        verifyExceptionHandlerTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
+        if (requireExplicitFrameTargets) {
+            verifyBranchTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
+            verifyExceptionHandlerTargetFrames(controlFlowGraph.edges, frameOffsets = frameOffsets)
+        }
         verifyInstructionTransfers(
             code = code,
             constantPool = constantPool,

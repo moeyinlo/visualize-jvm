@@ -28,7 +28,7 @@ class JvmClassVerifier {
                 return@forEach
             }
             try {
-                verifyMethod(request, method, code)
+                verifyMethod(request, method, code, strategy)
             } catch (exception: RuntimeException) {
                 throw JvmClassVerificationException(
                     className = request.className,
@@ -50,26 +50,52 @@ class JvmClassVerifier {
         request: JvmClassVerificationRequest,
         method: JvmMethodVerificationRequest,
         code: CodeAttribute,
+        strategy: JvmVerificationStrategy,
     ) {
         val initialFrame = initialFrame(request.className, method, code.maxLocals)
         val stackMapFrames = code.attributes
             .filterIsInstance<StackMapTableAttribute>()
             .flatMap { attribute -> StackMapFrameExpander.expand(initialFrame.locals, attribute.entries) }
-        if (method.constantPool == null) {
-            MethodTypeCheckingVerifier.verify(
-                code = code,
-                initialFrame = initialFrame,
-                throwableType = VerificationType.ObjectType(ConstantPoolIndex(1)),
-                frameStates = stackMapFrames,
-            )
-        } else {
-            MethodTypeCheckingVerifier.verify(
-                code = code,
-                constantPool = method.constantPool,
-                initialFrame = initialFrame,
-                throwableType = VerificationType.ObjectType(ConstantPoolIndex(1)),
-                frameStates = stackMapFrames,
-            )
+        val throwableType = VerificationType.ObjectType(ConstantPoolIndex(1))
+        when (strategy) {
+            JvmVerificationStrategy.TypeChecking -> {
+                if (method.constantPool == null) {
+                    MethodTypeCheckingVerifier.verify(
+                        code = code,
+                        initialFrame = initialFrame,
+                        throwableType = throwableType,
+                        frameStates = stackMapFrames,
+                    )
+                } else {
+                    MethodTypeCheckingVerifier.verify(
+                        code = code,
+                        constantPool = method.constantPool,
+                        initialFrame = initialFrame,
+                        throwableType = throwableType,
+                        frameStates = stackMapFrames,
+                    )
+                }
+            }
+            JvmVerificationStrategy.TypeCheckingWithInferredFrames,
+            JvmVerificationStrategy.TypeInference,
+            -> {
+                if (method.constantPool == null) {
+                    MethodTypeCheckingVerifier.verifyWithInferredFrames(
+                        code = code,
+                        initialFrame = initialFrame,
+                        throwableType = throwableType,
+                        frameStates = stackMapFrames,
+                    )
+                } else {
+                    MethodTypeCheckingVerifier.verifyWithInferredFrames(
+                        code = code,
+                        constantPool = method.constantPool,
+                        initialFrame = initialFrame,
+                        throwableType = throwableType,
+                        frameStates = stackMapFrames,
+                    )
+                }
+            }
         }
     }
 
