@@ -6342,7 +6342,13 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
         requireVirtualMethodName(resolvedMethod)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
@@ -6390,6 +6396,7 @@ object JvmInterpreter {
             terminationState = terminationState,
             monitorUnblockedHandler = monitorUnblockedHandler,
             currentClassName = currentClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
             bootstrapMethods = bootstrapMethods,
             invokeDynamicCallSites = invokeDynamicCallSites,
             dynamicConstants = dynamicConstants,
@@ -6471,7 +6478,14 @@ object JvmInterpreter {
             )
         }
         requireNonConstructorReceiverInitialized(resolvedMethod, receiver, heap)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            receiverClassName = receiverClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val targetMethod = classHierarchy.resolveVirtualMethod(
             receiverClassName = receiverClassName,
             name = resolvedMethod.name,
