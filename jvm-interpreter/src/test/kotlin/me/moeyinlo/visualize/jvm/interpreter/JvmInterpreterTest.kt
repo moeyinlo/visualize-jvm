@@ -90,6 +90,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmMethodDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodTypePayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLineNumberTableEntry
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
+import me.moeyinlo.visualize.jvm.runtime.JvmModuleDescriptor
+import me.moeyinlo.visualize.jvm.runtime.JvmModuleExport
+import me.moeyinlo.visualize.jvm.runtime.JvmModuleLayer
 import me.moeyinlo.visualize.jvm.runtime.JvmNoClassDefFoundError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchFieldError
 import me.moeyinlo.visualize.jvm.runtime.JvmNoSuchMethodError
@@ -15783,6 +15786,135 @@ class JvmInterpreterTest {
 
         assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
         assertEquals("Class pkg/Caller cannot access class pkg/Hidden", exception.message)
+    }
+
+    @Test
+    fun `ldc rejects public class literals from unreadable runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 127, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val hiddenKey = JvmLoadedClassKey("lib/api/Hidden", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Hidden"),
+                loadedClassKey = hiddenKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x12.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("lib/api/Hidden", "lib/api/Hidden".encodeToByteArray()),
+                        ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "lib/api/Hidden"),
+                        JvmClassDefinition(internalName = "app/Caller"),
+                    ),
+                ),
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class lib/api/Hidden", exception.message)
+    }
+
+    @Test
+    fun `ldc allows public class literals from readable exported runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 128, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val hiddenKey = JvmLoadedClassKey("lib/api/Hidden", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Hidden"),
+                loadedClassKey = hiddenKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app"), requires = setOf("lib")))
+        val heap = JvmHeap()
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x12.toByte(),
+                0x02.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("lib/api/Hidden", "lib/api/Hidden".encodeToByteArray()),
+                    ConstantClassEntry(nameIndex = ConstantPoolIndex(1)),
+                ),
+            ),
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "lib/api/Hidden"),
+                    JvmClassDefinition(internalName = "app/Caller"),
+                ),
+            ),
+            currentClassName = "app/Caller",
+            currentLoadedClassKey = callerKey,
+            methodArea = methodArea,
+            moduleLayer = moduleLayer,
+            heap = heap,
+        )
+
+        val reference = JvmObjectReferenceValue(JvmReferenceId(1))
+        assertEquals(listOf(reference), result.operandStack.toList())
+        assertEquals(
+            JvmHeapObject(
+                className = "java/lang/Class",
+                payload = JvmClassPayload("lib/api/Hidden"),
+            ),
+            heap.get(reference),
+        )
     }
     @Test
     fun `ldc reuses guest method type constants with identical descriptors`() {

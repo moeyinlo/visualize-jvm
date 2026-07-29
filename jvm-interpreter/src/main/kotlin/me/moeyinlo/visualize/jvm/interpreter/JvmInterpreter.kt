@@ -69,6 +69,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmLinkedInvokeDynamicCallSite
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleReferenceKind
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodHandleTarget
 import me.moeyinlo.visualize.jvm.runtime.JvmMethodArea
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodAreaEntry
+import me.moeyinlo.visualize.jvm.runtime.JvmModuleLayer
+import me.moeyinlo.visualize.jvm.runtime.JvmModuleLayerException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorEnterResult
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorOwnershipException
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
@@ -913,6 +916,7 @@ object JvmInterpreter {
         initialOperandStackValues: List<JvmValue> = emptyList(),
         startBytecodeOffset: Int = 0,
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmExecutionResult {
         val nativeLibraryJavaVm = if (nativeLibraryLoader == null) {
             null
@@ -994,6 +998,7 @@ object JvmInterpreter {
             unloadNativeLibraryHandler = effectiveUnloadNativeLibraryHandler,
             initialOperandStackValues = initialOperandStackValues,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         return JvmExecutionResult(operandStack = frameResult.operandStack)
     }
@@ -1028,6 +1033,7 @@ object JvmInterpreter {
         javaVm: JvmSimulatedJavaVm? = null,
         initialOperandStackValues: List<JvmValue> = emptyList(),
         startBytecodeOffset: Int = 0,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmScheduledThreadExecutionResult =
         try {
             JvmScheduledThreadExecutionResult.Completed(
@@ -1057,6 +1063,7 @@ object JvmInterpreter {
                     javaVm = javaVm,
                     initialOperandStackValues = initialOperandStackValues,
                     startBytecodeOffset = startBytecodeOffset,
+                    moduleLayer = moduleLayer,
                 ),
             )
         } catch (exception: JvmThreadSuspendedException) {
@@ -1250,6 +1257,7 @@ object JvmInterpreter {
         },
         initialOperandStackValues: List<JvmValue> = emptyList(),
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ): JvmFrameExecutionResult {
         val operandStack = JvmOperandStack.fromValues(maxStack = maxStack, values = initialOperandStackValues)
         val instructions = BytecodeDecoder.decode(code)
@@ -1323,6 +1331,7 @@ object JvmInterpreter {
                             loadNativeLibraryHandler,
                             unloadNativeLibraryHandler,
                             methodArea,
+                            moduleLayer,
                         )
                         throwIfCurrentThreadSuspended(
                             threadScheduler = threadScheduler,
@@ -1640,6 +1649,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         when (instruction.metadata.opcode) {
             0x00 -> Unit
@@ -1673,6 +1683,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0x14 -> executeLdc2(
                 instruction = instruction,
@@ -4827,6 +4838,7 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val index = instruction.constantPoolIndex()
         val entry = try {
@@ -4861,6 +4873,7 @@ object JvmInterpreter {
                     classHierarchy = classHierarchy,
                     currentLoadedClassKey = currentLoadedClassKey,
                     methodArea = methodArea,
+                    moduleLayer = moduleLayer,
                 )
                 operandStack.push(heap.internClassMirror(nameEntry.value))
             }
@@ -9609,6 +9622,7 @@ object JvmInterpreter {
         classHierarchy: JvmClassHierarchy,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         if (
             currentClassName != null &&
@@ -9629,6 +9643,20 @@ object JvmInterpreter {
                     message = "Class $currentClassName cannot access class $targetClassName",
                 )
             }
+            if (
+                targetEntry.definition.isPublic &&
+                moduleLayer != null &&
+                !canAccessPublicClassAcrossModules(
+                    moduleLayer = moduleLayer,
+                    currentEntry = currentEntry,
+                    targetEntry = targetEntry,
+                )
+            ) {
+                throw JvmIllegalAccessError(
+                    guestClassName = "java/lang/IllegalAccessError",
+                    message = "Class $currentClassName cannot access class $targetClassName",
+                )
+            }
             return
         }
         val targetClass = classHierarchy.classDefinition(targetClassName) ?: return
@@ -9641,6 +9669,34 @@ object JvmInterpreter {
                 guestClassName = "java/lang/IllegalAccessError",
                 message = "Class $currentClassName cannot access class $targetClassName",
             )
+        }
+    }
+
+    private fun canAccessPublicClassAcrossModules(
+        moduleLayer: JvmModuleLayer,
+        currentEntry: JvmMethodAreaEntry,
+        targetEntry: JvmMethodAreaEntry,
+    ): Boolean {
+        val currentModuleName = currentEntry.runtimeModuleName ?: return true
+        val targetModuleName = targetEntry.runtimeModuleName ?: return true
+        if (currentModuleName == targetModuleName) {
+            return true
+        }
+        val targetPackageName = targetEntry.runtimePackageKey?.packageName ?: return false
+        if (targetPackageName.isBlank()) {
+            return false
+        }
+        return try {
+            moduleLayer.canRead(
+                sourceModuleName = currentModuleName,
+                targetModuleName = targetModuleName,
+            ) && moduleLayer.exportsPackageTo(
+                sourceModuleName = targetModuleName,
+                packageName = targetPackageName,
+                targetModuleName = currentModuleName,
+            )
+        } catch (exception: JvmModuleLayerException) {
+            false
         }
     }
 
