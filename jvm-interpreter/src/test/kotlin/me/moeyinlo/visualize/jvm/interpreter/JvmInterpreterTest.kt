@@ -6541,6 +6541,37 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `instanceof rejects package private target classes from another package before null pushes zero`() {
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x01.toByte(),
+                    0xC1.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantClassEntry(ConstantPoolIndex(2)),
+                        ConstantUtf8Entry("pkg/Hidden", "pkg/Hidden".encodeToByteArray()),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(internalName = "pkg/Hidden", isPublic = false),
+                        JvmClassDefinition(internalName = "other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Hidden", exception.message)
+    }
+
+    @Test
     fun `instanceof pushes one for assignable object reference`() {
         val heap = JvmHeap()
         val reference = heap.allocateObject("java/lang/String")

@@ -2061,7 +2061,16 @@ object JvmInterpreter {
                 currentLoadedClassKey = currentLoadedClassKey,
                 methodArea = methodArea,
             )
-            0xC1 -> executeInstanceOf(instruction, operandStack, constantPool, heap, classHierarchy)
+            0xC1 -> executeInstanceOf(
+                instruction = instruction,
+                operandStack = operandStack,
+                constantPool = constantPool,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
+                methodArea = methodArea,
+            )
             0xC2 -> executeMonitorEnter(instruction, operandStack, heap, monitors, threadScheduler, currentThreadId)
             0xC3 -> executeMonitorExit(
                 instruction,
@@ -5543,8 +5552,18 @@ object JvmInterpreter {
         constantPool: ConstantPool,
         heap: JvmHeap,
         classHierarchy: JvmClassHierarchy,
+        currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
+        methodArea: JvmMethodArea? = null,
     ) {
         val targetClassName = resolveConstantClassName(instruction, constantPool)
+        requireAccessibleClass(
+            targetClassName = targetClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val value = operandStack.pop()
         if (value !is JvmReferenceValue) {
             throw JvmUnsupportedInstructionException(
