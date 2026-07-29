@@ -5928,6 +5928,58 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObject preserves the class handle loaded class key on allocated guest objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 13, displayName = "new-loader"),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<init>",
+                                descriptor = "()V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) {
+                    assertEquals(false, heap.isInitialized(receiver))
+                    assertEquals(loadedClassKey, heap.get(receiver).loadedClassKey)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val constructorHandle = environment.getMethodId(classHandle, "<init>", "()V")
+
+        val objectHandle = environment.newObject(classHandle, constructorHandle)
+        val objectReference = handles.resolveObject(objectHandle)
+
+        assertEquals(
+            JvmHeapObject(
+                className = "Example",
+                isInitialized = true,
+                loadedClassKey = loadedClassKey,
+            ),
+            heap.get(objectReference),
+        )
+    }
+
+    @Test
     fun `GetObjectClass returns runtime class handle for guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

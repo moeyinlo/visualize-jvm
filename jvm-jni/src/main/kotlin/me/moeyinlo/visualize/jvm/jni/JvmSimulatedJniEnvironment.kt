@@ -992,7 +992,10 @@ class JvmSimulatedJniEnvironment(
         val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireConstructorMethod("NewObject", className)
-        val receiver = heap.allocateUninitializedObject(className)
+        val receiver = heap.allocateUninitializedObject(
+            className = className,
+            loadedClassKey = handles.resolveClassLoadedKey(classHandle),
+        )
         upcallDispatcher.callVoidMethod(
             receiver = receiver,
             method = method,
