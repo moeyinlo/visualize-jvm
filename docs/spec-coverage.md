@@ -861,7 +861,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 4.10.1, 6.5 | Type checking verifier applies implicit float local store transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies implicit double local store transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
 | 4.10.1, 6.5 | Type checking verifier applies implicit reference local store transitions at explicit source frames | `jvm-verifier` | `MethodTypeCheckingVerifierTest` | IMPLEMENTED |
-| 4.10.1 | Verification by type checking | `jvm-verifier` | TBD | PENDING |
+| 4.10.1 | Verification by type checking partially covers MethodTypeCheckingVerifier dispatch over many explicit stack-map/source-frame transitions, operand-stack and local-variable effects for constants, loads, stores, arithmetic, conversions, comparisons, branches, switches, field access, invocation, returns, object/array operations, exception handlers, and protected/uninitialized-this rules; full JVMS type-checking verifier coverage remains pending | `jvm-verifier` | `MethodTypeCheckingVerifierTest`, instruction-specific verifier tests | PARTIAL |
 | 4.10.2 | Verification by type inference | `jvm-verifier` | TBD | PENDING |
 | 4.11 | JVM limitations | `jvm-classfile`, `jvm-runtime` | TBD | PENDING |
 
