@@ -2049,14 +2049,24 @@ object JvmVmIntrinsics {
         jvmBoolean(assignable)
     }
     private val ClassGetSuperclass = JvmNativeMethodIntrinsic { context, invocation ->
-        val representedClassName = requireClassMirrorReceiver("Class.getSuperclass", context, invocation)
+        val classPayload = requireClassMirrorReceiverPayload("Class.getSuperclass", context, invocation)
+        val representedClassName = classPayload.representedClassName
         when {
             representedClassName in PrimitiveClassNames -> JvmNullValue
             representedClassName == "java/lang/Object" -> JvmNullValue
             context.classHierarchy.isInterface(representedClassName) -> JvmNullValue
             representedClassName.startsWith("[") -> context.heap.internClassMirror("java/lang/Object")
             else -> context.classHierarchy.directSuperclassName(representedClassName)
-                ?.let(context.heap::internClassMirror)
+                ?.let { superclassName ->
+                    context.heap.internClassMirror(
+                        className = superclassName,
+                        loadedClassKey = loadedClassKeyForMirrorRelatedClass(
+                            context = context,
+                            mirrorPayload = classPayload,
+                            relatedClassName = superclassName,
+                        ),
+                    )
+                }
                 ?: JvmNullValue
         }
     }
@@ -6279,17 +6289,50 @@ object JvmVmIntrinsics {
         return requireClassMirrorReference(name, context, receiver)
     }
 
+    private fun requireClassMirrorReceiverPayload(
+        name: String,
+        context: JvmNativeMethodContext,
+        invocation: JvmNativeMethodInvocation,
+    ): JvmClassPayload {
+        requireNoArguments(name, invocation)
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("$name intrinsic requires a receiver")
+        return requireClassMirrorPayload(name, context, receiver)
+    }
+
     private fun requireClassMirrorReference(
         name: String,
         context: JvmNativeMethodContext,
         reference: JvmObjectReferenceValue,
     ): String =
+        requireClassMirrorPayload(name, context, reference).representedClassName
+
+    private fun requireClassMirrorPayload(
+        name: String,
+        context: JvmNativeMethodContext,
+        reference: JvmObjectReferenceValue,
+    ): JvmClassPayload =
         when (val payload = context.heap.get(reference).payload) {
-            is JvmClassPayload -> payload.representedClassName
+            is JvmClassPayload -> payload
             else -> throw JvmUnsupportedInstructionException(
                 "$name intrinsic requires a java/lang/Class mirror receiver",
             )
         }
+
+    private fun loadedClassKeyForMirrorRelatedClass(
+        context: JvmNativeMethodContext,
+        mirrorPayload: JvmClassPayload,
+        relatedClassName: String,
+    ): JvmLoadedClassKey? {
+        val methodArea = context.methodArea ?: return null
+        val loadedClassKey = mirrorPayload.loadedClassKey ?: return null
+        return methodArea.getClass(
+            internalName = relatedClassName,
+            initiatingLoader = loadedClassKey.definingLoader,
+        )?.loadedClassKey ?: methodArea.getClass(
+            loadedClassKey.copy(internalName = relatedClassName),
+        )?.loadedClassKey
+    }
 
     private fun requireStringReceiver(
         name: String,

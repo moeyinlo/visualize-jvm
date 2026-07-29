@@ -6,6 +6,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
 import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
+import me.moeyinlo.visualize.jvm.runtime.JvmClassLoaderIdentity
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
@@ -16,8 +17,11 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
+import me.moeyinlo.visualize.jvm.runtime.JvmLoadedClassKey
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongValue
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodArea
+import me.moeyinlo.visualize.jvm.runtime.JvmMethodAreaEntry
 import me.moeyinlo.visualize.jvm.runtime.JvmMonitorState
 import me.moeyinlo.visualize.jvm.runtime.JvmNullValue
 import me.moeyinlo.visualize.jvm.runtime.JvmObjectReferenceValue
@@ -1570,6 +1574,49 @@ class JvmVmIntrinsicsTest {
         assertEquals(heap.internClassMirror("pkg/Base"), childSuperclass)
         assertEquals(JvmNullValue, objectSuperclass)
         assertEquals(JvmNullValue, primitiveSuperclass)
+    }
+
+    @Test
+    fun `Class getSuperclass intrinsic preserves loaded class key identity`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 178, displayName = "app")
+        val childKey = JvmLoadedClassKey("pkg/Child", loader)
+        val baseKey = JvmLoadedClassKey("pkg/Base", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Base"),
+                loadedClassKey = baseKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                loadedClassKey = childKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val childMirror = heap.internClassMirror("pkg/Child", loadedClassKey = childKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetSuperclassMethod())
+            ?: error("Class.getSuperclass intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        val superclass = intrinsic.invoke(context, JvmNativeMethodInvocation(childMirror, emptyList()))
+            as JvmObjectReferenceValue
+
+        assertEquals(JvmClassPayload("pkg/Base", loadedClassKey = baseKey), heap.get(superclass).payload)
     }
 
     @Test
