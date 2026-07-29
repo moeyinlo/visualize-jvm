@@ -23087,6 +23087,124 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokevirtual allows private methods from classfile derived nest metadata`() {
+        val hostClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                    ConstantUtf8Entry("Code", "Code".encodeToByteArray()),
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(8)),
+                    ConstantUtf8Entry("NestMembers", "NestMembers".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = listOf(
+                MethodInfo(
+                    accessFlags = 0x0002,
+                    nameIndex = ConstantPoolIndex(5),
+                    descriptorIndex = ConstantPoolIndex(6),
+                    attributes = listOf(
+                        CodeAttribute(
+                            nameIndex = ConstantPoolIndex(7),
+                            maxStack = 1,
+                            maxLocals = 1,
+                            code = byteArrayOf(
+                                0x08.toByte(),
+                                0xAC.toByte(),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            attributes = listOf(
+                NestMembersAttribute(
+                    nameIndex = ConstantPoolIndex(10),
+                    classes = listOf(ConstantPoolIndex(9)),
+                ),
+            ),
+        )
+        val memberClassFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantUtf8Entry("Owner\$Nested", "Owner\$Nested".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(1)),
+                    ConstantUtf8Entry("java/lang/Object", "java/lang/Object".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantClassEntry(ConstantPoolIndex(5)),
+                    ConstantUtf8Entry("NestHost", "NestHost".encodeToByteArray()),
+                ),
+            ),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = emptyList(),
+            attributes = listOf(
+                NestHostAttribute(
+                    nameIndex = ConstantPoolIndex(7),
+                    hostClassIndex = ConstantPoolIndex(6),
+                ),
+            ),
+        )
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB6.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    hostClassFile.toJvmClassDefinition(),
+                    memberClassFile.toJvmClassDefinition(),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+        )
+
+        assertEquals(listOf(JvmIntValue(5)), result.operandStack.toList())
+        assertEquals(1, result.operandStack.slotDepth)
+    }
+
+    @Test
     fun `invokevirtual throws guest IllegalAccessError for package private methods from another package`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("pkg/Owner")
