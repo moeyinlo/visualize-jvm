@@ -102,6 +102,29 @@ class JvmClassPathLoaderTest {
         )
     }
 
+
+    @Test
+    fun `records runtime package and module metadata on loaded classpath classes`() {
+        val root = Files.createTempDirectory("visualize-jvm-classpath-module-metadata")
+        writeDirectoryClass(
+            root,
+            "pkg/Example",
+            ClassFileWriter.writeClassFile(classFile("pkg/Example", superclassName = "java/lang/Object")),
+        )
+        val methodArea = JvmMethodArea()
+        val definingLoader = JvmClassLoaderIdentity.UserDefined(id = 7, displayName = "app")
+        val loader = JvmClassPathLoader(
+            entries = listOf(JvmClassPathEntry.Directory(root)),
+            methodArea = methodArea,
+            definingLoader = definingLoader,
+            runtimeModuleName = "app.module",
+        )
+
+        val loaded = loader.load("pkg/Example")
+
+        assertEquals("app.module", loaded.runtimeModuleName)
+        assertEquals(JvmRuntimePackageKey("pkg", definingLoader), loaded.runtimePackageKey)
+    }
     @Test
     fun `records the initiating loader for classpath loads`() {
         val root = Files.createTempDirectory("visualize-jvm-classpath-initiating-loader")
