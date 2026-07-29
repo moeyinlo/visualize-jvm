@@ -438,6 +438,29 @@ class JvmMethodAreaTest {
         )
         assertFalse(methodArea.areRuntimeNestmates(firstMemberKey, secondMemberKey))
     }
+
+    @Test
+    fun `method area runtime nestmate diagnostics report missing classes`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 29, displayName = "app")
+        val missingKey = JvmLoadedClassKey("pkg/Missing", loader)
+        val presentKey = JvmLoadedClassKey("pkg/Present", loader)
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Present"),
+                loadedClassKey = presentKey,
+            ),
+        )
+
+        val check = methodArea.checkRuntimeNestmates(missingKey, presentKey)
+
+        assertFalse(check.areNestmates)
+        assertEquals(
+            JvmRuntimeNestmateFailure.MissingClass(missingKey),
+            check.failure,
+        )
+        assertFalse(methodArea.areRuntimeNestmates(missingKey, presentKey))
+    }
     @Test
     fun `method area entry exposes runtime package and module metadata`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 11, displayName = "app-loader")
