@@ -43,6 +43,49 @@ class JvmHostExceptionTranslationTest {
     }
 
     @Test
+    fun `static host method throwable records opaque failed boundary event`() {
+        val heap = JvmHeap()
+        val recorder = JvmHostBoundaryEventRecorder()
+        val mirror = JvmHostDelegatedClassMirror.fromHostClass(ThrowingHostFixture::class.java)
+        val method = JvmHostMethodResolver.resolveStaticMethod(
+            owner = mirror,
+            name = "throwStatic",
+            descriptor = "()V",
+        )
+
+        assertFailsWith<JvmHostTranslatedException> {
+            JvmHostMethodInvoker.invokeStatic(
+                method = method,
+                arguments = emptyList(),
+                heap = heap,
+                boundaryEvents = recorder,
+            )
+        }
+
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = mirror.guestInternalName,
+                    methodName = "throwStatic",
+                    descriptor = "()V",
+                    detail = "static args=0",
+                ),
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 2,
+                    action = JvmHostBoundaryAction.Failed,
+                    className = mirror.guestInternalName,
+                    methodName = "throwStatic",
+                    descriptor = "()V",
+                    detail = "translated=java.lang.IllegalArgumentException",
+                ),
+            ),
+            recorder.snapshots(),
+        )
+    }
+
+    @Test
     fun `translates instance host method throwables into guest throwables`() {
         val heap = JvmHeap()
         val hostReceiver = ThrowingHostFixture()
