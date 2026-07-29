@@ -874,7 +874,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 | 5.2 | JVM startup | `jvm-runtime` | TBD | PENDING |
 | 5.3.1 | Bootstrap class loader loading | `jvm-runtime` | TBD | PENDING |
 | 5.3.2 | User-defined class loader loading | `jvm-runtime` | TBD | PENDING |
-| 5.3.3 | Array class creation | `jvm-runtime` | TBD | PENDING |
+| 5.3.3 | Array class creation partially covers guest primitive and reference array heap objects, zero/null initialization through `newarray`, `anewarray`, and `multianewarray`, array length/load/store runtime behavior, verifier stack transitions, covariant reference-array assignability checks, host array bridging, and simulated JNI object/primitive array helpers; full JVMS array class metadata, loader identity, interfaces, and loading-constraint semantics remain pending | `jvm-runtime`, `jvm-interpreter`, `jvm-verifier`, `jvm-host`, `jvm-jni` | `JvmHeapTest`, `JvmInterpreterTest.*newarray*`, `JvmInterpreterTest.*anewarray*`, `JvmInterpreterTest.*arraylength*`, `JvmInterpreterTest.*aload*`, `JvmInterpreterTest.*astore*`, `JvmHostArrayBridgeTest`, `JvmSimulatedJniEnvironmentTest.*Array*`, array verifier tests | PARTIAL |
 | 5.3.4 | Loading constraints | `jvm-runtime` | TBD | PENDING |
 | 5.3.5 | Deriving class from class file bytes | `jvm-runtime`, `jvm-classfile` | TBD | PENDING |
 | 5.3.6 | Modules and layers | `jvm-runtime` | TBD | PENDING |
