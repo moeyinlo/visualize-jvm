@@ -5425,8 +5425,9 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticFloatMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmFloatValue {
-                    calls += RecordedStaticFloatUpcall(method, arguments)
+                    calls += RecordedStaticFloatUpcall(method, arguments, currentLoadedClassKey)
                     return JvmFloatValue(6.25f)
                 }
             },
@@ -5483,6 +5484,7 @@ class JvmSimulatedJniEnvironmentTest {
                 override fun callStaticFloatMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmFloatValue = error("CallStaticFloatMethod must not enter dispatcher for an incompatible class")
             },
         )
@@ -5497,6 +5499,70 @@ class JvmSimulatedJniEnvironmentTest {
         assertEquals(
             "CallStaticFloatMethod requires class Other to be assignable to Example",
             exception.message,
+        )
+    }
+
+    @Test
+    fun `CallStaticFloatMethod passes class handle loaded class key to the upcall dispatcher`() {
+        val handles = JvmJniHandleTable()
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = "Example",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(10, "float-loader"),
+        )
+        val calls = mutableListOf<RecordedStaticFloatUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "ratio",
+                                descriptor = "()F",
+                                isStatic = true,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callStaticFloatMethod(
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
+                ): JvmFloatValue {
+                    calls += RecordedStaticFloatUpcall(method, arguments, currentLoadedClassKey)
+                    return JvmFloatValue(7.5f)
+                }
+            },
+        )
+        val classHandle = handles.newClassHandle("Example", loadedClassKey = loadedClassKey)
+        val methodHandle = environment.getStaticMethodId(classHandle, "ratio", "()F")
+
+        val result = environment.callStaticFloatMethod(classHandle, methodHandle)
+
+        assertEquals(7.5f, result)
+        assertEquals(
+            listOf(
+                RecordedStaticFloatUpcall(
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "ratio",
+                        descriptor = "()F",
+                        isStatic = true,
+                    ),
+                    arguments = emptyList(),
+                    loadedClassKey = loadedClassKey,
+                ),
+            ),
+            calls,
         )
     }
 
@@ -13934,6 +14000,7 @@ private data class RecordedStaticLongUpcall(
 private data class RecordedStaticFloatUpcall(
     val method: JvmResolvedMethod,
     val arguments: List<JvmValue>,
+    val loadedClassKey: JvmLoadedClassKey? = null,
 )
 
 private data class RecordedStaticDoubleUpcall(

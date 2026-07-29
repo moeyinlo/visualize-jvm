@@ -955,6 +955,7 @@ class JvmSimulatedJniEnvironment(
         return upcallDispatcher.callStaticFloatMethod(
             method = method,
             arguments = arguments,
+            currentLoadedClassKey = handles.resolveClassLoadedKey(classHandle),
         ).value
     }
 

@@ -211,6 +211,7 @@ interface JvmJniUpcallDispatcher {
     fun callStaticFloatMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
     ): JvmFloatValue {
         throw JvmJniUpcallException(
             "No simulated JNI upcall dispatcher is configured for " +

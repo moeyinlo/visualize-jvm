@@ -2505,6 +2505,7 @@ class JvmSimulatedJniFunctionTableTest {
                 override fun callStaticFloatMethod(
                     method: JvmResolvedMethod,
                     arguments: List<JvmValue>,
+                    currentLoadedClassKey: JvmLoadedClassKey?,
                 ): JvmFloatValue {
                     calls += RecordedFunctionTableStaticFloatUpcall(method, arguments)
                     return JvmFloatValue(3.75f)
