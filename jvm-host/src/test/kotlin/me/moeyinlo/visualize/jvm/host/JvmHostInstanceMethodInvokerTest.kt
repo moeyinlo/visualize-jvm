@@ -57,6 +57,54 @@ class JvmHostInstanceMethodInvokerTest {
     }
 
     @Test
+    fun `instance host method invocation records opaque delegated and returned boundary events`() {
+        val heap = JvmHeap()
+        val guestReceiver = heap.allocateObject("me/moeyinlo/visualize/jvm/host/JvmHostInstanceMethodInvokerTest\$Counter")
+        val hostReceiver = Counter(5)
+        val identityMap = JvmHostIdentityMap()
+        identityMap.bind(guestReceiver, hostReceiver)
+        val recorder = JvmHostBoundaryEventRecorder()
+        val mirror = JvmHostDelegatedClassMirror.fromHostClass(Counter::class.java)
+        val method = JvmHostMethodResolver.resolveInstanceMethod(
+            owner = mirror,
+            name = "add",
+            descriptor = "(I)I",
+        )
+
+        val result = JvmHostMethodInvoker.invokeInstance(
+            method = method,
+            receiver = guestReceiver,
+            arguments = listOf(JvmIntValue(4)),
+            heap = heap,
+            identityMap = identityMap,
+            boundaryEvents = recorder,
+        )
+
+        assertEquals(JvmIntValue(9), result)
+        assertEquals(
+            listOf(
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 1,
+                    action = JvmHostBoundaryAction.Delegated,
+                    className = mirror.guestInternalName,
+                    methodName = "add",
+                    descriptor = "(I)I",
+                    detail = "instance args=1",
+                ),
+                JvmHostBoundaryEventSnapshot(
+                    sequence = 2,
+                    action = JvmHostBoundaryAction.Returned,
+                    className = mirror.guestInternalName,
+                    methodName = "add",
+                    descriptor = "(I)I",
+                    detail = "return=int",
+                ),
+            ),
+            recorder.snapshots(),
+        )
+    }
+
+    @Test
     fun `rejects instance invocation of static host methods`() {
         val mirror = JvmHostDelegatedClassMirror.fromHostClass(JvmHostStaticMethodInvokerTest.HostStaticFixture::class.java)
         val method = JvmHostMethodResolver.resolveStaticMethod(
