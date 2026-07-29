@@ -21,6 +21,7 @@ import me.moeyinlo.visualize.jvm.runtime.JvmFloatArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmFloatValue
 import me.moeyinlo.visualize.jvm.runtime.JvmFieldReference
 import me.moeyinlo.visualize.jvm.runtime.JvmHeap
+import me.moeyinlo.visualize.jvm.runtime.JvmHeapObject
 import me.moeyinlo.visualize.jvm.runtime.JvmIntValue
 import me.moeyinlo.visualize.jvm.runtime.JvmIntArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmLongArrayPayload
@@ -1793,9 +1794,10 @@ object JvmVmIntrinsics {
     private val ObjectClone = JvmNativeMethodIntrinsic { context, invocation ->
         val receiver = invocation.receiver
             ?: throw JvmUnsupportedInstructionException("Object.clone intrinsic requires a receiver")
-        val receiverClassName = context.heap.get(receiver).className
+        val receiverObject = context.heap.get(receiver)
+        val receiverClassName = receiverObject.className
         if (!receiverClassName.startsWith("[") &&
-            !context.classHierarchy.isAssignable(receiverClassName, "java/lang/Cloneable")
+            !isCloneableObject(context, receiverObject)
         ) {
             throw JvmUnsupportedInstructionException(
                 "Object.clone intrinsic requires Cloneable receiver, got $receiverClassName",
@@ -6374,6 +6376,25 @@ object JvmVmIntrinsics {
             loadedClassKeyAssignable(context, sourceKey, targetKey)?.let { assignable -> return assignable }
         }
         return context.classHierarchy.isAssignable(sourceClassName, targetClassName)
+    }
+
+    private fun isCloneableObject(
+        context: JvmNativeMethodContext,
+        sourceObject: JvmHeapObject,
+    ): Boolean {
+        val sourceKey = sourceObject.loadedClassKey
+        if (sourceKey != null) {
+            val cloneableKey = context.methodArea
+                ?.getClass(
+                    internalName = "java/lang/Cloneable",
+                    initiatingLoader = sourceKey.definingLoader,
+                )
+                ?.loadedClassKey
+            if (cloneableKey != null) {
+                loadedClassKeyAssignable(context, sourceKey, cloneableKey)?.let { assignable -> return assignable }
+            }
+        }
+        return context.classHierarchy.isAssignable(sourceObject.className, "java/lang/Cloneable")
     }
 
     private fun loadedClassKeyAssignable(

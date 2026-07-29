@@ -733,6 +733,71 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Object clone intrinsic uses loaded class key for Cloneable checks`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val firstLoader = JvmClassLoaderIdentity.UserDefined(id = 51, displayName = "first")
+        val secondLoader = JvmClassLoaderIdentity.UserDefined(id = 52, displayName = "second")
+        val cloneableKey = JvmLoadedClassKey("java/lang/Cloneable", JvmClassLoaderIdentity.Bootstrap)
+        val cloneableTargetKey = JvmLoadedClassKey("pkg/Target", firstLoader)
+        val plainTargetKey = JvmLoadedClassKey("pkg/Target", secondLoader)
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "java/lang/Cloneable", isInterface = true),
+                loadedClassKey = cloneableKey,
+                initiatingLoaders = setOf(firstLoader, secondLoader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Target",
+                    interfaceNames = listOf("java/lang/Cloneable"),
+                ),
+                loadedClassKey = cloneableTargetKey,
+                initiatingLoaders = setOf(firstLoader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Target"),
+                loadedClassKey = plainTargetKey,
+                initiatingLoaders = setOf(secondLoader),
+            ),
+        )
+        val cloneableReceiver = heap.allocateObject(methodArea, cloneableTargetKey)
+        val plainReceiver = heap.allocateObject(methodArea, plainTargetKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(objectCloneMethod())
+            ?: error("Object.clone intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "pkg/Target",
+                        interfaceNames = listOf("java/lang/Cloneable"),
+                    ),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "pkg/Target",
+            methodArea = methodArea,
+        )
+
+        val clone = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(receiver = cloneableReceiver, arguments = emptyList()),
+        ) as JvmObjectReferenceValue
+        assertEquals(cloneableTargetKey, heap.get(clone).loadedClassKey)
+        assertFailsWith<JvmUnsupportedInstructionException> {
+            intrinsic.invoke(
+                context,
+                JvmNativeMethodInvocation(receiver = plainReceiver, arguments = emptyList()),
+            )
+        }
+    }
+
+    @Test
     fun `Object clone intrinsic shallow clones guest arrays`() {
         val heap = JvmHeap()
         val receiver = heap.allocateIntArray(2)
