@@ -26,4 +26,18 @@ class JvmArrayClassFactoryTest {
         assertEquals(JvmPrimitiveArrayComponent.Int, factory.metadataFor("[I")?.component)
         assertSame(arrayClass, methodArea.getClass("[I"))
     }
+
+    @Test
+    fun `reuses already created primitive array class metadata`() {
+        val methodArea = JvmMethodArea()
+        val factory = JvmArrayClassFactory(methodArea)
+        val firstArrayClass = factory.createPrimitiveArrayClass(JvmPrimitiveArrayComponent.Int)
+
+        val secondArrayClass = factory.createPrimitiveArrayClass(JvmPrimitiveArrayComponent.Int)
+
+        assertSame(firstArrayClass, secondArrayClass)
+        assertSame(firstArrayClass, methodArea.getClass("[I"))
+        assertEquals(1, methodArea.classCount)
+        assertEquals(JvmPrimitiveArrayComponent.Int, factory.metadataFor("[I")?.component)
+    }
 }
