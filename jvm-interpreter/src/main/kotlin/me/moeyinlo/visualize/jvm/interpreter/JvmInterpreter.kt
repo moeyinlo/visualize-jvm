@@ -7420,6 +7420,8 @@ object JvmInterpreter {
                 monitors = monitors,
                 threadScheduler = threadScheduler,
                 currentThreadId = currentThreadId,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = currentLoadedClassKey,
                 bootstrapMethods = bootstrapMethods,
                 invokeDynamicCallSites = invokeDynamicCallSites,
                 dynamicConstants = dynamicConstants,
@@ -7427,6 +7429,7 @@ object JvmInterpreter {
                 loadNativeLibraryHandler = loadNativeLibraryHandler,
                 unloadNativeLibraryHandler = unloadNativeLibraryHandler,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             JvmMethodHandleReferenceKind.InvokeSpecial -> executeLinkedInvokeDynamicSpecialTarget(
                 instruction = instruction,
@@ -7972,6 +7975,8 @@ object JvmInterpreter {
         monitors: JvmMonitorState,
         threadScheduler: JvmThreadScheduler? = null,
         currentThreadId: String,
+        currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -7983,10 +7988,19 @@ object JvmInterpreter {
             throw JvmUnsupportedInstructionException("Native library unloading is not configured for $logicalName")
         },
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         requireInstanceMethod(instruction, linkedCallSite.targetMethod)
         val expectedDescriptor = linkedCallSite.targetMethod.invokeVirtualMethodHandleDescriptor()
         requireLinkedInvokeDynamicDescriptor(instruction, linkedCallSite, expectedDescriptor)
+        requireAccessibleClass(
+            targetClassName = linkedCallSite.targetMethod.ownerClassName,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+            moduleLayer = moduleLayer,
+        )
         val argumentDescriptors = linkedCallSite.targetMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
