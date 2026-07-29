@@ -32,6 +32,18 @@ sealed interface JvmArrayComponent {
 
         override val descriptor: String = "L$internalName;"
     }
+
+    data class Array(
+        val loadedClassKey: JvmLoadedClassKey,
+    ) : JvmArrayComponent {
+        init {
+            require(loadedClassKey.internalName.startsWith("[")) {
+                "array component class must use an array internal name: ${loadedClassKey.internalName}"
+            }
+        }
+
+        override val descriptor: String = loadedClassKey.internalName
+    }
 }
 
 data class JvmArrayClassMetadata(
@@ -95,6 +107,34 @@ class JvmArrayClassFactory(
             internalName = internalName,
             loadedClassKey = loadedClassKey,
             component = JvmArrayComponent.Reference(componentInternalName, componentDefiningLoader),
+        )
+    }
+
+    fun createArrayClassWithArrayComponent(componentArrayClass: JvmMethodAreaEntry): JvmMethodAreaEntry {
+        val componentLoadedClassKey = requireNotNull(componentArrayClass.loadedClassKey) {
+            "array component class must have a loaded class key"
+        }
+        val internalName = "[${componentLoadedClassKey.internalName}"
+        val loadedClassKey = JvmLoadedClassKey(
+            internalName = internalName,
+            definingLoader = componentLoadedClassKey.definingLoader,
+        )
+        val component = JvmArrayComponent.Array(componentLoadedClassKey)
+        methodArea.getClass(loadedClassKey)?.let { existing ->
+            rememberMetadataIfAbsent(
+                loadedClassKey = loadedClassKey,
+                metadata = arrayMetadata(
+                    internalName = internalName,
+                    component = component,
+                    definingLoader = loadedClassKey.definingLoader,
+                ),
+            )
+            return existing
+        }
+        return defineArrayClass(
+            internalName = internalName,
+            loadedClassKey = loadedClassKey,
+            component = component,
         )
     }
 

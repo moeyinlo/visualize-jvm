@@ -94,4 +94,27 @@ class JvmArrayClassFactoryTest {
         assertEquals(JvmArrayComponent.Reference("pkg/Type", appLoader), factory.metadataFor(appKey)?.component)
         assertEquals(JvmArrayComponent.Reference("pkg/Type", pluginLoader), factory.metadataFor(pluginKey)?.component)
     }
+
+    @Test
+    fun `creates multidimensional array class metadata from an array component class`() {
+        val methodArea = JvmMethodArea()
+        val factory = JvmArrayClassFactory(methodArea)
+        val intArrayClass = factory.createPrimitiveArrayClass(JvmPrimitiveArrayComponent.Int)
+        val intArrayKey = JvmLoadedClassKey("[I", JvmClassLoaderIdentity.Bootstrap)
+        val twoDimensionalKey = JvmLoadedClassKey("[[I", JvmClassLoaderIdentity.Bootstrap)
+
+        val twoDimensionalArrayClass = factory.createArrayClassWithArrayComponent(intArrayClass)
+
+        assertEquals("[[I", twoDimensionalArrayClass.definition.internalName)
+        assertEquals("java/lang/Object", twoDimensionalArrayClass.definition.superclassName)
+        assertEquals(
+            listOf("java/lang/Cloneable", "java/io/Serializable"),
+            twoDimensionalArrayClass.definition.interfaceNames,
+        )
+        assertEquals(twoDimensionalKey, twoDimensionalArrayClass.loadedClassKey)
+        assertEquals(setOf(JvmClassLoaderIdentity.Bootstrap), twoDimensionalArrayClass.initiatingLoaders)
+        assertEquals(JvmArrayComponent.Array(intArrayKey), factory.metadataFor(twoDimensionalKey)?.component)
+        assertSame(twoDimensionalArrayClass, methodArea.getClass(twoDimensionalKey))
+        assertEquals(2, methodArea.classCount)
+    }
 }
