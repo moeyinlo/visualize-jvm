@@ -5165,6 +5165,69 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `anewarray rejects public component classes from unreadable runtime modules`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 130, displayName = "app")
+        val callerKey = JvmLoadedClassKey("app/Caller", loader)
+        val hiddenKey = JvmLoadedClassKey("lib/api/Hidden", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("app/Caller"),
+                loadedClassKey = callerKey,
+                runtimeModuleName = "app",
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition("lib/api/Hidden"),
+                loadedClassKey = hiddenKey,
+                initiatingLoaders = setOf(loader),
+                runtimeModuleName = "lib",
+            ),
+        )
+        val moduleLayer = JvmModuleLayer(parent = null)
+            .define(
+                JvmModuleDescriptor(
+                    name = "lib",
+                    packages = setOf("lib/api"),
+                    exports = setOf(JvmModuleExport(packageName = "lib/api")),
+                ),
+            )
+            .define(JvmModuleDescriptor(name = "app", packages = setOf("app")))
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x06.toByte(),
+                    0xBD.toByte(),
+                    0x00.toByte(),
+                    0x02.toByte(),
+                ),
+                maxStack = 1,
+                constantPool = ConstantPool.fromEntries(
+                    listOf(
+                        ConstantUtf8Entry("lib/api/Hidden", "lib/api/Hidden".encodeToByteArray()),
+                        ConstantClassEntry(ConstantPoolIndex(1)),
+                    ),
+                ),
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition("lib/api/Hidden"),
+                        JvmClassDefinition("app/Caller"),
+                    ),
+                ),
+                currentClassName = "app/Caller",
+                currentLoadedClassKey = callerKey,
+                methodArea = methodArea,
+                moduleLayer = moduleLayer,
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class app/Caller cannot access class lib/api/Hidden", exception.message)
+    }
+
+    @Test
     fun `newarray allocates an int array with default zero values`() {
         val heap = JvmHeap()
         val result = JvmInterpreter.execute(

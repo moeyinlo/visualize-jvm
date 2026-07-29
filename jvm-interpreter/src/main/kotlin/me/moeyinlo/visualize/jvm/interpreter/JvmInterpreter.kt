@@ -2062,6 +2062,7 @@ object JvmInterpreter {
                 currentClassName = currentClassName,
                 currentLoadedClassKey = currentLoadedClassKey,
                 methodArea = methodArea,
+                moduleLayer = moduleLayer,
             )
             0xBE -> executeArrayLength(instruction, operandStack, heap)
             0xBF -> executeAThrow(instruction, operandStack, heap)
@@ -9551,6 +9552,7 @@ object JvmInterpreter {
         currentClassName: String?,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
         methodArea: JvmMethodArea? = null,
+        moduleLayer: JvmModuleLayer? = null,
     ) {
         val count = operandStack.pop()
         if (count !is JvmIntValue) {
@@ -9573,6 +9575,7 @@ object JvmInterpreter {
             classHierarchy = classHierarchy,
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
+            moduleLayer = moduleLayer,
         )
         operandStack.push(
             heap.allocateReferenceArray(
