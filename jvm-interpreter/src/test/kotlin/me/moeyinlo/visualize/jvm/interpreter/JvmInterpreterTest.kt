@@ -24630,6 +24630,85 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokespecial allows private methods from method area loaded key nestmates`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 47, displayName = "app")
+        val hostKey = JvmLoadedClassKey("Owner", loader)
+        val memberKey = JvmLoadedClassKey("Owner\$Nested", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "Owner",
+                    nestMemberInternalNames = listOf("Owner\$Nested"),
+                ),
+                loadedClassKey = hostKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "Owner\$Nested",
+                    nestHostInternalName = "Owner",
+                ),
+                loadedClassKey = memberKey,
+            ),
+        )
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("Owner")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val result = JvmInterpreter.execute(
+            code = byteArrayOf(
+                0x2A.toByte(),
+                0xB7.toByte(),
+                0x00.toByte(),
+                0x01.toByte(),
+            ),
+            maxStack = 1,
+            constantPool = ConstantPool.fromEntries(
+                listOf(
+                    ConstantMethodRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                    ConstantClassEntry(ConstantPoolIndex(3)),
+                    ConstantUtf8Entry("Owner", "Owner".encodeToByteArray()),
+                    ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                    ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                    ConstantUtf8Entry("()I", "()I".encodeToByteArray()),
+                ),
+            ),
+            heap = heap,
+            localVariables = callerLocals,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Owner",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "secret",
+                                descriptor = "()I",
+                                isStatic = false,
+                                isPrivate = true,
+                                code = byteArrayOf(
+                                    0x07.toByte(),
+                                    0xAC.toByte(),
+                                ),
+                                maxStack = 1,
+                                maxLocals = 1,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition("Owner\$Nested"),
+                ),
+            ),
+            currentClassName = "Owner\$Nested",
+            currentLoadedClassKey = memberKey,
+            methodArea = methodArea,
+        )
+
+        assertEquals(listOf(JvmIntValue(4)), result.operandStack.toList())
+    }
+
+    @Test
     fun `invokespecial allows private methods from classfile derived nest metadata`() {
         val hostClassFile = ClassFile(
             magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),

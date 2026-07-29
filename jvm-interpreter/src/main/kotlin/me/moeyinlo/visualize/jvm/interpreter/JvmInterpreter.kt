@@ -1890,6 +1890,7 @@ object JvmInterpreter {
                 terminationState,
                 monitorUnblockedHandler,
                 currentClassName,
+                currentLoadedClassKey,
                 bootstrapMethods,
                 invokeDynamicCallSites,
                 dynamicConstants,
@@ -1916,6 +1917,7 @@ object JvmInterpreter {
                 terminationState,
                 monitorUnblockedHandler,
                 currentClassName,
+                currentLoadedClassKey,
                 bootstrapMethods,
                 invokeDynamicCallSites,
                 dynamicConstants,
@@ -6321,6 +6323,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -6420,6 +6423,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -6606,6 +6610,7 @@ object JvmInterpreter {
         terminationState: JvmVmTerminationState = JvmVmTerminationState(),
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
+        currentLoadedClassKey: JvmLoadedClassKey? = null,
         bootstrapMethods: JvmBootstrapMethodTable,
         invokeDynamicCallSites: JvmInvokeDynamicCallSiteRegistry,
         dynamicConstants: JvmDynamicConstantRegistry,
@@ -6624,7 +6629,13 @@ object JvmInterpreter {
         val resolvedMethod = resolveRuntimeMethodReference(instruction, constantPool, classHierarchy)
         requireInstanceMethod(instruction, resolvedMethod)
         requireVoidConstructorForInvokeSpecial(resolvedMethod)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
         val argumentDescriptors = resolvedMethod.descriptor.methodParameterDescriptors()
         val arguments = argumentDescriptors
             .asReversed()
@@ -6669,7 +6680,14 @@ object JvmInterpreter {
         requireConstructorReceiverUninitialized(resolvedMethod, objectref, heap)
         requireNonConstructorReceiverInitialized(resolvedMethod, objectref, heap)
         requireConstructorOwnerContext(resolvedMethod, receiverClassName, currentClassName, classHierarchy)
-        requireAccessibleMethod(resolvedMethod, currentClassName, classHierarchy, receiverClassName)
+        requireAccessibleMethod(
+            method = resolvedMethod,
+            currentClassName = currentClassName,
+            classHierarchy = classHierarchy,
+            receiverClassName = receiverClassName,
+            currentLoadedClassKey = currentLoadedClassKey,
+            methodArea = methodArea,
+        )
 
         if (resolvedMethod.isNative) {
             val nativeReturnValue = executeNativeMethod(
