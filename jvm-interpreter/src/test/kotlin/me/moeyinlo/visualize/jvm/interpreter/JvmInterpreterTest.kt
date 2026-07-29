@@ -28963,6 +28963,57 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `invokeinterface rejects package private owner classes from another package`() {
+        val heap = JvmHeap()
+        val receiver = heap.allocateObject("pkg/Impl")
+        val callerLocals = JvmLocalVariables(maxLocals = 1)
+        callerLocals.store(0, receiver)
+
+        val exception = assertFailsWith<JvmIllegalAccessError> {
+            JvmInterpreter.execute(
+                code = byteArrayOf(
+                    0x2A.toByte(),
+                    0x0A.toByte(),
+                    0xB9.toByte(),
+                    0x00.toByte(),
+                    0x01.toByte(),
+                    0x03.toByte(),
+                    0x00.toByte(),
+                ),
+                maxStack = 3,
+                constantPool = interfaceMethodConstantPool(),
+                heap = heap,
+                localVariables = callerLocals,
+                classHierarchy = JvmClassHierarchy(
+                    listOf(
+                        JvmClassDefinition(
+                            internalName = "pkg/Face",
+                            isPublic = false,
+                            isInterface = true,
+                            methods = listOf(
+                                JvmMethodDefinition(
+                                    name = "value",
+                                    descriptor = "(J)I",
+                                    isStatic = false,
+                                    isAbstract = true,
+                                ),
+                            ),
+                        ),
+                        JvmClassDefinition(
+                            internalName = "pkg/Impl",
+                            interfaceNames = listOf("pkg/Face"),
+                        ),
+                        JvmClassDefinition(internalName = "other/Caller"),
+                    ),
+                ),
+                currentClassName = "other/Caller",
+            )
+        }
+
+        assertEquals("java/lang/IllegalAccessError", exception.guestClassName)
+        assertEquals("Class other/Caller cannot access class pkg/Face", exception.message)
+    }
+    @Test
     fun `invokeinterface rejects package private interface methods from same named package in different defining loaders`() {
         val appLoader = JvmClassLoaderIdentity.UserDefined(id = 63, displayName = "app")
         val libraryLoader = JvmClassLoaderIdentity.UserDefined(id = 64, displayName = "library")
