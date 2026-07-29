@@ -7759,6 +7759,7 @@ class JvmInterpreterTest {
                     JvmClassDefinition(
                         internalName = "Owner",
                         nestHostInternalName = "Owner",
+                        nestMemberInternalNames = listOf("Owner\$Nested"),
                         fields = listOf(
                             JvmFieldDefinition(
                                 name = "secret",
@@ -8981,6 +8982,7 @@ class JvmInterpreterTest {
                     JvmClassDefinition(
                         internalName = "Owner",
                         nestHostInternalName = "Owner",
+                        nestMemberInternalNames = listOf("Owner\$Nested"),
                         fields = listOf(
                             JvmFieldDefinition(
                                 name = "secret",
@@ -9840,6 +9842,7 @@ class JvmInterpreterTest {
                     JvmClassDefinition(
                         internalName = "Owner",
                         nestHostInternalName = "Owner",
+                        nestMemberInternalNames = listOf("Owner\$Nested"),
                         fields = listOf(
                             JvmFieldDefinition(
                                 name = "secret",
@@ -10814,6 +10817,7 @@ class JvmInterpreterTest {
                     JvmClassDefinition(
                         internalName = "Owner",
                         nestHostInternalName = "Owner",
+                        nestMemberInternalNames = listOf("Owner\$Nested"),
                         fields = listOf(
                             JvmFieldDefinition(
                                 name = "secret",
@@ -20526,6 +20530,7 @@ class JvmInterpreterTest {
                     JvmClassDefinition(
                         internalName = "Owner",
                         nestHostInternalName = "Owner",
+                        nestMemberInternalNames = listOf("Owner\$Nested"),
                         methods = listOf(
                             JvmMethodDefinition(
                                 name = "secret",

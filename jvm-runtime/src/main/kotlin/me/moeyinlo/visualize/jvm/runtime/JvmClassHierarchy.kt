@@ -143,7 +143,17 @@ class JvmClassHierarchy(
     fun areRuntimeNestmates(firstClassName: String, secondClassName: String): Boolean {
         val first = classesByName[firstClassName] ?: return false
         val second = classesByName[secondClassName] ?: return false
-        return first.nestHostInternalName == second.nestHostInternalName
+        val firstHost = runtimeNestHost(first) ?: return false
+        val secondHost = runtimeNestHost(second) ?: return false
+        return firstHost.internalName == secondHost.internalName
+    }
+
+    private fun runtimeNestHost(member: JvmClassDefinition): JvmClassDefinition? {
+        val host = classesByName[member.nestHostInternalName] ?: return null
+        if (member.internalName == host.internalName) {
+            return host
+        }
+        return host.takeIf { candidate -> member.internalName in candidate.nestMemberInternalNames }
     }
 
     fun directSuperclassName(internalName: String): String? =
