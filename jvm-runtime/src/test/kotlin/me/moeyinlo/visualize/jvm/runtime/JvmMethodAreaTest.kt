@@ -340,6 +340,46 @@ class JvmMethodAreaTest {
         )
         assertFalse(methodArea.areRuntimeNestmates(memberKey, hostKey))
     }
+
+    @Test
+    fun `method area runtime nestmate diagnostics reject different runtime packages`() {
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 26, displayName = "app")
+        val memberKey = JvmLoadedClassKey("other/Member", loader)
+        val hostKey = JvmLoadedClassKey("pkg/Host", loader)
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "other/Member",
+                    nestHostInternalName = "pkg/Host",
+                ),
+                loadedClassKey = memberKey,
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Host",
+                    nestMemberInternalNames = listOf("other/Member"),
+                ),
+                loadedClassKey = hostKey,
+            ),
+        )
+
+        val check = methodArea.checkRuntimeNestmates(memberKey, hostKey)
+
+        assertFalse(check.areNestmates)
+        assertEquals(
+            JvmRuntimeNestmateFailure.DifferentRuntimePackage(
+                memberKey = memberKey,
+                hostKey = hostKey,
+                memberPackageKey = JvmRuntimePackageKey("other", loader),
+                hostPackageKey = JvmRuntimePackageKey("pkg", loader),
+            ),
+            check.failure,
+        )
+        assertFalse(methodArea.areRuntimeNestmates(memberKey, hostKey))
+    }
     @Test
     fun `method area entry exposes runtime package and module metadata`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 11, displayName = "app-loader")
