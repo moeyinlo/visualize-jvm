@@ -869,7 +869,7 @@ Every commit that implements a JVMS item must update the matching row with imple
 
 | JVMS | Requirement | Module | Tests | Status |
 | --- | --- | --- | --- | --- |
-| 5.1 | Run-time constant pool | `jvm-runtime` | TBD | PENDING |
+| 5.1 | Run-time constant pool partially covers per-class one-based literal and symbolic entries, resolved-constant caching, dynamic linking for class/field/method/literal/string entries, `ldc`/`ldc_w`/`ldc2_w` loadable constants, interned guest String/Class/MethodType/MethodHandle mirrors, and dynamic-constant cache integration; full JVMS run-time constant-pool linkage and error surface remains pending | `jvm-runtime`, `jvm-interpreter` | `JvmRuntimeConstantPoolTest`, `JvmRuntimeDynamicLinkerTest`, `JvmInterpreterTest.*ldc*`, `JvmHeapTest` | PARTIAL |
 | 5.1 | `CONSTANT_String` string constants reuse an interned guest `java/lang/String` for identical code points | `jvm-runtime`, `jvm-interpreter` | `JvmHeapTest`, `JvmInterpreterTest` | IMPLEMENTED |
 | 5.2 | JVM startup | `jvm-runtime` | TBD | PENDING |
 | 5.3.1 | Bootstrap class loader loading | `jvm-runtime` | TBD | PENDING |
