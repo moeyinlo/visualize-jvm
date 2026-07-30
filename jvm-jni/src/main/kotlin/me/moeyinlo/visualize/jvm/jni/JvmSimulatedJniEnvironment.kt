@@ -803,7 +803,7 @@ class JvmSimulatedJniEnvironment(
         }
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireNonvirtualInstanceDoubleMethod("CallNonvirtualDoubleMethod", className)
-        return upcallDispatcher.callDoubleMethod(
+        return upcallDispatcher.callNonvirtualDoubleMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,

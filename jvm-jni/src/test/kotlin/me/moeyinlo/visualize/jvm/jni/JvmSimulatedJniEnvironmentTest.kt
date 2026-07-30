@@ -4746,6 +4746,93 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualDoubleMethod uses nonvirtual upcall dispatcher boundary`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedDoubleUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "score",
+                                descriptor = "(I)D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "score",
+                                descriptor = "(I)D",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callDoubleMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmDoubleValue =
+                    error("CallNonvirtualDoubleMethod must not use the virtual CallDoubleMethod boundary")
+
+                override fun callNonvirtualDoubleMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmDoubleValue {
+                    calls += RecordedDoubleUpcall(receiver, method, arguments)
+                    return JvmDoubleValue(10.125)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "score", "(I)D")
+
+        val result = environment.callNonvirtualDoubleMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(32)),
+        )
+
+        assertEquals(10.125, result)
+        assertEquals(
+            listOf(
+                RecordedDoubleUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "score",
+                        descriptor = "(I)D",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(32)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallStaticVoidMethod routes static method upcalls`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

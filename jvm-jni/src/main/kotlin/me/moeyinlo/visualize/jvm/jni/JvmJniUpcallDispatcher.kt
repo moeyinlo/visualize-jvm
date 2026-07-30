@@ -220,6 +220,17 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callNonvirtualDoubleMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmDoubleValue =
+        callDoubleMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+
     fun callStaticVoidMethod(
         method: JvmResolvedMethod,
         arguments: List<JvmValue>,
