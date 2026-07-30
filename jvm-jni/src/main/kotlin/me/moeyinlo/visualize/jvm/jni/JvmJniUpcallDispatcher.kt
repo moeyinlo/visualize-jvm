@@ -44,6 +44,17 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callNonvirtualObjectMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmReferenceValue =
+        callObjectMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+
     fun callBooleanMethod(
         receiver: JvmObjectReferenceValue,
         method: JvmResolvedMethod,
