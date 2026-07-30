@@ -154,6 +154,17 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callNonvirtualIntMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmIntValue =
+        callIntMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+
     fun callLongMethod(
         receiver: JvmObjectReferenceValue,
         method: JvmResolvedMethod,
