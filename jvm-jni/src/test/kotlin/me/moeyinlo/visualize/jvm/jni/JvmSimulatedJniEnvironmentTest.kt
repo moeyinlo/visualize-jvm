@@ -484,6 +484,51 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsAssignableFrom throws guest NoClassDefFoundError when the source class handle is not loaded`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object", superclassName = null),
+                ),
+            ),
+            handles = handles,
+        )
+        val missingClassHandle = handles.newClassHandle("pkg/Missing")
+        val objectClassHandle = environment.findClass("java/lang/Object")
+
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            environment.isAssignableFrom(missingClassHandle, objectClassHandle)
+        }
+
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
+        assertEquals("pkg/Missing", exception.message)
+    }
+
+    @Test
+    fun `IsAssignableFrom throws guest NoClassDefFoundError when the target class handle is not loaded`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object", superclassName = null),
+                    JvmClassDefinition(internalName = "pkg/Loaded", superclassName = "java/lang/Object"),
+                ),
+            ),
+            handles = handles,
+        )
+        val loadedClassHandle = environment.findClass("pkg/Loaded")
+        val missingClassHandle = handles.newClassHandle("pkg/Missing")
+
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            environment.isAssignableFrom(loadedClassHandle, missingClassHandle)
+        }
+
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
+        assertEquals("pkg/Missing", exception.message)
+    }
+
+    @Test
     fun `IsAssignableFrom distinguishes same name class handles by loaded class key`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(

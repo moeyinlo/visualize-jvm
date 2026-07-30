@@ -294,6 +294,9 @@ class JvmSimulatedJniEnvironment(
         return className
     }
 
+    private fun requireLoadedOrArrayClass(className: String): String =
+        if (className.startsWith("[")) className else requireLoadedClass(className)
+
     private fun moduleLookupClassName(className: String): String? {
         if (!className.startsWith("[")) {
             return requireLoadedClass(className)
@@ -370,9 +373,7 @@ class JvmSimulatedJniEnvironment(
 
     fun getSuperclass(classHandle: JvmJniHandleId): JvmJniHandleId? {
         val className = handles.resolveClass(classHandle)
-        if (!className.startsWith("[")) {
-            requireLoadedClass(className)
-        }
+        requireLoadedOrArrayClass(className)
         val superclassName = classHierarchy.directSuperclassName(className)?.let(::requireLoadedClass) ?: return null
         return handles.newClassHandle(
             className = superclassName,
@@ -392,8 +393,8 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun isAssignableFrom(sourceClassHandle: JvmJniHandleId, targetClassHandle: JvmJniHandleId): Boolean {
-        val sourceClassName = handles.resolveClass(sourceClassHandle)
-        val targetClassName = handles.resolveClass(targetClassHandle)
+        val sourceClassName = requireLoadedOrArrayClass(handles.resolveClass(sourceClassHandle))
+        val targetClassName = requireLoadedOrArrayClass(handles.resolveClass(targetClassHandle))
         val sourceClassKey = handles.resolveClassLoadedKey(sourceClassHandle)
         val targetClassKey = handles.resolveClassLoadedKey(targetClassHandle)
         if (sourceClassKey != null && targetClassKey != null && sourceClassName == targetClassName) {
