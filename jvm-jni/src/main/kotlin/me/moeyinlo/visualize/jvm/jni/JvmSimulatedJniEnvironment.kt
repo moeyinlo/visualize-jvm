@@ -530,7 +530,7 @@ class JvmSimulatedJniEnvironment(
         }
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireNonvirtualInstanceBooleanMethod("CallNonvirtualBooleanMethod", className)
-        return upcallDispatcher.callBooleanMethod(
+        return upcallDispatcher.callNonvirtualBooleanMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,
