@@ -299,6 +299,7 @@ object JvmInterpreter {
                 terminationState = terminationState,
                 monitorUnblockedHandler = monitorUnblockedHandler,
                 currentClassName = currentClassName,
+                currentLoadedClassKey = heap.get(receiver).loadedClassKey,
                 dynamicConstants = dynamicConstants,
                 methodArea = methodArea,
             )
