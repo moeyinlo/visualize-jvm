@@ -16,6 +16,7 @@ data class JvmStringPayload(val value: String) : JvmHeapPayload
 data class JvmClassPayload(
     val representedClassName: String,
     val loadedClassKey: JvmLoadedClassKey? = null,
+    val signers: JvmReferenceValue = JvmNullValue,
 ) : JvmHeapPayload
 
 data class JvmStackTraceFrame(
@@ -364,6 +365,23 @@ class JvmHeap {
                 ),
             )
         }
+    }
+
+    fun recordClassMirrorSigners(
+        reference: JvmObjectReferenceValue,
+        signers: JvmReferenceValue,
+    ): JvmObjectReferenceValue {
+        val heapObject = get(reference)
+        val payload = heapObject.payload as? JvmClassPayload
+            ?: throw JvmHeapAccessException("Reference ${reference.referenceId} is not a java/lang/Class mirror")
+        if (signers is JvmObjectReferenceValue) {
+            val signersObject = get(signers)
+            if (signersObject.payload !is JvmReferenceArrayPayload) {
+                throw JvmHeapAccessException("Class signers must be a guest reference array or null")
+            }
+        }
+        objects[reference.referenceId] = heapObject.copy(payload = payload.copy(signers = signers))
+        return reference
     }
 
     fun internMethodType(descriptor: String): JvmObjectReferenceValue {

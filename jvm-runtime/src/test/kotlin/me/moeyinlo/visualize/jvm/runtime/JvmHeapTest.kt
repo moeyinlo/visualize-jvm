@@ -304,6 +304,27 @@ class JvmHeapTest {
     }
 
     @Test
+    fun `heap records class mirror signer arrays`() {
+        val heap = JvmHeap()
+        val mirror = heap.internClassMirror("pkg/Signed")
+        val signers = heap.allocateReferenceArray("java/lang/Object", 0)
+
+        heap.recordClassMirrorSigners(mirror, signers)
+
+        assertEquals(
+            JvmClassPayload(
+                representedClassName = "pkg/Signed",
+                signers = signers,
+            ),
+            heap.get(mirror).payload,
+        )
+
+        heap.recordClassMirrorSigners(mirror, JvmNullValue)
+
+        assertEquals(JvmClassPayload("pkg/Signed"), heap.get(mirror).payload)
+    }
+
+    @Test
     fun `heap interns method type objects by descriptor`() {
         val heap = JvmHeap()
 

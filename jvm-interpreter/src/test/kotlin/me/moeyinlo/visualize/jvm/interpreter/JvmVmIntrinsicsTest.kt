@@ -2456,6 +2456,46 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getSigners and setSigners intrinsics preserve guest signer arrays`() {
+        val heap = JvmHeap()
+        val classMirror = heap.internClassMirror("pkg/Signed")
+        val signers = heap.allocateReferenceArray("java/lang/Object", 1)
+        val signerPayload = heap.get(signers).payload as JvmReferenceArrayPayload
+        signerPayload.elements[0] = heap.allocateString("signer")
+        val getSigners = JvmVmIntrinsics.Registry.resolve(classGetSignersMethod())
+            ?: error("Class.getSigners intrinsic was not registered")
+        val setSigners = JvmVmIntrinsics.Registry.resolve(classSetSignersMethod())
+            ?: error("Class.setSigners intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(emptyList()),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        assertEquals(
+            JvmNullValue,
+            getSigners.invoke(context, JvmNativeMethodInvocation(classMirror, emptyList())),
+        )
+        assertEquals(
+            null,
+            setSigners.invoke(context, JvmNativeMethodInvocation(classMirror, listOf(signers))),
+        )
+        assertEquals(
+            signers,
+            getSigners.invoke(context, JvmNativeMethodInvocation(classMirror, emptyList())),
+        )
+        assertEquals(
+            null,
+            setSigners.invoke(context, JvmNativeMethodInvocation(classMirror, listOf(JvmNullValue))),
+        )
+        assertEquals(
+            JvmNullValue,
+            getSigners.invoke(context, JvmNativeMethodInvocation(classMirror, emptyList())),
+        )
+    }
+
+    @Test
     fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
         val heap = JvmHeap()
         val childMirror = heap.internClassMirror("pkg/Child")
@@ -10850,6 +10890,22 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "getModifiers",
         descriptor = "()I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetSignersMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getSigners",
+        descriptor = "()[Ljava/lang/Object;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classSetSignersMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "setSigners",
+        descriptor = "([Ljava/lang/Object;)V",
         isStatic = false,
         isNative = true,
     )

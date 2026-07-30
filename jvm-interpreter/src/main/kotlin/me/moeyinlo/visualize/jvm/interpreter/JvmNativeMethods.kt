@@ -1107,6 +1107,18 @@ object JvmVmIntrinsics {
         descriptor = "()I",
         isStatic = false,
     )
+    private val ClassGetSignersKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getSigners",
+        descriptor = "()[Ljava/lang/Object;",
+        isStatic = false,
+    )
+    private val ClassSetSignersKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "setSigners",
+        descriptor = "([Ljava/lang/Object;)V",
+        isStatic = false,
+    )
     private val ClassGetInterfaces0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getInterfaces0",
@@ -2117,6 +2129,25 @@ object JvmVmIntrinsics {
         val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
             ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
         JvmIntValue(classModifiers(classPayload.representedClassName, classDefinition))
+    }
+    private val ClassGetSigners = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getSigners", context, invocation)
+        classPayload.signers
+    }
+    private val ClassSetSigners = JvmNativeMethodIntrinsic { context, invocation ->
+        val receiver = invocation.receiver
+            ?: throw JvmUnsupportedInstructionException("Class.setSigners intrinsic requires a receiver")
+        requireClassMirrorPayload("Class.setSigners", context, receiver)
+        if (invocation.arguments.size != 1) {
+            throw JvmUnsupportedInstructionException("Class.setSigners expects one nullable Object[] argument")
+        }
+        val signers = invocation.arguments.single() as? JvmReferenceValue
+            ?: throw JvmUnsupportedInstructionException("Class.setSigners expects one nullable Object[] argument")
+        if (signers is JvmObjectReferenceValue && context.heap.get(signers).payload !is JvmReferenceArrayPayload) {
+            throw JvmUnsupportedInstructionException("Class.setSigners expects one nullable Object[] argument")
+        }
+        context.heap.recordClassMirrorSigners(receiver, signers)
+        null
     }
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
@@ -6181,6 +6212,8 @@ object JvmVmIntrinsics {
         ClassGetSuperclassKey to ClassGetSuperclass,
         ClassGetComponentTypeKey to ClassGetComponentType,
         ClassGetModifiersKey to ClassGetModifiers,
+        ClassGetSignersKey to ClassGetSigners,
+        ClassSetSignersKey to ClassSetSigners,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ClassIsHiddenKey to ClassIsHidden,
