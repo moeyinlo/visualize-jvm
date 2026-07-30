@@ -1092,7 +1092,7 @@ class JvmSimulatedJniEnvironment(
         }
         val sourceClass = resolveJObjectClass(objectHandle)
         val sourceClassName = requireLoadedClass(sourceClass.className)
-        val targetClassName = handles.resolveClass(classHandle)
+        val targetClassName = requireLoadedOrArrayClass(handles.resolveClass(classHandle))
         val targetClassKey = handles.resolveClassLoadedKey(classHandle)
         if (sourceClass.loadedClassKey != null && targetClassKey != null && sourceClassName == targetClassName) {
             return sourceClass.loadedClassKey == targetClassKey
