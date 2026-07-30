@@ -162,6 +162,7 @@ class JvmClassfileRuntimeAdapterTest {
         assertEquals(false, definition.isPublic)
         assertEquals(70, definition.majorVersion)
         assertEquals(65535, definition.minorVersion)
+        assertEquals(0x0020, definition.rawAccessFlags)
         assertEquals(
             listOf(
                 JvmFieldDefinition(

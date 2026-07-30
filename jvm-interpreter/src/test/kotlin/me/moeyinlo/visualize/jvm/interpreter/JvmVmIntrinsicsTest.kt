@@ -2677,6 +2677,7 @@ class JvmVmIntrinsicsTest {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 211, displayName = "app")
         val packageClassKey = JvmLoadedClassKey("pkg/PackageClass", loader)
         val publicInterfaceKey = JvmLoadedClassKey("pkg/PublicService", loader)
+        val rawClassKey = JvmLoadedClassKey("pkg/RawClass", loader)
         val methodArea = JvmMethodArea()
         methodArea.defineClass(
             JvmMethodAreaEntry(
@@ -2696,9 +2697,21 @@ class JvmVmIntrinsicsTest {
                 initiatingLoaders = setOf(loader),
             ),
         )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/RawClass",
+                    isPublic = false,
+                    rawAccessFlags = 0x0020,
+                ),
+                loadedClassKey = rawClassKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
         val heap = JvmHeap()
         val packageClassMirror = heap.internClassMirror("pkg/PackageClass", loadedClassKey = packageClassKey)
         val interfaceMirror = heap.internClassMirror("pkg/PublicService", loadedClassKey = publicInterfaceKey)
+        val rawClassMirror = heap.internClassMirror("pkg/RawClass", loadedClassKey = rawClassKey)
         val primitiveMirror = heap.internClassMirror("int")
         val arrayMirror = heap.internClassMirror("[Lpkg/PackageClass;")
         val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetClassAccessFlagsRaw0Method())
@@ -2718,6 +2731,10 @@ class JvmVmIntrinsicsTest {
         assertEquals(
             JvmIntValue(0x0001 or 0x0200 or 0x0400),
             intrinsic.invoke(context, JvmNativeMethodInvocation(interfaceMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(0x0020),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(rawClassMirror, emptyList())),
         )
         assertEquals(
             JvmIntValue(0x0001 or 0x0010 or 0x0400),

@@ -53,6 +53,7 @@ fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
         isPublic = accessFlags.has(ClassAccessFlag.Public),
         majorVersion = version.major,
         minorVersion = version.minor,
+        rawAccessFlags = accessFlags.raw,
         nestMemberInternalNames = nestMemberInternalNames,
         isRecord = isRecord,
         isSealed = isSealed,

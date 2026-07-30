@@ -7655,6 +7655,7 @@ object JvmVmIntrinsics {
         if (className.startsWith("[") || className in PrimitiveClassNames) {
             return JavaModifierPublic or JavaModifierFinal or JavaModifierAbstract
         }
+        classDefinition?.rawAccessFlags?.let { rawAccessFlags -> return rawAccessFlags }
         var modifiers = 0
         if (classDefinition?.isPublic ?: true) {
             modifiers = modifiers or JavaModifierPublic
