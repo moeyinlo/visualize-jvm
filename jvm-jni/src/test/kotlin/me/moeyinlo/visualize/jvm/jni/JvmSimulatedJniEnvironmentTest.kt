@@ -14253,6 +14253,42 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObjectArray rejects nested array initial elements across component defining loaders`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val sourceLoader = JvmClassLoaderIdentity.UserDefined(id = 82, displayName = "source")
+        val targetLoader = JvmClassLoaderIdentity.UserDefined(id = 83, displayName = "target")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val sourceElementHandle = handles.newClassHandle(
+            "pkg/Child",
+            loadedClassKey = JvmLoadedClassKey("pkg/Child", sourceLoader),
+        )
+        val initialArrayHandle = environment.newObjectArray(1, sourceElementHandle, null)
+        val targetElementHandle = handles.newClassHandle(
+            "[Lpkg/Base;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Base;", targetLoader),
+        )
+
+        val exception = assertFailsWith<JvmJniArrayAccessException> {
+            environment.newObjectArray(1, targetElementHandle, initialArrayHandle)
+        }
+
+        assertEquals(
+            "NewObjectArray initial element [Lpkg/Child; @ source#82 is not assignable to [Lpkg/Base; @ target#83",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `GetObjectArrayElement returns null for guest null array slots`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
@@ -14472,6 +14508,43 @@ class JvmSimulatedJniEnvironmentTest {
 
         assertEquals(
             "SetObjectArrayElement value pkg/Example @ value-loader#75 is not assignable to pkg/Example @ array-loader#74",
+            exception.message,
+        )
+    }
+
+    @Test
+    fun `SetObjectArrayElement rejects nested array values across component defining loaders`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val sourceLoader = JvmClassLoaderIdentity.UserDefined(id = 76, displayName = "source")
+        val targetLoader = JvmClassLoaderIdentity.UserDefined(id = 77, displayName = "target")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val sourceElementHandle = handles.newClassHandle(
+            "pkg/Child",
+            loadedClassKey = JvmLoadedClassKey("pkg/Child", sourceLoader),
+        )
+        val valueArrayHandle = environment.newObjectArray(1, sourceElementHandle, null)
+        val targetElementHandle = handles.newClassHandle(
+            "[Lpkg/Base;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Base;", targetLoader),
+        )
+        val arrayHandle = environment.newObjectArray(1, targetElementHandle, null)
+
+        val exception = assertFailsWith<JvmJniArrayAccessException> {
+            environment.setObjectArrayElement(arrayHandle, 0, valueArrayHandle)
+        }
+
+        assertEquals(
+            "SetObjectArrayElement value [Lpkg/Child; @ source#76 is not assignable to [Lpkg/Base; @ target#77",
             exception.message,
         )
     }

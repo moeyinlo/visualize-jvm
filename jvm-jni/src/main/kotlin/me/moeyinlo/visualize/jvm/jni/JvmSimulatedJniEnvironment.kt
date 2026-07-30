@@ -2561,10 +2561,12 @@ class JvmSimulatedJniEnvironment(
         componentClassName: String,
         componentClassKey: JvmLoadedClassKey?,
     ): Boolean {
-        if (sourceClass.loadedClassKey != null && componentClassKey != null && sourceClass.className == componentClassName) {
-            return sourceClass.loadedClassKey == componentClassKey
-        }
-        return classHierarchy.isAssignable(sourceClassName = sourceClass.className, targetClassName = componentClassName)
+        return isAssignableFromResolvedClasses(
+            sourceClassName = sourceClass.className,
+            sourceClassKey = sourceClass.loadedClassKey,
+            targetClassName = componentClassName,
+            targetClassKey = componentClassKey,
+        )
     }
 
     private fun resolveBooleanArray(arrayHandle: JvmJniHandleId): JvmBooleanArrayPayload {
