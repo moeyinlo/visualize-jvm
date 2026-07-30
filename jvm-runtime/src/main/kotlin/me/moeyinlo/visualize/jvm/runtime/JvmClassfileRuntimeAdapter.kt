@@ -20,6 +20,7 @@ import me.moeyinlo.visualize.jvm.classfile.LineNumberTableAttribute
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
 import me.moeyinlo.visualize.jvm.classfile.NestHostAttribute
 import me.moeyinlo.visualize.jvm.classfile.NestMembersAttribute
+import me.moeyinlo.visualize.jvm.classfile.PermittedSubclassesAttribute
 import me.moeyinlo.visualize.jvm.classfile.RecordAttribute
 import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
 import me.moeyinlo.visualize.jvm.classfile.StackMapTableAttribute
@@ -30,6 +31,10 @@ fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
         ?.let { attribute -> constantPool.className(attribute.hostClassIndex) }
         ?: internalName
     val nestMemberInternalNames = attributes.filterIsInstance<NestMembersAttribute>().singleOrNull()
+        ?.classes
+        ?.map(constantPool::className)
+        ?: emptyList()
+    val permittedSubclassInternalNames = attributes.filterIsInstance<PermittedSubclassesAttribute>().singleOrNull()
         ?.classes
         ?.map(constantPool::className)
         ?: emptyList()
@@ -48,6 +53,7 @@ fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
         majorVersion = version.major,
         nestMemberInternalNames = nestMemberInternalNames,
         isRecord = isRecord,
+        permittedSubclassInternalNames = permittedSubclassInternalNames,
     )
 }
 

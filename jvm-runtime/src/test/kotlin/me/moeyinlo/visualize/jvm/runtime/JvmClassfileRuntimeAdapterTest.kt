@@ -25,6 +25,7 @@ import me.moeyinlo.visualize.jvm.classfile.LineNumberTableEntry
 import me.moeyinlo.visualize.jvm.classfile.MethodInfo
 import me.moeyinlo.visualize.jvm.classfile.NestHostAttribute
 import me.moeyinlo.visualize.jvm.classfile.NestMembersAttribute
+import me.moeyinlo.visualize.jvm.classfile.PermittedSubclassesAttribute
 import me.moeyinlo.visualize.jvm.classfile.RecordAttribute
 import me.moeyinlo.visualize.jvm.classfile.SameStackMapFrame
 import me.moeyinlo.visualize.jvm.classfile.SourceFileAttribute
@@ -300,6 +301,34 @@ class JvmClassfileRuntimeAdapterTest {
     }
 
     @Test
+    fun `classfile adapter maps PermittedSubclasses to runtime permitted subclass metadata`() {
+        val classFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = constantPool(),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = emptyList(),
+            attributes = listOf(
+                PermittedSubclassesAttribute(
+                    nameIndex = ConstantPoolIndex(34),
+                    classes = listOf(ConstantPoolIndex(31)),
+                ),
+            ),
+        )
+
+        val definition = classFile.toJvmClassDefinition()
+
+        assertEquals("pkg/Example", definition.internalName)
+        assertEquals(listOf("pkg/Example\$Nested"), definition.permittedSubclassInternalNames)
+    }
+
+    @Test
     fun `classfile adapter binds constant pool to runtime methods`() {
         val classFile = ClassFile(
             magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
@@ -523,6 +552,7 @@ class JvmClassfileRuntimeAdapterTest {
                 ConstantClassEntry(ConstantPoolIndex(30)),
                 ConstantUtf8Entry("NestMembers", "NestMembers".encodeToByteArray()),
                 ConstantUtf8Entry("Record", "Record".encodeToByteArray()),
+                ConstantUtf8Entry("PermittedSubclasses", "PermittedSubclasses".encodeToByteArray()),
             ),
         )
 }
