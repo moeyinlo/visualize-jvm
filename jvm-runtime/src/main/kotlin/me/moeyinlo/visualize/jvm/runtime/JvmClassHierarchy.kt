@@ -167,7 +167,11 @@ class JvmClassHierarchy(
         if (internalName.isArrayClassName()) "java/lang/Object" else classesByName[internalName]?.superclassName
 
     fun directSuperinterfaceNames(internalName: String): List<String> =
-        classesByName[internalName]?.interfaceNames.orEmpty()
+        if (internalName.isArrayClassName()) {
+            arrayClassDirectSuperinterfaces
+        } else {
+            classesByName[internalName]?.interfaceNames.orEmpty()
+        }
 
     fun declaresDefaultMethod(internalName: String): Boolean =
         classesByName[internalName]?.let { classDefinition ->
@@ -727,6 +731,8 @@ class JvmClassHierarchy(
             "java/lang/NoSuchMethodError" to "java/lang/IncompatibleClassChangeError",
             "java/lang/UnsatisfiedLinkError" to "java/lang/LinkageError",
         )
+
+        private val arrayClassDirectSuperinterfaces = listOf("java/lang/Cloneable", "java/io/Serializable")
 
         val Empty: JvmClassHierarchy = JvmClassHierarchy()
     }
