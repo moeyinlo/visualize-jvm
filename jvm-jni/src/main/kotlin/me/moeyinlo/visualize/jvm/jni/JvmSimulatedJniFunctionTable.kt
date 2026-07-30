@@ -103,7 +103,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val exceptionDescribe: () -> Unit,
     val fatalError: (String?) -> Nothing,
     val newString: (CharArray, Int) -> JvmJniHandleId,
-    val newStringUtf: (String) -> JvmJniHandleId,
+    val newStringUtf: (ByteArray) -> JvmJniHandleId,
     val getStringLength: (JvmJniHandleId) -> Int,
     val getStringChars: (JvmJniHandleId) -> CharArray,
     val getStringCritical: (JvmJniHandleId) -> CharArray,

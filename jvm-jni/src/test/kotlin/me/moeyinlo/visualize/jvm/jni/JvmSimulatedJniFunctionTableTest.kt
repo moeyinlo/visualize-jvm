@@ -2745,7 +2745,9 @@ class JvmSimulatedJniFunctionTableTest {
         )
         val functions = environment.functions
 
-        val utfHandle = functions.newStringUtf("\u0000JVM")
+        val utfHandle = functions.newStringUtf(
+            byteArrayOf(0xc0.toByte(), 0x80.toByte(), 0x4a, 0x56, 0x4d),
+        )
         val utfReference = handles.resolveObject(utfHandle)
         assertEquals("java/lang/String", heap.get(utfReference).className)
         assertEquals(JvmStringPayload("\u0000JVM"), heap.get(utfReference).payload)
