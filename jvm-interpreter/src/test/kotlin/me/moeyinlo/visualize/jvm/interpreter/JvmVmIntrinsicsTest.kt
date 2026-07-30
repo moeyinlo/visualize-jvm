@@ -2343,6 +2343,62 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getComponentType intrinsic returns array component mirrors`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 208, displayName = "app")
+        val referenceArrayKey = JvmLoadedClassKey("[Lpkg/Child;", loader)
+        val nestedArrayKey = JvmLoadedClassKey("[[Lpkg/Child;", loader)
+        val heap = JvmHeap()
+        val intArrayMirror = heap.internClassMirror("[I")
+        val referenceArrayMirror = heap.internClassMirror("[Lpkg/Child;", loadedClassKey = referenceArrayKey)
+        val nestedArrayMirror = heap.internClassMirror("[[Lpkg/Child;", loadedClassKey = nestedArrayKey)
+        val ordinaryMirror = heap.internClassMirror("pkg/Child")
+        val primitiveMirror = heap.internClassMirror("int")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetComponentTypeMethod())
+            ?: error("Class.getComponentType intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(emptyList()),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        assertEquals(
+            heap.internClassMirror("int"),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(intArrayMirror, emptyList())),
+        )
+        val referenceComponent = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(referenceArrayMirror, emptyList()),
+        ) as JvmObjectReferenceValue
+        assertEquals(
+            JvmClassPayload(
+                representedClassName = "pkg/Child",
+                loadedClassKey = JvmLoadedClassKey("pkg/Child", loader),
+            ),
+            heap.get(referenceComponent).payload,
+        )
+        val nestedComponent = intrinsic.invoke(
+            context,
+            JvmNativeMethodInvocation(nestedArrayMirror, emptyList()),
+        ) as JvmObjectReferenceValue
+        assertEquals(
+            JvmClassPayload(
+                representedClassName = "[Lpkg/Child;",
+                loadedClassKey = referenceArrayKey,
+            ),
+            heap.get(nestedComponent).payload,
+        )
+        assertEquals(
+            JvmNullValue,
+            intrinsic.invoke(context, JvmNativeMethodInvocation(ordinaryMirror, emptyList())),
+        )
+        assertEquals(
+            JvmNullValue,
+            intrinsic.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList())),
+        )
+    }
+
+    @Test
     fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
         val heap = JvmHeap()
         val childMirror = heap.internClassMirror("pkg/Child")
@@ -10720,6 +10776,14 @@ class JvmVmIntrinsicsTest {
     private fun classGetSuperclassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Class",
         name = "getSuperclass",
+        descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetComponentTypeMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getComponentType",
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
         isNative = true,

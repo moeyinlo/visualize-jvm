@@ -1094,6 +1094,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ClassGetComponentTypeKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getComponentType",
+        descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+    )
     private val ClassGetInterfaces0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getInterfaces0",
@@ -2089,6 +2095,15 @@ object JvmVmIntrinsics {
                 }
                 ?: JvmNullValue
         }
+    }
+    private val ClassGetComponentType = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getComponentType", context, invocation)
+        val componentClassName = classPayload.representedClassName.arrayComponentClassName()
+            ?: return@JvmNativeMethodIntrinsic JvmNullValue
+        context.heap.internClassMirror(
+            className = componentClassName,
+            loadedClassKey = classPayload.loadedClassKey?.componentLoadedClassKey(componentClassName),
+        )
     }
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
@@ -6151,6 +6166,7 @@ object JvmVmIntrinsics {
         ClassIsInstanceKey to ClassIsInstance,
         ClassIsAssignableFromKey to ClassIsAssignableFrom,
         ClassGetSuperclassKey to ClassGetSuperclass,
+        ClassGetComponentTypeKey to ClassGetComponentType,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ClassIsHiddenKey to ClassIsHidden,
@@ -7419,10 +7435,42 @@ object JvmVmIntrinsics {
 
     private fun String.isReferenceArrayClassName(): Boolean = startsWith("[L") || startsWith("[[")
 
+    private fun String.arrayComponentClassName(): String? =
+        when {
+            !startsWith("[") -> null
+            length < 2 -> throw JvmUnsupportedInstructionException(
+                "Class.getComponentType class mirror has invalid array name $this",
+            )
+            this[1] == '[' -> substring(startIndex = 1)
+            startsWith("[L") && endsWith(";") -> substring(startIndex = 2, endIndex = length - 1)
+            else -> PrimitiveArrayComponentClassNames[this[1]]
+                ?: throw JvmUnsupportedInstructionException(
+                    "Class.getComponentType class mirror has invalid array name $this",
+                )
+        }
+
+    private fun JvmLoadedClassKey.componentLoadedClassKey(componentClassName: String): JvmLoadedClassKey? =
+        if (componentClassName in PrimitiveClassNames) {
+            null
+        } else {
+            copy(internalName = componentClassName)
+        }
+
     private val arrayClassAssignableTargets = setOf(
         "java/lang/Object",
         "java/lang/Cloneable",
         "java/io/Serializable",
+    )
+
+    private val PrimitiveArrayComponentClassNames = mapOf(
+        'Z' to "boolean",
+        'B' to "byte",
+        'C' to "char",
+        'S' to "short",
+        'I' to "int",
+        'J' to "long",
+        'F' to "float",
+        'D' to "double",
     )
 
     private data class ArraycopyArguments(
