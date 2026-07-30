@@ -132,6 +132,17 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callNonvirtualShortMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmShortValue =
+        callShortMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+
     fun callIntMethod(
         receiver: JvmObjectReferenceValue,
         method: JvmResolvedMethod,
