@@ -370,6 +370,9 @@ class JvmSimulatedJniEnvironment(
 
     fun getSuperclass(classHandle: JvmJniHandleId): JvmJniHandleId? {
         val className = handles.resolveClass(classHandle)
+        if (!className.startsWith("[")) {
+            requireLoadedClass(className)
+        }
         val superclassName = classHierarchy.directSuperclassName(className)?.let(::requireLoadedClass) ?: return null
         return handles.newClassHandle(
             className = superclassName,
