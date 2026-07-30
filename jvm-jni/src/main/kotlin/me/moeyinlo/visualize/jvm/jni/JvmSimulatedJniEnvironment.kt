@@ -1571,6 +1571,17 @@ class JvmSimulatedJniEnvironment(
         initialElementHandle: JvmJniHandleId?,
     ): JvmJniHandleId {
         val elementClassName = handles.resolveClass(elementClassHandle)
+        val arrayClassName = if (elementClassName.startsWith("[")) {
+            "[$elementClassName"
+        } else {
+            "[L$elementClassName;"
+        }
+        val arrayLoadedClassKey = handles.resolveClassLoadedKey(elementClassHandle)?.let { elementClassKey ->
+            JvmLoadedClassKey(
+                internalName = arrayClassName,
+                definingLoader = elementClassKey.definingLoader,
+            )
+        }
         val initialElement = initialElementHandle?.let { handle ->
             val reference = resolveJObjectValue(handle)
             val elementClass = resolveJObjectClassName(handle)
@@ -1581,7 +1592,7 @@ class JvmSimulatedJniEnvironment(
             }
             reference
         }
-        val arrayReference = heap.allocateReferenceArray(elementClassName, length)
+        val arrayReference = heap.allocateReferenceArray(elementClassName, length, loadedClassKey = arrayLoadedClassKey)
         if (initialElement != null) {
             val array = heap.get(arrayReference).payload as JvmReferenceArrayPayload
             array.elements.indices.forEach { index ->

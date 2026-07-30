@@ -14001,6 +14001,38 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObjectArray derives array loaded class key from element class handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 73, displayName = "array-component-loader")
+        val elementKey = JvmLoadedClassKey(
+            internalName = "pkg/Example",
+            definingLoader = loader,
+        )
+        val arrayKey = JvmLoadedClassKey(
+            internalName = "[Lpkg/Example;",
+            definingLoader = loader,
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val elementClassHandle = handles.newClassHandle("pkg/Example", loadedClassKey = elementKey)
+
+        val arrayHandle = environment.newObjectArray(2, elementClassHandle, null)
+
+        val arrayObject = heap.get(handles.resolveObject(arrayHandle))
+        assertEquals(arrayKey, arrayObject.loadedClassKey)
+        val arrayClassHandle = environment.getObjectClass(arrayHandle)
+        assertEquals(arrayKey, handles.resolveClassLoadedKey(arrayClassHandle))
+    }
+
+    @Test
     fun `NewObjectArray fills every element with an assignable initial object`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
