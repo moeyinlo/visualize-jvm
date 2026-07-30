@@ -1095,6 +1095,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ClassGetNestHost0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getNestHost0",
+        descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+    )
     private val ClassGetComponentTypeKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getComponentType",
@@ -2126,6 +2132,25 @@ object JvmVmIntrinsics {
                 }
                 ?: JvmNullValue
         }
+    }
+    private val ClassGetNestHost0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getNestHost0", context, invocation)
+        val representedClassName = classPayload.representedClassName
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
+            ?: context.classHierarchy.classDefinition(representedClassName)
+        val nestHostName = classDefinition?.nestHostInternalName ?: representedClassName
+        context.heap.internClassMirror(
+            className = nestHostName,
+            loadedClassKey = if (nestHostName == representedClassName) {
+                classPayload.loadedClassKey
+            } else {
+                loadedClassKeyForMirrorRelatedClass(
+                    context = context,
+                    mirrorPayload = classPayload,
+                    relatedClassName = nestHostName,
+                )
+            },
+        )
     }
     private val ClassGetComponentType = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getComponentType", context, invocation)
@@ -6234,6 +6259,7 @@ object JvmVmIntrinsics {
         ClassIsInstanceKey to ClassIsInstance,
         ClassIsAssignableFromKey to ClassIsAssignableFrom,
         ClassGetSuperclassKey to ClassGetSuperclass,
+        ClassGetNestHost0Key to ClassGetNestHost0,
         ClassGetComponentTypeKey to ClassGetComponentType,
         ClassGetModifiersKey to ClassGetModifiers,
         ClassGetSignersKey to ClassGetSigners,

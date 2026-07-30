@@ -2343,6 +2343,51 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getNestHost0 intrinsic returns loader qualified nest host mirrors`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 212, displayName = "app")
+        val hostKey = JvmLoadedClassKey("pkg/Host", loader)
+        val nestedKey = JvmLoadedClassKey("pkg/Host\$Nested", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Host"),
+                loadedClassKey = hostKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Host\$Nested",
+                    nestHostInternalName = "pkg/Host",
+                ),
+                loadedClassKey = nestedKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val hostMirror = heap.internClassMirror("pkg/Host", loadedClassKey = hostKey)
+        val nestedMirror = heap.internClassMirror("pkg/Host\$Nested", loadedClassKey = nestedKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetNestHost0Method())
+            ?: error("Class.getNestHost0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(emptyList()),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        val selfHost = intrinsic.invoke(context, JvmNativeMethodInvocation(hostMirror, emptyList()))
+            as JvmObjectReferenceValue
+        val nestedHost = intrinsic.invoke(context, JvmNativeMethodInvocation(nestedMirror, emptyList()))
+            as JvmObjectReferenceValue
+
+        assertEquals(JvmClassPayload("pkg/Host", loadedClassKey = hostKey), heap.get(selfHost).payload)
+        assertEquals(JvmClassPayload("pkg/Host", loadedClassKey = hostKey), heap.get(nestedHost).payload)
+    }
+
+    @Test
     fun `Class getComponentType intrinsic returns array component mirrors`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 208, displayName = "app")
         val referenceArrayKey = JvmLoadedClassKey("[Lpkg/Child;", loader)
@@ -10980,6 +11025,14 @@ class JvmVmIntrinsicsTest {
     private fun classGetSuperclassMethod(): JvmResolvedMethod = JvmResolvedMethod(
         ownerClassName = "java/lang/Class",
         name = "getSuperclass",
+        descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetNestHost0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getNestHost0",
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
         isNative = true,
