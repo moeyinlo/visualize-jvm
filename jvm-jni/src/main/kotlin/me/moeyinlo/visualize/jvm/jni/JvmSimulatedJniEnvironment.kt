@@ -996,7 +996,7 @@ class JvmSimulatedJniEnvironment(
             className = className,
             loadedClassKey = handles.resolveClassLoadedKey(classHandle),
         )
-        upcallDispatcher.callVoidMethod(
+        upcallDispatcher.callNonvirtualVoidMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,

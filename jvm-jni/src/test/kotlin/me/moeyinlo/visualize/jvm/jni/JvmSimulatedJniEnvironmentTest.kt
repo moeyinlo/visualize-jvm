@@ -6791,6 +6791,69 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObject uses nonvirtual constructor upcall dispatcher boundary`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedNewObjectUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Example",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<init>",
+                                descriptor = "(I)V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("NewObject must not invoke constructors through the virtual CallVoidMethod boundary")
+
+                override fun callNonvirtualVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) {
+                    assertEquals(false, heap.isInitialized(receiver))
+                    calls += RecordedNewObjectUpcall(receiver, method, arguments)
+                }
+            },
+        )
+        val classHandle = environment.findClass("Example")
+        val constructorHandle = environment.getMethodId(classHandle, "<init>", "(I)V")
+
+        val objectHandle = environment.newObject(classHandle, constructorHandle, listOf(JvmIntValue(42)))
+        val objectReference = handles.resolveObject(objectHandle)
+
+        assertEquals(true, heap.isInitialized(objectReference))
+        assertEquals(
+            listOf(
+                RecordedNewObjectUpcall(
+                    receiver = objectReference,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Example",
+                        name = "<init>",
+                        descriptor = "(I)V",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(42)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `NewObject preserves the class handle loaded class key on allocated guest objects`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
