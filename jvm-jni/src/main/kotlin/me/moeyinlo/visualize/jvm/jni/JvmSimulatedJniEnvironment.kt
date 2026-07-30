@@ -608,7 +608,7 @@ class JvmSimulatedJniEnvironment(
         }
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireNonvirtualInstanceCharMethod("CallNonvirtualCharMethod", className)
-        return upcallDispatcher.callCharMethod(
+        return upcallDispatcher.callNonvirtualCharMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,
