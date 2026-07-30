@@ -4265,6 +4265,93 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualFloatMethod uses nonvirtual upcall dispatcher boundary`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedFloatUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "ratio",
+                                descriptor = "(I)F",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "ratio",
+                                descriptor = "(I)F",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callFloatMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmFloatValue =
+                    error("CallNonvirtualFloatMethod must not use the virtual CallFloatMethod boundary")
+
+                override fun callNonvirtualFloatMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmFloatValue {
+                    calls += RecordedFloatUpcall(receiver, method, arguments)
+                    return JvmFloatValue(7.5f)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "ratio", "(I)F")
+
+        val result = environment.callNonvirtualFloatMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(30)),
+        )
+
+        assertEquals(7.5f, result)
+        assertEquals(
+            listOf(
+                RecordedFloatUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "ratio",
+                        descriptor = "(I)F",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(30)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualFloatMethod accepts jclass receivers as guest Class mirror objects`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

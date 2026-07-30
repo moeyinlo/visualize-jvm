@@ -764,7 +764,7 @@ class JvmSimulatedJniEnvironment(
         }
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireNonvirtualInstanceFloatMethod("CallNonvirtualFloatMethod", className)
-        return upcallDispatcher.callFloatMethod(
+        return upcallDispatcher.callNonvirtualFloatMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,
