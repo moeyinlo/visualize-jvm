@@ -14,6 +14,7 @@ data class JvmClassDefinition(
     val isPublic: Boolean = true,
     val majorVersion: Int = 70,
     val nestMemberInternalNames: List<String> = emptyList(),
+    val isRecord: Boolean = false,
 )
 
 data class JvmFieldDefinition(
