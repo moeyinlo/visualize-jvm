@@ -1136,6 +1136,9 @@ class JvmSimulatedJniEnvironment(
     fun getStringLength(stringHandle: JvmJniHandleId): Int =
         resolveStringValue(stringHandle).length
 
+    fun getStringLengthAsLong(stringHandle: JvmJniHandleId): Long =
+        resolveStringValue(stringHandle).length.toLong()
+
     fun getStringChars(stringHandle: JvmJniHandleId): CharArray =
         resolveStringValue(stringHandle).toCharArray()
 

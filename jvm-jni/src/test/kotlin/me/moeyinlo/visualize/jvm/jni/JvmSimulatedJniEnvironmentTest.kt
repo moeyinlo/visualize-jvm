@@ -11489,6 +11489,28 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetStringLengthAsLong returns UTF-16 code unit length as a long for guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(
+            heap.allocateString("A\ud83d\ude00\u0000\u754c"),
+        )
+
+        val result = environment.getStringLengthAsLong(stringHandle)
+
+        assertEquals(5L, result)
+    }
+
+    @Test
     fun `GetStringLength rejects non string guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
