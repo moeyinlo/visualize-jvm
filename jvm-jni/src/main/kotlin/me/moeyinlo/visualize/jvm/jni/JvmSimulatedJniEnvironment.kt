@@ -1120,6 +1120,9 @@ class JvmSimulatedJniEnvironment(
     fun newStringUtf(value: String): JvmJniHandleId =
         handles.newObjectHandle(heap.allocateString(value))
 
+    fun newStringUtf(bytes: ByteArray): JvmJniHandleId =
+        handles.newObjectHandle(heap.allocateString(decodeModifiedUtf8(bytes)))
+
     fun getStringLength(stringHandle: JvmJniHandleId): Int =
         resolveStringValue(stringHandle).length
 
@@ -2486,6 +2489,74 @@ class JvmSimulatedJniEnvironment(
             }
         }
         return bytes.toByteArray()
+    }
+
+    private fun decodeModifiedUtf8(bytes: ByteArray): String {
+        val builder = StringBuilder()
+        var index = 0
+        while (index < bytes.size) {
+            val lead = bytes[index].toInt() and 0xff
+            when (lead) {
+                0 -> throw JvmJniStringAccessException(
+                    "NewStringUTF modified UTF-8 input contains raw NUL byte at index $index",
+                )
+                in 0x01..0x7f -> {
+                    builder.append(lead.toChar())
+                    index += 1
+                }
+                in 0xc0..0xdf -> {
+                    val second = modifiedUtf8Continuation(bytes, index, offset = 1)
+                    val codeUnit = ((lead and 0x1f) shl 6) or (second and 0x3f)
+                    if (codeUnit == 0) {
+                        if (lead != 0xc0 || second != 0x80) {
+                            throw JvmJniStringAccessException(
+                                "NewStringUTF modified UTF-8 input has malformed NUL encoding at index $index",
+                            )
+                        }
+                    } else if (codeUnit < 0x80) {
+                        throw JvmJniStringAccessException(
+                            "NewStringUTF modified UTF-8 input has overlong two-byte form at index $index",
+                        )
+                    }
+                    builder.append(codeUnit.toChar())
+                    index += 2
+                }
+                in 0xe0..0xef -> {
+                    val second = modifiedUtf8Continuation(bytes, index, offset = 1)
+                    val third = modifiedUtf8Continuation(bytes, index, offset = 2)
+                    val codeUnit = ((lead and 0x0f) shl 12) or
+                        ((second and 0x3f) shl 6) or
+                        (third and 0x3f)
+                    if (codeUnit < 0x800) {
+                        throw JvmJniStringAccessException(
+                            "NewStringUTF modified UTF-8 input has overlong three-byte form at index $index",
+                        )
+                    }
+                    builder.append(codeUnit.toChar())
+                    index += 3
+                }
+                else -> throw JvmJniStringAccessException(
+                    "NewStringUTF modified UTF-8 input has invalid lead byte 0x${lead.toString(16)} at index $index",
+                )
+            }
+        }
+        return builder.toString()
+    }
+
+    private fun modifiedUtf8Continuation(bytes: ByteArray, startIndex: Int, offset: Int): Int {
+        val index = startIndex + offset
+        if (index >= bytes.size) {
+            throw JvmJniStringAccessException(
+                "NewStringUTF modified UTF-8 input is truncated at index $startIndex",
+            )
+        }
+        val value = bytes[index].toInt() and 0xff
+        if (value and 0xc0 != 0x80) {
+            throw JvmJniStringAccessException(
+                "NewStringUTF modified UTF-8 input has invalid continuation byte at index $index",
+            )
+        }
+        return value
     }
 
     private fun resolveStringValue(stringHandle: JvmJniHandleId): String {

@@ -11359,6 +11359,50 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewStringUTF decodes modified UTF-8 bytes into guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val modifiedUtfBytes = byteArrayOf(
+            0x41,
+            0xc0.toByte(), 0x80.toByte(),
+            0xe7.toByte(), 0x95.toByte(), 0x8c.toByte(),
+            0xed.toByte(), 0xa0.toByte(), 0xbd.toByte(),
+            0xed.toByte(), 0xb8.toByte(), 0x80.toByte(),
+        )
+
+        val stringHandle = environment.newStringUtf(modifiedUtfBytes)
+
+        val stringReference = handles.resolveObject(stringHandle)
+        val stringObject = heap.get(stringReference)
+        assertEquals("java/lang/String", stringObject.className)
+        assertEquals(JvmStringPayload("A\u0000\u754c\ud83d\ude00"), stringObject.payload)
+    }
+
+    @Test
+    fun `NewStringUTF rejects raw NUL modified UTF-8 bytes`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+        )
+
+        assertFailsWith<JvmJniStringAccessException> {
+            environment.newStringUtf(byteArrayOf(0x41, 0x00, 0x42))
+        }
+    }
+
+    @Test
     fun `GetStringUTFLength returns modified UTF byte length for guest strings`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
