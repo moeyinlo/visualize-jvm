@@ -294,6 +294,24 @@ class JvmSimulatedJniEnvironment(
         return className
     }
 
+    private fun moduleLookupClassName(className: String): String? {
+        if (!className.startsWith("[")) {
+            return requireLoadedClass(className)
+        }
+        return referenceArrayElementClassName(className)?.let(::requireLoadedClass)
+    }
+
+    private fun referenceArrayElementClassName(arrayClassName: String): String? {
+        val elementDescriptorIndex = arrayClassName.indexOfFirst { it != '[' }
+        if (elementDescriptorIndex < 0 || arrayClassName[elementDescriptorIndex] != 'L') {
+            return null
+        }
+        require(arrayClassName.endsWith(";")) {
+            "reference array class name must end with ';': $arrayClassName"
+        }
+        return arrayClassName.substring(elementDescriptorIndex + 1, arrayClassName.lastIndex)
+    }
+
     private fun JvmClassHierarchy.requireDeclaredNativeMethod(
         ownerClassName: String,
         name: String,
@@ -360,8 +378,8 @@ class JvmSimulatedJniEnvironment(
     }
 
     fun getModule(classHandle: JvmJniHandleId): JvmJniHandleId {
-        val className = requireLoadedClass(handles.resolveClass(classHandle))
-        val moduleReference = moduleResolver(className)
+        val moduleClassName = moduleLookupClassName(handles.resolveClass(classHandle))
+        val moduleReference = moduleClassName?.let(moduleResolver)
             ?: heap.allocateObject("java/lang/Module")
         return handles.newObjectHandle(moduleReference)
     }
