@@ -1850,6 +1850,63 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isAssignableFrom intrinsic rejects reference array covariance across component defining loaders`() {
+        val sourceLoader = JvmClassLoaderIdentity.UserDefined(id = 188, displayName = "source")
+        val targetLoader = JvmClassLoaderIdentity.UserDefined(id = 189, displayName = "target")
+        val sourceArrayKey = JvmLoadedClassKey("[Lpkg/Child;", sourceLoader)
+        val targetArrayKey = JvmLoadedClassKey("[Lpkg/Base;", targetLoader)
+        val heap = JvmHeap()
+        val sourceMirror = heap.internClassMirror("[Lpkg/Child;", loadedClassKey = sourceArrayKey)
+        val targetMirror = heap.internClassMirror("[Lpkg/Base;", loadedClassKey = targetArrayKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsAssignableFromMethod())
+            ?: error("Class.isAssignableFrom intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(targetMirror, listOf(sourceMirror))),
+        )
+    }
+
+    @Test
+    fun `Class isAssignableFrom intrinsic accepts reference array covariance within component defining loader`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 190, displayName = "shared")
+        val sourceArrayKey = JvmLoadedClassKey("[Lpkg/Child;", loader)
+        val targetArrayKey = JvmLoadedClassKey("[Lpkg/Base;", loader)
+        val heap = JvmHeap()
+        val sourceMirror = heap.internClassMirror("[Lpkg/Child;", loadedClassKey = sourceArrayKey)
+        val targetMirror = heap.internClassMirror("[Lpkg/Base;", loadedClassKey = targetArrayKey)
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsAssignableFromMethod())
+            ?: error("Class.isAssignableFrom intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(targetMirror, listOf(sourceMirror))),
+        )
+    }
+
+    @Test
     fun `Class isAssignableFrom intrinsic follows loaded superclass definitions`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 185, displayName = "app")
         val baseKey = JvmLoadedClassKey("pkg/Base", loader)

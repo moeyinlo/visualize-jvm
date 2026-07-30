@@ -6382,6 +6382,7 @@ object JvmVmIntrinsics {
         val sourceKey = sourcePayload.loadedClassKey
         val targetKey = targetPayload.loadedClassKey
         if (sourceKey != null && targetKey != null) {
+            loadedReferenceArrayClassKeyAssignable(context, sourceKey, targetKey)?.let { assignable -> return assignable }
             loadedClassKeyAssignable(context, sourceKey, targetKey)?.let { assignable -> return assignable }
         }
         return context.classHierarchy.isAssignable(sourceClassName, targetClassName)
@@ -6443,6 +6444,83 @@ object JvmVmIntrinsics {
             }
             currentKey = superclassKey
         }
+    }
+
+    private fun loadedReferenceArrayClassKeyAssignable(
+        context: JvmNativeMethodContext,
+        sourceKey: JvmLoadedClassKey,
+        targetKey: JvmLoadedClassKey,
+    ): Boolean? {
+        if (
+            !sourceKey.internalName.isReferenceArrayClassName() ||
+            !targetKey.internalName.isReferenceArrayClassName()
+        ) {
+            return null
+        }
+        val sourceComponentName = sourceKey.internalName.referenceArrayComponentClassName()
+        val targetComponentName = targetKey.internalName.referenceArrayComponentClassName()
+        return loaderQualifiedClassHierarchyAssignable(
+            context = context,
+            sourceClassName = sourceComponentName,
+            sourceKey = sourceKey.copy(internalName = sourceComponentName),
+            targetClassName = targetComponentName,
+            targetKey = targetKey.copy(internalName = targetComponentName),
+        )
+    }
+
+    private fun loaderQualifiedClassHierarchyAssignable(
+        context: JvmNativeMethodContext,
+        sourceClassName: String,
+        sourceKey: JvmLoadedClassKey,
+        targetClassName: String,
+        targetKey: JvmLoadedClassKey,
+        visitedClassNames: MutableSet<String> = linkedSetOf(),
+    ): Boolean {
+        if (sourceClassName == targetClassName) {
+            return sourceKey == targetKey
+        }
+        if (sourceClassName.startsWith("[") && targetClassName in arrayClassAssignableTargets) {
+            return true
+        }
+        if (sourceClassName.isReferenceArrayClassName() && targetClassName.isReferenceArrayClassName()) {
+            val sourceComponentName = sourceClassName.referenceArrayComponentClassName()
+            val targetComponentName = targetClassName.referenceArrayComponentClassName()
+            return loaderQualifiedClassHierarchyAssignable(
+                context = context,
+                sourceClassName = sourceComponentName,
+                sourceKey = sourceKey.copy(internalName = sourceComponentName),
+                targetClassName = targetComponentName,
+                targetKey = targetKey.copy(internalName = targetComponentName),
+                visitedClassNames = visitedClassNames,
+            )
+        }
+        if (sourceClassName.startsWith("[") || targetClassName.startsWith("[")) {
+            return false
+        }
+        if (!visitedClassNames.add(sourceClassName)) {
+            return false
+        }
+        val sourceClass = context.classHierarchy.classDefinition(sourceClassName) ?: return false
+        return sourceClass.superclassName?.let { superclassName ->
+            loaderQualifiedClassHierarchyAssignable(
+                context = context,
+                sourceClassName = superclassName,
+                sourceKey = sourceKey.copy(internalName = superclassName),
+                targetClassName = targetClassName,
+                targetKey = targetKey,
+                visitedClassNames = visitedClassNames,
+            )
+        } == true ||
+            sourceClass.interfaceNames.any { interfaceName ->
+                loaderQualifiedClassHierarchyAssignable(
+                    context = context,
+                    sourceClassName = interfaceName,
+                    sourceKey = sourceKey.copy(internalName = interfaceName),
+                    targetClassName = targetClassName,
+                    targetKey = targetKey,
+                    visitedClassNames = visitedClassNames,
+                )
+            }
     }
 
     private fun loadedInterfaceAssignable(
@@ -7338,6 +7416,14 @@ object JvmVmIntrinsics {
             startsWith("[[") -> substring(startIndex = 1)
             else -> throw JvmUnsupportedInstructionException("System.arraycopy target must be a reference array")
         }
+
+    private fun String.isReferenceArrayClassName(): Boolean = startsWith("[L") || startsWith("[[")
+
+    private val arrayClassAssignableTargets = setOf(
+        "java/lang/Object",
+        "java/lang/Cloneable",
+        "java/io/Serializable",
+    )
 
     private data class ArraycopyArguments(
         val source: JvmObjectReferenceValue,
