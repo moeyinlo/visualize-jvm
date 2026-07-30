@@ -2753,6 +2753,7 @@ class JvmSimulatedJniFunctionTableTest {
         assertEquals(JvmStringPayload("\u0000JVM"), heap.get(utfReference).payload)
         assertEquals(4, functions.getStringLength(utfHandle))
         assertEquals(5, functions.getStringUtfLength(utfHandle))
+        assertEquals(5L, functions.getStringUtfLengthAsLong(utfHandle))
         assertContentEquals(charArrayOf('\u0000', 'J', 'V', 'M'), functions.getStringChars(utfHandle))
         assertContentEquals(charArrayOf('J', 'V'), functions.getStringRegion(utfHandle, 1, 2))
         assertContentEquals(

@@ -1149,6 +1149,9 @@ class JvmSimulatedJniEnvironment(
     fun getStringUtfLength(stringHandle: JvmJniHandleId): Int =
         getStringUtfChars(stringHandle).size
 
+    fun getStringUtfLengthAsLong(stringHandle: JvmJniHandleId): Long =
+        getStringUtfChars(stringHandle).size.toLong()
+
     fun getStringUtfChars(stringHandle: JvmJniHandleId): ByteArray =
         encodeModifiedUtf8(resolveStringValue(stringHandle))
 

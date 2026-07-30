@@ -11425,6 +11425,28 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetStringUTFLengthAsLong returns modified UTF byte length as a long for guest strings`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/String"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val stringHandle = handles.newObjectHandle(
+            heap.allocateString("\u0000A\u00a2\u20ac\ud83d\ude00"),
+        )
+
+        val result = environment.getStringUtfLengthAsLong(stringHandle)
+
+        assertEquals(14L, result)
+    }
+
+    @Test
     fun `GetStringUTFLength rejects non string guest object handles`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

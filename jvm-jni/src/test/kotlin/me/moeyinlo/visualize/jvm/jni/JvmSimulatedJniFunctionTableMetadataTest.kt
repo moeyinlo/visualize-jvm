@@ -8,7 +8,7 @@ class JvmSimulatedJniFunctionTableMetadataTest {
     fun `function table exposes the current simulated JNIEnv slot count`() {
         val constructorSlotCount = JvmSimulatedJniFunctionTable::class.java.declaredConstructors.single().parameterCount
 
-        assertEquals(164, JvmSimulatedJniFunctionTable.SlotCount)
+        assertEquals(165, JvmSimulatedJniFunctionTable.SlotCount)
         assertEquals(constructorSlotCount, JvmSimulatedJniFunctionTable.SlotCount)
     }
 }
