@@ -397,10 +397,105 @@ class JvmSimulatedJniEnvironment(
         val targetClassName = requireLoadedOrArrayClass(handles.resolveClass(targetClassHandle))
         val sourceClassKey = handles.resolveClassLoadedKey(sourceClassHandle)
         val targetClassKey = handles.resolveClassLoadedKey(targetClassHandle)
+        return isAssignableFromResolvedClasses(
+            sourceClassName = sourceClassName,
+            sourceClassKey = sourceClassKey,
+            targetClassName = targetClassName,
+            targetClassKey = targetClassKey,
+        )
+    }
+
+    private fun isAssignableFromResolvedClasses(
+        sourceClassName: String,
+        sourceClassKey: JvmLoadedClassKey?,
+        targetClassName: String,
+        targetClassKey: JvmLoadedClassKey?,
+    ): Boolean {
         if (sourceClassKey != null && targetClassKey != null && sourceClassName == targetClassName) {
             return sourceClassKey == targetClassKey
         }
+        loaderQualifiedReferenceArrayAssignable(
+            sourceClassName = sourceClassName,
+            sourceClassKey = sourceClassKey,
+            targetClassName = targetClassName,
+            targetClassKey = targetClassKey,
+        )?.let { return it }
         return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
+    }
+
+    private fun loaderQualifiedReferenceArrayAssignable(
+        sourceClassName: String,
+        sourceClassKey: JvmLoadedClassKey?,
+        targetClassName: String,
+        targetClassKey: JvmLoadedClassKey?,
+    ): Boolean? {
+        if (
+            sourceClassKey == null ||
+            targetClassKey == null ||
+            !sourceClassName.isReferenceArrayClassName() ||
+            !targetClassName.isReferenceArrayClassName()
+        ) {
+            return null
+        }
+        val sourceComponentName = sourceClassName.referenceArrayComponentClassName()
+        val targetComponentName = targetClassName.referenceArrayComponentClassName()
+        return isLoaderQualifiedClassAssignable(
+            sourceClassName = sourceComponentName,
+            sourceClassKey = sourceClassKey.copy(internalName = sourceComponentName),
+            targetClassName = targetComponentName,
+            targetClassKey = targetClassKey.copy(internalName = targetComponentName),
+        )
+    }
+
+    private fun isLoaderQualifiedClassAssignable(
+        sourceClassName: String,
+        sourceClassKey: JvmLoadedClassKey,
+        targetClassName: String,
+        targetClassKey: JvmLoadedClassKey,
+        visitedClassNames: MutableSet<String> = linkedSetOf(),
+    ): Boolean {
+        if (sourceClassName == targetClassName) {
+            return sourceClassKey == targetClassKey
+        }
+        if (sourceClassName.startsWith("[") && targetClassName in arrayClassAssignableTargets) {
+            return true
+        }
+        if (sourceClassName.isReferenceArrayClassName() && targetClassName.isReferenceArrayClassName()) {
+            val sourceComponentName = sourceClassName.referenceArrayComponentClassName()
+            val targetComponentName = targetClassName.referenceArrayComponentClassName()
+            return isLoaderQualifiedClassAssignable(
+                sourceClassName = sourceComponentName,
+                sourceClassKey = sourceClassKey.copy(internalName = sourceComponentName),
+                targetClassName = targetComponentName,
+                targetClassKey = targetClassKey.copy(internalName = targetComponentName),
+                visitedClassNames = visitedClassNames,
+            )
+        }
+        if (sourceClassName.startsWith("[") || targetClassName.startsWith("[")) {
+            return false
+        }
+        if (!visitedClassNames.add(sourceClassName)) {
+            return false
+        }
+        val sourceClass = classHierarchy.classDefinition(sourceClassName) ?: return false
+        return sourceClass.superclassName?.let { superclassName ->
+            isLoaderQualifiedClassAssignable(
+                sourceClassName = superclassName,
+                sourceClassKey = sourceClassKey.copy(internalName = superclassName),
+                targetClassName = targetClassName,
+                targetClassKey = targetClassKey,
+                visitedClassNames = visitedClassNames,
+            )
+        } == true ||
+            sourceClass.interfaceNames.any { interfaceName ->
+                isLoaderQualifiedClassAssignable(
+                    sourceClassName = interfaceName,
+                    sourceClassKey = sourceClassKey.copy(internalName = interfaceName),
+                    targetClassName = targetClassName,
+                    targetClassKey = targetClassKey,
+                    visitedClassNames = visitedClassNames,
+                )
+            }
     }
 
     fun getStaticMethodId(
@@ -2668,6 +2763,14 @@ private fun String.referenceArrayComponentClassName(): String =
         startsWith("[[") -> substring(startIndex = 1)
         else -> throw JvmJniArrayAccessException("Not a reference array class name: $this")
     }
+
+private fun String.isReferenceArrayClassName(): Boolean = startsWith("[L") || startsWith("[[")
+
+private val arrayClassAssignableTargets = setOf(
+    "java/lang/Object",
+    "java/lang/Cloneable",
+    "java/io/Serializable",
+)
 
 class JvmJniFieldAccessException(message: String) : IllegalStateException(message)
 

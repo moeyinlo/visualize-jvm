@@ -555,6 +555,57 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsAssignableFrom rejects reference array covariance across component defining loaders`() {
+        val handles = JvmJniHandleTable()
+        val sourceLoader = JvmClassLoaderIdentity.UserDefined(id = 93, displayName = "source")
+        val targetLoader = JvmClassLoaderIdentity.UserDefined(id = 94, displayName = "target")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            handles = handles,
+        )
+        val sourceArrayHandle = handles.newClassHandle(
+            "[Lpkg/Child;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Child;", sourceLoader),
+        )
+        val targetArrayHandle = handles.newClassHandle(
+            "[Lpkg/Base;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Base;", targetLoader),
+        )
+
+        assertEquals(false, environment.isAssignableFrom(sourceArrayHandle, targetArrayHandle))
+    }
+
+    @Test
+    fun `IsAssignableFrom accepts reference array covariance within component defining loader`() {
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 95, displayName = "shared")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            handles = handles,
+        )
+        val sourceArrayHandle = handles.newClassHandle(
+            "[Lpkg/Child;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Child;", loader),
+        )
+        val targetArrayHandle = handles.newClassHandle(
+            "[Lpkg/Base;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Base;", loader),
+        )
+
+        assertEquals(true, environment.isAssignableFrom(sourceArrayHandle, targetArrayHandle))
+    }
+
+    @Test
     fun `GetStaticMethodID returns a method handle for loaded static guest methods`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
