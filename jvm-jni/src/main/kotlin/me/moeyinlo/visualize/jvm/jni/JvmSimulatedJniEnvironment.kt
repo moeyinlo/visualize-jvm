@@ -46,6 +46,7 @@ class JvmSimulatedJniEnvironment(
     upcallDispatcher: JvmJniUpcallDispatcher = JvmJniUpcallDispatcher.Unbound,
     val registeredNativeMethods: JvmJniNativeMethodRegistry = JvmJniNativeMethodRegistry(),
     private val virtualThreadClassifier: (JvmObjectReferenceValue) -> Boolean = { false },
+    private val moduleResolver: (String) -> JvmObjectReferenceValue? = { null },
 ) {
     private var upcallDispatcher: JvmJniUpcallDispatcher = upcallDispatcher
     private val throwableDetailMessageField = JvmFieldReference(
@@ -356,6 +357,13 @@ class JvmSimulatedJniEnvironment(
             className = superclassName,
             loadedClassKey = handles.resolveClassLoadedKey(classHandle)?.copy(internalName = superclassName),
         )
+    }
+
+    fun getModule(classHandle: JvmJniHandleId): JvmJniHandleId {
+        val className = requireLoadedClass(handles.resolveClass(classHandle))
+        val moduleReference = moduleResolver(className)
+            ?: heap.allocateObject("java/lang/Module")
+        return handles.newObjectHandle(moduleReference)
     }
 
     fun isAssignableFrom(sourceClassHandle: JvmJniHandleId, targetClassHandle: JvmJniHandleId): Boolean {

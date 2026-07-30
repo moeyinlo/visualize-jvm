@@ -21,6 +21,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val unregisterNatives: (JvmJniHandleId) -> Int,
     val findClass: (String) -> JvmJniHandleId,
     val getSuperclass: (JvmJniHandleId) -> JvmJniHandleId?,
+    val getModule: (JvmJniHandleId) -> JvmJniHandleId,
     val getObjectClass: (JvmJniHandleId) -> JvmJniHandleId,
     val isAssignableFrom: (JvmJniHandleId, JvmJniHandleId) -> Boolean,
     val isInstanceOf: (JvmJniHandleId?, JvmJniHandleId) -> Boolean,
@@ -172,7 +173,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 167
+        const val SlotCount: Int = 168
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
@@ -194,6 +195,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 unregisterNatives = environment::unregisterNatives,
                 findClass = environment::findClass,
                 getSuperclass = environment::getSuperclass,
+                getModule = environment::getModule,
                 getObjectClass = environment::getObjectClass,
                 isAssignableFrom = environment::isAssignableFrom,
                 isInstanceOf = environment::isInstanceOf,

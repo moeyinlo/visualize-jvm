@@ -334,6 +334,32 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetModule returns a local module handle for loaded class handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val moduleReference = heap.allocateObject("java/lang/Module")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Example"),
+                    JvmClassDefinition(internalName = "java/lang/Module"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            moduleResolver = { className ->
+                if (className == "pkg/Example") moduleReference else null
+            },
+        )
+        val classHandle = environment.findClass("pkg/Example")
+
+        val moduleHandle = environment.getModule(classHandle)
+
+        assertEquals(moduleReference, handles.resolveObject(moduleHandle))
+        assertEquals(JvmJniReferenceType.Local, environment.getObjectRefType(moduleHandle))
+    }
+
+    @Test
     fun `IsAssignableFrom returns whether source class objects can be cast to target class`() {
         val environment = JvmSimulatedJniEnvironment(
             classHierarchy = JvmClassHierarchy(
