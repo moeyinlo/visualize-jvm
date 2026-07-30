@@ -442,7 +442,7 @@ class JvmSimulatedJniEnvironment(
         }
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireNonvirtualInstanceVoidMethod("CallNonvirtualVoidMethod", className)
-        upcallDispatcher.callVoidMethod(
+        upcallDispatcher.callNonvirtualVoidMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,

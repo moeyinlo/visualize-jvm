@@ -21,6 +21,18 @@ interface JvmJniUpcallDispatcher {
         arguments: List<JvmValue>,
     )
 
+    fun callNonvirtualVoidMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ) {
+        callVoidMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+    }
+
     fun callObjectMethod(
         receiver: JvmObjectReferenceValue,
         method: JvmResolvedMethod,
