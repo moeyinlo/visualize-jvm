@@ -2160,6 +2160,71 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isInstance intrinsic rejects reference array covariance across component defining loaders`() {
+        val sourceLoader = JvmClassLoaderIdentity.UserDefined(id = 205, displayName = "source")
+        val targetLoader = JvmClassLoaderIdentity.UserDefined(id = 206, displayName = "target")
+        val sourceArrayKey = JvmLoadedClassKey("[Lpkg/Child;", sourceLoader)
+        val targetArrayKey = JvmLoadedClassKey("[Lpkg/Base;", targetLoader)
+        val heap = JvmHeap()
+        val targetMirror = heap.internClassMirror("[Lpkg/Base;", loadedClassKey = targetArrayKey)
+        val sourceArray = heap.allocateReferenceArray(
+            componentClassName = "pkg/Child",
+            length = 0,
+            loadedClassKey = sourceArrayKey,
+        )
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsInstanceMethod())
+            ?: error("Class.isInstance intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(targetMirror, listOf(sourceArray))),
+        )
+    }
+
+    @Test
+    fun `Class isInstance intrinsic accepts reference array covariance within component defining loader`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 207, displayName = "app")
+        val sourceArrayKey = JvmLoadedClassKey("[Lpkg/Child;", loader)
+        val targetArrayKey = JvmLoadedClassKey("[Lpkg/Base;", loader)
+        val heap = JvmHeap()
+        val targetMirror = heap.internClassMirror("[Lpkg/Base;", loadedClassKey = targetArrayKey)
+        val sourceArray = heap.allocateReferenceArray(
+            componentClassName = "pkg/Child",
+            length = 0,
+            loadedClassKey = sourceArrayKey,
+        )
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsInstanceMethod())
+            ?: error("Class.isInstance intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(targetMirror, listOf(sourceArray))),
+        )
+    }
+
+    @Test
     fun `Class getSuperclass intrinsic returns object for arrays and declared superclass for ordinary classes`() {
         val heap = JvmHeap()
         val arrayMirror = heap.internClassMirror("[I")
