@@ -25560,6 +25560,87 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher uses receiver loaded class key for instance double upcalls`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 40, displayName = "jni-instance-double")
+        val ownerKey = JvmLoadedClassKey("NativeOwner", loader)
+        val nestedKey = JvmLoadedClassKey("NativeOwner\$Nested", loader)
+        val fieldReference = JvmFieldReference("NativeOwner\$Nested", "secret", "I")
+        val constantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("NativeOwner\$Nested", "NativeOwner\$Nested".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val hierarchyOwner = JvmClassDefinition(
+            internalName = "NativeOwner",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "doubleValue",
+                    descriptor = "()D",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x57.toByte(),
+                        0x0F.toByte(),
+                        0xAF.toByte(),
+                    ),
+                    constantPool = constantPool,
+                    maxStack = 2,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val hierarchyNested = JvmClassDefinition(
+            internalName = "NativeOwner\$Nested",
+            fields = listOf(
+                JvmFieldDefinition(
+                    name = "secret",
+                    descriptor = "I",
+                    isStatic = true,
+                    isPrivate = true,
+                ),
+            ),
+        )
+        val methodAreaOwner = hierarchyOwner.copy(
+            nestMemberInternalNames = listOf("NativeOwner\$Nested"),
+        )
+        val methodAreaNested = hierarchyNested.copy(
+            nestHostInternalName = "NativeOwner",
+        )
+        methodArea.defineClass(JvmMethodAreaEntry(methodAreaOwner, loadedClassKey = ownerKey))
+        methodArea.defineClass(JvmMethodAreaEntry(methodAreaNested, loadedClassKey = nestedKey))
+        val staticFields = JvmStaticFields()
+        staticFields.put(fieldReference, JvmIntValue(41))
+        val classHierarchy = JvmClassHierarchy(listOf(hierarchyOwner, hierarchyNested))
+        val receiver = heap.allocateObject(
+            classDefinition = JvmClassDefinition(internalName = "NativeOwner"),
+            superclasses = emptyList(),
+            loadedClassKey = ownerKey,
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "NativeOwner",
+            name = "doubleValue",
+            descriptor = "()D",
+        )
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            methodArea = methodArea,
+        )
+
+        assertEquals(JvmDoubleValue(1.0), dispatcher.callDoubleMethod(receiver, method, emptyList()))
+    }
+
+    @Test
     fun `interpreter backed JNI dispatcher routes static char upcalls into guest methods`() {
         val classHierarchy = JvmClassHierarchy(
             listOf(
