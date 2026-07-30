@@ -331,6 +331,25 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetSuperclass throws guest NoClassDefFoundError when the direct superclass is not loaded`() {
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/MissingBase"),
+                ),
+            ),
+        )
+        val childHandle = environment.findClass("pkg/Child")
+
+        val exception = assertFailsWith<JvmNoClassDefFoundError> {
+            environment.getSuperclass(childHandle)
+        }
+
+        assertEquals("java/lang/NoClassDefFoundError", exception.guestClassName)
+        assertEquals("pkg/MissingBase", exception.message)
+    }
+
+    @Test
     fun `GetSuperclass preserves loaded class key on returned superclass handles`() {
         val handles = JvmJniHandleTable()
         val loader = JvmClassLoaderIdentity.UserDefined(id = 101, displayName = "app")
