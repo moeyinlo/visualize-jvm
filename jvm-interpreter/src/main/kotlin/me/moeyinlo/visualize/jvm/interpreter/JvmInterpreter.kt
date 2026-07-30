@@ -9795,7 +9795,9 @@ object JvmInterpreter {
             moduleLayer = moduleLayer,
         )
         requireInstanceUpcallMethod(resolvedMethod)
-        requireVirtualMethodName(resolvedMethod)
+        if (virtualDispatch) {
+            requireVirtualMethodName(resolvedMethod)
+        }
         requireAccessibleMethod(
             method = resolvedMethod,
             currentClassName = currentClassName,

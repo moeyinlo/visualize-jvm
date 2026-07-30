@@ -24670,6 +24670,71 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher executes NewObject constructors`() {
+        val heap = JvmHeap()
+        val field = JvmFieldReference("Example", "counter", "I")
+        val constructorConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Example", "Example".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("counter", "counter".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+            ),
+        )
+        val exampleDefinition = JvmClassDefinition(
+            internalName = "Example",
+            fields = listOf(
+                JvmFieldDefinition(
+                    name = "counter",
+                    descriptor = "I",
+                    isStatic = false,
+                ),
+            ),
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "<init>",
+                    descriptor = "(I)V",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0x2A.toByte(),
+                        0x1B.toByte(),
+                        0xB5.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0xB1.toByte(),
+                    ),
+                    constantPool = constructorConstantPool,
+                    maxStack = 2,
+                    maxLocals = 2,
+                ),
+            ),
+        )
+        val classHierarchy = JvmClassHierarchy(listOf(exampleDefinition))
+        val staticFields = JvmStaticFields()
+        val methodArea = JvmMethodArea()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = classHierarchy,
+            heap = heap,
+            upcallDispatcher = JvmInterpreter.jniUpcallDispatcher(
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                methodArea = methodArea,
+            ),
+        )
+        val classHandle = environment.findClass("Example")
+        val constructorHandle = environment.getMethodId(classHandle, "<init>", "(I)V")
+
+        val objectHandle = environment.newObject(classHandle, constructorHandle, listOf(JvmIntValue(42)))
+        val objectReference = environment.handles.resolveObject(objectHandle)
+
+        assertEquals(true, heap.isInitialized(objectReference))
+        assertEquals(JvmIntValue(42), heap.getInstanceField(objectReference, field))
+    }
+
+    @Test
     fun `interpreter backed JNI dispatcher routes static void upcalls into guest methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeOwner")
