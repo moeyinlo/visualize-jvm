@@ -1112,12 +1112,6 @@ class JvmSimulatedJniEnvironment(
             is JvmJniLocalReferenceSnapshot.ClassReference -> JvmJniClassReference("java/lang/Class")
         }
 
-    private fun resolveJObjectClassName(handle: JvmJniHandleId): String =
-        when (val reference = handles.snapshotLocalReference(handle)) {
-            is JvmJniLocalReferenceSnapshot.ObjectReference -> heap.get(reference.reference).className
-            is JvmJniLocalReferenceSnapshot.ClassReference -> "java/lang/Class"
-        }
-
     fun getFieldId(
         classHandle: JvmJniHandleId,
         name: String,
@@ -1571,12 +1565,13 @@ class JvmSimulatedJniEnvironment(
         initialElementHandle: JvmJniHandleId?,
     ): JvmJniHandleId {
         val elementClassName = handles.resolveClass(elementClassHandle)
+        val elementLoadedClassKey = handles.resolveClassLoadedKey(elementClassHandle)
         val arrayClassName = if (elementClassName.startsWith("[")) {
             "[$elementClassName"
         } else {
             "[L$elementClassName;"
         }
-        val arrayLoadedClassKey = handles.resolveClassLoadedKey(elementClassHandle)?.let { elementClassKey ->
+        val arrayLoadedClassKey = elementLoadedClassKey?.let { elementClassKey ->
             JvmLoadedClassKey(
                 internalName = arrayClassName,
                 definingLoader = elementClassKey.definingLoader,
@@ -1584,10 +1579,11 @@ class JvmSimulatedJniEnvironment(
         }
         val initialElement = initialElementHandle?.let { handle ->
             val reference = resolveJObjectValue(handle)
-            val elementClass = resolveJObjectClassName(handle)
-            if (!classHierarchy.isAssignable(sourceClassName = elementClass, targetClassName = elementClassName)) {
+            val elementClass = resolveJObjectClass(handle)
+            if (!isAssignableToArrayComponent(elementClass, elementClassName, elementLoadedClassKey)) {
                 throw JvmJniArrayAccessException(
-                    "NewObjectArray initial element $elementClass is not assignable to $elementClassName",
+                    "NewObjectArray initial element ${elementClass.diagnosticName()} is not assignable to " +
+                        (elementLoadedClassKey?.diagnosticName ?: elementClassName),
                 )
             }
             reference

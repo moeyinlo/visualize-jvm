@@ -14110,6 +14110,41 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObjectArray rejects same name initial objects from another defining loader`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val arrayLoader = JvmClassLoaderIdentity.UserDefined(id = 80, displayName = "array-loader")
+        val initialLoader = JvmClassLoaderIdentity.UserDefined(id = 81, displayName = "initial-loader")
+        val elementKey = JvmLoadedClassKey("pkg/Example", arrayLoader)
+        val initialKey = JvmLoadedClassKey("pkg/Example", initialLoader)
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val elementClassHandle = handles.newClassHandle("pkg/Example", loadedClassKey = elementKey)
+        val initialReference = heap.allocateObject(
+            classDefinition = JvmClassDefinition(internalName = "pkg/Example"),
+            superclasses = emptyList(),
+            loadedClassKey = initialKey,
+        )
+        val initialHandle = handles.newObjectHandle(initialReference)
+
+        val exception = assertFailsWith<JvmJniArrayAccessException> {
+            environment.newObjectArray(2, elementClassHandle, initialHandle)
+        }
+
+        assertEquals(
+            "NewObjectArray initial element pkg/Example @ initial-loader#81 is not assignable to pkg/Example @ array-loader#80",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `GetObjectArrayElement returns null for guest null array slots`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
