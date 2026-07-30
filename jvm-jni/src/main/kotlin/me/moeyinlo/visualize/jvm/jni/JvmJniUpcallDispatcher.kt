@@ -176,6 +176,17 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callNonvirtualLongMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmLongValue =
+        callLongMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+
     fun callFloatMethod(
         receiver: JvmObjectReferenceValue,
         method: JvmResolvedMethod,

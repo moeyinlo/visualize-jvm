@@ -725,7 +725,7 @@ class JvmSimulatedJniEnvironment(
         }
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireNonvirtualInstanceLongMethod("CallNonvirtualLongMethod", className)
-        return upcallDispatcher.callLongMethod(
+        return upcallDispatcher.callNonvirtualLongMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,

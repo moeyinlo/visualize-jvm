@@ -3852,6 +3852,93 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualLongMethod uses nonvirtual upcall dispatcher boundary`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedLongUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "counter",
+                                descriptor = "(I)J",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "counter",
+                                descriptor = "(I)J",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callLongMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmLongValue =
+                    error("CallNonvirtualLongMethod must not use the virtual CallLongMethod boundary")
+
+                override fun callNonvirtualLongMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmLongValue {
+                    calls += RecordedLongUpcall(receiver, method, arguments)
+                    return JvmLongValue(9876543211L)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "counter", "(I)J")
+
+        val result = environment.callNonvirtualLongMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(24)),
+        )
+
+        assertEquals(9876543211L, result)
+        assertEquals(
+            listOf(
+                RecordedLongUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "counter",
+                        descriptor = "(I)J",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(24)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualLongMethod accepts jclass receivers as guest Class mirror objects`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
