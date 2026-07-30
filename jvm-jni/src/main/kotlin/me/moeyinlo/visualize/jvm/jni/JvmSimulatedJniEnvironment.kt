@@ -1076,7 +1076,7 @@ class JvmSimulatedJniEnvironment(
         return when (val reference = handles.snapshotLocalReference(objectHandle)) {
             is JvmJniLocalReferenceSnapshot.ObjectReference -> {
                 val heapObject = heap.get(reference.reference)
-                val className = requireLoadedClass(heapObject.className)
+                val className = requireLoadedOrArrayClass(heapObject.className)
                 handles.newClassHandle(className, loadedClassKey = heapObject.loadedClassKey)
             }
             is JvmJniLocalReferenceSnapshot.ClassReference -> {

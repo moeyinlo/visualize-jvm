@@ -7248,6 +7248,23 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectClass returns synthetic array class handles for guest array objects`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy.Empty,
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newIntArray(length = 3)
+
+        val classHandle = environment.getObjectClass(arrayHandle)
+
+        assertEquals("[I", handles.resolveClass(classHandle))
+        assertEquals(null, handles.resolveClassLoadedKey(classHandle))
+    }
+
+    @Test
     fun `GetObjectClass throws guest NoClassDefFoundError when runtime class is not loaded`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
