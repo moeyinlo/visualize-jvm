@@ -311,6 +311,26 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetSuperclass returns Object for array class handles`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object", superclassName = null),
+                    JvmClassDefinition(internalName = "pkg/Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        val arrayClassHandle = handles.newClassHandle("[Lpkg/Example;")
+
+        val superclassHandle = environment.getSuperclass(arrayClassHandle)
+
+        assertEquals("java/lang/Object", handles.resolveClass(superclassHandle!!))
+        assertEquals(null, handles.resolveClassLoadedKey(superclassHandle))
+    }
+
+    @Test
     fun `GetSuperclass preserves loaded class key on returned superclass handles`() {
         val handles = JvmJniHandleTable()
         val loader = JvmClassLoaderIdentity.UserDefined(id = 101, displayName = "app")
