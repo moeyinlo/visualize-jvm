@@ -818,6 +818,40 @@ object JvmInterpreter {
                 )
         }
 
+        override fun callNonvirtualFloatMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmFloatValue {
+            val returnValue = executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                terminationState = terminationState,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = heap.get(receiver).loadedClassKey,
+                virtualDispatch = false,
+                dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
+            )
+            return returnValue as? JvmFloatValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallNonvirtualFloatMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: expected JvmFloatValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
+
         override fun callDoubleMethod(
             receiver: JvmObjectReferenceValue,
             method: JvmResolvedMethod,

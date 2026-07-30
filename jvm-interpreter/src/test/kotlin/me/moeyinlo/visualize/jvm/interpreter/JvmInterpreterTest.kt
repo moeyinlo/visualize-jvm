@@ -25641,6 +25641,112 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher routes nonvirtual float upcalls to the exact declaring class method`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 49, displayName = "jni-nonvirtual-float")
+        val baseKey = JvmLoadedClassKey("Base", loader)
+        val derivedKey = JvmLoadedClassKey("Derived", loader)
+        val nestedKey = JvmLoadedClassKey("Base\$Nested", loader)
+        val nestedField = JvmFieldReference("Base\$Nested", "secret", "I")
+        val baseConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Base\$Nested", "Base\$Nested".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ConstantFloatEntry(12.5f),
+            ),
+        )
+        val baseDefinition = JvmClassDefinition(
+            internalName = "Base",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "ratio",
+                    descriptor = "()F",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x57.toByte(),
+                        0x12.toByte(),
+                        0x07.toByte(),
+                        0xAE.toByte(),
+                    ),
+                    constantPool = baseConstantPool,
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val derivedDefinition = JvmClassDefinition(
+            internalName = "Derived",
+            superclassName = "Base",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "ratio",
+                    descriptor = "()F",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0x0C.toByte(),
+                        0xAE.toByte(),
+                    ),
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val nestedDefinition = JvmClassDefinition(
+            internalName = "Base\$Nested",
+            fields = listOf(
+                JvmFieldDefinition(
+                    name = "secret",
+                    descriptor = "I",
+                    isStatic = true,
+                    isPrivate = true,
+                ),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = baseDefinition.copy(nestMemberInternalNames = listOf("Base\$Nested")),
+                loadedClassKey = baseKey,
+            ),
+        )
+        methodArea.defineClass(JvmMethodAreaEntry(derivedDefinition, loadedClassKey = derivedKey))
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = nestedDefinition.copy(nestHostInternalName = "Base"),
+                loadedClassKey = nestedKey,
+            ),
+        )
+        val staticFields = JvmStaticFields()
+        staticFields.put(nestedField, JvmIntValue(79))
+        val classHierarchy = JvmClassHierarchy(listOf(baseDefinition, derivedDefinition, nestedDefinition))
+        val receiver = heap.allocateObject(
+            classDefinition = derivedDefinition,
+            superclasses = listOf(baseDefinition),
+            loadedClassKey = derivedKey,
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "Base",
+            name = "ratio",
+            descriptor = "()F",
+        )
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            methodArea = methodArea,
+        )
+
+        assertEquals(JvmFloatValue(12.5f), dispatcher.callNonvirtualFloatMethod(receiver, method, emptyList()))
+    }
+
+    @Test
     fun `interpreter backed JNI dispatcher routes static object upcalls into guest methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeOwner")
