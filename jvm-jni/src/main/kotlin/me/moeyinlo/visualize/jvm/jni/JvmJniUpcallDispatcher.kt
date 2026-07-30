@@ -88,6 +88,17 @@ interface JvmJniUpcallDispatcher {
         )
     }
 
+    fun callNonvirtualByteMethod(
+        receiver: JvmObjectReferenceValue,
+        method: JvmResolvedMethod,
+        arguments: List<JvmValue>,
+    ): JvmByteValue =
+        callByteMethod(
+            receiver = receiver,
+            method = method,
+            arguments = arguments,
+        )
+
     fun callCharMethod(
         receiver: JvmObjectReferenceValue,
         method: JvmResolvedMethod,

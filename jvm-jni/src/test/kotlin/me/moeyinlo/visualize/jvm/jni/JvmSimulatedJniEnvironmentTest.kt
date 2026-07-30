@@ -2200,6 +2200,93 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `CallNonvirtualByteMethod uses nonvirtual upcall dispatcher boundary`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val calls = mutableListOf<RecordedByteUpcall>()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "code",
+                                descriptor = "(I)B",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Derived",
+                        superclassName = "Base",
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "code",
+                                descriptor = "(I)B",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = error("CallVoidMethod must not be used")
+
+                override fun callByteMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmByteValue =
+                    error("CallNonvirtualByteMethod must not use the virtual CallByteMethod boundary")
+
+                override fun callNonvirtualByteMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ): JvmByteValue {
+                    calls += RecordedByteUpcall(receiver, method, arguments)
+                    return JvmByteValue(-14)
+                }
+            },
+        )
+        val baseClassHandle = environment.findClass("Base")
+        val receiver = heap.allocateObject("Derived")
+        val objectHandle = handles.newObjectHandle(receiver)
+        val methodHandle = environment.getMethodId(baseClassHandle, "code", "(I)B")
+
+        val result = environment.callNonvirtualByteMethod(
+            objectHandle = objectHandle,
+            classHandle = baseClassHandle,
+            methodIdHandle = methodHandle,
+            arguments = listOf(JvmIntValue(11)),
+        )
+
+        assertEquals(-14, result)
+        assertEquals(
+            listOf(
+                RecordedByteUpcall(
+                    receiver = receiver,
+                    method = JvmResolvedMethod(
+                        ownerClassName = "Base",
+                        name = "code",
+                        descriptor = "(I)B",
+                        isStatic = false,
+                    ),
+                    arguments = listOf(JvmIntValue(11)),
+                ),
+            ),
+            calls,
+        )
+    }
+
+    @Test
     fun `CallNonvirtualByteMethod accepts jclass receivers as guest Class mirror objects`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

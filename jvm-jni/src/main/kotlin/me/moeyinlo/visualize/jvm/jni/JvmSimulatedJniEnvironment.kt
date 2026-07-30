@@ -569,7 +569,7 @@ class JvmSimulatedJniEnvironment(
         }
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireNonvirtualInstanceByteMethod("CallNonvirtualByteMethod", className)
-        return upcallDispatcher.callByteMethod(
+        return upcallDispatcher.callNonvirtualByteMethod(
             receiver = receiver,
             method = method,
             arguments = arguments,
