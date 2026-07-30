@@ -93,7 +93,7 @@ class JvmClassfileRuntimeAdapterTest {
     fun `classfile adapter maps class identity hierarchy fields and methods to runtime definition`() {
         val classFile = ClassFile(
             magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
-            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            version = ClassFileVersion(offset = 4, minor = 65535, major = 70),
             constantPool = constantPool(),
             accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
             identity = ClassIdentity(
@@ -160,6 +160,8 @@ class JvmClassfileRuntimeAdapterTest {
         assertEquals(listOf("pkg/Itf"), definition.interfaceNames)
         assertEquals(false, definition.isInterface)
         assertEquals(false, definition.isPublic)
+        assertEquals(70, definition.majorVersion)
+        assertEquals(65535, definition.minorVersion)
         assertEquals(
             listOf(
                 JvmFieldDefinition(

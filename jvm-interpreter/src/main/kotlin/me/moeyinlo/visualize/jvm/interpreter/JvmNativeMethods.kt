@@ -2243,7 +2243,7 @@ object JvmVmIntrinsics {
         val classPayload = requireClassMirrorReceiverPayload("Class.getClassFileVersion0", context, invocation)
         val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
             ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
-        JvmIntValue(classDefinition?.majorVersion ?: JavaSe26ClassFileMajorVersion)
+        JvmIntValue(classFileVersion(classDefinition))
     }
     private val ClassGetClassAccessFlagsRaw0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getClassAccessFlagsRaw0", context, invocation)
@@ -7643,6 +7643,12 @@ object JvmVmIntrinsics {
 
     private fun classModifiers(className: String, classDefinition: JvmClassDefinition?): Int {
         return classAccessFlagsRaw(className, classDefinition)
+    }
+
+    private fun classFileVersion(classDefinition: JvmClassDefinition?): Int {
+        val majorVersion = classDefinition?.majorVersion ?: JavaSe26ClassFileMajorVersion
+        val minorVersion = classDefinition?.minorVersion ?: 0
+        return (minorVersion shl 16) or majorVersion
     }
 
     private fun classAccessFlagsRaw(className: String, classDefinition: JvmClassDefinition?): Int {

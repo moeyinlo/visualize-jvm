@@ -2622,7 +2622,7 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
-    fun `Class getClassFileVersion0 intrinsic returns loaded and default major versions`() {
+    fun `Class getClassFileVersion0 intrinsic returns packed loaded and default major versions`() {
         val loader = JvmClassLoaderIdentity.UserDefined(id = 210, displayName = "app")
         val loadedKey = JvmLoadedClassKey("pkg/Versioned", loader)
         val methodArea = JvmMethodArea()
@@ -2631,6 +2631,7 @@ class JvmVmIntrinsicsTest {
                 definition = JvmClassDefinition(
                     internalName = "pkg/Versioned",
                     majorVersion = 61,
+                    minorVersion = 65535,
                 ),
                 loadedClassKey = loadedKey,
                 initiatingLoaders = setOf(loader),
@@ -2646,7 +2647,7 @@ class JvmVmIntrinsicsTest {
         val context = JvmNativeMethodContext(
             heap = heap,
             classHierarchy = JvmClassHierarchy(
-                listOf(JvmClassDefinition(internalName = "pkg/HierarchyOnly", majorVersion = 55)),
+                listOf(JvmClassDefinition(internalName = "pkg/HierarchyOnly", majorVersion = 55, minorVersion = 1)),
             ),
             staticFields = JvmStaticFields(),
             currentClassName = "java/lang/Class",
@@ -2654,11 +2655,11 @@ class JvmVmIntrinsicsTest {
         )
 
         assertEquals(
-            JvmIntValue(61),
+            JvmIntValue((65535 shl 16) or 61),
             intrinsic.invoke(context, JvmNativeMethodInvocation(loadedMirror, emptyList())),
         )
         assertEquals(
-            JvmIntValue(55),
+            JvmIntValue((1 shl 16) or 55),
             intrinsic.invoke(context, JvmNativeMethodInvocation(hierarchyMirror, emptyList())),
         )
         assertEquals(
