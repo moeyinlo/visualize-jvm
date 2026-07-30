@@ -1101,6 +1101,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ClassGetNestMembers0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getNestMembers0",
+        descriptor = "()[Ljava/lang/Class;",
+        isStatic = false,
+    )
     private val ClassGetComponentTypeKey = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getComponentType",
@@ -2151,6 +2157,41 @@ object JvmVmIntrinsics {
                 )
             },
         )
+    }
+    private val ClassGetNestMembers0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getNestMembers0", context, invocation)
+        val representedClassName = classPayload.representedClassName
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
+            ?: context.classHierarchy.classDefinition(representedClassName)
+        val nestHostName = classDefinition?.nestHostInternalName ?: representedClassName
+        val hostDefinition = if (nestHostName == representedClassName) {
+            classDefinition
+        } else {
+            loadedClassKeyForMirrorRelatedClass(
+                context = context,
+                mirrorPayload = classPayload,
+                relatedClassName = nestHostName,
+            )?.let { hostKey -> context.methodArea?.getClass(hostKey)?.definition }
+                ?: context.classHierarchy.classDefinition(nestHostName)
+        }
+        val memberNames = (listOf(nestHostName) + hostDefinition?.nestMemberInternalNames.orEmpty()).distinct()
+        val members = context.heap.allocateReferenceArray("java/lang/Class", memberNames.size)
+        val payload = context.heap.get(members).payload as JvmReferenceArrayPayload
+        memberNames.forEachIndexed { index, memberName ->
+            payload.elements[index] = context.heap.internClassMirror(
+                className = memberName,
+                loadedClassKey = if (memberName == representedClassName) {
+                    classPayload.loadedClassKey
+                } else {
+                    loadedClassKeyForMirrorRelatedClass(
+                        context = context,
+                        mirrorPayload = classPayload,
+                        relatedClassName = memberName,
+                    )
+                },
+            )
+        }
+        members
     }
     private val ClassGetComponentType = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getComponentType", context, invocation)
@@ -6260,6 +6301,7 @@ object JvmVmIntrinsics {
         ClassIsAssignableFromKey to ClassIsAssignableFrom,
         ClassGetSuperclassKey to ClassGetSuperclass,
         ClassGetNestHost0Key to ClassGetNestHost0,
+        ClassGetNestMembers0Key to ClassGetNestMembers0,
         ClassGetComponentTypeKey to ClassGetComponentType,
         ClassGetModifiersKey to ClassGetModifiers,
         ClassGetSignersKey to ClassGetSigners,
