@@ -1624,11 +1624,18 @@ class JvmSimulatedJniEnvironment(
         }
         val value = valueHandle?.let { handle ->
             val reference = resolveJObjectValue(handle)
-            val valueClassName = resolveJObjectClassName(handle)
+            val valueClass = resolveJObjectClass(handle)
             val componentClassName = arrayObject.className.referenceArrayComponentClassName()
-            if (!classHierarchy.isAssignable(sourceClassName = valueClassName, targetClassName = componentClassName)) {
+            val componentClassKey = arrayObject.loadedClassKey?.let { arrayClassKey ->
+                JvmLoadedClassKey(
+                    internalName = componentClassName,
+                    definingLoader = arrayClassKey.definingLoader,
+                )
+            }
+            if (!isAssignableToArrayComponent(valueClass, componentClassName, componentClassKey)) {
                 throw JvmJniArrayAccessException(
-                    "SetObjectArrayElement value $valueClassName is not assignable to $componentClassName",
+                    "SetObjectArrayElement value ${valueClass.diagnosticName()} is not assignable to " +
+                        (componentClassKey?.diagnosticName ?: componentClassName),
                 )
             }
             reference
@@ -2456,6 +2463,17 @@ class JvmSimulatedJniEnvironment(
             )
     }
 
+    private fun isAssignableToArrayComponent(
+        sourceClass: JvmJniClassReference,
+        componentClassName: String,
+        componentClassKey: JvmLoadedClassKey?,
+    ): Boolean {
+        if (sourceClass.loadedClassKey != null && componentClassKey != null && sourceClass.className == componentClassName) {
+            return sourceClass.loadedClassKey == componentClassKey
+        }
+        return classHierarchy.isAssignable(sourceClassName = sourceClass.className, targetClassName = componentClassName)
+    }
+
     private fun resolveBooleanArray(arrayHandle: JvmJniHandleId): JvmBooleanArrayPayload {
         val reference = handles.resolveObject(arrayHandle)
         val heapObject = heap.get(reference)
@@ -2736,7 +2754,9 @@ private fun JvmResolvedMethod.requireNonvirtualInstanceObjectMethod(helperName: 
 private data class JvmJniClassReference(
     val className: String,
     val loadedClassKey: JvmLoadedClassKey? = null,
-)
+) {
+    fun diagnosticName(): String = loadedClassKey?.diagnosticName ?: className
+}
 
 private fun JvmResolvedMethod.requireInstanceBooleanMethod(helperName: String) {
     if (isStatic || returnDescriptor != "Z") {

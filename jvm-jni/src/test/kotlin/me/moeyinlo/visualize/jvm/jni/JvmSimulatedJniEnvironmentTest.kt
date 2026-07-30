@@ -14298,6 +14298,42 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `SetObjectArrayElement rejects same name values from another defining loader`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val arrayLoader = JvmClassLoaderIdentity.UserDefined(id = 74, displayName = "array-loader")
+        val valueLoader = JvmClassLoaderIdentity.UserDefined(id = 75, displayName = "value-loader")
+        val elementKey = JvmLoadedClassKey("pkg/Example", arrayLoader)
+        val valueKey = JvmLoadedClassKey("pkg/Example", valueLoader)
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val elementClassHandle = handles.newClassHandle("pkg/Example", loadedClassKey = elementKey)
+        val arrayHandle = environment.newObjectArray(1, elementClassHandle, null)
+        val valueReference = heap.allocateObject(
+            classDefinition = JvmClassDefinition(internalName = "pkg/Example"),
+            superclasses = emptyList(),
+            loadedClassKey = valueKey,
+        )
+        val valueHandle = handles.newObjectHandle(valueReference)
+
+        val exception = assertFailsWith<JvmJniArrayAccessException> {
+            environment.setObjectArrayElement(arrayHandle, 0, valueHandle)
+        }
+
+        assertEquals(
+            "SetObjectArrayElement value pkg/Example @ value-loader#75 is not assignable to pkg/Example @ array-loader#74",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `SetObjectArrayElement rejects non assignable values`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
