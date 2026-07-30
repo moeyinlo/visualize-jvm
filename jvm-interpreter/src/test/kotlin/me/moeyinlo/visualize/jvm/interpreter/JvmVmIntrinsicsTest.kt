@@ -2729,6 +2729,58 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class isRecord0 intrinsic reads modeled runtime record metadata`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 214, displayName = "app")
+        val loadedRecordKey = JvmLoadedClassKey("pkg/LoadedRecord", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/LoadedRecord", isRecord = true),
+                loadedClassKey = loadedRecordKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val loadedRecordMirror = heap.internClassMirror("pkg/LoadedRecord", loadedClassKey = loadedRecordKey)
+        val hierarchyRecordMirror = heap.internClassMirror("pkg/HierarchyRecord")
+        val ordinaryMirror = heap.internClassMirror("pkg/Ordinary")
+        val primitiveMirror = heap.internClassMirror("int")
+        val arrayMirror = heap.internClassMirror("[Lpkg/LoadedRecord;")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classIsRecord0Method())
+            ?: error("Class.isRecord0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(JvmClassDefinition(internalName = "pkg/HierarchyRecord", isRecord = true)),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(loadedRecordMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(1),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(hierarchyRecordMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(ordinaryMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList())),
+        )
+    }
+
+    @Test
     fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
         val heap = JvmHeap()
         val childMirror = heap.internClassMirror("pkg/Child")
@@ -11171,6 +11223,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "getClassAccessFlagsRaw0",
         descriptor = "()I",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classIsRecord0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "isRecord0",
+        descriptor = "()Z",
         isStatic = false,
         isNative = true,
     )

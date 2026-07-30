@@ -1143,6 +1143,12 @@ object JvmVmIntrinsics {
         descriptor = "()I",
         isStatic = false,
     )
+    private val ClassIsRecord0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "isRecord0",
+        descriptor = "()Z",
+        isStatic = false,
+    )
     private val ClassGetInterfaces0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getInterfaces0",
@@ -2238,6 +2244,12 @@ object JvmVmIntrinsics {
         val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
             ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
         JvmIntValue(classAccessFlagsRaw(classPayload.representedClassName, classDefinition))
+    }
+    private val ClassIsRecord0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.isRecord0", context, invocation)
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
+            ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
+        jvmBoolean(classDefinition?.isRecord == true)
     }
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
@@ -6308,6 +6320,7 @@ object JvmVmIntrinsics {
         ClassSetSignersKey to ClassSetSigners,
         ClassGetClassFileVersion0Key to ClassGetClassFileVersion0,
         ClassGetClassAccessFlagsRaw0Key to ClassGetClassAccessFlagsRaw0,
+        ClassIsRecord0Key to ClassIsRecord0,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ClassIsHiddenKey to ClassIsHidden,
