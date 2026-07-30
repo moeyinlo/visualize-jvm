@@ -2496,6 +2496,56 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getClassFileVersion0 intrinsic returns loaded and default major versions`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 210, displayName = "app")
+        val loadedKey = JvmLoadedClassKey("pkg/Versioned", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Versioned",
+                    majorVersion = 61,
+                ),
+                loadedClassKey = loadedKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val loadedMirror = heap.internClassMirror("pkg/Versioned", loadedClassKey = loadedKey)
+        val hierarchyMirror = heap.internClassMirror("pkg/HierarchyOnly")
+        val primitiveMirror = heap.internClassMirror("int")
+        val arrayMirror = heap.internClassMirror("[Lpkg/Versioned;")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetClassFileVersion0Method())
+            ?: error("Class.getClassFileVersion0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(
+                listOf(JvmClassDefinition(internalName = "pkg/HierarchyOnly", majorVersion = 55)),
+            ),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        assertEquals(
+            JvmIntValue(61),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(loadedMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(55),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(hierarchyMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(70),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(70),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList())),
+        )
+    }
+
+    @Test
     fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
         val heap = JvmHeap()
         val childMirror = heap.internClassMirror("pkg/Child")
@@ -10906,6 +10956,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "setSigners",
         descriptor = "([Ljava/lang/Object;)V",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetClassFileVersion0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getClassFileVersion0",
+        descriptor = "()I",
         isStatic = false,
         isNative = true,
     )

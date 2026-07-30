@@ -1119,6 +1119,12 @@ object JvmVmIntrinsics {
         descriptor = "([Ljava/lang/Object;)V",
         isStatic = false,
     )
+    private val ClassGetClassFileVersion0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getClassFileVersion0",
+        descriptor = "()I",
+        isStatic = false,
+    )
     private val ClassGetInterfaces0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getInterfaces0",
@@ -2148,6 +2154,12 @@ object JvmVmIntrinsics {
         }
         context.heap.recordClassMirrorSigners(receiver, signers)
         null
+    }
+    private val ClassGetClassFileVersion0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getClassFileVersion0", context, invocation)
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
+            ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
+        JvmIntValue(classDefinition?.majorVersion ?: JavaSe26ClassFileMajorVersion)
     }
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
@@ -6214,6 +6226,7 @@ object JvmVmIntrinsics {
         ClassGetModifiersKey to ClassGetModifiers,
         ClassGetSignersKey to ClassGetSigners,
         ClassSetSignersKey to ClassSetSigners,
+        ClassGetClassFileVersion0Key to ClassGetClassFileVersion0,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ClassIsHiddenKey to ClassIsHidden,
@@ -7538,6 +7551,7 @@ object JvmVmIntrinsics {
     private const val JavaModifierFinal = 0x0010
     private const val JavaModifierInterface = 0x0200
     private const val JavaModifierAbstract = 0x0400
+    private const val JavaSe26ClassFileMajorVersion = 70
 
     private data class ArraycopyArguments(
         val source: JvmObjectReferenceValue,
