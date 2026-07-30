@@ -38,6 +38,7 @@ fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
         ?.classes
         ?.map(constantPool::className)
         ?: emptyList()
+    val isSealed = attributes.any { attribute -> attribute is PermittedSubclassesAttribute }
     val isRecord = attributes.any { attribute -> attribute is RecordAttribute }
     val sourceFile = attributes.filterIsInstance<SourceFileAttribute>().singleOrNull()
         ?.let { attribute -> constantPool.utf8(attribute.sourceFileIndex) }
@@ -53,6 +54,7 @@ fun ClassFile.toJvmClassDefinition(): JvmClassDefinition {
         majorVersion = version.major,
         nestMemberInternalNames = nestMemberInternalNames,
         isRecord = isRecord,
+        isSealed = isSealed,
         permittedSubclassInternalNames = permittedSubclassInternalNames,
     )
 }

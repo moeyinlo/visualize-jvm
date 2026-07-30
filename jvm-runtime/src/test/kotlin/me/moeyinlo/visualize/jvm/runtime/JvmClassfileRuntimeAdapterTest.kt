@@ -329,6 +329,34 @@ class JvmClassfileRuntimeAdapterTest {
     }
 
     @Test
+    fun `classfile adapter maps empty PermittedSubclasses to runtime sealed metadata`() {
+        val classFile = ClassFile(
+            magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
+            version = ClassFileVersion(offset = 4, minor = 0, major = 70),
+            constantPool = constantPool(),
+            accessFlags = ClassAccessFlags(raw = 0x0020, kind = ClassFileKind.Class, reservedBits = 0),
+            identity = ClassIdentity(
+                thisClassIndex = ConstantPoolIndex(2),
+                superClassIndex = ConstantPoolIndex(4),
+                interfaceIndexes = emptyList(),
+            ),
+            fields = emptyList(),
+            methods = emptyList(),
+            attributes = listOf(
+                PermittedSubclassesAttribute(
+                    nameIndex = ConstantPoolIndex(34),
+                    classes = emptyList(),
+                ),
+            ),
+        )
+
+        val definition = classFile.toJvmClassDefinition()
+
+        assertEquals(true, definition.isSealed)
+        assertEquals(emptyList(), definition.permittedSubclassInternalNames)
+    }
+
+    @Test
     fun `classfile adapter binds constant pool to runtime methods`() {
         val classFile = ClassFile(
             magic = ClassFileMagic(offset = 0, value = 0xCAFEBABEL),
