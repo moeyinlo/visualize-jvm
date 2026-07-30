@@ -264,7 +264,11 @@ class JvmHeap {
         )
     }
 
-    fun allocateReferenceArray(componentClassName: String, length: Int): JvmObjectReferenceValue {
+    fun allocateReferenceArray(
+        componentClassName: String,
+        length: Int,
+        loadedClassKey: JvmLoadedClassKey? = null,
+    ): JvmObjectReferenceValue {
         require(componentClassName.isNotBlank()) { "array component class name must not be blank" }
         require(length >= 0) { "array length must be non-negative: $length" }
 
@@ -273,10 +277,14 @@ class JvmHeap {
         } else {
             "[L$componentClassName;"
         }
+        require(loadedClassKey == null || loadedClassKey.internalName == arrayClassName) {
+            "loaded array class key ${loadedClassKey?.diagnosticName} must match array class name $arrayClassName"
+        }
         return allocate(
             JvmHeapObject(
                 className = arrayClassName,
                 payload = JvmReferenceArrayPayload(MutableList(length) { JvmNullValue }),
+                loadedClassKey = loadedClassKey,
             ),
         )
     }

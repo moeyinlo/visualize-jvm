@@ -7265,6 +7265,36 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `GetObjectClass preserves reference array loaded class key on returned class handles`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val key = JvmLoadedClassKey(
+            internalName = "[Lpkg/Example;",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 72, displayName = "array-loader"),
+        )
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Example"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val arrayReference = heap.allocateReferenceArray(
+            componentClassName = "pkg/Example",
+            length = 2,
+            loadedClassKey = key,
+        )
+        val arrayHandle = handles.newObjectHandle(arrayReference)
+
+        val classHandle = environment.getObjectClass(arrayHandle)
+
+        assertEquals("[Lpkg/Example;", handles.resolveClass(classHandle))
+        assertEquals(key, handles.resolveClassLoadedKey(classHandle))
+    }
+
+    @Test
     fun `GetObjectClass throws guest NoClassDefFoundError when runtime class is not loaded`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

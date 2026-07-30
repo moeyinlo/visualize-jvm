@@ -157,6 +157,52 @@ class JvmHeapTest {
     }
 
     @Test
+    fun `heap preserves loaded class keys for reference array allocations`() {
+        val heap = JvmHeap()
+        val key = JvmLoadedClassKey(
+            internalName = "[Lpkg/Example;",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 8, displayName = "array-loader"),
+        )
+
+        val reference = heap.allocateReferenceArray(
+            componentClassName = "pkg/Example",
+            length = 2,
+            loadedClassKey = key,
+        )
+
+        assertEquals(
+            JvmHeapObject(
+                className = "[Lpkg/Example;",
+                payload = JvmReferenceArrayPayload(mutableListOf(JvmNullValue, JvmNullValue)),
+                loadedClassKey = key,
+            ),
+            heap.get(reference),
+        )
+    }
+
+    @Test
+    fun `heap rejects reference array loaded class keys for another array class`() {
+        val heap = JvmHeap()
+        val key = JvmLoadedClassKey(
+            internalName = "[Lpkg/Other;",
+            definingLoader = JvmClassLoaderIdentity.UserDefined(id = 9, displayName = "array-loader"),
+        )
+
+        val exception = kotlin.test.assertFailsWith<IllegalArgumentException> {
+            heap.allocateReferenceArray(
+                componentClassName = "pkg/Example",
+                length = 2,
+                loadedClassKey = key,
+            )
+        }
+
+        assertEquals(
+            "loaded array class key [Lpkg/Other; @ array-loader#9 must match array class name [Lpkg/Example;",
+            exception.message,
+        )
+    }
+
+    @Test
     fun `heap allocates uninitialized objects with superclass layout from method area`() {
         val heap = JvmHeap()
         val methodArea = JvmMethodArea()
