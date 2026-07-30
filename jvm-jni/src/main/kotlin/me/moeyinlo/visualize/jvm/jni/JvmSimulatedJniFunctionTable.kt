@@ -13,6 +13,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val deleteWeakGlobalRef: (JvmJniHandleId?) -> Unit,
     val getObjectRefType: (JvmJniHandleId?) -> JvmJniReferenceType,
     val isSameObject: (JvmJniHandleId?, JvmJniHandleId?) -> Boolean,
+    val isVirtualThread: (JvmJniHandleId?) -> Boolean,
     val ensureLocalCapacity: (Int) -> Int,
     val pushLocalFrame: (Int) -> Int,
     val popLocalFrame: (JvmJniHandleId?) -> JvmJniHandleId?,
@@ -170,7 +171,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
     val setObjectArrayRegion: (JvmJniHandleId, Int, List<JvmJniHandleId?>) -> Unit,
 ) {
     companion object {
-        const val SlotCount: Int = 165
+        const val SlotCount: Int = 166
 
         fun bind(environment: JvmSimulatedJniEnvironment): JvmSimulatedJniFunctionTable =
             JvmSimulatedJniFunctionTable(
@@ -184,6 +185,7 @@ class JvmSimulatedJniFunctionTable internal constructor(
                 deleteWeakGlobalRef = environment::deleteWeakGlobalRef,
                 getObjectRefType = environment::getObjectRefType,
                 isSameObject = environment::isSameObject,
+                isVirtualThread = environment::isVirtualThread,
                 ensureLocalCapacity = environment::ensureLocalCapacity,
                 pushLocalFrame = environment::pushLocalFrame,
                 popLocalFrame = environment::popLocalFrame,

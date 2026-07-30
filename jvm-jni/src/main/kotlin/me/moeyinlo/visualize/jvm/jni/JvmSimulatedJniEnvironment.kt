@@ -45,6 +45,7 @@ class JvmSimulatedJniEnvironment(
     private val exceptionReporter: (String) -> Unit = {},
     upcallDispatcher: JvmJniUpcallDispatcher = JvmJniUpcallDispatcher.Unbound,
     val registeredNativeMethods: JvmJniNativeMethodRegistry = JvmJniNativeMethodRegistry(),
+    private val virtualThreadClassifier: (JvmObjectReferenceValue) -> Boolean = { false },
 ) {
     private var upcallDispatcher: JvmJniUpcallDispatcher = upcallDispatcher
     private val throwableDetailMessageField = JvmFieldReference(
@@ -176,6 +177,15 @@ class JvmSimulatedJniEnvironment(
             return left == right
         }
         return resolveJObjectValue(left) == resolveJObjectValue(right)
+    }
+
+    fun isVirtualThread(threadHandle: JvmJniHandleId?): Boolean {
+        val reference = threadHandle?.let(::resolveJObjectValue) ?: return false
+        val className = heap.get(reference).className
+        if (!classHierarchy.isAssignable(className, "java/lang/Thread")) {
+            return false
+        }
+        return virtualThreadClassifier(reference)
     }
 
     internal fun resolveJObjectValue(handle: JvmJniHandleId): JvmObjectReferenceValue =

@@ -51,6 +51,7 @@ class JvmSimulatedJniFunctionTableTest {
         val weakGlobalHandle = functions.newWeakGlobalRef(scopedHandle)
 
         assertEquals(true, functions.isSameObject(scopedHandle, duplicateHandle))
+        assertEquals(false, functions.isVirtualThread(scopedHandle))
         assertEquals(JvmJniReferenceType.Local, functions.getObjectRefType(scopedHandle))
         assertEquals(JvmJniReferenceType.Local, functions.getObjectRefType(duplicateHandle))
         assertEquals(JvmJniReferenceType.Global, functions.getObjectRefType(globalHandle))

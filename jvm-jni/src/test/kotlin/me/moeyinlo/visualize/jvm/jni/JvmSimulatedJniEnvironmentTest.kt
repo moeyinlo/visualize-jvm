@@ -14708,6 +14708,34 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsVirtualThread delegates thread handles to the configured virtual thread classifier`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val platformThread = heap.allocateObject("java/lang/Thread")
+        val virtualThread = heap.allocateObject("java/lang/Thread")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "java/lang/Thread", superclassName = "java/lang/Object"),
+                    JvmClassDefinition(internalName = "Example", superclassName = "java/lang/Object"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            virtualThreadClassifier = { reference -> reference == virtualThread },
+        )
+        val platformHandle = handles.newObjectHandle(platformThread)
+        val virtualHandle = handles.newObjectHandle(virtualThread)
+        val nonThreadHandle = handles.newObjectHandle(heap.allocateObject("Example"))
+
+        assertEquals(false, environment.isVirtualThread(null))
+        assertEquals(false, environment.isVirtualThread(platformHandle))
+        assertEquals(true, environment.isVirtualThread(virtualHandle))
+        assertEquals(false, environment.isVirtualThread(nonThreadHandle))
+    }
+
+    @Test
     fun `NewLocalRef duplicates object local handles and preserves null references`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
