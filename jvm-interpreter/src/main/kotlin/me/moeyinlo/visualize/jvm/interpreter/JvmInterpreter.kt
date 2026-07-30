@@ -340,6 +340,41 @@ object JvmInterpreter {
                 )
         }
 
+        override fun callNonvirtualObjectMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ): JvmReferenceValue {
+            val returnValue = executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                terminationState = terminationState,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = heap.get(receiver).loadedClassKey,
+                virtualDispatch = false,
+                dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
+            )
+            return returnValue as? JvmReferenceValue
+                ?: throw JvmJniUpcallException(
+                    "Invalid interpreter-backed CallNonvirtualObjectMethod return for " +
+                        "${method.ownerClassName}.${method.name}:${method.descriptor}: " +
+                        "expected JvmReferenceValue but was " +
+                        (returnValue?.javaClass?.simpleName ?: "void"),
+                )
+        }
+
         override fun callBooleanMethod(
             receiver: JvmObjectReferenceValue,
             method: JvmResolvedMethod,

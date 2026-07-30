@@ -24833,6 +24833,172 @@ class JvmInterpreterTest {
     }
 
     @Test
+    fun `interpreter backed JNI dispatcher routes nonvirtual object upcalls to the exact declaring class method`() {
+        val heap = JvmHeap()
+        val methodArea = JvmMethodArea()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 42, displayName = "jni-nonvirtual-object")
+        val baseKey = JvmLoadedClassKey("Base", loader)
+        val derivedKey = JvmLoadedClassKey("Derived", loader)
+        val nestedKey = JvmLoadedClassKey("Base\$Nested", loader)
+        val nestedField = JvmFieldReference("Base\$Nested", "secret", "I")
+        val baseResultField = JvmFieldReference("State", "baseResult", "Ljava/lang/Object;")
+        val derivedResultField = JvmFieldReference("State", "derivedResult", "Ljava/lang/Object;")
+        val baseConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("Base\$Nested", "Base\$Nested".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("secret", "secret".encodeToByteArray()),
+                ConstantUtf8Entry("I", "I".encodeToByteArray()),
+                ConstantFieldRefEntry(ConstantPoolIndex(8), ConstantPoolIndex(10)),
+                ConstantClassEntry(ConstantPoolIndex(9)),
+                ConstantUtf8Entry("State", "State".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(11), ConstantPoolIndex(12)),
+                ConstantUtf8Entry("baseResult", "baseResult".encodeToByteArray()),
+                ConstantUtf8Entry("Ljava/lang/Object;", "Ljava/lang/Object;".encodeToByteArray()),
+            ),
+        )
+        val derivedConstantPool = ConstantPool.fromEntries(
+            listOf(
+                ConstantFieldRefEntry(ConstantPoolIndex(2), ConstantPoolIndex(4)),
+                ConstantClassEntry(ConstantPoolIndex(3)),
+                ConstantUtf8Entry("State", "State".encodeToByteArray()),
+                ConstantNameAndTypeEntry(ConstantPoolIndex(5), ConstantPoolIndex(6)),
+                ConstantUtf8Entry("derivedResult", "derivedResult".encodeToByteArray()),
+                ConstantUtf8Entry("Ljava/lang/Object;", "Ljava/lang/Object;".encodeToByteArray()),
+            ),
+        )
+        val objectDefinition = JvmClassDefinition(internalName = "java/lang/Object")
+        val baseDefinition = JvmClassDefinition(
+            internalName = "Base",
+            superclassName = "java/lang/Object",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "select",
+                    descriptor = "()Ljava/lang/Object;",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0x57.toByte(),
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x07.toByte(),
+                        0xB0.toByte(),
+                    ),
+                    constantPool = baseConstantPool,
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val derivedDefinition = JvmClassDefinition(
+            internalName = "Derived",
+            superclassName = "Base",
+            methods = listOf(
+                JvmMethodDefinition(
+                    name = "select",
+                    descriptor = "()Ljava/lang/Object;",
+                    isStatic = false,
+                    code = byteArrayOf(
+                        0xB2.toByte(),
+                        0x00.toByte(),
+                        0x01.toByte(),
+                        0xB0.toByte(),
+                    ),
+                    constantPool = derivedConstantPool,
+                    maxStack = 1,
+                    maxLocals = 1,
+                ),
+            ),
+        )
+        val nestedDefinition = JvmClassDefinition(
+            internalName = "Base\$Nested",
+            fields = listOf(
+                JvmFieldDefinition(
+                    name = "secret",
+                    descriptor = "I",
+                    isStatic = true,
+                    isPrivate = true,
+                ),
+            ),
+        )
+        val stateDefinition = JvmClassDefinition(
+            internalName = "State",
+            fields = listOf(
+                JvmFieldDefinition(
+                    name = "baseResult",
+                    descriptor = "Ljava/lang/Object;",
+                    isStatic = true,
+                ),
+                JvmFieldDefinition(
+                    name = "derivedResult",
+                    descriptor = "Ljava/lang/Object;",
+                    isStatic = true,
+                ),
+            ),
+        )
+        val baseResultDefinition = JvmClassDefinition(
+            internalName = "BaseResult",
+            superclassName = "java/lang/Object",
+        )
+        val derivedResultDefinition = JvmClassDefinition(
+            internalName = "DerivedResult",
+            superclassName = "java/lang/Object",
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = baseDefinition.copy(nestMemberInternalNames = listOf("Base\$Nested")),
+                loadedClassKey = baseKey,
+            ),
+        )
+        methodArea.defineClass(JvmMethodAreaEntry(derivedDefinition, loadedClassKey = derivedKey))
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = nestedDefinition.copy(nestHostInternalName = "Base"),
+                loadedClassKey = nestedKey,
+            ),
+        )
+        val staticFields = JvmStaticFields()
+        staticFields.put(nestedField, JvmIntValue(47))
+        val baseResult = heap.allocateObject(baseResultDefinition)
+        val derivedResult = heap.allocateObject(derivedResultDefinition)
+        staticFields.put(baseResultField, baseResult)
+        staticFields.put(derivedResultField, derivedResult)
+        val classHierarchy = JvmClassHierarchy(
+            listOf(
+                objectDefinition,
+                baseDefinition,
+                derivedDefinition,
+                nestedDefinition,
+                stateDefinition,
+                baseResultDefinition,
+                derivedResultDefinition,
+            ),
+        )
+        val receiver = heap.allocateObject(
+            classDefinition = derivedDefinition,
+            superclasses = listOf(baseDefinition, objectDefinition),
+            loadedClassKey = derivedKey,
+        )
+        val method = classHierarchy.resolveMethod(
+            ownerClassName = "Base",
+            name = "select",
+            descriptor = "()Ljava/lang/Object;",
+        )
+        val dispatcher = JvmInterpreter.jniUpcallDispatcher(
+            heap = heap,
+            classHierarchy = classHierarchy,
+            staticFields = staticFields,
+            methodArea = methodArea,
+        )
+
+        assertEquals(baseResult, dispatcher.callNonvirtualObjectMethod(receiver, method, emptyList()))
+    }
+
+    @Test
     fun `interpreter backed JNI dispatcher routes static object upcalls into guest methods`() {
         val heap = JvmHeap()
         val receiver = heap.allocateObject("NativeOwner")
