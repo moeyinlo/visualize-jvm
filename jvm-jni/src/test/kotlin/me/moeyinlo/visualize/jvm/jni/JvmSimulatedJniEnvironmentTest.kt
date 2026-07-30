@@ -7523,6 +7523,63 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsInstanceOf rejects reference array covariance across component defining loaders`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val sourceLoader = JvmClassLoaderIdentity.UserDefined(id = 96, displayName = "source")
+        val targetLoader = JvmClassLoaderIdentity.UserDefined(id = 97, displayName = "target")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val sourceElementHandle = handles.newClassHandle(
+            "pkg/Child",
+            loadedClassKey = JvmLoadedClassKey("pkg/Child", sourceLoader),
+        )
+        val sourceArrayHandle = environment.newObjectArray(1, sourceElementHandle, null)
+        val targetArrayClassHandle = handles.newClassHandle(
+            "[Lpkg/Base;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Base;", targetLoader),
+        )
+
+        assertEquals(false, environment.isInstanceOf(sourceArrayHandle, targetArrayClassHandle))
+    }
+
+    @Test
+    fun `IsInstanceOf accepts reference array covariance within component defining loader`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 98, displayName = "shared")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "pkg/Base"),
+                    JvmClassDefinition(internalName = "pkg/Child", superclassName = "pkg/Base"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val sourceElementHandle = handles.newClassHandle(
+            "pkg/Child",
+            loadedClassKey = JvmLoadedClassKey("pkg/Child", loader),
+        )
+        val sourceArrayHandle = environment.newObjectArray(1, sourceElementHandle, null)
+        val targetArrayClassHandle = handles.newClassHandle(
+            "[Lpkg/Base;",
+            loadedClassKey = JvmLoadedClassKey("[Lpkg/Base;", loader),
+        )
+
+        assertEquals(true, environment.isInstanceOf(sourceArrayHandle, targetArrayClassHandle))
+    }
+
+    @Test
     fun `IsInstanceOf returns false when a guest object is not assignable to the target class`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()

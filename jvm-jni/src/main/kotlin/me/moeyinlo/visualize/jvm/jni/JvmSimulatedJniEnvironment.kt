@@ -1189,10 +1189,12 @@ class JvmSimulatedJniEnvironment(
         val sourceClassName = requireLoadedOrArrayClass(sourceClass.className)
         val targetClassName = requireLoadedOrArrayClass(handles.resolveClass(classHandle))
         val targetClassKey = handles.resolveClassLoadedKey(classHandle)
-        if (sourceClass.loadedClassKey != null && targetClassKey != null && sourceClassName == targetClassName) {
-            return sourceClass.loadedClassKey == targetClassKey
-        }
-        return classHierarchy.isAssignable(sourceClassName = sourceClassName, targetClassName = targetClassName)
+        return isAssignableFromResolvedClasses(
+            sourceClassName = sourceClassName,
+            sourceClassKey = sourceClass.loadedClassKey,
+            targetClassName = targetClassName,
+            targetClassKey = targetClassKey,
+        )
     }
 
     private fun resolveJObjectClass(handle: JvmJniHandleId): JvmJniClassReference =
