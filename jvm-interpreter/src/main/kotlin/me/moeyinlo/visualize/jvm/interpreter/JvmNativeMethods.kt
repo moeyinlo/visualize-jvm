@@ -8,6 +8,7 @@ import me.moeyinlo.visualize.jvm.jni.prepareInstanceInvocation
 import me.moeyinlo.visualize.jvm.jni.prepareStaticInvocation
 import me.moeyinlo.visualize.jvm.jni.toGuestValue
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationState
 import me.moeyinlo.visualize.jvm.runtime.JvmClassInitializationStates
 import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
@@ -1100,6 +1101,12 @@ object JvmVmIntrinsics {
         descriptor = "()Ljava/lang/Class;",
         isStatic = false,
     )
+    private val ClassGetModifiersKey = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getModifiers",
+        descriptor = "()I",
+        isStatic = false,
+    )
     private val ClassGetInterfaces0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getInterfaces0",
@@ -2104,6 +2111,12 @@ object JvmVmIntrinsics {
             className = componentClassName,
             loadedClassKey = classPayload.loadedClassKey?.componentLoadedClassKey(componentClassName),
         )
+    }
+    private val ClassGetModifiers = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getModifiers", context, invocation)
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
+            ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
+        JvmIntValue(classModifiers(classPayload.representedClassName, classDefinition))
     }
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
@@ -6167,6 +6180,7 @@ object JvmVmIntrinsics {
         ClassIsAssignableFromKey to ClassIsAssignableFrom,
         ClassGetSuperclassKey to ClassGetSuperclass,
         ClassGetComponentTypeKey to ClassGetComponentType,
+        ClassGetModifiersKey to ClassGetModifiers,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ClassIsHiddenKey to ClassIsHidden,
@@ -7456,6 +7470,20 @@ object JvmVmIntrinsics {
             copy(internalName = componentClassName)
         }
 
+    private fun classModifiers(className: String, classDefinition: JvmClassDefinition?): Int {
+        if (className.startsWith("[") || className in PrimitiveClassNames) {
+            return JavaModifierPublic or JavaModifierFinal or JavaModifierAbstract
+        }
+        var modifiers = 0
+        if (classDefinition?.isPublic ?: true) {
+            modifiers = modifiers or JavaModifierPublic
+        }
+        if (classDefinition?.isInterface == true) {
+            modifiers = modifiers or JavaModifierInterface or JavaModifierAbstract
+        }
+        return modifiers
+    }
+
     private val arrayClassAssignableTargets = setOf(
         "java/lang/Object",
         "java/lang/Cloneable",
@@ -7472,6 +7500,11 @@ object JvmVmIntrinsics {
         'F' to "float",
         'D' to "double",
     )
+
+    private const val JavaModifierPublic = 0x0001
+    private const val JavaModifierFinal = 0x0010
+    private const val JavaModifierInterface = 0x0200
+    private const val JavaModifierAbstract = 0x0400
 
     private data class ArraycopyArguments(
         val source: JvmObjectReferenceValue,

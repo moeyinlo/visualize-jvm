@@ -2399,6 +2399,63 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getModifiers intrinsic returns class interface array and primitive modifiers`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 209, displayName = "app")
+        val packageClassKey = JvmLoadedClassKey("pkg/PackageClass", loader)
+        val publicInterfaceKey = JvmLoadedClassKey("pkg/PublicService", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/PackageClass", isPublic = false),
+                loadedClassKey = packageClassKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/PublicService",
+                    isInterface = true,
+                    isPublic = true,
+                ),
+                loadedClassKey = publicInterfaceKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val packageClassMirror = heap.internClassMirror("pkg/PackageClass", loadedClassKey = packageClassKey)
+        val interfaceMirror = heap.internClassMirror("pkg/PublicService", loadedClassKey = publicInterfaceKey)
+        val primitiveMirror = heap.internClassMirror("int")
+        val arrayMirror = heap.internClassMirror("[Lpkg/PackageClass;")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetModifiersMethod())
+            ?: error("Class.getModifiers intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(emptyList()),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        assertEquals(
+            JvmIntValue(0),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(packageClassMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(0x0001 or 0x0200 or 0x0400),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(interfaceMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(0x0001 or 0x0010 or 0x0400),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList())),
+        )
+        assertEquals(
+            JvmIntValue(0x0001 or 0x0010 or 0x0400),
+            intrinsic.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList())),
+        )
+    }
+
+    @Test
     fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
         val heap = JvmHeap()
         val childMirror = heap.internClassMirror("pkg/Child")
@@ -10785,6 +10842,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "getComponentType",
         descriptor = "()Ljava/lang/Class;",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetModifiersMethod(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getModifiers",
+        descriptor = "()I",
         isStatic = false,
         isNative = true,
     )
