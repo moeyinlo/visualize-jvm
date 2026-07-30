@@ -278,6 +278,34 @@ object JvmInterpreter {
             )
         }
 
+        override fun callNonvirtualVoidMethod(
+            receiver: JvmObjectReferenceValue,
+            method: JvmResolvedMethod,
+            arguments: List<JvmValue>,
+        ) {
+            executeInstanceMethodUpcall(
+                receiver = receiver,
+                ownerClassName = method.ownerClassName,
+                name = method.name,
+                descriptor = method.descriptor,
+                arguments = arguments,
+                heap = heap,
+                classHierarchy = classHierarchy,
+                staticFields = staticFields,
+                nativeMethods = nativeMethods,
+                monitors = monitors,
+                threadScheduler = threadScheduler,
+                currentThreadId = currentThreadId,
+                terminationState = terminationState,
+                monitorUnblockedHandler = monitorUnblockedHandler,
+                currentClassName = currentClassName,
+                currentLoadedClassKey = heap.get(receiver).loadedClassKey,
+                virtualDispatch = false,
+                dynamicConstants = dynamicConstants,
+                methodArea = methodArea,
+            )
+        }
+
         override fun callObjectMethod(
             receiver: JvmObjectReferenceValue,
             method: JvmResolvedMethod,
@@ -9265,6 +9293,7 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
+        virtualDispatch: Boolean = true,
         dynamicConstants: JvmDynamicConstantRegistry,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
@@ -9430,6 +9459,7 @@ object JvmInterpreter {
         monitorUnblockedHandler: (objectReference: JvmObjectReferenceValue, threadId: String) -> Unit = { _, _ -> },
         currentClassName: String?,
         currentLoadedClassKey: JvmLoadedClassKey? = null,
+        virtualDispatch: Boolean = true,
         dynamicConstants: JvmDynamicConstantRegistry,
         loadNativeLibraryHandler: (logicalName: String) -> Unit = { logicalName ->
             throw JvmUnsupportedInstructionException("Native library loading is not configured for $logicalName")
@@ -9479,12 +9509,16 @@ object JvmInterpreter {
             currentLoadedClassKey = currentLoadedClassKey,
             methodArea = methodArea,
         )
-        val targetMethod = classHierarchy.resolveVirtualMethod(
-            receiverClassName = receiverClassName,
-            name = resolvedMethod.name,
-            descriptor = resolvedMethod.descriptor,
-            resolvedMethod = resolvedMethod,
-        )
+        val targetMethod = if (virtualDispatch) {
+            classHierarchy.resolveVirtualMethod(
+                receiverClassName = receiverClassName,
+                name = resolvedMethod.name,
+                descriptor = resolvedMethod.descriptor,
+                resolvedMethod = resolvedMethod,
+            )
+        } else {
+            resolvedMethod
+        }
         requireInstanceUpcallMethod(targetMethod)
         if (targetMethod.isAbstract) {
             throw JvmAbstractMethodError(
