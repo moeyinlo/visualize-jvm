@@ -6,8 +6,9 @@ import me.moeyinlo.visualize.jvm.runtime.JvmByteArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmByteValue
 import me.moeyinlo.visualize.jvm.runtime.JvmCharArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmCharValue
-import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
+import me.moeyinlo.visualize.jvm.runtime.JvmClassDefinition
 import me.moeyinlo.visualize.jvm.runtime.JvmClassHierarchy
+import me.moeyinlo.visualize.jvm.runtime.JvmClassPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDirectByteBufferPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleArrayPayload
 import me.moeyinlo.visualize.jvm.runtime.JvmDoubleValue
@@ -992,10 +993,7 @@ class JvmSimulatedJniEnvironment(
         val className = handles.resolveClass(classHandle)
         val method = handles.resolveMethodId(methodIdHandle)
         method.requireConstructorMethod("NewObject", className)
-        val receiver = heap.allocateUninitializedObject(
-            className = className,
-            loadedClassKey = handles.resolveClassLoadedKey(classHandle),
-        )
+        val receiver = allocateUninitializedObjectFromClassHandle(classHandle, className)
         upcallDispatcher.callNonvirtualVoidMethod(
             receiver = receiver,
             method = method,
@@ -1003,6 +1001,34 @@ class JvmSimulatedJniEnvironment(
         )
         heap.markInitialized(receiver)
         return handles.newObjectHandle(receiver)
+    }
+
+    private fun allocateUninitializedObjectFromClassHandle(
+        classHandle: JvmJniHandleId,
+        className: String,
+    ): JvmObjectReferenceValue {
+        val loadedClassKey = handles.resolveClassLoadedKey(classHandle)
+        val classDefinition = classHierarchy.classDefinition(className)
+            ?: return heap.allocateUninitializedObject(
+                className = className,
+                loadedClassKey = loadedClassKey,
+            )
+        return heap.allocateUninitializedObject(
+            classDefinition = classDefinition,
+            superclasses = superclassDefinitionsFor(classDefinition),
+            loadedClassKey = loadedClassKey,
+        )
+    }
+
+    private fun superclassDefinitionsFor(classDefinition: JvmClassDefinition): List<JvmClassDefinition> {
+        val definitions = mutableListOf<JvmClassDefinition>()
+        var superclassName = classDefinition.superclassName
+        while (superclassName != null) {
+            val superclassDefinition = classHierarchy.classDefinition(superclassName) ?: break
+            definitions += superclassDefinition
+            superclassName = superclassDefinition.superclassName
+        }
+        return definitions.asReversed()
     }
 
     fun getObjectClass(objectHandle: JvmJniHandleId): JvmJniHandleId {

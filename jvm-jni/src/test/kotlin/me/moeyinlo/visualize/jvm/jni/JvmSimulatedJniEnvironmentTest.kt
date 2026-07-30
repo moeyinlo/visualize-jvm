@@ -6854,6 +6854,67 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `NewObject prepares default instance fields from class hierarchy layout`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val parentField = JvmFieldReference("Parent", "inherited", "J")
+        val childField = JvmFieldReference("Child", "counter", "I")
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(
+                        internalName = "Parent",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "inherited",
+                                descriptor = "J",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                    JvmClassDefinition(
+                        internalName = "Child",
+                        superclassName = "Parent",
+                        fields = listOf(
+                            JvmFieldDefinition(
+                                name = "counter",
+                                descriptor = "I",
+                                isStatic = false,
+                            ),
+                        ),
+                        methods = listOf(
+                            JvmMethodDefinition(
+                                name = "<init>",
+                                descriptor = "()V",
+                                isStatic = false,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+            upcallDispatcher = object : JvmJniUpcallDispatcher {
+                override fun callVoidMethod(
+                    receiver: JvmObjectReferenceValue,
+                    method: JvmResolvedMethod,
+                    arguments: List<JvmValue>,
+                ) = Unit
+            },
+        )
+        val classHandle = environment.findClass("Child")
+        val constructorHandle = environment.getMethodId(classHandle, "<init>", "()V")
+
+        val objectHandle = environment.newObject(classHandle, constructorHandle)
+        val objectReference = handles.resolveObject(objectHandle)
+
+        assertEquals(true, heap.hasInstanceField(objectReference, parentField))
+        assertEquals(JvmLongValue(0), heap.getInstanceField(objectReference, parentField))
+        assertEquals(true, heap.hasInstanceField(objectReference, childField))
+        assertEquals(JvmIntValue(0), heap.getInstanceField(objectReference, childField))
+    }
+
+    @Test
     fun `NewObject preserves the class handle loaded class key on allocated guest objects`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
