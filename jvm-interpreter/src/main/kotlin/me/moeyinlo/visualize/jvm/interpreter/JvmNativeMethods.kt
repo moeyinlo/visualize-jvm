@@ -1125,6 +1125,12 @@ object JvmVmIntrinsics {
         descriptor = "()I",
         isStatic = false,
     )
+    private val ClassGetClassAccessFlagsRaw0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getClassAccessFlagsRaw0",
+        descriptor = "()I",
+        isStatic = false,
+    )
     private val ClassGetInterfaces0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getInterfaces0",
@@ -2160,6 +2166,12 @@ object JvmVmIntrinsics {
         val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
             ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
         JvmIntValue(classDefinition?.majorVersion ?: JavaSe26ClassFileMajorVersion)
+    }
+    private val ClassGetClassAccessFlagsRaw0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getClassAccessFlagsRaw0", context, invocation)
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
+            ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
+        JvmIntValue(classAccessFlagsRaw(classPayload.representedClassName, classDefinition))
     }
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
@@ -6227,6 +6239,7 @@ object JvmVmIntrinsics {
         ClassGetSignersKey to ClassGetSigners,
         ClassSetSignersKey to ClassSetSigners,
         ClassGetClassFileVersion0Key to ClassGetClassFileVersion0,
+        ClassGetClassAccessFlagsRaw0Key to ClassGetClassAccessFlagsRaw0,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ClassIsHiddenKey to ClassIsHidden,
@@ -7517,6 +7530,10 @@ object JvmVmIntrinsics {
         }
 
     private fun classModifiers(className: String, classDefinition: JvmClassDefinition?): Int {
+        return classAccessFlagsRaw(className, classDefinition)
+    }
+
+    private fun classAccessFlagsRaw(className: String, classDefinition: JvmClassDefinition?): Int {
         if (className.startsWith("[") || className in PrimitiveClassNames) {
             return JavaModifierPublic or JavaModifierFinal or JavaModifierAbstract
         }
