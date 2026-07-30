@@ -164,7 +164,7 @@ class JvmClassHierarchy(
     }
 
     fun directSuperclassName(internalName: String): String? =
-        classesByName[internalName]?.superclassName
+        if (internalName.isArrayClassName()) "java/lang/Object" else classesByName[internalName]?.superclassName
 
     fun directSuperinterfaceNames(internalName: String): List<String> =
         classesByName[internalName]?.interfaceNames.orEmpty()

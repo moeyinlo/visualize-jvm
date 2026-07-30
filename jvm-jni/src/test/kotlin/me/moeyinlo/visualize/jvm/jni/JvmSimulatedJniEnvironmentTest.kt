@@ -425,6 +425,25 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsAssignableFrom treats array classes as assignable to Object`() {
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object", superclassName = null),
+                    JvmClassDefinition(internalName = "pkg/Example"),
+                ),
+            ),
+            handles = handles,
+        )
+        val arrayClassHandle = handles.newClassHandle("[Lpkg/Example;")
+        val objectClassHandle = environment.findClass("java/lang/Object")
+
+        assertEquals(true, environment.isAssignableFrom(arrayClassHandle, objectClassHandle))
+        assertEquals(false, environment.isAssignableFrom(objectClassHandle, arrayClassHandle))
+    }
+
+    @Test
     fun `IsAssignableFrom distinguishes same name class handles by loaded class key`() {
         val handles = JvmJniHandleTable()
         val environment = JvmSimulatedJniEnvironment(
