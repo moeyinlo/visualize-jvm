@@ -2781,6 +2781,86 @@ class JvmVmIntrinsicsTest {
     }
 
     @Test
+    fun `Class getPermittedSubclasses0 intrinsic returns sealed permitted subclass mirrors`() {
+        val loader = JvmClassLoaderIdentity.UserDefined(id = 215, displayName = "app")
+        val sealedKey = JvmLoadedClassKey("pkg/Sealed", loader)
+        val permittedKey = JvmLoadedClassKey("pkg/Sealed\$Child", loader)
+        val emptySealedKey = JvmLoadedClassKey("pkg/EmptySealed", loader)
+        val ordinaryKey = JvmLoadedClassKey("pkg/Ordinary", loader)
+        val methodArea = JvmMethodArea()
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(
+                    internalName = "pkg/Sealed",
+                    isSealed = true,
+                    permittedSubclassInternalNames = listOf("pkg/Sealed\$Child"),
+                ),
+                loadedClassKey = sealedKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Sealed\$Child", superclassName = "pkg/Sealed"),
+                loadedClassKey = permittedKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/EmptySealed", isSealed = true),
+                loadedClassKey = emptySealedKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        methodArea.defineClass(
+            JvmMethodAreaEntry(
+                definition = JvmClassDefinition(internalName = "pkg/Ordinary"),
+                loadedClassKey = ordinaryKey,
+                initiatingLoaders = setOf(loader),
+            ),
+        )
+        val heap = JvmHeap()
+        val sealedMirror = heap.internClassMirror("pkg/Sealed", loadedClassKey = sealedKey)
+        val emptySealedMirror = heap.internClassMirror("pkg/EmptySealed", loadedClassKey = emptySealedKey)
+        val ordinaryMirror = heap.internClassMirror("pkg/Ordinary", loadedClassKey = ordinaryKey)
+        val primitiveMirror = heap.internClassMirror("int")
+        val arrayMirror = heap.internClassMirror("[Lpkg/Sealed;")
+        val intrinsic = JvmVmIntrinsics.Registry.resolve(classGetPermittedSubclasses0Method())
+            ?: error("Class.getPermittedSubclasses0 intrinsic was not registered")
+        val context = JvmNativeMethodContext(
+            heap = heap,
+            classHierarchy = JvmClassHierarchy(emptyList()),
+            staticFields = JvmStaticFields(),
+            currentClassName = "java/lang/Class",
+            methodArea = methodArea,
+        )
+
+        val permittedSubclasses = intrinsic.invoke(context, JvmNativeMethodInvocation(sealedMirror, emptyList()))
+            as JvmObjectReferenceValue
+        val emptyPermittedSubclasses = intrinsic.invoke(context, JvmNativeMethodInvocation(emptySealedMirror, emptyList()))
+            as JvmObjectReferenceValue
+
+        assertEquals(
+            JvmReferenceArrayPayload(mutableListOf(heap.internClassMirror("pkg/Sealed\$Child", loadedClassKey = permittedKey))),
+            heap.get(permittedSubclasses).payload,
+        )
+        assertEquals(JvmReferenceArrayPayload(mutableListOf()), heap.get(emptyPermittedSubclasses).payload)
+        assertEquals(
+            JvmNullValue,
+            intrinsic.invoke(context, JvmNativeMethodInvocation(ordinaryMirror, emptyList())),
+        )
+        assertEquals(
+            JvmNullValue,
+            intrinsic.invoke(context, JvmNativeMethodInvocation(primitiveMirror, emptyList())),
+        )
+        assertEquals(
+            JvmNullValue,
+            intrinsic.invoke(context, JvmNativeMethodInvocation(arrayMirror, emptyList())),
+        )
+    }
+
+    @Test
     fun `Class getInterfaces0 intrinsic returns guest interface mirror arrays`() {
         val heap = JvmHeap()
         val childMirror = heap.internClassMirror("pkg/Child")
@@ -11231,6 +11311,14 @@ class JvmVmIntrinsicsTest {
         ownerClassName = "java/lang/Class",
         name = "isRecord0",
         descriptor = "()Z",
+        isStatic = false,
+        isNative = true,
+    )
+
+    private fun classGetPermittedSubclasses0Method(): JvmResolvedMethod = JvmResolvedMethod(
+        ownerClassName = "java/lang/Class",
+        name = "getPermittedSubclasses0",
+        descriptor = "()[Ljava/lang/Class;",
         isStatic = false,
         isNative = true,
     )

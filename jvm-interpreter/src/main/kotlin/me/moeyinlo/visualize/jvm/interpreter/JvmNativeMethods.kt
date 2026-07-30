@@ -1149,6 +1149,12 @@ object JvmVmIntrinsics {
         descriptor = "()Z",
         isStatic = false,
     )
+    private val ClassGetPermittedSubclasses0Key = JvmNativeMethodKey(
+        ownerClassName = "java/lang/Class",
+        name = "getPermittedSubclasses0",
+        descriptor = "()[Ljava/lang/Class;",
+        isStatic = false,
+    )
     private val ClassGetInterfaces0Key = JvmNativeMethodKey(
         ownerClassName = "java/lang/Class",
         name = "getInterfaces0",
@@ -2250,6 +2256,30 @@ object JvmVmIntrinsics {
         val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
             ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
         jvmBoolean(classDefinition?.isRecord == true)
+    }
+    private val ClassGetPermittedSubclasses0 = JvmNativeMethodIntrinsic { context, invocation ->
+        val classPayload = requireClassMirrorReceiverPayload("Class.getPermittedSubclasses0", context, invocation)
+        val classDefinition = classDefinitionForMirrorPayload(context, classPayload)
+            ?: context.classHierarchy.classDefinition(classPayload.representedClassName)
+        if (classDefinition?.isSealed != true) {
+            return@JvmNativeMethodIntrinsic JvmNullValue
+        }
+        val permittedSubclasses = context.heap.allocateReferenceArray(
+            componentClassName = "java/lang/Class",
+            length = classDefinition.permittedSubclassInternalNames.size,
+        )
+        val payload = context.heap.get(permittedSubclasses).payload as JvmReferenceArrayPayload
+        classDefinition.permittedSubclassInternalNames.forEachIndexed { index, permittedSubclassName ->
+            payload.elements[index] = context.heap.internClassMirror(
+                className = permittedSubclassName,
+                loadedClassKey = loadedClassKeyForMirrorRelatedClass(
+                    context = context,
+                    mirrorPayload = classPayload,
+                    relatedClassName = permittedSubclassName,
+                ),
+            )
+        }
+        permittedSubclasses
     }
     private val ClassGetInterfaces0 = JvmNativeMethodIntrinsic { context, invocation ->
         val classPayload = requireClassMirrorReceiverPayload("Class.getInterfaces0", context, invocation)
@@ -6321,6 +6351,7 @@ object JvmVmIntrinsics {
         ClassGetClassFileVersion0Key to ClassGetClassFileVersion0,
         ClassGetClassAccessFlagsRaw0Key to ClassGetClassAccessFlagsRaw0,
         ClassIsRecord0Key to ClassIsRecord0,
+        ClassGetPermittedSubclasses0Key to ClassGetPermittedSubclasses0,
         ClassGetInterfaces0Key to ClassGetInterfaces0,
         ClassDesiredAssertionStatus0Key to ClassDesiredAssertionStatus0,
         ClassIsHiddenKey to ClassIsHidden,
