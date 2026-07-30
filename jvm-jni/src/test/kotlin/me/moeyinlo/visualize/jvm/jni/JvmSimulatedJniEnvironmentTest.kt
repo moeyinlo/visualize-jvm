@@ -7375,6 +7375,34 @@ class JvmSimulatedJniEnvironmentTest {
     }
 
     @Test
+    fun `IsInstanceOf treats guest array objects as Object Cloneable and Serializable instances`() {
+        val heap = JvmHeap()
+        val handles = JvmJniHandleTable()
+        val environment = JvmSimulatedJniEnvironment(
+            classHierarchy = JvmClassHierarchy(
+                listOf(
+                    JvmClassDefinition(internalName = "java/lang/Object", superclassName = null),
+                    JvmClassDefinition(internalName = "java/lang/Cloneable", isInterface = true),
+                    JvmClassDefinition(internalName = "java/io/Serializable", isInterface = true),
+                    JvmClassDefinition(internalName = "pkg/Unrelated"),
+                ),
+            ),
+            heap = heap,
+            handles = handles,
+        )
+        val arrayHandle = environment.newIntArray(length = 2)
+        val objectClassHandle = environment.findClass("java/lang/Object")
+        val cloneableClassHandle = environment.findClass("java/lang/Cloneable")
+        val serializableClassHandle = environment.findClass("java/io/Serializable")
+        val unrelatedClassHandle = environment.findClass("pkg/Unrelated")
+
+        assertEquals(true, environment.isInstanceOf(arrayHandle, objectClassHandle))
+        assertEquals(true, environment.isInstanceOf(arrayHandle, cloneableClassHandle))
+        assertEquals(true, environment.isInstanceOf(arrayHandle, serializableClassHandle))
+        assertEquals(false, environment.isInstanceOf(arrayHandle, unrelatedClassHandle))
+    }
+
+    @Test
     fun `IsInstanceOf distinguishes same name guest objects by loaded class key`() {
         val heap = JvmHeap()
         val handles = JvmJniHandleTable()
